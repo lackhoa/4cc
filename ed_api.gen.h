@@ -38,7 +38,6 @@
 #define ed_push_image_sig() void ed_push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color)
 #define ed_ed_load_image_sig() Texture_Handle ed_ed_load_image(Stringz filename, v2* out_dim)
 #define ed_switch_to_mouse_panel_sig() void ed_switch_to_mouse_panel(App* app)
-#define ed_mouse_viewport_id_sig() i1 ed_mouse_viewport_id(App* app)
 #define ed_get_confirmation_from_user_sig() b32 ed_get_confirmation_from_user(App* app, String query)
 #define ed_get_current_line_number2_sig() i64 ed_get_current_line_number2(App* app, View_ID view, Buffer_ID buffer)
 #define ed_get_current_line_number_sig() i64 ed_get_current_line_number(App* app)
@@ -134,8 +133,6 @@
 #define ed_load_image__params Stringz filename, v2* out_dim
 #define switch_to_mouse_panel__return void
 #define switch_to_mouse_panel__params App* app
-#define mouse_viewport_id__return i1
-#define mouse_viewport_id__params App* app
 #define get_confirmation_from_user__return b32
 #define get_confirmation_from_user__params App* app, String query
 #define get_current_line_number2__return i64
@@ -217,7 +214,6 @@ wrap_function_pointer(seek_pos);
 wrap_function_pointer(push_image);
 wrap_function_pointer(ed_load_image);
 wrap_function_pointer(switch_to_mouse_panel);
-wrap_function_pointer(mouse_viewport_id);
 wrap_function_pointer(get_confirmation_from_user);
 wrap_function_pointer(get_current_line_number2);
 wrap_function_pointer(get_current_line_number);
@@ -279,7 +275,6 @@ function Buffer_Seek seek_pos(i64 pos);
 function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color);
 function Texture_Handle ed_load_image(Stringz filename, v2* out_dim);
 function void switch_to_mouse_panel(App* app);
-function i1 mouse_viewport_id(App* app);
 function b32 get_confirmation_from_user(App* app, String query);
 function i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
 function i64 get_current_line_number(App* app);
@@ -343,7 +338,6 @@ STORAGE_CLASS wrap_function_pointer(seek_pos);
 STORAGE_CLASS wrap_function_pointer(push_image);
 STORAGE_CLASS wrap_function_pointer(ed_load_image);
 STORAGE_CLASS wrap_function_pointer(switch_to_mouse_panel);
-STORAGE_CLASS wrap_function_pointer(mouse_viewport_id);
 STORAGE_CLASS wrap_function_pointer(get_confirmation_from_user);
 STORAGE_CLASS wrap_function_pointer(get_current_line_number2);
 STORAGE_CLASS wrap_function_pointer(get_current_line_number);

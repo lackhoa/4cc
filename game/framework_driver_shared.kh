@@ -31,7 +31,7 @@ enum Bone_Type
 struct Bone_ID
 {
  Bone_Type type;
- i1        id;
+ i32       id;
 };
 
 [info]

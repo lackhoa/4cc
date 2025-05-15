@@ -38,7 +38,6 @@ api(ed) function Buffer_Seek seek_pos(i64 pos);
 api(ed) function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color);
 api(ed) function Texture_Handle ed_load_image(Stringz filename, v2* out_dim);
 api(ed) function void switch_to_mouse_panel(App* app);
-api(ed) function i1 mouse_viewport_id(App* app);
 api(ed) function b32 get_confirmation_from_user(App* app, String query);
 api(ed) function i64 get_current_line_number2(App* app, View_ID view, Buffer_ID buffer);
 api(ed) function i64 get_current_line_number(App* app);

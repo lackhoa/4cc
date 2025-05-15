@@ -749,9 +749,10 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
 function void
 ogl_render(i2 mousep_ydown, i32 window_id)
 {
- // NOTE #HardCoded Allow one 1080p panel maximum
- const i32 MAX_PANEL_DIMX = 1920;
- const i32 MAX_PANEL_DIMY = 1080;
+ // TODO(kv) @HardCoded We don't have the time to change resolution dynamically.
+ // So this is my Macbook's resolution... I'm so sorry!
+ const i32 MAX_PANEL_DIMX = 2880;
+ const i32 MAX_PANEL_DIMY = 1800;
  
  local_persist GLuint game_framebuffer;
  // NOTE We use a different framebuffer because the default one doesn't let us attach any texture.
@@ -842,7 +843,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     ogl__clamp_to_edge();
     ogl__filter_nearest();
     glTexImage2DMultisample(texture_target/*dummy*/, num_samples, GL_DEPTH_COMPONENT24, W,H, GL_FALSE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy param*/, GL_DEPTH_ATTACHMENT, texture_target, depth_texture, /*level*/0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER/*dummy*/, GL_DEPTH_ATTACHMENT, texture_target, depth_texture, /*level*/0);
    }
    
    assert_framebuffer_status();
@@ -912,6 +913,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
  render_state.free_texture_last = 0;
  
  Font_Set *font_set = (Font_Set*)render_state.font_set;
+ 
  for (Render_Group *group = render_state.group_first;
       group != 0;
       group = group->next)
@@ -919,9 +921,11 @@ ogl_render(i2 mousep_ydown, i32 window_id)
   Render_Target *target = get_render_target(group);
   b32 is_game = render_group_is_game(group);
   b32 has_poly = 0;
-  if(group->entry_first){
+  if(group->entry_first)
+  {
    has_poly = (group->entry_first->poly.vertex_list.count > 0);
   };
+  
   if(target->window_id == window_id and
      (is_game || has_poly))
   {
@@ -932,19 +936,14 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     rect2i box = Ri32(group->clip_box);
     dstx = box.x0;
     dsty = box.y0;
-    if(!group->y_up){
+    if(!group->y_up)
+    {
      dsty = target->height - box.y1;
     };  // NOTE; For editor
     dst_dim = V2(rect2i_dim(box));
     
     {// NOTE: Handle scale down
-     // (TODO: Should've just let the game change the render surface,
-     // that would save us the trouble of computing render location at both places)
-     for_i32(it,0,group->scale_down_pow2) {
-      dst_dim *= 0.5f;
-     }
-     
-     // ;dim_round_down (todo lost the original note)
+     // ;dim_round_down (todo lost original note)
      // @dim_round_down
      dst_dimx = cast(i32)dst_dim.x;
      dst_dimy = cast(i32)dst_dim.y;
@@ -980,7 +979,7 @@ ogl_render(i2 mousep_ydown, i32 window_id)
     
     {//NOTE: Clears
      v4 bg_color = argb_unpack(group->background);
-     glClearColor( v4_expand(bg_color) );
+     glClearColor(v4_expand(bg_color));
      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
     

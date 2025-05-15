@@ -10,18 +10,24 @@
 
 global Async_System global_async_system = {};
 
-function Async_Node*
-async_pop_node(Async_System *async_system){
-    for (;async_system->task_count == 0;){
-        system_condition_variable_wait(async_system->cv, async_system->mutex);
-    }
-    Node *node = async_system->task_sent.next;
-    Assert(node != &async_system->task_sent);
-    dll_remove(node);
-    async_system->task_count -= 1;
-    Async_Node *a_node = CastFromMember(Async_Node, node, node);
-    a_node->next = 0;
-    return(a_node);
+function Async_Node *
+async_pop_node(Async_System *async_system)
+{
+ Async_Node *a_node = 0;
+ 
+ while(async_system->task_count == 0)
+ {
+  default_wait_for_condition_variable(async_system->cv, async_system->mutex);
+ }
+ 
+ Node *node = async_system->task_sent.next;
+ Assert(node != &async_system->task_sent);
+ dll_remove(node);
+ async_system->task_count -= 1;
+ a_node = CastFromMember(Async_Node, node, node);
+ a_node->next = 0;
+ 
+ return(a_node);
 }
 
 function Async_Node*
@@ -62,48 +68,53 @@ async_free_node(Async_System *async_system, Async_Node *node){
 }
 
 function void
-async_task_thread(void *thread_ptr){
-    Base_Allocator *allocator = &malloc_base_allocator;
-    
-    Thread_Context_Extra_Info tctx_info = {};
-    tctx_info.async_thread = thread_ptr;
-    
-    Thread_Context tctx_ = {};
-    Thread_Context *tctx = &tctx_;
-    thread_context_init(tctx, ThreadKind_AsyncTasks, allocator, allocator);
-    
-    Async_Thread *thread = (Async_Thread*)thread_ptr;
-    Async_System *async_system = thread->async_system;
-    
-    App app = {};
-    app.tctx = tctx;
-    app.cmd_context = async_system->cmd_context;
-    
-    Profile_Global_List *list = get_core_profile_list(&app);
-    ProfileThreadName(tctx, list, strlit("async"));
-    
-    Async_Context ctx = {&app, thread};
-    
-    for (;;){
-        system_mutex_acquire(async_system->mutex);
-        Async_Node *node = async_pop_node(async_system);
-        node->thread = thread;
-        thread->node = node;
-        thread->task = node->task;
-        thread->cancel_signal = false;
-        system_mutex_release(async_system->mutex);
-        
-        node->func(&ctx, node->data);
-        
-        system_mutex_acquire(async_system->mutex);
-        node->thread = 0;
-        thread->node = 0;
-        thread->task = 0;
-        thread->cancel_signal = false;
-        async_free_node(async_system, node);
-        system_condition_variable_signal(async_system->join_cv);
-        system_mutex_release(async_system->mutex);
-    }
+async_task_thread(void *thread_ptr)
+{
+ Base_Allocator *allocator = &malloc_base_allocator;
+ 
+ Thread_Context_Extra_Info tctx_info = {};
+ tctx_info.async_thread = thread_ptr;
+ 
+ Thread_Context tctx_ = {};
+ Thread_Context *tctx = &tctx_;
+ thread_context_init(tctx, ThreadKind_AsyncTasks, allocator, allocator);
+ 
+ Async_Thread *thread = (Async_Thread*)thread_ptr;
+ Async_System *async_system = thread->async_system;
+ 
+ App app = {};
+ app.tctx = tctx;
+ app.cmd_context = async_system->cmd_context;
+ 
+ Profile_Global_List *list = get_core_profile_list(&app);
+ ProfileThreadName(tctx, list, strlit("async"));
+ 
+ Async_Context ctx = {&app, thread};
+ 
+ while(1)
+ {
+  system_mutex_acquire(async_system->mutex);
+  Async_Node *node = async_pop_node(async_system);
+  if(node)
+  {
+   node->thread = thread;
+   thread->node = node;
+   thread->task = node->task;
+   thread->cancel_signal = false;
+   system_mutex_release(async_system->mutex);
+   
+   node->func(&ctx, node->data);
+   
+   system_mutex_acquire(async_system->mutex);
+   node->thread = 0;
+   thread->node = 0;
+   thread->task = 0;
+   thread->cancel_signal = false;
+   async_free_node(async_system, node);
+   system_condition_variable_signal(async_system->join_cv);
+   system_mutex_release(async_system->mutex);
+  }
+ }
 }
 
 function Async_Node*
@@ -135,17 +146,18 @@ async_get_running_node(Async_System *async_system, Async_Task task){
 ////////////////////////////////
 
 function void
-async_task_handler_init(App *app, Async_System *async_system){
-    block_zero_struct(async_system);
-    async_system->cmd_context = app->cmd_context;
-    async_system->node_arena = make_arena();
-    heap_init(&async_system->node_heap, &async_system->node_arena);
-    async_system->mutex = system_mutex_make();
-    async_system->cv = system_condition_variable_make();
-    async_system->join_cv = system_condition_variable_make();
-    dll_init_sentinel(&async_system->task_sent);
-    async_system->thread.async_system = async_system;
-    async_system->thread.thread = system_thread_launch(async_task_thread, &async_system->thread);
+async_task_handler_init(App *app, Async_System *async_system)
+{
+ block_zero_struct(async_system);
+ async_system->cmd_context = app->cmd_context;
+ async_system->node_arena = make_arena();
+ heap_init(&async_system->node_heap, &async_system->node_arena);
+ async_system->mutex = system_mutex_make();
+ async_system->cv = system_condition_variable_make();
+ async_system->join_cv = system_condition_variable_make();
+ dll_init_sentinel(&async_system->task_sent);
+ async_system->thread.async_system = async_system;
+ async_system->thread.thread = thread_launch(async_task_thread, &async_system->thread);
 }
 
 function Async_Task
@@ -190,21 +202,27 @@ async_task_is_running_or_pending(Async_System *async_system, Async_Task task){
 }
 
 function void
-async_task_wait__inner(App *app, Async_System *async_system, Async_Task task){
-    release_global_frame_mutex(app);
-    for (;async_task_is_running_or_pending__inner(async_system, task);){
-        system_condition_variable_wait(async_system->join_cv, async_system->mutex);
-    }
-    acquire_global_frame_mutex(app);
+async_task_wait__inner(App *app, Async_System *async_system, Async_Task task)
+{
+ release_global_frame_mutex(app);
+ 
+ while(async_task_is_running_or_pending__inner(async_system, task))
+ {
+  default_wait_for_condition_variable(async_system->join_cv, async_system->mutex);
+ }
+ 
+ acquire_global_frame_mutex(app);
 }
 
 function void
-async_task_wait(App *app, Async_System *async_system, Async_Task task){
-    system_mutex_acquire(async_system->mutex);
-    if (async_task_is_running_or_pending__inner(async_system, task)){
-        async_task_wait__inner(app, async_system, task);
-    }
-    system_mutex_release(async_system->mutex);
+async_task_wait(App *app, Async_System *async_system, Async_Task task)
+{
+ system_mutex_acquire(async_system->mutex);
+ if(async_task_is_running_or_pending__inner(async_system, task))
+ {
+  async_task_wait__inner(app, async_system, task);
+ }
+ system_mutex_release(async_system->mutex);
 }
 
 function void
@@ -228,10 +246,11 @@ async_task_cancel(App *app, Async_System *async_system, Async_Task task){
 }
 
 function b32
-async_check_canceled(Async_Context *actx){
-    b32 *cancel_signal = &actx->thread->cancel_signal;
-    b32 result = atomic_read_b32(cancel_signal);
-    return(result);
+async_check_canceled(Async_Context *actx)
+{
+ b32 *cancel_signal = &actx->thread->cancel_signal;
+ b32 result = atomic_read_b32(cancel_signal);
+ return(result);
 }
 
 // BOTTOM

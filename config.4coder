@@ -33,7 +33,7 @@ mark_thickness = 2;
 lister_roundness = 20;
 
 // Code
-treat_as_code = ".cpp.c++.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv.kc.kt.kh.bt.kw";
+treat_as_code = ".cpp.c++.c.hpp.h.cc.cs.java.rs.glsl.m.mm.4coder.kv.kc.kt.kh.bt.kw.go";
 enable_virtual_whitespace         = false;
 //virtual_whitespace_regular_indent = 4;
 enable_code_wrapping              = true;
@@ -87,5 +87,7 @@ startup_file2 = game_file;
 DEBUG_draw_hud_p = true;
 dev_double_panel = true;
 dev_disable_game_on_startup = false;
+
+f4_disable_divider_comments = true;
 
 //~

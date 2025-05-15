@@ -3,6 +3,7 @@
 
 function void
 notebook_update(Notebook_State *state){
+arena_clear(&notebook_frame_arena);
 if(ReadSlider(0)){
 mat2 A = {1, 3, 3, 5};
 v2 b = {5, 8};
@@ -239,5 +240,30 @@ if(ReadSlider(17)){
 graph_line(dcb(b, n, t), dcb(p1, n - 1, t), ImGui::GetColorU32(ImGuiCol_Text));
 }
 }
+}
+if(ReadSlider(18)){
+LLM_Value a = mk_value(3.f, strlit("a"));
+LLM_Value b = mk_value_add(&a, &a, strlit("b"));
+backprop(&b);
+DEBUG_VALUE(a.grad);
+}
+if(ReadSlider(19)){
+auto g = [&](v1 y) -> v1 {
+return y * y * y;
+};
+
+auto f = [&](v1 x) -> v1 {
+return x * x;
+};
+
+v1 x0 = ReadSlider(20);
+v1 h = 0.0001f;
+v1 approx = (g(f(x0 + h)) - g(f(x0))) / h;
+DEBUG_VALUE(approx);
+v1 y0 = f(x0);
+v1 dz_over_dy_at_y0 = 3.f * y0 * y0;
+v1 dy_over_dx_at_x0 = 2.f * x0;
+v1 rhs = dz_over_dy_at_y0 * dy_over_dx_at_x0;
+DEBUG_VALUE(rhs);
 }
 }

@@ -171,9 +171,9 @@ normal_commands
  display_key_codes "Example of input handling loop"
  play_with_a_counter "Example of query bar"
  double_backspace "Example of history group helpers"*/
- kv_profile_disable_and_inspect "disable and inspect profile"
  profile_clear "Clear all profiling information from 4coder's self profiler."
- profile_enable "Allow 4coder's self profiler to gather new profiling information."
+ profile_begin_cmd "mark begin profiling"
+ profile_end_cmd "mark end profiling"
  execute_any_cli "Queries for an output buffer name and system command, runs the system command as a CLI and prints the output to the specified buffer."
  execute_previous_cli "If the command execute_any_cli has already been used, this will execute a CLI reusing the most recent buffer name and command."
  go_to_user_directory "Go to the 4coder user directory"
@@ -181,7 +181,7 @@ normal_commands
  DEBUG_draw_hud_toggle "toggle debug hud"
  view_jump_list_with_lister "When executed on a buffer with jumps, creates a persistent lister for all the jumps"
  no_op "no op for binding keybinds to resolve without side effect"
- default_view_input_handler "Input consumption loop for default view behavior"
+ //default_view_input_handler "Input consumption loop for default view behavior"
  default_try_exit "Default command for responding to a try-exit event"
  write_text_and_auto_indent "Inserts text and auto-indents the line on which the cursor sits if any of the text contains 'layout punctuation' such as ;:{}()[]# and new lines."
  goto_end_of_file "Sets the cursor to the end of the file."
@@ -230,6 +230,7 @@ ui_commands
   show_the_log_graph "Parses *log* and displays the 'log graph' UI"
 }
 
+// ;custom_ids
 custom_ids
 {
  defcolor_bar colors,
@@ -287,6 +288,8 @@ custom_ids
  buffer_lex_task attachment,
  sticky_jump_positions_handle attachment,
  attachment_tokens attachment,
+ buffer_attachment_ast attachment,
+ buffer_attachment_arena attachment,
  defcolor_vim_filebar_pop colors,
  defcolor_vim_chord_text colors,
  defcolor_vim_chord_unresolved colors,

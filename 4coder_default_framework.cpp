@@ -481,7 +481,7 @@ maybe_create_buffer_and_clear_by_name(App *app, String8 name_string, View_ID def
 
 function void
 save_all_dirty_buffers_with_postfix(App *app, String postfix){
-    ProfileScope(app, "save all dirty buffers");
+    ProfileBlock( "save all dirty buffers");
     Scratch_Block scratch(app);
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
          buffer != 0;

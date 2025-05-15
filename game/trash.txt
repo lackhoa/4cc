@@ -611,121 +611,6 @@ hit_test(v3 rd, CSG_Tree *tree, v1 lower_bound /*@tmin_exclusive*/)
  }
 }
 
-#endif
-{// NOTE: good-old dottted lines, holy cow!
- v4 main_color_v4 = argb_unpack(params->color);
- 
- i1 nslices;
- {//~NOTE: pre-pass
-  // NOTE: Working in 2D is no good, because we don't take into account that samples are moving in 3D, 
-  // so they might be traveling longer distances due to the depth, 
-  // and spaced out more when we look at them in 3D -> you'd underestimate the density in 2D
-  const mat4 &transform = objectT.forward;
-  v1 the_length = 0.f;
-  {
-   i1 pre_nslices = 8;
-   v1 inv_nslices = 1.0f / (v1)pre_nslices;
-   v3 last_sample_transformed;
-   for (i1 sample_index=0;
-        sample_index < pre_nslices+1;
-        sample_index++)
-   {
-    v1 t = inv_nslices * (v1)sample_index;
-    v3 sample_transformed = mat4vert(transform, bezier_sample(P,t));
-    if (sample_index != 0)
-    {
-     the_length += lengthof(sample_transformed - last_sample_transformed);
-    }
-    last_sample_transformed = sample_transformed;
-   }
-  }
-  
-#if 0
-  //NOTE: depending on the radius is quite dumb
-  v1 max_radius = 0.f;
-  for_i1(index,0,4) 
-  {//NOTE: Approximating maximum radius (after transformation)
-   // TODO: This number is just pure garbage
-   v1 radius = params->radii[index];
-   v4 control_point_transformed = view_objectT*V4(P[index],1.f);
-   radius *= (camera->focal_length / control_point_transformed.w);
-   
-   ClampBot(max_radius, radius);
-  }
-  
-  if (max_radius > 1e-5)
-  {
-   v1 slice_density = 1.f;
-   // NOTE: length / radius is actually unit-independent
-   nslices = i1_roundv1( slice_density * the_length / max_radius );
-  }
-  else { nslices = 0; }
-#else
-  //NOTE: applying perspective to this value is just stupid: just model it Llike usual, dude!
-  v1 max_radius = 0.f;
-  for_i1(index,0,4) 
-  {//NOTE: We rely on maximum radius, because there are cases where the user supplies radius 0, to fade the line out
-   v1 radius = params->radii[index];
-   ClampBot(max_radius, radius);
-  }
-  
-  if (max_radius > 1e-5)
-  {
-   v1 slice_density = 1.25f;
-   // NOTE: length / radius is actually unit-independent
-   nslices = i1_roundv1( slice_density * the_length / max_radius );
-  }
-  else { nslices = 0; }
-#endif
-  
-  ClampBot(nslices, 16);
-  i1 MAX_NSLICES = 256;
-  if (nslices > 2*MAX_NSLICES)
-  {
-   DEBUG_VALUE(nslices);
-  }
-  ClampTop(nslices, MAX_NSLICES);
- }
- v1 interval = 1.0f / (v1)nslices;
- 
- // NOTE: visibility control
- nslices = roundv1( params->visibility * (v1)nslices );
- 
- Vertex_Type vertex_type = Vertex_Line;
- if (params->flags & Line_Overlay) { vertex_type = Vertex_Overlay; }
- 
- argb color = argb_pack(main_color_v4);
- for (i1 sample_index=0;
-      sample_index < nslices+1;
-      sample_index++)
- {
-  v1 t = interval * (v1)sample_index;
-  
-  v3 center = bezier_sample(P,t);
-  v1 radius = bezier_sample(params->radii, t);
-  draw_point(target, center, radius, color, params->depth_offset, vertex_type); // @Slow
- }
-}
-
-#if 0
-function void
-fill_parallel(Painter *p, v3 a[], i1 acount, v3 b[], i1 bcount, argb color=0)
-{
- if (acount > bcount) { macro_swap(a,b); macro_swap(acount,bcount); }
- 
- for_i1(index,0,acount-1)
- {
-  fill4(p, a[index], b[index], b[index+1], a[index+1]);
- }
- 
- if (bcount > acount)
- {
-  i1 last = acount-1;
-  fill_fan(p, a[last], b+last, bcount-last);
- }
-}
-#endif
-
 {// ;upper_arm_csg
  Temp_Memory_Block temp(arena);
  v3 radii = fval3(0.146f, 1.f, 0.1544f);
@@ -1138,6 +1023,137 @@ else if(game_active){
    }
   }
 #endif
+
+function Location
+find_primitive_closest_to_keyboard_cursor(Game_State *state)
+{
+ Camera camera = setup_camera(state->viewports[0].camera);
+ convert_primitives_to_camera_space(camera);
+ b32 fill_only = 0;
+ if(state->viewports[0].preset == 1)
+ {
+  fill_only = 1;
+ }
+ 
+ i32 const hit_test_bezier_poly_nslice = 8;
+ Location hot_location = {};
+ 
+ v3 curpos = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
+ v1 min_lensq = max_f32;
+ 
+ if(not fill_only)
+ {
+  Vertices vertices = the_model->vertices;
+  for_i32(vi, 0, vertices.count)
+  {//-Closest vertices
+   Vertex &vertex = vertices.items[vi];
+   v1 l = length_squared(curpos - vertex.pos);
+   if(l < min_lensq)
+   {
+    min_lensq = l;
+    Vertex_Info &info = driver_data.vertices_info[vertex.info_index];
+    hot_location = info.location;
+   }
+  }
+ }
+ 
+ for_i32(pi, 0, the_model->primitives.count)
+ {//-Closest primitive
+  Recorded_Primitive primitive = the_model->primitives[pi];
+  v1 dsq_to_prim = max_f32;
+  v3 projection = {};
+  switch(primitive.type)
+  {
+   case Primitive_Type_Curve:
+   {
+    if(not fill_only)
+    {
+     tvert *computed = primitive.curve;
+     v1 sd_squared;
+     {//-Convex box culling
+      v3 min_corner = V3(max_f32);
+      v3 max_corner = V3(min_f32);
+      for_i32(i,0,4)
+      {
+       min_corner = min(min_corner, computed[i]);
+       max_corner = max(max_corner, computed[i]);
+      }
+      v3 center = lerp(min_corner, 0.5f, max_corner);
+      v3 p = curpos-center;
+      v3 r = 0.5f*(max_corner-min_corner);
+      v3 q = absolute(p)-r;
+      sd_squared = length_squared(max(q,0.f));  // NOTE zero for anything inside, which is what we want
+     }
+     
+     if(sd_squared < min_lensq)
+     {
+      v1 l = max_f32;
+      const i32 test_segment_count = 8;
+      for_i1(iseg,1,test_segment_count)
+      {
+       //NOTE(kv) Don't need to test the endpoints, those are vertices.
+       v1 t = v1(iseg) / v1(test_segment_count);
+       v3 sample = bezier_sample(computed,t);
+       l = min(l,length_squared(curpos-sample));
+      }
+      dsq_to_prim = l;
+     }
+    }
+   }break;
+   
+   case Primitive_Type_Poly3:
+   {//-Projection onto the curve
+    Poly3 points = primitive.poly3;
+    dsq_to_prim = get_distance_squared_point_to_triangle(curpos, points);
+   }break;
+   
+   case Primitive_Type_Dual_Bezier:
+   {
+    Bezier P = primitive.dual_bezier->P;
+    Bezier Q = primitive.dual_bezier->Q;
+    i32 nslices = hit_test_bezier_poly_nslice;
+    v1 inv_nslices = 1.f / (v1)nslices;
+    v3 A0;
+    v3 B0;
+    for_i32(sample_index, 0, nslices+1)
+    {
+     v1 u = inv_nslices * (v1)sample_index;
+     v3 A = bezier_sample(P,u);
+     v3 B = bezier_sample(Q,u);
+     if(sample_index != 0)
+     {
+      v1 dsq1 = get_distance_squared_point_to_triangle(curpos, {A0, A, B0});
+      v1 dsq2 = get_distance_squared_point_to_triangle(curpos, {A, B, B0});
+      ClampTop(dsq_to_prim, dsq1);
+      ClampTop(dsq_to_prim, dsq2);
+     }
+     A0 = A;
+     B0 = B;
+    }
+   }break;
+  }
+  
+  v1 bias = 0.f;
+  switch(primitive.type)
+  {
+   case Primitive_Type_Curve: { bias = 0.f; } break;
+   default: { bias = 1.f*centimeter; }break;
+  }
+  // TODO(kv) I wanna just bias the distance, but only have the squared...
+  // NOTE(kv) Overflow doesn't happen small values (tested).
+  dsq_to_prim += squared(bias);
+  
+  if(dsq_to_prim < min_lensq)
+  {
+   min_lensq = dsq_to_prim;
+   hot_location = primitive.location;
+  }
+ }
+ 
+ DEBUG_VALUE(square_root(min_lensq));
+ return hot_location;
+}
+
 
 
 //~eof

@@ -7,7 +7,7 @@ Commands for automatic indentation.
 function Token *
 find_first_indented_token(App *app, Buffer_ID buffer, Token_Array *tokens, i64 first_indented_line)
 {
- ProfileScope(app, "find anchor token");
+ ProfileBlock( "find anchor token");
  Token *result = 0;
  
  if (tokens != 0 && tokens->tokens != 0)
@@ -79,7 +79,7 @@ get_indentation_array(App *app, Arena *arena, Buffer_ID buffer,
 {
  i64 total_line_count = buffer_get_line_count(app, buffer);
  i64 *indentations = 0;
- ProfileScope(app, "get indentation array");
+ ProfileBlock( "get indentation array");
  Scratch_Block tmp;
  Range_i64 indented_lines = *in_out_indented_lines;
  ClampBot(indented_lines.min, 1);
@@ -344,7 +344,7 @@ function b32
 auto_indent_buffer(App_Cmd *app, Buffer_ID buffer, Range_i64 pos, 
                    Indent_Flag flags, i32 tab_width, i32 indent_width)
 {
- ProfileScope(app, "auto indent buffer");
+ ProfileBlock( "auto indent buffer");
  Token_Array token_array = get_token_array_from_buffer(app, buffer);
  Token_Array *tokens = &token_array;
  
@@ -432,7 +432,7 @@ function void
 write_text_and_auto_indent(App_Cmd *app)
 
 {
- ProfileScope(app, "write and auto indent");
+ ProfileBlock( "write and auto indent");
  User_Input in = get_current_input(app);
  String insert = to_writable(&in);
  if (insert.str != 0 && insert.size > 0){

@@ -18,14 +18,126 @@
   ]
  ]
 
-[;chain_rule
- {
-  diff(f circ g)(x)
-  = diff(f)(g(x)) diff(g)(x)
- }
- another way to say it
- {
-  frac(dz,dx) = frac(dz,dy) frac(dy,dx)
- }
+[;limit_def Suppose {f: R -> R} is a function on the real line,
+ we say that the limit of {f(x)} [as {x} approaches {p}] equals {L},
+ written { lim__(x->p) f(x) = L }
+ when for every output range {epsilon > 0},
+ there exists an input range {delta > 0},
+ such that for every real {x0} near {x} where
+ {0 < abs(x0 - p) < epsilon},
+ {abs(f(x0) - L) < epsilon}
+ 
+ [NOTE To {f} to be defined for {x}, since for example
+  in the definition of @derivative, {h} can never be zero]
  ]
+
+[;derivative of a function {f} at {a}
+ { f'(a) = lim__(h->0) frac(f(a+h) - f(a), h) }
+ 
+ [How do we derive the @derivative of a polynomial?
+  suppose {f(x) = x^n }
+  {
+   f'(a)
+   = lim__(h->0) frac((a+h)^n - a^n, h)
+  }
+  Suppose, for example {f(x) = x^2}
+  {
+   f'(a)
+   = lim__(h->0) frac(a^2 + 2 a h + h^2 - a^2, h)
+   = lim__(h->0) frac(2 a h, h)
+  }
+  As you can see, all terms with higher power of {h} vanish,
+  leaving the term {n a^(n-1) h}, so the derivative is {n a^(n-1)}
+  ]
+ ]
+
+[;chain_rule (tested at @chain_rule_test)
+ Suppose {z} depends on {y}, and {y} depends on {x}
+ { frac(d z, d x) = frac(d z, d y) frac(d y, d x) }
+ 
+ [#done The proof
+  [NOTE We write {frac(d y, d x__0)} for {frac(d y, d x) at x__0}]
+  
+  Suppose {z = g(y); y = f(x)}
+  NOTE Forget about {f,g}, we'll write {z(y) = g(y), y(x) = f(x)}
+  
+  [Set {y__0 = y(x0)}]
+  
+  The goal is
+  {frac(d z, d x__0) = frac(d z, d y__0) frac(d y, d x__0)}
+  
+  {  frac(d z, d x__0)
+   = lim__(h__x -> 0) frac(z(y(x__0 + h__x)) - z(y(x__0)),
+                           h__x)
+  }
+  
+  [#done Now, there are two cases
+   [1. When {frac(d y, d x__0) = 0}, then you can see how
+    {frac(d z, d x) = 0}, #qed]
+   
+   [2. When {frac(d y, d x__0) != 0}
+    [{small_hx:} There is a range of {0 < h__x < a}, where
+     {f(x__0 + h__x) - f(x__0) != 0},
+     because {frac(f(x__0 + h__x) - f(x__0), h__x)}
+     is supposed to be close to {frac(d y, d x__0)},
+     we can set {epsilon < frac(d y, d x__0)}, then
+     {frac(f(x__0 + h__x) - f(x__0), h__x) > 0}
+     
+     [NOTE We will consider only this range]
+     [NOTE The proof on wikipedia is stupid about this]
+     ]
+    
+    {lem_89:} With {h__x} in {small_hx}, the stuff in the limit equals
+    {  frac(z(y(x__0 + h__x)) - z(y(x__0)),
+            h__x)
+     = frac(z(y(x__0 + h__x)) - z(y(x__0)),
+            y(x__0 + h__x) - y(x__0))
+     * frac(y(x__0 + h__x) - y(x__0),
+            h__x)
+    }
+    
+    [{lem_99:} We will prove {y(x__0 + h__x)} converges to {y__0}
+     as {h__0 -> 0}, when {frac(d y, d x__0)} exists
+     
+     [Set {L = frac(d y, d x__0)}]
+     
+     [Given the definition of {frac(d y, d x__0)},
+      we can get {abs(frac(y(x__0 + h__x) - y__0, h__x) - L) < epsilon},
+      for arbitrary {epsilon}]
+     
+     [Then we have {abs(y(x__0 + h__x) - y__0 - L abs(h__x)) < abs(h__x epsilon)}]
+     [Lemma: {abs(a) - abs(b) <= abs(a-b)}
+      You can prove that from {abs(a) + abs(b) >= abs(a+b)},
+      set {a -> a-b; b -> b}]
+     [So from that lemma, we have
+      {abs(y(x__0 + h__x) - y__0) < abs(h__x (epsilon + L))}
+      [There you go, you can get {abs(y(x__0 + h__x) - y__0)}
+       as small as you want! #qed]]
+     ]
+    
+    [We will prove that {
+      lim__(h__x -> 0) frac(z(y(x__0 + h__x)) - z(y(x__0)),
+                            y(x__0 + h__x) - y(x__0))
+      = frac(d z, d y__0)
+     } (and that the limit exists)
+     
+     [Set {L = frac(d z, d y__0)}]
+     
+     By definition of {frac(d z, d y__0)}, for small enough {abs(h__y)},
+     {abs(frac(z(y__0 + h__y) - z(y__0), h__y) - L) < epsilon}
+     
+     then according to {lem_99}, we can get {h__x} small enough
+     so that {y(x__0 + h__x) - y__0} could be substituted for {h__y}
+     the result of which is {
+      abs(frac(z(y(x__0 + h__x)) - z(y__0),
+               y(x__0 + h__x) - y__0) - L) < epsilon
+     }, which is #qed
+     ]
+    
+    Combine that with {lem_89}, this is #qed
+    ]
+   ]
+  ]
+ ]
+
 //

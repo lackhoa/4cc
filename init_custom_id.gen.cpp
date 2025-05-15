@@ -60,6 +60,8 @@ X(buffer_eol_setting, attachment);
 X(buffer_lex_task, attachment);
 X(sticky_jump_positions_handle, attachment);
 X(attachment_tokens, attachment);
+X(buffer_attachment_ast, attachment);
+X(buffer_attachment_arena, attachment);
 X(defcolor_vim_filebar_pop, colors);
 X(defcolor_vim_chord_text, colors);
 X(defcolor_vim_chord_unresolved, colors);

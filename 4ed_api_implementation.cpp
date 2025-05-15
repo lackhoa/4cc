@@ -1825,10 +1825,12 @@ view_current_context_hook_memory(App *app, View_ID view_id,
 }
 
 function Dynamic_Workspace*
-get_dynamic_workspace(Models *models, Managed_Scope handle){
+get_dynamic_workspace(Models *models, Managed_Scope handle)
+{
  Dynamic_Workspace *result = 0;
  Table_Lookup lookup = table_lookup(&models->lifetime_allocator.scope_id_to_scope_ptr_table, handle);
- if (lookup.found_match){
+ if(lookup.found_match)
+ {
   u64 val = 0;
   table_read(&models->lifetime_allocator.scope_id_to_scope_ptr_table, lookup, &val);
   result = (Dynamic_Workspace*)IntAsPtr(val);
@@ -3288,25 +3290,25 @@ buffer_find_all_matches(App *app, Arena *arena, Buffer_ID buffer,
                         i32 string_id, Range_i64 range, String needle,
                         Character_Predicate *predicate, Scan_Direction direction, b32 case_sensitive)
 {
-    Models *models = (Models*)app->cmd_context;
-    Editing_File *file = imp_get_file(models, buffer);
-    String_Match_List list = {};
-    if (api_check_buffer(file))
+ Models *models = (Models*)app->cmd_context;
+ Editing_File *file = imp_get_file(models, buffer);
+ String_Match_List list = {};
+ if (api_check_buffer(file))
+ {
+  if (needle.size > 0)
+  {
+   Scratch_Block scratch(app, arena);
+   List_String chunks = buffer_get_chunks(scratch, &file->state.buffer);
+   buffer_chunks_clamp(&chunks, range);
+   if (chunks.node_count > 0)
+   {
+    u64_Array jump_table = string_compute_needle_jump_table(arena, needle, direction);
+    Character_Predicate dummy = {};
+    if (predicate == 0)
     {
-        if (needle.size > 0)
-        {
-            Scratch_Block scratch(app, arena);
-            List_String chunks = buffer_get_chunks(scratch, &file->state.buffer);
-            buffer_chunks_clamp(&chunks, range);
-            if (chunks.node_count > 0)
-            {
-                u64_Array jump_table = string_compute_needle_jump_table(arena, needle, direction);
-                Character_Predicate dummy = {};
-                if (predicate == 0)
-                {
-                    predicate = &dummy;
-                }
-                list = find_matches(arena, max_i32,
+     predicate = &dummy;
+    }
+    list = find_matches(arena, max_i32,
                         chunks, needle, jump_table, predicate,
                         direction, range.min, buffer, string_id, case_sensitive);
    }
@@ -3594,13 +3596,6 @@ switch_to_mouse_panel(App *app)
  //@mouse_panel_code
  View_ID view = mouse_view_id(app);
  view_set_active(app, view);
-}
-
-api(ed) function i1
-mouse_viewport_id(App *app)
-{
- View_ID view = mouse_view_id(app);
- return view_viewport_id(app, view);
 }
 
 api(ed) function b32

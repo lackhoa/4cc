@@ -384,7 +384,7 @@ F4_RenderMarkAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_i
     if(view_get_cursor_pos(app, view_id) > pos && is_active_view)
     {
         Scratch_Block scratch(app);
-        ProfileScope(app, "[Fleury] Mark Annotation");
+        ProfileBlock(app, "[Fleury] Mark Annotation");
         
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
         Face_ID face_id = global_small_code_face;

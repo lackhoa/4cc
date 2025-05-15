@@ -1,0 +1,8 @@
+if(some_boolean)
+{
+ do_something()
+}
+else
+{
+ do_something_else
+}

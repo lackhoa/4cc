@@ -42,7 +42,8 @@ struct Render_Vertex_List {
 
 //TODO(kv) We could just send the camera stuff down as render entries...
 //  and that would be better as we don't need to send that stuff for editor anyway.
-struct Render_Config {
+struct Render_Config
+{
 #define RENDER_CONFIG_FIELDS \
 i1      viewport_id;      \
 rect2   clip_box;         \
@@ -54,7 +55,6 @@ v1      meter_to_pixel;   \
 v1      focal_length;     \
 v1      near_clip;        \
 v1      far_clip;         \
-i1      scale_down_pow2;  \
  
  RENDER_CONFIG_FIELDS
 };

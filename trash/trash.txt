@@ -704,7 +704,7 @@ tctx_release_arena(Thread_Context *tctx, Arena *arena){
 old_get_indentation_array(App *app, Arena *arena, Buffer_ID buffer, Range_i64 lines,
 Indent_Flag flags, i32 tab_width, i32 indent_width)
 {
-ProfileScope(app, "get indentation array");
+ProfileBlock(app, "get indentation array");
 i64 count = lines.max - lines.min + 1;
 i64 *indentations = push_array(arena, i64, count);
 block_fill_u64(indentations, sizeof(*indentations)*count, (u64)(-1));
@@ -741,7 +741,7 @@ Token *token = tkarr_read(&token_it);
 if (line_cache.where_token_starts == 0 ||
 token->pos >= line_cache.one_past_last_pos)
 {
-ProfileScope(app, "get line number");
+ProfileBlock(app, "get line number");
 line_cache.where_token_starts = get_line_number_from_pos(app, buffer, token->pos);
 line_cache.one_past_last_pos = get_line_end_pos(app, buffer, line_cache.where_token_starts);
 }

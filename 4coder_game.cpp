@@ -258,7 +258,7 @@ maybe_update_game(App *app, Frame_Info frame)
        global_auxiliary_viewports_on)
     {
      Live_Viewport live_viewport = {};
-     live_viewport.viewport = viewport;
+     live_viewport.id       = viewport;
      live_viewport.clip_box = view_get_screen_rect(app, view);
      live_viewport.target   = get_view_render_target(app, view);
      push(&live_viewports, live_viewport);

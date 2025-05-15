@@ -353,12 +353,12 @@ mac_profile(char *name, u64 begin, u64 end){
     printf("%s Time: %fs\n", name, ((end - begin) / 1000000.0f));
 }
 
-#define MacProfileScope(name) for (u64 glue(_i_, __LINE__) = 0, glue(_begin_, __LINE__) = system_time_usecond();\
+#define MacProfileBlock(name) for (u64 glue(_i_, __LINE__) = 0, glue(_begin_, __LINE__) = system_time_usecond();\
 glue(_i_, __LINE__) == 0;\
 glue(_i_, __LINE__) = 1, mac_profile(name, glue(_begin_, __LINE__), system_time_usecond()))
 #else
 # define mac_profile(...)
-# define MacProfileScope(...)
+# define MacProfileBlock(...)
 #endif
 
 ////////////////////////////////
@@ -715,18 +715,18 @@ mac_toggle_fullscreen(void){
 - (void)updateLayer{
     u64 prev_timer_start;
 
-    MacProfileScope("Draw Rect"){
+    MacProfileBlock("Draw Rect"){
         mac_vars.step_requested = false;
 
         // NOTE(yuval): Toggle full screen
-        MacProfileScope("Toggle Full Screen"){
+        MacProfileBlock("Toggle Full Screen"){
             if (mac_vars.do_toggle){
                 mac_toggle_fullscreen();
                 mac_vars.do_toggle = false;
             }
         }
 
-        MacProfileScope("Acquire Frame Mutex"){
+        MacProfileBlock("Acquire Frame Mutex"){
             // NOTE(yuval): Read comment in win32_4ed.cpp's main loop
             system_mutex_acquire(mac_vars.global_frame_mutex);
         }
@@ -734,7 +734,7 @@ mac_toggle_fullscreen(void){
         Application_Step_Input input = {};
 
         // NOTE(yuval): Prepare the Frame Input
-        MacProfileScope("Prepare Input"){
+        MacProfileBlock("Prepare Input"){
             Mac_Input_Chunk input_chunk = mac_vars.input_chunk;
 
             input.first_step = mac_vars.first;
@@ -769,7 +769,7 @@ mac_toggle_fullscreen(void){
 
         // NOTE(yuval): Frame clipboard input
         Scratch_Block scratch(mac_vars.tctx);
-        MacProfileScope("Frame Clipboard Input"){
+        MacProfileBlock("Frame Clipboard Input"){
             if (mac_vars.clipboard_change_count != 0 && mac_vars.clip_catch_all){
                 input.clipboard = system_get_clipboard(scratch, 0);
             }
@@ -779,28 +779,28 @@ mac_toggle_fullscreen(void){
 
         // NOTE(yuval): Application Core Update
         Application_Step_Result result = {};
-        MacProfileScope("Step"){
+        MacProfileBlock("Step"){
             if (app.step != 0){
                 result = app.step(mac_vars.tctx, &target, mac_vars.base_ptr, &input);
             }
         }
 
         // NOTE(yuval): Quit the app if requested by the application core
-        MacProfileScope("Perform Kill"){
+        MacProfileBlock("Perform Kill"){
             if (result.perform_kill){
                 [NSApp terminate:nil];
             }
         }
 
         // NOTE(yuval): Post new clipboard content
-        MacProfileScope("Post Clipboard"){
+        MacProfileBlock("Post Clipboard"){
             if (mac_vars.clip_post.size > 0){
                 mac_post_clipboard(scratch, (char*)mac_vars.clip_post.str, (i1)mac_vars.clip_post.size);
             }
         }
 
         // NOTE(yuval): Switch to a new title
-        MacProfileScope("Switch Title"){
+        MacProfileBlock("Switch Title"){
             if (result.has_new_title){
                 NSString *str = [NSString stringWithUTF8String:result.title_string];
                 [mac_vars.window setTitle:str];
@@ -808,7 +808,7 @@ mac_toggle_fullscreen(void){
         }
 
         // NOTE(yuval): Switch to new cursor
-        MacProfileScope("Switch Cursor"){
+        MacProfileBlock("Switch Cursor"){
             // NOTE(yuval): Switch cursor type
             switch (result.mouse_cursor_type){
                 case APP_MOUSE_CURSOR_ARROW:
@@ -854,12 +854,12 @@ mac_toggle_fullscreen(void){
         mac_vars.lctrl_lalt_is_altgr = (b8)result.lctrl_lalt_is_altgr;
 
         // NOTE(yuval): Render
-        MacProfileScope("Render"){
+        MacProfileBlock("Render"){
             mac_renderer->render(mac_renderer, &target);
         }
 
         // NOTE(yuval): Toggle full screen
-        MacProfileScope("Toggle Full Screen"){
+        MacProfileBlock("Toggle Full Screen"){
             if (mac_vars.do_toggle){
                 mac_toggle_fullscreen();
                 mac_vars.do_toggle = false;
@@ -867,14 +867,14 @@ mac_toggle_fullscreen(void){
         }
 
         // NOTE(yuval): Schedule another step if needed
-        MacProfileScope("Schedule Step"){
+        MacProfileBlock("Schedule Step"){
             if (result.animating || (mac_vars.running_cli > 0)){
                 system_signal_step(0);
             }
         }
 
         // NOTE(yuval): Sleep a bit to cool off
-        MacProfileScope("Cool Down"){
+        MacProfileBlock("Cool Down"){
             system_mutex_release(mac_vars.global_frame_mutex);
             {
                 u64 timer_end = system_time_usecond();
@@ -899,7 +899,7 @@ mac_toggle_fullscreen(void){
             system_mutex_acquire(mac_vars.global_frame_mutex);
         }
 
-        MacProfileScope("Cleanup"){
+        MacProfileBlock("Cleanup"){
             mac_vars.first = false;
 
             linalloc_clear(&mac_vars.frame_arena);

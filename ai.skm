@@ -1,0 +1,172 @@
+//
+[What is the gradient of a node
+ [Suppose the loss function is {L} (depending on a bunch of things)]
+ [The gradient of the node {n} is {grad(n) = frac(d L, d n)}]
+]
+
+[What would happen to {L} if you tweak {n} by {h * grad(n)},
+ where {h} is some small amount
+ [I guess {L} would move by {h * grad(n) * grad(n)}
+  and what the heck is that?]
+ [If {h} is positive, then {h * grad(n) * grad(n)} is positive, too,
+  so {L} would go up]]
+
+[Learn about exponentiation
+ [;integer_power_rule If {n} is a positive integer, and {b} is anything
+  {b^n = b*b*...*b}, the product has {n} {b} in it]
+ 
+ [From @integer_power_rule we have the ;integer_add_power_rule
+  {b^(n+m) = b^n * b^m}]
+ 
+ [Then {b^0 = 1}]
+ 
+ [;negation_of_power What would {b^(-n)} be?
+  {
+   b^(-n) * b^n = b^0 = 1
+   -> b^(-n) = frac(1, b^n)
+  }
+  So it's the inverse of {b^n}
+  ]
+ 
+ [;int_mult_power_rule For positive integer {n,m},
+  What would {b^(n*m)} be?
+  Reasoning from the solution, and @integer_power_rule
+  {
+   (b^n)^m
+   = Pi__(m times) (Pi__(n times) b)
+   = Pi__(m*n times) b
+   = b^(m*n)
+  }
+  ]
+ 
+ [What would {b^(1/n)} be?
+  We have {
+   b^(1/n * n) = b^1 = b
+  }, also according to @int_mult_power_rule (doesn't apply here, but we'd like to use it) {
+   b^(1/n * n) = (b^(1/n))^n = b
+  }, so {
+   b^(1/n) = root(n, b)
+  }
+  ]
+ 
+ [The rules of root: suppose {x} is a positive real number (excluding 0),
+  and {n} is a positive integer (including 0)
+  { root(n, x) = y } such that { y^n = x }
+  
+  [;root_mult_decompose What is {root(n*m, x)}?
+   Let { r = root(n*m, x) }
+   We have { r^(n*m) = x }
+   so { (r^n)^m = x }
+   So {r^n = root(m, x)}, so {r = root(n, root(m, x))}
+   ]
+  
+  [;root_canceling Prove that {root(n m, b^m) = root(n, b)}
+   {root(n m, b^m) = root(n, root(m, b^m)) = root(n, b)}
+   because {root(m, b^m) = b}
+   ]
+  
+  [;root_same_mult Prove that
+   {root(n, b) * root(n, c) = root(n, b c)}
+   Let {s = root(n, b); t = root(n, c)}
+   We have {s^n = b; t^n = c}
+   So {b c = s^n t^n = (s t)^n}, meaning {s t = root(n, b c)} #qed
+   ]
+  
+  [#done ;root_power_swap If {p,q} are integers, {q > 0}, prove that
+   {root(q, x^p) = (root(q, x))^p}
+   
+   Set {y = root(q, x)}, we're trying to prove
+   {root(q, x^p) = y^p}
+   or {(y^p)^q = x^p}
+   We have {
+    y^q = x
+    -> (y^q)^p = x^p
+    -> (y^p)^q = x^p
+   }
+   which is what we're trying to prove, so #qed
+   ]
+  ]
+ 
+ [;rational_exponent We have a definition of exponentiation
+  when the exponent is a rational number {b^(n/m) = root(m, b^n)}
+  
+  [We try to prove the ;add_power_rule that {
+    b^(n1 / m1) * b^(n2 / m2)
+    = b^(n1 / m1 + n2 / m2)
+   }
+   
+   Starting from the lhs {
+    b^(n1 / m1) * b^(n2 / m2)
+    = root(m1, b^n1) * root(m2, b^n2)
+    // applying @root_canceling
+    = root(m1 m2, b^(n1 m2)) * root(m1 m2, b^(n2 m1))
+    // applying @root_same_mult
+    = root(m1 m2, b^(n1 m2) b^(n2 m1))
+    // NOTE @integer_add_power_rule here,
+    = root(m1 m2, b^(n1 m2 + n2 m1))
+    = b^(n1 / m1 + n2 / m2)
+   }, which is the rhs, so #qed
+   ]
+  
+  [#done Next we try to prove the ;mult_power_rule that {
+    (b^(n1 / m1))^(n2 / m2) = b^(frac(n1 n2, m1 m2))
+   }
+   
+   Starting from the lhs {
+    (b^(n1 / m1))^(n2 / m2)
+    = root(m2, (root(m1, b^n1))^n2)
+    // According to @root_power_swap
+    = root(m2, root(m1, b^(n1 n2)))
+    // According to @root_mult_decompose
+    = root(m1 m2, b^(n1 n2))
+    = b^(frac(n1 n2, m1 m2))
+   }, which is the rhs, so #qed
+   ]
+  ]
+ ]
+
+[The logistic function
+ {
+  sigma(x)
+  = frac(1, 1 + e^(-x))
+  // Using @negation_of_power
+  = frac(e^x, 1 + e^x)
+  = 1 - frac(1, 1 + e^x)
+  = 1 - sigma(-x)
+ }
+ The last identity means that it is kinda symmetric
+ 
+ When {x -> +infty}, {e^(-x)} goes to 0, {sigma(x)} goes to 1,
+ the symmetric property deduces that, when {x -> -infty}, {sigma(x)} goes to 0
+ 
+ [The hyperbolic tangent
+  {tanh(x) = frac(e^x - e^(-x), e^x + e^(-x))}
+  we have {tanh(-x) = -tanh(x)}
+  ]
+ ]
+
+[Andrej Karpathy's [the spelled out intro to neural networks and backpropagation]
+ [A neuron
+  {
+   o = tanh(n)
+   = tanh(w1 x1 + w2 x2 + b)
+   = tanh(-6 + b)
+  }
+  
+  What is the gradient of {n}?
+  {frac(d o, d n) = frac(d tanh(n), d n) = 1 - tanh^2(n)
+   = 1 - o^2 = 1/2}
+  
+  What is the gradient of the bias {b}?
+  {frac(d o, d b) = frac(d o, d n) frac(d n, d b)
+   = frac(d o, d n) = 1/2}
+  
+  Similarly, {grad(w1 x1) = grad(w2 x2) = 1/2}
+  Finally, {grad(w1) = 1/2 x1}, {grad(w2) = 1/2 x2}
+  
+  [todo How do we solve the backpropagation problem?
+   [Well, we certainly could do it recursively]
+   ]
+  ]
+ ]
+//

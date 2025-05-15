@@ -56,18 +56,18 @@ myinline b32 is_line_enabled(){ return is_painting_enabled(); }
 //-
 // NOTE used in @draw_bezier_inner
 function void
-draw_disk_camera_space(v3 center, v1 radius_camera_space,
+fill_disk_camera_space(v3 center, v1 radius,
                        argb color, Poly_Flags flags, i32 nslice=8)
 {
  // @Slow LOD
- if(radius_camera_space > 0.f)
+ if(radius > 0.f)
  {
   v1 interval = 1.f / v1(nslice);
   v3 last_sample;
   for_i32(index, 0, nslice+1)
   {
    v1 angle = interval * v1(index);
-   v2 arm = radius_camera_space*arm2(angle);
+   v2 arm = radius*arm2(angle);
    mat4 &bone_from_cam = painter->cam_from_bone.inverse;
    v3 sample = center + mat4vec(bone_from_cam, V3(arm, 0.f));  // @Slow
    if(index!=0)
@@ -759,13 +759,30 @@ bez_lerp(Bezier &begin, v1 t, Bezier &end)
  }
  return result;
 }
+
+function Vertex_Info
+get_vertex_info(Vertex &vertex)
+{
+ if(vertex.ninfo_index != -1)
+ {
+  return driver_data.vertices_info[vertex.ninfo_index];
+ }
+ else
+ {
+  Vertex_Info info = {};
+  info.location        = {};  // NOTE(kv) null
+  info.indicator_level = 0;
+  info.overlay         = 1;
+  return info;
+ }
+}
 function void
 send_vert(i32 info_index, v3 pos)
 {
  if(should_send_model_data())
  {
   Vertex vertex = {};
-  vertex.info_index = info_index;
+  vertex.ninfo_index = info_index;
   vertex.pos        = pos;
   vertex.bone_id    = current_bone()->id;
   push(&the_model->vertices, vertex);

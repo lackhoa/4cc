@@ -8,14 +8,14 @@
 function void
 rewrite_lines_to_crlf(App_Cmd *app, Buffer_ID buffer)
 {
- ProfileScope(app, "rewrite lines to crlf");
+ ProfileBlock( "rewrite lines to crlf");
  Scratch_Block scratch(app);
  i64 size = buffer_get_size(app, buffer);
  
  Batch_Edit *first = 0;
  Batch_Edit *last = 0;
  
- ProfileBlockNamed(app, "build batch edit", profile_batch);
+ ProfileBegin("build batch edit");
  i64 pos = -1;
  Character_Predicate pred_cr = character_predicate_from_character('\r');
  Character_Predicate pred_lf = character_predicate_from_character('\n');
@@ -48,7 +48,7 @@ rewrite_lines_to_crlf(App_Cmd *app, Buffer_ID buffer)
    edit->edit.range = Ii64(pos);
   }
  }
- ProfileCloseNow(profile_batch);
+ ProfileEnd();
  
  buffer_batch_edit(app, buffer, first);
 }
@@ -56,13 +56,13 @@ rewrite_lines_to_crlf(App_Cmd *app, Buffer_ID buffer)
 function void
 rewrite_lines_to_lf(App_Cmd *app, Buffer_ID buffer)
 {
- ProfileScope(app, "rewrite lines to lf");
+ ProfileBlock( "rewrite lines to lf");
  Scratch_Block scratch(app);
  
  Batch_Edit *first = 0;
  Batch_Edit *last = 0;
  
- ProfileBlockNamed(app, "build batch edit", profile_batch);
+ ProfileBegin("build batch edit");
  i64 pos = -1;
  Character_Predicate pred = character_predicate_from_character('\r');
  for (;;){
@@ -78,7 +78,7 @@ rewrite_lines_to_lf(App_Cmd *app, Buffer_ID buffer)
   edit->edit.text = strlit("");
   edit->edit.range = match.range;
  }
- ProfileCloseNow(profile_batch);
+ ProfileEnd();
  
 	buffer_batch_edit(app, buffer, first);
 }

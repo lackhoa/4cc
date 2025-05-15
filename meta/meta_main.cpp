@@ -415,7 +415,7 @@ main_normal(String *args, i32 arg_count)
  Stringz code_dir;
  {//;meta_dirs_init
   Stringz home_dir = get_home_directory_ansi(tmp);
-  // @HardCodedPath
+  // @HardCoded
   code_dir = pjoin(tmp, home_dir, strlit("4ed"), strlit("code"));
   meta.dirs.home   = home_dir;
   meta.dirs.code   = code_dir;
@@ -630,10 +630,11 @@ main_normal(String *args, i32 arg_count)
  
  return ok;
 }
+
 function b32
 filter_narration(Stringz input_path)
 {
- Arena *tmp = &thread_permanent_arena;
+ Scratch_Block tmp;
  
  // NOTE Parser
  Lexed_File lexed_file = lex_file(tmp, input_path);
@@ -650,8 +651,10 @@ filter_narration(Stringz input_path)
  
  b32 parsing = 1;
  i32 ignore_nest = 0;
+ Scratch_Block tmp_loop;
  while(parsing)
  {
+  arena_clear(tmp_loop);
   Token *token0 = ep_get_token(parser);
   String token0_string = ep_print_token(parser, token0);
   if(token0->kind == TokenBaseKind_EOF)
@@ -669,12 +672,52 @@ filter_narration(Stringz input_path)
   }
   else if(starts_with(token0_string, '@'))
   {// NOTE(kv) All tags are eliminated.
-   // Also we have to put tags in separate tokens somehow, which works for now.
+   // Also we have to put tags in separate tokens,
+   // by having it be next to an open bracket.
    ignore_nest = 1;
   }
   else if(ignore_nest == 0)
-  {
-   print(printer, token0_string);
+  {// NOTE Normal text
+   // NOTE(kv) Strip newlines in the middle
+   Stringz stringz = push_string(tmp_loop, token0_string);
+   u8 *buffer = push_size(tmp_loop, token0_string.count);
+   u8 *source = stringz.str;
+   u8 *dest = buffer;
+   while(source < stringz.str + stringz.count)
+   {
+    if(*source == '\r' or *source == '\n')
+    {// NOTE(kv) newlines
+     u8 *source_0 = source;
+     while(*source == '\r' or *source == '\n' or
+           *source == ' ')
+     {
+      source++;
+     }
+     
+     if(*source == 0)
+     {// NOTE Whitespaces at the end
+      // We will copy all the newlines.
+      while(*source_0)
+      {
+       if(*source_0 == '\n')
+       {
+        *dest++ = '\n';
+       }
+       source_0++;
+      }
+     }
+     else
+     {// NOTE Whitespaces connecting in a token
+      *dest++ = ' ';
+     }
+    }
+    else
+    {
+     *dest++ = *source++;
+    }
+   }
+   
+   print(printer, String{.str=buffer, .count=u64(dest-buffer)});
   }
   
   if(parsing)
@@ -684,9 +727,12 @@ filter_narration(Stringz input_path)
  }
  
  kv_assert(not printer.error);
+ 
  close_file(out_file);
+ 
  return 1;
 }
+
 xfunction i32
 main(i32 arg_count, char **argv)
 {

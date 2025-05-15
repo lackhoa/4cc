@@ -45,25 +45,31 @@ file_change_notification_thread_main(void *ptr)
  Models *models = (Models*)ptr;
  Arena arena = make_arena();
  Working_Set *working_set = &models->working_set;
- for (;;){
+ while(1)
+ {
+  DEBUG_profile_flush();
   system_sleep(Thousand(250));
+  
   Mutex_Lock lock(working_set->mutex);
-  if (working_set->active_file_count > 0){
+  if (working_set->active_file_count > 0)
+  {
    i1 check_count = working_set->active_file_count/16;
    check_count = clamp_between(1, check_count, 100);
    Node *used = &working_set->active_file_sentinel;
    Node *node = working_set->sync_check_iterator;
-   if (node == 0 || node == used){
+   if (node == 0 || node == used)
+   {
     node = used->next;
    }
-   for (i1 i = 0; i < check_count; i += 1){
+   
+   for (i1 i = 0; i < check_count; i += 1)
+   {
     Editing_File *file = CastFromMember(Editing_File, main_chain_node, node);
     node = node->next;
-    if (node == used){
-     node = node->next;
-    }
+    if(node == used){ node = node->next; }
     file_change_notification_check(&arena, working_set, file);
    }
+   
    working_set->sync_check_iterator = node;
   }
  }
@@ -120,7 +126,8 @@ working_set_get_file(Working_Set *working_set, Buffer_ID id)
 
 
 function void
-working_set_init(Models *models, Working_Set *working_set){
+working_set_init(Models *models, Working_Set *working_set)
+{
  block_zero_struct(working_set);
  working_set->arena = make_arena();
  
@@ -137,7 +144,7 @@ working_set_init(Models *models, Working_Set *working_set){
  
  dll_init_sentinel(&working_set->has_external_mod_sentinel);
  working_set->mutex = system_mutex_make();
- working_set->file_change_thread = system_thread_launch(file_change_notification_thread_main, models);
+ working_set->file_change_thread = thread_launch(file_change_notification_thread_main, models, MB(1));
 }
 
 function Editing_File*

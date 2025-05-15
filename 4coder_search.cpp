@@ -427,7 +427,7 @@ get_complete_list_raw(App *app, Arena *arena, Buffer_ID buffer,
 
 function void
 word_complete_list_extend_from_raw(App *app, Arena *arena, String_Match_List *matches, List_String *list, Table_Data_u64 *used_table){
-    ProfileScope(app, "word complete list extend from raw");
+    ProfileBlock( "word complete list extend from raw");
     Scratch_Block scratch(app);
     for (String_Match *node = matches->first;
          node != 0;
@@ -572,7 +572,7 @@ word_complete_get_shared_iter(App *app){
 function void
 word_complete(App_Cmd *app)
 {
-    ProfileScope(app, "word complete");
+    ProfileBlock( "word complete");
     
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -592,7 +592,7 @@ word_complete(App_Cmd *app)
         local_persist Range_i64 range = {};
         
         if (first_completion || !initialized){
-            ProfileBlock(app, "word complete state init");
+            ProfileBlock( "word complete state init");
             initialized = false;
             i64 pos = view_get_cursor_pos(app, view);
             Range_i64 needle_range = get_word_complete_needle_range(app, buffer, pos);
@@ -604,7 +604,7 @@ word_complete(App_Cmd *app)
         }
         
         if (initialized){
-            ProfileBlock(app, "word complete apply");
+            ProfileBlock( "word complete apply");
             
             word_complete_iter_next(it);
             String str = word_complete_iter_read(it);

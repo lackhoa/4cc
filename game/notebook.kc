@@ -2,6 +2,8 @@
 function void
 notebook_update(Notebook_State *state)
 {// NOTE(kv) These should only run once... but whatever
+ arena_clear(&notebook_frame_arena);
+ 
  if(fbool(0))
  {// ;cramers_rule_test
   mat2 A = {
@@ -243,7 +245,7 @@ notebook_update(Notebook_State *state)
   }
  }
  
- if(fbool(1))
+ if(fbool(0))
  {// ;figure_polar_form
   GraphBlock;
   const i32 n = 3;
@@ -267,6 +269,33 @@ notebook_update(Notebook_State *state)
     graph_line(dcb(b,n,t), dcb(p1,n-1,t), ImGui::GetColorU32(ImGuiCol_Text));
    }
   }
+ }
+ 
+ if(fbool(0))
+ {
+  LLM_Value a = mk_value(3.f, strlit("a"));
+  LLM_Value b = mk_value_add(&a, &a, strlit("b"));
+  backprop(&b);
+  DEBUG_VALUE(a.grad);
+ }
+ 
+ if(fbool(1))
+ {// ;chain_rule_test
+  // Suppose z = g(y) = sin(y); y = f(x) = x^2
+  function v1 g(v1 y) { return y*y*y; }
+  function v1 f(v1 x) { return x*x; }
+  
+  // NOTE dz / dx at x0
+  v1 x0 = fv(2.4578f);
+  v1 h = 0.0001f;
+  v1 approx = (g(f(x0 + h)) - g(f(x0))) / h;
+  DEBUG_VALUE(approx);
+  
+  v1 y0 = f(x0);
+  v1 dz_over_dy_at_y0 = 3.f*y0*y0;
+  v1 dy_over_dx_at_x0 = 2.f*x0;
+  v1 rhs = dz_over_dy_at_y0 * dy_over_dx_at_x0;
+  DEBUG_VALUE(rhs);
  }
 }
 //

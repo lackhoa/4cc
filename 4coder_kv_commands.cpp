@@ -209,6 +209,13 @@ kv_find_current_nest(App *app, Buffer_ID buffer, i64 pos)
  return result;
 }
 
+function Buffer_AST *
+get_buffer_ast(App *app, Buffer_ID buffer)
+{
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer);
+ Buffer_AST *ast = scope_attachment(app, scope, buffer_attachment_ast, Buffer_AST);
+ return ast;
+}
 function void
 kv_sexpr_up(App_Cmd *app)
 {
@@ -217,48 +224,63 @@ kv_sexpr_up(App_Cmd *app)
  vim_push_jump(app, view);
  Vim_Motion_Block vim_motion_block(app);
  Ed_Parser parser = make_ed_parser_at_cursor(app, Scan_Backward);
- b32 done = false;
+ b32 done = 0;
+ 
  {
   Token *token = ep_get_token(&parser);
-  if(token_is_group_closer(token)){
-   //-if we're at group end, jump to the beginning
+  if(token_is_group_closer(token))
+  {
+   //-If we're at group end, jump to the beginning
+   Buffer_AST *ast = get_buffer_ast(app, buffer);
+   
    String closer_string = ep_print_token(scratch, &parser);
    u8 closer = closer_string.data[0];
    u8 opener = get_matching_group_opener(closer);
    ep_eat(&parser);  //NOTE eat past the group closer
    char do_jump = ep_eat_until_char(&parser, opener);
-   if(do_jump){
+   if(do_jump)
+   {
     i64 goto_pos = ep_get_pos(&parser);
     kv_goto_pos(app, view, goto_pos);
    }
-   done = true;
+   done = 1;
   }
  }
- if(not done){
+ 
+ if(not done)
+ {
   {//-Detect if we're right at the start of a group
    Token *token = ep_get_token(&parser);
-   if(token->kind == TokenBaseKind_LiteralString){
-    if(view_get_cursor_pos(app, view) == token->pos){
+   if(token->kind == TokenBaseKind_LiteralString)
+   {
+    if(view_get_cursor_pos(app, view) == token->pos)
+    {
      //-We're standing right at the string -> back up
      ep_eat(&parser);
     }
-   }else if(token_is_group_opener(token)){
+   }
+   else if(token_is_group_opener(token))
+   {
     ep_eat(&parser);
    }
   }
   {//-jump
    Token *token = ep_get_token(&parser);
-   if(token->kind == TokenBaseKind_LiteralString){
+   if(token->kind == TokenBaseKind_LiteralString)
+   {
     kv_goto_pos(app, view, token->pos);
-   }else{
+   }
+   else
+   {
     char do_jump = ep_eat_until_char(&parser, strlit("{[("));
-    if(do_jump){
+    if(do_jump)
+    {
      i64 goto_pos = ep_get_pos(&parser);
      kv_goto_pos(app, view, goto_pos);
     }
    }
   }
- }
+ } 
 }
 function void
 kv_sexpr_down(App_Cmd *app)
@@ -1417,6 +1439,12 @@ cmd_insert_ampersand(App_Cmd *app) {
 function void
 cmd_insert_asterisk(App_Cmd *app) {
  write_text(app, strlit("*"), false);
+}
+
+function void
+cmd_insert_caret(App_Cmd *app)
+{
+ write_text(app, strlit("^"), false);
 }
 
 function void 

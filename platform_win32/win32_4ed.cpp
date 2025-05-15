@@ -78,6 +78,18 @@ global const v1 frame_seconds  = (1.f / v1(FPS));
 global const v1 frame_useconds = v1(1e6 * frame_seconds);
 global const v1 frame_nseconds = v1(1e9 * frame_seconds);
 
+// NOTE(kv) Not sure whether to put this in the platform layer,
+// or the app layer. Maybe doesn't matter.
+global b32 global_running = 1;
+
+// NOTE(kv) Was trying to do a "graceful exit" kinda thing.
+// But it's way too hard, breaking post conditions everywhere.
+function b32
+system_running()
+{
+ return global_running;
+}
+
 global b32 log_os_enabled = false;
 #define log_os(...) \
 Stmnt( if (log_os_enabled) { fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
@@ -913,24 +925,26 @@ win32_free_object(Win32_Object *object)
 ////////////////////////////////
 
 function
-system_time_usecond_sig(){
-    u64 result = 0;
-    LARGE_INTEGER t;
-    if (QueryPerformanceCounter(&t)){
-        result = (u64)((f64)t.QuadPart * win32vars.usecond_per_count);
-    }
-    return(result);
+system_time_usecond_sig()
+{
+ u64 result = 0;
+ LARGE_INTEGER t;
+ if(QueryPerformanceCounter(&t))
+ {
+  result = (u64)((f64)t.QuadPart * win32vars.usecond_per_count);
+ }
+ return(result);
 }
 
 function void
 date_time_from_win32_system_time(Date_Time *out, SYSTEMTIME *in){
-    out->year = in->wYear;
-    out->mon = (u8)(in->wMonth - 1);
+ out->year = in->wYear;
+ out->mon = (u8)(in->wMonth - 1);
 	out->day = (u8)(in->wDay - 1);
 	out->hour = (u8)(in->wHour);
 	out->min = (u8)(in->wMinute);
 	out->sec = (u8)(in->wSecond);
-    out->msec = in->wMilliseconds;
+ out->msec = in->wMilliseconds;
 }
 
 function void
@@ -1078,11 +1092,12 @@ system_mutex_make_sig(){
 }
 
 function
-system_mutex_acquire_sig(){
-    Win32_Object *object = (Win32_Object*)handle_type_ptr(mutex);
-    if (object->kind == Win32ObjectKind_Mutex){
-        EnterCriticalSection(&object->mutex);
-    }
+system_mutex_acquire_sig()
+{
+ Win32_Object *object = (Win32_Object*)handle_type_ptr(mutex);
+ if (object->kind == Win32ObjectKind_Mutex){
+  EnterCriticalSection(&object->mutex);
+ }
 }
 
 function
@@ -1131,14 +1146,19 @@ system_condition_variable_make_sig(){
     return(handle_type(object));
 }
 
-function
-system_condition_variable_wait_sig(){
-    Win32_Object *object_cv = (Win32_Object*)handle_type_ptr(cv);
-    Win32_Object *object_mutex = (Win32_Object*)handle_type_ptr(mutex);
-    if (object_cv->kind == Win32ObjectKind_CV &&
-        object_mutex->kind == Win32ObjectKind_Mutex){
-        SleepConditionVariableCS(&object_cv->cv, &object_mutex->mutex, INFINITE);
-    }
+function void
+system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex, i32 timeout_ms)
+{
+ if(timeout_ms <= 0) { timeout_ms = INFINITE; }
+ 
+ Win32_Object *object_cv = (Win32_Object*)handle_type_ptr(cv);
+ Win32_Object *object_mutex = (Win32_Object*)handle_type_ptr(mutex);
+ 
+ if (object_cv->kind == Win32ObjectKind_CV &&
+     object_mutex->kind == Win32ObjectKind_Mutex)
+ {
+  SleepConditionVariableCS(&object_cv->cv, &object_mutex->mutex, timeout_ms);
+ }
 }
 
 function
@@ -1621,7 +1641,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
     {
      srgb_support = true;
     }
-    else if (string_match(m, str8lit("WGL_EXT_swap_interval")))
+    else if (string_match(m, str8lit("WGL_EXT_swap_control")))
     {
      b32 wgl_swap_interval_ext = true;
      LoadWGL(wglSwapIntervalEXT, wgl_swap_interval_ext);
@@ -1732,12 +1752,15 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
    }
   }
   
-  if (wglSwapIntervalEXT != 0) {
+  if (wglSwapIntervalEXT != 0)
+  {// TODO(kv) Set the swap interval correctly according the monitor refresh rate.
+   // Right now we assume that this is a 60 Hz monitor.
    log_os(" setting swap interval...\n");
    wglSwapIntervalEXT(1);
   }
   
-  if(0) {
+  if(0)
+  {
    const GLubyte *version = glGetString(GL_VERSION);
    (void)version;
   }
@@ -1803,9 +1826,75 @@ win32_imgui_reinit()
  ImGui::SetNextFrameWantCaptureKeyboard(false);
 }
 
+struct TSC_And_Time
+{
+ u64 tsc;
+ u64 usec;
+};
+
+function TSC_And_Time
+get_tsc_and_time()
+{
+ TSC_And_Time result = {};
+ result.usec = system_time_usecond();
+ result.tsc  = gb_rdtsc();
+ return result;
+}
+
 int CALL_CONVENTION
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+ // NOTE(casey): Set the Windows scheduler granularity to 1ms
+ // so that our Sleep() can be more granular.
+ UINT desired_scheduler_ms = 1;
+ b32 sleep_is_granular = (timeBeginPeriod(desired_scheduler_ms) == TIMERR_NOERROR);
+ 
+ win32vars = {};
+ 
+ {
+  log_os("Initializing performance counter...\n");
+  LARGE_INTEGER f;
+  if (QueryPerformanceFrequency(&f))
+  {
+   win32vars.usecond_per_count = 1000000.f/(f32)f.QuadPart;
+  }
+  else
+  {
+   // NOTE(allen): Just guess.
+   win32vars.usecond_per_count = 1.f;
+   log_os(" load failed, guessing usecond_per_count = 1\n");
+  }
+  if(win32vars.usecond_per_count <= 0.f)
+  {
+   win32vars.usecond_per_count = 1.f;
+  }
+ }
+ 
+ f64 tsc_to_usec = 0.00038580207798279419;
+ 
+ b32 spall_check_done = 0;
+ TSC_And_Time spall_check_start = get_tsc_and_time();
+ 
+#if KV_INTERNAL
+ {// NOTE Init spall
+  if(0)
+  {// NOTE(kv) ;compute_tsc_to_usec_for_this_machine
+   TSC_And_Time start = get_tsc_and_time();
+   
+   i32 sleep_ms = 2000;
+   Sleep(sleep_ms);
+   
+   TSC_And_Time end = get_tsc_and_time();
+   
+   tsc_to_usec = f64(end.usec - start.usec) / f64(end.tsc - start.tsc);
+  }
+  
+  spall_ctx = spall_init_file("4ed.spall", tsc_to_usec);
+ }
+#endif
+ 
+ DEBUG_profile_init_thread(&thread_permanent_arena, MB(16));
+ 
  i32 argc = __argc;
  char **argv = __argv;
  // NOTE(allen): someone get my shit togeth :(er for me
@@ -1819,11 +1908,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  // NOTE(allen): context setup
  log_os("Initializing thread context...\n");
- thread_context_init(&global_thread_context, ThreadKind_Main,
-                     get_default_allocator(), get_default_allocator());
- 
- win32vars = {};
- win32vars.tctx = &global_thread_context;
+ Thread_Context tctx;
+ thread_context_init(&tctx, ThreadKind_Main,
+                     get_default_allocator(),
+                     get_default_allocator());
+ win32vars.tctx = &tctx;
  
  log_os("Filling API v-tables...\n");
  API_VTable_system system_vtable = {};
@@ -1982,19 +2071,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  win32vars.cursor_leftright = LoadCursor(NULL, IDC_SIZEWE);
  win32vars.cursor_updown = LoadCursor(NULL, IDC_SIZENS);
  
- log_os("Initializing performance counter...\n");
- LARGE_INTEGER f;
- if (QueryPerformanceFrequency(&f)){
-  win32vars.usecond_per_count = 1000000.f/(f32)f.QuadPart;
- }else{
-  // NOTE(allen): Just guess.
-  win32vars.usecond_per_count = 1.f;
-  log_os(" load failed, guessing usecond_per_count = 1\n");
- }
- if(win32vars.usecond_per_count <= 0.f){
-  win32vars.usecond_per_count = 1.f;
- }
- 
  {//~DearImgui init
   IMGUI_CHECKVERSION();
   win32_imgui_init();
@@ -2012,7 +2088,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  //~Main loop
  log_os("Starting main loop...\n");
  
- b32 keep_running = true;
  win32vars.first = true;
  timeBeginPeriod(1);
  
@@ -2032,12 +2107,34 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  
  u64 frame_time_start = system_time_usecond();
  u64 frame_cycle_start = gb_rdtsc();
- v1 work_seconds = 0.f;
+ v1 work_useconds = 0.f;
  u32 work_cycles = 0;
  u32 hot_prim_id = 0;
  ImFont *im_font = 0;
- while(keep_running)
+ while(global_running)
  {//-NOTE The main loop
+  if(not spall_check_done)
+  {// NOTE See @tsc_to_usec_check
+   TSC_And_Time start = spall_check_start;
+   TSC_And_Time end = get_tsc_and_time();
+   u64 sleep_amount = Million(2);
+   if(end.usec - start.usec > sleep_amount)
+   {
+    f64 tsc_to_usec_1 = (f64(end.usec - start.usec) /
+                         f64(end.tsc - start.tsc));
+    f64 frame_time = 1e6 / 60;
+    f64 frame_cycles = frame_time / tsc_to_usec_1;
+    f64 frame_time_0 = frame_cycles * tsc_to_usec;
+    f64 epsilon = 1;
+    
+    // NOTE(kv) If this is wrong, consult @compute_tsc_to_usec_for_this_machine
+    f64 frame_time_diff = absolute(frame_time_0 - frame_time);
+    kv_assert(frame_time_diff < epsilon);
+    
+    spall_check_done = 1;
+   }
+  }
+  
   arena_clear(&win32vars.frame_arena);
   block_zero_struct(&win32vars.input_chunk.trans);
   win32vars.active_key_stroke = 0;
@@ -2072,7 +2169,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     if (got_message)
     {
      if (msg.message == WM_QUIT) {
-      keep_running = false;
+      global_running = false;
      } else {
       b32 treat_normally = true;
       if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN)
@@ -2172,13 +2269,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   input.mouse.out_of_window = input_chunk.trans.out_of_window;
   
-  input.mouse.l         = input_chunk.pers.mouse_l;
-  input.mouse.press_l   = input_chunk.trans.mouse_l_press;
-  input.mouse.release_l = input_chunk.trans.mouse_l_release;
+  input.mouse.left         = input_chunk.pers.mouse_l;
+  input.mouse.press_left   = input_chunk.trans.mouse_l_press;
+  input.mouse.release_left = input_chunk.trans.mouse_l_release;
   
-  input.mouse.r         = input_chunk.pers.mouse_r;
-  input.mouse.press_r   = input_chunk.trans.mouse_r_press;
-  input.mouse.release_r = input_chunk.trans.mouse_r_release;
+  input.mouse.right         = input_chunk.pers.mouse_r;
+  input.mouse.press_right   = input_chunk.trans.mouse_r_press;
+  input.mouse.release_right = input_chunk.trans.mouse_r_release;
   
   input.mouse.wheel = input_chunk.trans.mouse_wheel;
   input.mouse.p     = input_chunk.pers.mouse;
@@ -2200,7 +2297,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   input.work_cycles  = work_cycles;
-  input.work_seconds = work_seconds;
+  input.work_useconds = work_useconds;
   
   win32vars.clip_post.size = 0;
   
@@ -2233,8 +2330,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   Application_Step_Result step_result = app_step(win32vars.tctx, models, &input);
   
   // NOTE(allen): Finish the Loop
-  if (step_result.perform_kill) {
-   keep_running = false;
+  if(step_result.perform_kill)
+  {
+   global_running = false;
   }
   
   // NOTE(allen): Post New Clipboard Content
@@ -2294,13 +2392,65 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     }
    }
    
-   for_i32(window_index, 0, WINDOW_COUNT){
-    //win32_log("Swap framebuffer!");
-    SwapBuffers( win32vars.device_contexts[window_index] );
+   {// NOTE(kv) Swap frame!
+    ProfileBlock("swap framebuffers");
+    
+    for_i32(window_index, 0, WINDOW_COUNT)
+    {
+     SwapBuffers(win32vars.device_contexts[window_index]);
+    }
    }
    
    hot_prim_id = ogl_read_primitive_id();
   }
+  
+  {// NOTE Sleeping and waiting
+   ProfileBegin("sleep");
+   
+   system_release_global_frame_mutex(win32vars.tctx);
+   
+   u64 current_time = system_time_usecond();
+   
+   u64 end_target = frame_time_start + u64(frame_useconds+0.5f);
+   work_useconds = v1(current_time - frame_time_start);
+   work_cycles = u32(gb_rdtsc() - frame_cycle_start);
+   
+   if(current_time < end_target)
+   {
+    DEBUG_profile_flush();
+   }
+   
+   current_time = system_time_usecond();
+   if(current_time < end_target)
+   {
+    if(sleep_is_granular)
+    {
+     DWORD sleep_amount = (DWORD)((end_target - current_time)/1000);
+     if(sleep_amount > 0) { Sleep(sleep_amount); }
+    }
+   }
+   
+   ProfileEnd();
+   
+   ProfileBegin("wait");
+   
+   while(system_time_usecond() < end_target)
+   {// NOTE(kv) Spin lock remaining time!
+   }
+   
+   ProfileEnd();
+   
+   system_acquire_global_frame_mutex(win32vars.tctx);
+  }
+  
+  // NOTE(kv) Now is when the frame begins
+  frame_time_start = system_time_usecond();
+  frame_cycle_start = gb_rdtsc();
+  if(!win32vars.first)
+  {
+   ProfileEnd();
+  }
+  ProfileBegin("frame");
   
   // NOTE(allen): toggle full screen
   if (win32vars.do_toggle) {
@@ -2318,31 +2468,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
    system_wake_up_timer_set(win32vars.clip_wakeup_timer, 250);
   }
   
-  work_cycles = u32(gb_rdtsc() - frame_cycle_start);
-  
-  {// NOTE(allen): sleep a bit to cool off :)
-   system_release_global_frame_mutex(win32vars.tctx);
-   
-   u64 current_time = system_time_usecond();
-   u64 end_target = frame_time_start + u64(frame_useconds+0.5f);
-   work_seconds = v1(f64(current_time - frame_time_start) / 1e6);
-   
-   while (current_time < end_target)
-   {
-    DWORD samount = (DWORD)((end_target - current_time)/1000);
-    if (samount > 0) {
-     Sleep(samount);
-    }
-    current_time = system_time_usecond();
-   }
-  }
-  frame_time_start  = system_time_usecond();
-  frame_cycle_start = gb_rdtsc();
-  
-  system_acquire_global_frame_mutex(win32vars.tctx);
-  
   win32vars.first = false;
  }
+ 
+ if(0)
+ {// NOTE(kv) temp code to check what threads are running
+  Sleep(200);
+  breakhere;
+ }
+ 
+ DEBUG_profile_quit_thread();
+#if KV_INTERNAL
+ spall_quit(&spall_ctx);
+#endif
  
  return(0);
 }

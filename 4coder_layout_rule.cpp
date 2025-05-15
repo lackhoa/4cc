@@ -28,7 +28,7 @@ layout_item_list_finish(Layout_Item_List *list, f32 bottom_padding)
 }
 
 function void
-layout_write(Layout_State *layout, i64 index, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
+layout_write(Layout_State *layout, i64 pos, u32 codepoint, Layout_Item_Flag flags, Rect_f32 rect, f32 padded_y1)
 {
  Arena *arena = layout->arena;
  Layout_Item_List *list = &layout->list;
@@ -62,8 +62,8 @@ layout_write(Layout_State *layout, i64 index, u32 codepoint, Layout_Item_Flag fl
  }
  
  list->item_count += 1;
- list->manifested_index_range.min = Min(list->manifested_index_range.min, index);
- list->manifested_index_range.max = Max(list->manifested_index_range.max, index);
+ list->manifested_index_range.min = Min(list->manifested_index_range.min, pos);
+ list->manifested_index_range.max = Max(list->manifested_index_range.max, pos);
  
  if (!HasFlag(flags, LayoutItemFlag_Ghost_Character))
  {
@@ -71,7 +71,7 @@ layout_write(Layout_State *layout, i64 index, u32 codepoint, Layout_Item_Flag fl
   list->character_count += 1;
  }
  
- item->index = index;
+ item->index = pos;
  item->codepoint = codepoint;
  item->flags = flags;
  item->rect = rect;
@@ -137,24 +137,59 @@ lr_tb_advance(Layout_State *layout, u32 codepoint)
 }
 
 function void
-lr_tb_write_with_advance(Layout_State *layout, f32 advance, i64 index, u32 codepoint,
-                         b32 do_math_script)
+lr_tb_write_with_advance(Layout_State *layout, f32 advance, i64 pos, u32 codepoint)
 {
- if (codepoint == '\t') { codepoint = ' '; }
+ if(codepoint == '\t'){ codepoint = ' '; }
  
  layout->p.x = ceilv1(layout->p.x);
  f32 next_x = layout->p.x + advance;
  rect2 rect =  Rf32(layout->p, V2(next_x, layout->text_y));
- if(do_math_script)
+ 
+ if(layout->is_skm)
  {
-  if(index % 2)
+  b32 do_raise = 0;
+  
+  Buffer_AST *ast = layout->ast;
+  Token_Array tokens = layout->tokens;
+  AST_Node *root = &ast->root;
+  i32 begin = 0;
+  i32 end   = root->children.count;
+  // TODO(kv) @Slow Don't do this per-position?
+  while(begin < end)
   {
-   v2 shift = V2(0.f, 10.f);
-   rect.min -= shift;
-   rect.max -= shift;
+   i32 current = begin + (end-begin) / 2;
+   AST_Node *node = &root->children[current];
+   Token *token_begin = &tokens.tokens[node->token_begin];
+   Token *token_end   = &tokens.tokens[node->token_end];
+   if(token_begin->pos == pos or
+      token_end->pos == pos)
+   {// NOTE Match
+    do_raise = 1;
+    break;
+   }
+   else if(token_end->pos < pos)
+   {
+    begin = current + 1;
+   }
+   else if(token_begin->pos > pos)
+   {
+    end = current;
+   }
+   else
+   {// NOTE This pos somewhere in between the current node.
+    break;
+   }
+  }
+  
+  if(do_raise and KV_INTERNAL)
+  {// NOTE Test code
+   v1 raise = 8.f;
+   rect.min.y -= raise;
+   rect.max.y -= raise;
   }
  }
- layout_write(layout, index, codepoint, /*flags*/0, rect, layout->line_y);
+ 
+ layout_write(layout, pos, codepoint, /*flags*/0, rect, layout->line_y);
  layout->p.x = next_x;
 }
 
@@ -242,11 +277,14 @@ lr_tb_align_rightward(Layout_State *layout, f32 align_x){
 
 ////////////////////////////////
 
+function Buffer_AST *
+get_or_compute_buffer_ast(App *app, Buffer_ID buffer, Token_Array *tokens);
+
 function Layout_Item_List
 layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
                  Range_i64 range, Face_ID face, f32 width)
 {
- Scratch_Block scratch(app);
+ Scratch_Block scratch;
  String text = push_buffer_range(app, scratch, buffer, range);
  
  Face_Advance_Map advance_map = get_face_advance_map(app, face);
@@ -259,7 +297,15 @@ layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
   F4_Language *language = F4_LanguageFromBuffer(app, buffer);
   if(language)
   {
-   layout.is_math_layout = language->name == strlit("skm");
+   layout.is_skm = language->name == strlit("skm");
+  }
+  
+  if(layout.is_skm)
+  {
+   Managed_Scope scope = buffer_get_managed_scope(app, buffer);
+   Token_Array tokens = get_token_array_from_buffer(app, buffer);
+   layout.tokens = tokens;
+   layout.ast = get_or_compute_buffer_ast(app, buffer, &tokens);
   }
   
   f32 text_height = metrics.text_height;
@@ -286,8 +332,6 @@ layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
  }
  else
  {
-  Token_Iterator_Array tokens = get_token_it_at_pos(app, buffer, range.min);
-  
   Newline_Layout_Vars newline_vars = get_newline_layout_vars();
   u8 *ptr = text.str;
   u8 *end_ptr = ptr + text.size;
@@ -319,27 +363,9 @@ layout_unwrapped(App *app, Arena *arena, Buffer_ID buffer,
     
     default:
     {
-     b32 do_math_script = 0;
-     if(layout.is_math_layout)
-     {
-      Token *token = tkarr_read(&tokens);
-      while(token and index >= (token->pos + token->size))
-      {
-       token = tkarr_inc_all(&tokens);
-      }
-      //
-      if(not (token and (index >= token->pos and
-                         index <  token->pos+token->size)))
-      {
-       token = &stub_token;
-      }
-      
-      do_math_script = token->flags & TokenBaseFlag_SkmCode;
-     }
-     
      newline_layout_consume_default(newline_vars);
      f32 advance = lr_tb_advance(&layout, consume.codepoint);
-     lr_tb_write_with_advance(&layout, advance, index, consume.codepoint, do_math_script);
+     lr_tb_write_with_advance(&layout, advance, index, consume.codepoint);
     }break;
    }
    

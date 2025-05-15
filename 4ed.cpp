@@ -411,7 +411,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
  // NOTE(allen): simulated events
  Input_List input_list = input->events;
  Input_Modifier_Set modifiers = system_get_keyboard_modifiers(scratch);
- if (input->mouse.press_l)
+ if (input->mouse.press_left)
  {
   Input_Event event = {};
   event.kind = InputEventKind_MouseButton;
@@ -420,7 +420,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
   push_input_event(scratch, &input_list, &event);
  }
- else if (input->mouse.release_l)
+ else if (input->mouse.release_left)
  {
   Input_Event event = {};
   event.kind = InputEventKind_MouseButtonRelease;
@@ -429,7 +429,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
   push_input_event(scratch, &input_list, &event);
  }
- if (input->mouse.press_r)
+ if (input->mouse.press_right)
  {
   Input_Event event = {};
   event.kind = InputEventKind_MouseButton;
@@ -438,7 +438,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   event.mouse.modifiers = copy_modifier_set(scratch, &modifiers);
   push_input_event(scratch, &input_list, &event);
  }
- else if (input->mouse.release_r)
+ else if (input->mouse.release_right)
  {
   Input_Event event = {};
   event.kind = InputEventKind_MouseButtonRelease;
@@ -684,7 +684,7 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
     }
     else if (event->kind == InputEventKind_MouseMove)
     {
-     if (input->mouse.l)
+     if (input->mouse.left)
      {
       Panel *split = models->resizing_intermediate_panel;
       Range_i32 limits = layout_get_limiting_range_on_split(layout, split);
@@ -786,8 +786,8 @@ app_step(Thread_Context *tctx, void *base_ptr, Application_Step_Input *input)
   frame.literal_dt = literal_dt;
   frame.animation_dt = animation_dt;
   frame.work_cycles  = input->work_cycles;
-  frame.work_seconds = input->work_seconds;
-  frame.hot_prim_id  = input->hot_prim_id;
+  frame.work_useconds = input->work_useconds;
+  frame.hot_prim_id = input->hot_prim_id;
   
   App app_value = {};
   App *app = &app_value;

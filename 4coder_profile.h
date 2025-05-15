@@ -4,48 +4,25 @@
 
 // TOP
 
-#if !defined(FCODER_PROFILE_H)
-#define FCODER_PROFILE_H
+#pragma once
 
-struct Profile_Global_List{
+struct Profile_Global_List
+{
  System_Mutex mutex;
  Arena node_arena;
- /*
- Arena_Node *first_arena;
- Arena_Node *last_arena;*/
  Profile_Thread *first_thread;
  Profile_Thread *last_thread;
- i1 thread_count;
+ i32 thread_count;
  Profile_Enable_Flag disable_bits;
 };
 
-struct Profile_Block{
-    Thread_Context *tctx;
-    Profile_Global_List *list;
-    b32 is_closed;
-    Profile_ID id;
-    
-    Profile_Block(Thread_Context *tctx, Profile_Global_List *list,
-                  String name, String location);
-    Profile_Block(App *app, String name, String location);
-    ~Profile_Block();
-    void close_now();
+struct Profile_Block
+{
+ // NOTE(kv) We want to guarantee that the profile block ends when using "continue" or "break".
+ // But we want to control when it ends, too.
+ b32 ended;  
+ 
+ member_function Profile_Block(String name, String location);
+ member_function ~Profile_Block();
 };
-
-struct Profile_Scope_Block{
-    Thread_Context *tctx;
-    Profile_Global_List *list;
-    b32 is_closed;
-    Profile_ID id;
-    
-    Profile_Scope_Block(Thread_Context *tctx, Profile_Global_List *list,
-                        String name, String location);
-    Profile_Scope_Block(App *app, String name, String location);
-    ~Profile_Scope_Block();
-    void close_now();
-};
-
-#endif
-
 // BOTTOM
-

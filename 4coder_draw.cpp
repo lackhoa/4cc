@@ -344,7 +344,7 @@ draw_query_bar(App *app, Query_Bar *query_bar, Face_ID face_id, Rect_f32 bar){
 
 function void
 draw_line_number_margin(App *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Text_Layout_ID text_layout_id, Rect_f32 margin) {
- ProfileScope(app, "draw line number margin");
+ ProfileBlock( "draw line number margin");
  
  Scratch_Block scratch(app);
  FColor line_color = fcolor_id(defcolor_line_numbers_text);

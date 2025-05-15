@@ -9,7 +9,7 @@ F4_Brace_RenderHighlight(App *app, Buffer_ID buffer, Text_Layout_ID text_layout_
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_highlight")))
     {
-        ProfileScope(app, "[F4] Brace Highlight");
+        ProfileBlock(app, "[F4] Brace Highlight");
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
         if (token_array.tokens != 0)
         {
@@ -47,7 +47,7 @@ F4_Brace_RenderCloseBraceAnnotation(App *app, Buffer_ID buffer, Text_Layout_ID t
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_close_brace_annotation")))
     {
-        ProfileScope(app, "[F4] Brace Annotation");
+        ProfileBlock(app, "[F4] Brace Annotation");
         
         text_layout_get_visible_range(app, text_layout_id);
         Token_Array token_array = get_token_array_from_buffer(app, buffer);
@@ -194,7 +194,7 @@ F4_Brace_RenderLines(App *app, Buffer_ID buffer, View_ID view,
 {
     if(!def_get_config_b32(vars_intern_lit("f4_disable_brace_lines")))
     {
-        ProfileScope(app, "[F4] Brace Lines");
+        ProfileBlock(app, "[F4] Brace Lines");
         
         Face_ID face_id = get_face_id(app, buffer);
         Token_Array token_array = get_token_array_from_buffer(app, buffer);

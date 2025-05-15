@@ -170,7 +170,7 @@ Bone_Camera = 14,};
 
 struct Bone_ID{
 Bone_Type type;
-i1 id;
+i32 id;
 };
 ;
 

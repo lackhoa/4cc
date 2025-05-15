@@ -50,7 +50,7 @@ function b32
 lex_full_input_skm_breaks(Arena *arena, Token_List *list, void *state_ptr0, u64 max)
 {
  Lex_State_Skm *state_ptr = (Lex_State_Skm *)state_ptr0;
- b32 result = false;
+ b32 done = 0;
  u64 emit_counter = 0;
  Lex_State_Skm state = *state_ptr;
  
@@ -86,7 +86,7 @@ lex_full_input_skm_breaks(Arena *arena, Token_List *list, void *state_ptr0, u64 
   if(*state.ptr == 0)
   {
    emit_token(TokenBaseKind_EOF);
-   result = true;
+   done = true;
    break;
   }
   else
@@ -266,7 +266,7 @@ lex_full_input_skm_breaks(Arena *arena, Token_List *list, void *state_ptr0, u64 
  }//while
  
  *state_ptr = state;
- return(result);
+ return(done);
 }
 
 #undef WhiteSpaceCases

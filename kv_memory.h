@@ -94,7 +94,8 @@ struct Arena_Chunk_Bin{
 };
 global const u32 ARENA_CHUNK_BIN_COUNT = 20;
 //NOTE(kv) This is like a mini-arena.
-struct Arena_Chunk_Store{
+struct Arena_Chunk_Store
+{
  Arena_Chunk_Bin bins[ARENA_CHUNK_BIN_COUNT];
  u8 *base;
  usize pos;
@@ -103,7 +104,8 @@ struct Arena_Chunk_Store{
  
  Ticket_Mutex mutex;
 };
-struct Thread_Arena_Chunk_Store{
+struct Thread_Arena_Chunk_Store
+{
  Arena_Chunk_Bin bins[ARENA_CHUNK_BIN_COUNT];
  usize total_free;
  b32 registered;
@@ -113,7 +115,8 @@ global Arena_Chunk_Store global_arena_chunk_store;
 thread_local Thread_Arena_Chunk_Store thread_arena_chunk_store;
 
 function u32
-get_arena_chunk_bin_index_by_size(usize size){
+get_arena_chunk_bin_index_by_size(usize size)
+{
  u32 size_log = (u32)find_most_significant_set_bit(size);
  u32 bin_index = size_log - 12;
  kv_assert(bin_index < ARENA_CHUNK_BIN_COUNT);
@@ -531,9 +534,9 @@ struct Temp_Memory_Block
  }
 };
 
-//NOTE(kv) We use precompiled header,
-//  which would create another object file and will bark multiply defined symbol.
-//  I guess duplicating permanent arenas are cool,
-//  Since it's not the end of the world if we don't deduplicate them?
+// NOTE(kv) We use precompiled header,
+// which would create another object file and will bark multiply defined symbol.
+// I guess duplicating permanent arenas are cool,
+// Since it's not the end of the world if we don't deduplicate them?
 global thread_local Arena thread_permanent_arena;
 //-

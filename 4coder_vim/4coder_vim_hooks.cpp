@@ -39,7 +39,7 @@ vim_view_change_buffer(App *app, View_ID view_id, Buffer_ID old_buffer_id, Buffe
 function i32
 vim_begin_buffer(App *app, Buffer_ID buffer_id)
 {
-	ProfileScope(app, "vim begin buffer");
+	ProfileBlock( "vim begin buffer");
  
  Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
  Vim_Prev_Visual *prev_visual = scope_attachment(app, scope, vim_buffer_prev_visual, Vim_Prev_Visual);

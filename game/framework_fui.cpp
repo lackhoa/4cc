@@ -745,13 +745,19 @@ game_buffer_edit_range(Game_State *state,
  i64 edit_delta = range_size(new_range) - (old_max - old_min);
  kv_assert(new_range.min == old_min);
  FUI_File file = get_fui_file_by_buffer(app, buffer);
- fixup_markers(file, old_min, edit_delta);
+ if(file.is_driver and not driver_data.valid)
+ {
+  // NOTE(kv) can't do work in this state.
+ }
+ else
+ {
+  fixup_markers(file, old_min, edit_delta);
+ }
 }
 function void
 fui_draw_over_text_buffer(App *app, Buffer_ID buffer, Text_Layout_ID layout)
 {// @game_api
- auto get_character_underline_rect =
- [&](i64 pos) -> rect2
+ auto get_character_underline_rect = [&](i64 pos) -> rect2
  {
   v1 highlight_thick = 2.0f;
   rect2 rect = text_layout_character_on_screen(app, layout, pos);

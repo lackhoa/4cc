@@ -1,7 +1,7 @@
 #!/usr/bin/env python3 -u
 
-# IMPORTANT This is to build the metaprogram. The "real" build logic is in
-# "meta_build.cpp"
+# IMPORTANT This is to build the metaprogram.
+# The "real" build logic is in "meta_build.cpp"
 
 import os
 import pathlib
@@ -29,13 +29,12 @@ run_only = args.action == 'run'
 ################ NOTE: Configuration begin #########################
 ################ 
 
-notebook_mode     = 0
-
+hotload_notebook  = 0
 hotload_driver    = 0
-do_build_editor   = 1
+do_build_editor   = 0
 do_test_klang     = 0 # NOTE test.kc
 
-do_build_game     = 0
+do_build_game     = 1
 do_build_driver   = 1
 lexer_build_level = 1
 imgui_build_level = 1
@@ -54,7 +53,7 @@ OPTIMIZE_EDITOR = 0
 
 do_build_meta = 1
 
-if notebook_mode:
+if hotload_notebook:
     print("[notebook mode]")
     do_build_driver = 0
     do_build_meta = 0

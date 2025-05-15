@@ -4,6 +4,7 @@
 #if defined(STATIC_LINK_API)
 function void
 system_api_fill_vtable(API_VTable_system *vtable){
+vtable->system_running = system_running;
 vtable->system_error_box = system_error_box;
 vtable->system_get_path = system_get_path;
 vtable->system_get_canonical = system_get_canonical;
@@ -65,6 +66,7 @@ vtable->system_set_key_mode = system_set_key_mode;
 #if defined(DYNAMIC_LINK_API)
 function void
 system_api_read_vtable(API_VTable_system *vtable){
+system_running = vtable->system_running;
 system_error_box = vtable->system_error_box;
 system_get_path = vtable->system_get_path;
 system_get_canonical = vtable->system_get_canonical;

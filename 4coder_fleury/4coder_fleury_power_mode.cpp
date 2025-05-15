@@ -290,7 +290,7 @@ F4_PowerMode_Tick(App *app, Frame_Info frame_info)
 function void
 F4_PowerMode_RenderBuffer(App *app, View_ID view, Face_ID face, Frame_Info frame_info)
 {
-    ProfileScope(app, "[Fleury] Power Mode");
+    ProfileBlock(app, "[Fleury] Power Mode");
     
     Buffer_Scroll buffer_scroll = view_get_buffer_scroll(app, view);
     Face_Metrics metrics = get_face_metrics(app, face);

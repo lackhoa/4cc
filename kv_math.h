@@ -150,16 +150,6 @@ kv_atan2(v1 y, v1 x)
  return(result);
 }
 myinline v1
-absolute(v1 x)
-{
-#if COMPILER_MSVC
- v1 result = (v1)fabs(x);
-#else
- v1 result = (v1)__builtin_fabs(x);
-#endif
- return result;
-}
-myinline v1
 cycle01(v1 value)
 {// NOTE(kv) handles negatives too, useful for hsv hue!
  v1 result = value - floorv1(value);
@@ -686,8 +676,9 @@ contains(rect2 rect, v2 point)
 
 inline rect2 rect2_radius(v2 radius) { return {-radius, radius}; }
 
-inline v2 get_dim(rect2 rect) { return (rect.max - rect.min); }
-inline v2 get_radius(rect2 rect) { return 0.5f*(rect.max - rect.min); }
+function v2 get_dim(rect2 rect) { return (rect.max - rect.min); }
+function v2 get_radius(rect2 rect) { return 0.5f*(rect.max - rect.min); }
+function v2 get_center(rect2 rect) { return rect.min + get_radius(rect); }
 
 inline rect2
 rect2_center_radius(v2 center, v2 radius)

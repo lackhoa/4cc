@@ -786,7 +786,7 @@ F4_AdjustCursorAndMarkForIndentation(App *app, View_ID view, i64 original_cursor
 CUSTOM_COMMAND_SIG(f4_autocomplete_or_indent)
 CUSTOM_DOC("Tries to autocomplete the word currently being typed, and inserts indentation if such a word is not found.")
 {
-    ProfileScope(app, "[F4] Word Complete");
+    ProfileBlock(app, "[F4] Word Complete");
     
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
@@ -809,7 +809,7 @@ CUSTOM_DOC("Tries to autocomplete the word currently being typed, and inserts in
         
         if(first_completion || !initialized)
         {
-            ProfileScope(app, "[F4] Word Complete State Init");
+            ProfileBlock(app, "[F4] Word Complete State Init");
             initialized = false;
             i64 pos = view_get_cursor_pos(app, view);
             Range_i64 needle_range = get_word_complete_needle_range(app, buffer, pos);
@@ -824,7 +824,7 @@ CUSTOM_DOC("Tries to autocomplete the word currently being typed, and inserts in
         // NOTE(rjf): Word-Complete
         if(initialized)
         {
-            ProfileScope(app, "[F4] Word Complete Apply");
+            ProfileBlock(app, "[F4] Word Complete Apply");
             
             word_complete_iter_next(it);
             String str = word_complete_iter_read(it);

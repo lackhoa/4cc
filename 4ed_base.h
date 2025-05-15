@@ -2403,7 +2403,8 @@ enum{
 };
 
 //-
-struct Thread_Context{
+struct Thread_Context
+{
  Thread_Kind kind;
  
  Base_Allocator *prof_allocator;
@@ -2418,22 +2419,14 @@ struct Thread_Context{
 function void
 thread_context_init(Thread_Context *tctx, Thread_Kind kind,
                     Base_Allocator *allocator,
-                    Base_Allocator *prof_allocator){
- if(kind == ThreadKind_Main){
-  //-
- }
+                    Base_Allocator *prof_allocator)
+{
  block_zero_struct(tctx);
  tctx->kind       = kind;
  
  tctx->prof_allocator  = prof_allocator;
  tctx->prof_id_counter = 1;
  tctx->prof_arena      = make_arena(KB(16));
-}
-thread_local Thread_Context global_thread_context;
-
-function Thread_Context *
-get_thread_context(){
- return &global_thread_context;
 }
 
 typedef App Application_Links;  // NOTE: has to be here for the 4coder meta-generator.

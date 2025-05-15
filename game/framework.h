@@ -25,9 +25,9 @@ struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
  Arena permanent_arena;
- Arena data_load_arena;  // NOTE: cleared on data load
+ Arena data_load_arena;  // NOTE(kv) Cleared on data load
  Arena frame_arena;
- Arena model_frame_arena;
+ //Arena model_frame_arena;
  Arena driver_arena;
  
  b32 has_done_backup;

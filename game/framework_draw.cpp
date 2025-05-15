@@ -261,7 +261,8 @@ draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color)
     v3 sample = bezier_sample(P,t);
     v1 radius = bezier_sample(radii,t);
     v1 lightness_addition = bezier_sample(lightness_additions, t);
-    if(tweaks->ignore_lightness_additions){
+    if(tweaks->ignore_lightness_additions)
+    {
      lightness_addition = 0.f;
     }
     v4 color_v4 = argb_lightness(base_color_v4, 1.f+lightness_addition);
@@ -292,7 +293,7 @@ draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color)
     {//-Draw the circular endpoints
      if(radius > radius_threshold)
      {
-      draw_disk_camera_space(sample, radius, color, poly_flags);
+      fill_disk_camera_space(sample, radius, color, poly_flags);
      }
     }
     

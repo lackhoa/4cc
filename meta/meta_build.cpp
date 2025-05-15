@@ -224,25 +224,31 @@ build_parameters()
 }
 
 //~Work queue
-function b32
-maybe_do_work(Thread_Info info)
+function void
+do_works(Thread_Info info)
 {
- b32 did_work = false;
  Work_Queue *queue = info.work_queue;
- i32 work_index = queue->next_index_to_do;
- if(work_index < queue->push_index)
+ while(1)
  {
-  did_work = true;
-  i32 actual = atomic_compare_exchange_i32(&queue->next_index_to_do, work_index+1, work_index);
-  if(actual == work_index)
-  {//NOTE We've done all the work required to do the work!
-   Work_Queue_Entry *work = &queue->entries[work_index];
-   work->ok = work->func(info, work->arg);
-   
-   atomic_add_i32(&queue->completion_count, 1);
+  i32 work_index = queue->next_index_to_do;
+  if(work_index < queue->push_index)
+  {
+   // TODO(kv) Wow, the meaning of "did_work" is totally wrong.
+   // we didn't do the work, man!
+   i32 actual = atomic_compare_exchange_i32(&queue->next_index_to_do, work_index+1, work_index);
+   if(actual == work_index)
+   {//NOTE We've done all the work required to do the work!
+    Work_Queue_Entry *work = &queue->entries[work_index];
+    work->ok = work->func(info, work->arg);
+    
+    atomic_add_i32(&queue->completion_count, 1);
+   }
+  }
+  else
+  {// NOTE No more work to do.
+   break;
   }
  }
- return did_work;
 }
 function DWORD
 thread_loop(void *param)
@@ -250,12 +256,10 @@ thread_loop(void *param)
  Thread_Info info = *(Thread_Info *)param;
  Work_Queue *queue = info.work_queue;
  
- while(true)
+ while(1)
  {
-  b32 did_work = maybe_do_work(info);
-  if(not did_work){
-   WaitForSingleObject(queue->semaphore, INFINITE);
-  }
+  do_works(info);
+  WaitForSingleObject(queue->semaphore, INFINITE);
  }
  
  return 0;
@@ -368,6 +372,7 @@ build_framework(Thread_Info info, void *arg)
  
  b32 DEV_BUILD = true;
  add_define_symbol(params, "KV_INTERNAL", DEV_BUILD);
+ add_define_symbol(params, "DRIVER_ENABLED", s.build_driver);
  add_include(params, dirs.code);
  add_include(params, s.libs_dir);
  add_linker_arg(params, strlit("-DLL -export:game_api_export"));
@@ -495,7 +500,7 @@ build_main(i32 arg_count, String *args)
  
  b32 ok = true;
  s.libs_dir  = pjoin(tmp, dirs.code, strlit("libs"));
- s.imgui_dir = pjoin(tmp, s.libs_dir,  strlit("imgui"));
+ s.imgui_dir = pjoin(tmp, s.libs_dir, strlit("imgui"));
  
  String imgui_TUs[] = {
   strlit("imgui"),
@@ -586,11 +591,8 @@ build_main(i32 arg_count, String *args)
  
  while(queue.completion_count < queue.push_index)
  {//-spinlock-ish loop to do work and wait for other jobs
-  b32 did_work = maybe_do_work(thread_infos[0]);
-  if(not did_work)
-  {//NOTE(kv) Sleep for a bit before checking again
-   sleep_ms(20);
-  }
+  do_works(thread_infos[0]);
+  sleep_ms(20);
  }
  
  for_i32(work_index, 0, queue.push_index)

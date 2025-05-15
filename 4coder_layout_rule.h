@@ -12,9 +12,34 @@ struct Newline_Layout_Vars {
  b32 prev_did_emit_newline;
 };
 
+#define AST_DATA_FIELDS \
+i32 token_begin; \
+i32 token_end;   \
+
+struct AST_Data { AST_DATA_FIELDS };
+
+// NOTE(kv) Persistent structures
+struct AST_Node
+{
+ AST_Node *parent;
+ sarray(AST_Node) children;
+ 
+ union { AST_Data data; struct { AST_DATA_FIELDS }; };
+};
+struct Buffer_AST
+{
+ b32 up_to_date;
+ AST_Node root;
+ 
+ i32 node_count;
+ AST_Node *nodes;
+};
 struct Layout_State
 {
- b32 is_math_layout;
+ b32 is_skm;
+ Token_Array tokens;
+ Buffer_AST *ast;
+ 
  Arena *arena;
  Layout_Item_List list;
  Face_Advance_Map *advance_map;

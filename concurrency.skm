@@ -1,0 +1,358 @@
+//
+[Semaphore for work queue (in Handmade Hero)
+ [When you go to add something to a work queue,
+  you increment the semaphore, which will wake up some threads maybe]
+ [So when a thread doesn't see work to do, it waits for the semaphore,
+  and when it wakes up, it decrements the semaphore
+  [I assume the thread won't go to sleep in the first place,
+   if it sees that the semaphore is larger than zero]]
+ [So the semaphore keeps track of how much work has been "taken"]
+ ]
+
+[;starvation_freedom All waits to enter a critical section will succeed]
+
+[;deadlock_freedom At any time, if there is at least one process waiting,
+ at least one will succeed after that.
+ 
+ [NOTE A more janky version: at least one process will make progress at all time.
+  But wtf does "make progress" mean?
+  What if the process "makes progress" only because it is not using the resource,
+  while everyone else deadlocks?]
+ 
+ [todo Must it be one of the processes that are waiting?
+  [todo Better: there is no time {t} where after {t},
+   there is still at least one waiting process,
+   and nobody gets to enter the critical section again]]
+ ]
+
+[The mutual exclusion problem: Alice and Bob' pet
+ [NOTE This is Alice's and Bob's "main loop"
+  {
+   global b32 Alice_flag;
+   global b32 Bob_flag;
+   
+   function void
+   Alice_main()
+   {
+    while(1)
+    {
+     if(Alice_wants_to_go)
+     {
+      Alice_raise:
+      Alice_flag = 1;
+      
+      Alice_wait:
+      wait_until(Bob_flag == 0);
+      
+      Alice_go();
+      
+      Alice_flag = 0;
+     }
+    }
+   }
+   
+   function void
+   Bob_main()
+   {
+    while(1)
+    {
+     // NOTE At this point, Bob's flag is always lowered
+     if(Bob_wants_to_go)
+     {
+      Bob_raise:
+      Bob_flag = 1;
+      
+      Bob_check:
+      if(Alice_flag == 1)
+      {// NOTE Give priority for Alice
+       Bob_flag = 0;
+       
+       wait_until(Alice_flag == 0);
+      }
+      else
+      {// Note Go
+       Bob_go();
+       
+       Bob_flag = 0;
+      }
+     }
+    }
+   }
+  }
+  
+  [NOTE There could be an arbitrary finite delay between steps,
+   f.ex one of them is absent from home, or emergencies come up]
+  ]
+ 
+ [#done What if we just had one flag, controlled by Bob?
+  [Then Bob can't know when Alice acknowledges the state change of the flag,
+   what if she can't recall her pet in time before Bob's pet gets in?]]
+ 
+ [#done Why does it gotta be so complicated for Bob?
+  {// NOTE Bad version
+   function void
+   Bob_main_bad()
+   {
+    while(1)
+    {
+     if(Bob_wants_to_go)
+     {
+      Bob_flag = 1;
+      
+      while(Alice_flag != 0);
+      
+      Bob_go();
+      
+      Bob_flag = 0;
+     }
+    }
+   }
+  }
+  
+  [#a Because it dead locks:
+   [What if both people raises their flag,
+    and then wait for the other people to lower their flag]]]
+ 
+ [#done Mutual exclusion: both pets will never be in the yard together
+  [NOTE In this proof, when we refer to a label,
+   we mean the last time it happened before the moment of contention]
+  
+  [Suppose that both pets are in the yard together,
+   we will check the events leading to that]
+  
+  [We have {begin(Alice_wait) < end(Bob_raise)},
+   because if Alice began checking after Bob has already raised his flag,
+   she would see that Bob's flag is raised]
+  
+  [So we have the timeline
+   {
+    after(Alice_raise) <
+    begin(Alice_wait) <
+    end(Bob_raise) <
+    begin(Bob_check)
+   }
+   
+   [Bob checked after Alice had raised her flag,
+    there's no way he could have released his dog
+    -> a contradiction (#qed)]
+   ]
+  
+  ]
+ 
+ [#done @deadlock_freedom I have no idea how this is defined,
+  but we need to prove that at least Alice will never have to wait forever
+  
+  [We only need to prove that {Alice_wait} will complete]
+  
+  [We need to prove that when {Alice_flag == 1 and Bob_flag == 1},
+   eventually {Bob_flag == 0}
+   [That's easy to prove (#qed)]]
+  ]
+ 
+ [#wut I still don't understand how this is better than cellphones
+  [The waiting problem still exists, starvation still exists]]
+ ]
+
+[The producer-consumer problem
+ [Bob wants to feed the pets]
+ {
+  function void
+  Bob_bad_1()
+  {
+   add_food();
+  }
+ }
+ 
+ [Problem: what if the pets aren't hungry or haven't finished all the food!
+  You can't keep feeding them!
+  [Well we need communication from the pets]]
+ 
+ {
+  global b32 need_food;
+  
+  function void
+  bad_Bob_v2()
+  {
+   if(need_food)
+   {
+    add_food();
+   }
+  }
+ }
+ 
+ [More condition: Bob doesn't want to be in the yard with the pets,
+  they will bite him!
+  [NOTE This contrived example is probably meant to lock the queue
+   (just say that Bob and Alice are divorced,
+    so they don't wanna see each other's face)]
+  
+  {// NOTE v3
+   global b32 need_food;
+   global b32 pets_are_in_yard;
+   
+   function void
+   bad_Bob_loop()
+   {
+    if(need_food and not pets_are_in_yard)
+    {
+     add_food();
+    }
+   }
+  }
+  
+  [Oops! This doesn't work because {pets_are_in_yard} might fluctuate,
+   (which is not the case with {need_food})]
+  ]
+ 
+ { version_4:
+  global b32 resupplied;
+  
+  function void
+  Bob_loop()
+  {
+   Bob_check:
+   if(resupplied == 0)
+   {
+    add_food();
+    
+    Bob_resupplied:
+    resupplied = 1;
+   }
+  }
+  
+  function void
+  Alice_loop()
+  {
+   if(wants_to_go_to_the_yard)
+   {
+    Alice_wait:
+    wait_until(resupplied == 1);
+    
+    release_pet_in_yard();
+    
+    if(out_of_food)
+    {
+     demand_food:
+     resupplied = 0;
+    }
+   }
+  }
+ }
+ 
+ [#done Mutual exclusion
+  [Assume that both Alice and Bob are in the yard right now]
+  
+  [Bob is in the yard, so he saw {resupplied==0},
+   which means right now {resupplied==0}
+   (it couldn't have changed because Bob is still in the yard,
+    and he's the only one who can change it to 1)]
+  
+  [Same is true for Alice, right now {resupplied==1}
+   a contradiction -> #qed]
+  ]
+ 
+ [NOTE This is not a mutex, because Bob doesn't ever go into the yard if there's still food,
+  and Alice doesn't go into the yard if there's no food]
+ ]
+
+[#done How do you implement srw lock?
+ {
+  typedef i32 Lock_Status;
+  
+  enum
+  {
+   Lock_Exclusive = -1,
+   Lock_Unlocked  = 0,
+   Lock_Shared    = 1,
+  };
+  
+  struct Lock
+  {
+   // NOTE Status meaning
+   // -1        -> exclusive;
+   // 0         -> unlocked;
+   // 1 or more -> shared;
+   volatile Lock_Status status;
+   volatile i32 exclusive_wait_count;
+  };
+  
+  function void
+  crappy_sleep()
+  {// TODO If you miss the wake-up, you get knocked out for 1ms
+   sleep_group(threads_waiting_for_lock, timeout=1ms);
+  }
+  
+  function void
+  acquire_shared(Lock *lock)
+  {
+   while(1)
+   {
+    Lock_Status expected_status = lock->status;
+    if(expected_status == Lock_Exclusive or
+       lock->exclusive_wait_count > 0)
+    {
+     crappy_sleep();
+    }
+    else
+    {
+     Lock_Status actual_status = atomic_compare_exchange(&lock->status, expected=expected_status, to=expected_status+1);
+     if(expected_status == actual_status)
+     {// NOTE Succeed
+      break;
+     }
+    }
+   }
+  }
+  
+  function void
+  release_shared(Lock *lock)
+  {
+   atomic_add(&lock->status, -1);
+   wake_up(threads_waiting_for_lock);
+  }
+  
+  function void
+  acquire_exclusive(Lock *lock)
+  {
+   atomic_add(lock->exclusive_wait_count, 1);
+   
+   while(1)
+   {
+    if(lock->status != Lock_Unlocked)
+    {
+     crappy_sleep();
+    }
+    else
+    {
+     Lock_Status actual = atomic_compare_exchange(&lock->status, expected=Lock_Unlocked, to=Lock_Exclusive);
+     
+     if(actual == Lock_Unlocked)
+     {// NOTE succeed
+      atomic_add(lock->exclusive_wait_count, -1);
+      break;
+     }
+    }
+   }
+  }
+  
+  function void
+  release_exclusive(Lock *lock)
+  {
+   lock->status = Lock_Unlocked;
+   wake_up(threads_waiting_for_lock);
+  }
+  
+  xfunction int
+  main()
+  {
+   Lock lock = {};
+  }
+ }
+ 
+ [#done_maybe Deadlock freedom
+  [We will prove that there won't be a cyclic dependency]
+  [{acquire_shared}: the process doesn't lock anything while waiting, so it's good]
+  [{acquire_exclusive}: the process also blocks everyone waiting in {acquire_shared},
+   but those guys don't block anyone, so we're good #qed]]
+ ]
+//

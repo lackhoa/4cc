@@ -60,11 +60,9 @@ driver_update_tweaks()
   // NOTE(kv) This shouldn't be folded into "driver_update"
   // because it's stateless and we wanna call it first-thing in the frame!
   tweaks->focal_length = fv(6) * 0.25f;  // NOTE(kv) The realistic focal length is "0.6f"
-  // NOTE(kv) Old bright color hsv: V3(0.069f, 0.0648f, 0.5466f)
   tweaks->background_rgb = fv(0.12f) * V3(1,1,1);
-  
   tweaks->force_stamp_rendering = fv(0);
-  tweaks->ignore_lightness_additions = fv( 0);
+  tweaks->ignore_lightness_additions = fv(0);
   tweaks->stamp_density_mult   = v1(fv(1));
   tweaks->stamp_rotation_speed = v1(fv(12));
   tweaks->cull_curve = fbool(1);
@@ -1764,8 +1762,8 @@ render_head(Pose &pose)
   draw_line(brow_out, cheek_up);  //NOTE: Literally a straight line
  }
  
- //NOTE: brow_ridge is the neutral bone structure of the brow, as well as the eye socket
- //NOTE: I have few ideas what its shape should be, also very hard to draw right
+ // NOTE: brow_ridge is the neutral bone structure of the brow, as well as the eye socket
+ // NOTE: I have few ideas what its shape should be, also very hard to draw right
  brow_ridge = bez_unit2(nose_rootL,
                         V4(0.f, 0.3208f, 0.f, 0.6236f),
                         V3(0.f, 0.6019f, 0.7986f),

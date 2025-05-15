@@ -64,8 +64,13 @@
 #include "4coder_string_match.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_system_helpers.cpp"
+
+#undef _CRT_SECURE_NO_WARNINGS  // NOTE(kv) because spall will redefine it
+#include "spall.h"
+//
+#include "ad_profile.cpp"
+
 #include "4coder_profile.cpp"
-#include "4coder_profile_static_enable.cpp"
 #include "4coder_hash_functions.cpp"
 #include "4coder_log.cpp"
 #include "4coder_command_map.cpp"

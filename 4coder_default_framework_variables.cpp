@@ -5,6 +5,7 @@ the default 4coder behavior.
 
 // TOP
 
+// NOTE(kv) View @custom_ids
 global Managed_ID view_rewrite_loc; //attachment
 global Managed_ID view_next_rewrite_loc; //attachment
 global Managed_ID view_paste_index_loc; //attachment
@@ -24,6 +25,8 @@ global Managed_ID buffer_lex_task; //attachment
 
 global Managed_ID sticky_jump_positions_handle; //attachment
 global Managed_ID attachment_tokens; //attachment
+global Managed_ID buffer_attachment_arena;
+global Managed_ID buffer_attachment_ast;
 
 ////////////////////////////////
 

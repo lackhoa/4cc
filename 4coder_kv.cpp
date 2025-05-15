@@ -287,7 +287,7 @@ initialize_stylist_fonts(App *app)
 function void
 kv_startup(App_Cmd *app)
 {
- ProfileScope(app, "kv_startup");
+ ProfileBlock( "kv_startup");
  Scratch_Block temp(app);
  
  set_window_title(app, str8lit("4coder kv"));
@@ -439,11 +439,11 @@ kv_vim_bindings(App *app)
  BIND(N|V, vim_forward_end,         Key_Code_E);
  BIND(N|V, vim_forward_END,      (S|Key_Code_E));
  
-/* for(i32 code = cast(i32)Key_Code_0;
-     code <= cast(i32)Key_Code_9;
-     code++)
+ /* for(i32 code = cast(i32)Key_Code_0;
+ code <= cast(i32)Key_Code_9;
+ code++)
  {
-  BIND(N, command_game_set_preset, cast(Key_Code)code);
+ BIND(N, command_game_set_preset, cast(Key_Code)code);
  }*/
  
  BIND(N|V, vim_goto_line,                   (S|Key_Code_G));
@@ -556,6 +556,7 @@ kv_vim_bindings(App *app)
  //-NOTE(kv) KV miscellaneous binds
  BIND(N, kv_handle_return_normal_mode, Key_Code_Return);
  BIND(N, cmd_insert_ampersand,       Key_Code_S);
+ BIND(N, cmd_insert_caret,           Key_Code_6);
  BIND(N, cmd_handle_8_normal,        Key_Code_8);
  BIND(N, cmd_insert_parens,          Key_Code_9);
  BIND(N, kv_insert_at_sign,          Key_Code_2);

@@ -40,14 +40,26 @@ sarray(FUI_File_Data) game_files = {ArrayAndCount(fui_files_)};
 function sarray(FUI_File_Data)
 get_file_array(FUI_File file)
 {
- return (file.is_driver ?
-         driver_data.files : game_files);
+ sarray(FUI_File_Data) result = {};
+ 
+ if(file.is_driver)
+ {
+  if(driver_data.valid) { result = driver_data.files; }
+ }
+ else { result = game_files; }
+ 
+ return result;
 }
 function FUI_File_Data
 get_fui_file(FUI_File file)
 {
+ FUI_File_Data result = {};
  auto files = get_file_array(file);
- return files[file.index];
+ if(files.count > 0)
+ {
+  result = files[file.index];
+ }
+ return result;
 }
 function Range_i64
 resolve_location(FUI_File file, Range_i16 range)

@@ -6,7 +6,8 @@ global char *debug_window_name = "DebugInfo";
 function i32
 debug_get_thread_index()
 {
- if(debug_thread_index == -1){
+ if(debug_thread_index == -1)
+ {
   Debug_State *debug = &global_debug_state;
   debug_thread_index = atomic_add_u32(&debug->thread_count, 1);
   debug->chunk_stores[debug_thread_index] = &thread_arena_chunk_store;
@@ -14,8 +15,10 @@ debug_get_thread_index()
  return debug_thread_index;
 }
 function void
-wrap_u32_around_u32(u32 *input, u32 wrap_value){
- if(*input >= wrap_value){
+wrap_u32_around_u32(u32 *input, u32 wrap_value)
+{
+ if(*input >= wrap_value)
+ {
   *input -= wrap_value;
  }
 }
@@ -25,7 +28,8 @@ push_debug_event(Debug_Event *event)
  //  but it's too tedious and error prone.
  Debug_State *debug = &global_debug_state;
  u32 index = debug->event_index_to_write;
- while(true){
+ while(true)
+ {
   //TODO(kv) Only need an atomic add here, if we only store the modulo value.
   //  or we could do a double-buffer thing.
   u32 new_index_to_write = index + 1;
@@ -63,7 +67,8 @@ debug_get_arena_by_last_chunk(Debug_State *debug, void *chunk)
       test;
       test = test->next)
   {
-   if(test->last_chunk->real_chunk == chunk){
+   if(test->last_chunk->real_chunk == chunk)
+   {
     result = test;
     break;
    }
@@ -100,8 +105,8 @@ debug_register_arena_chunk(void *chunk_address, usize size, void *chunk_prev,
    shadow_arena = push_struct(&debug->arena, Debug_Arena);
   }
   *shadow_arena = {};
-  //NOTE(kv) You can give name to arena, but temporary arenas don't have names.
-  //  So we record the file+line, in case we somehow leak those temp arenas.
+  // NOTE(kv) You can give name to arena, but temporary arenas don't have names.
+  // So we record the file+line, in case we somehow leak those temp arenas.
   shadow_arena->file_line = file_line;
   {//-add to arena list
    shadow_arena->next = debug->first_arena;
@@ -113,7 +118,7 @@ debug_register_arena_chunk(void *chunk_address, usize size, void *chunk_prev,
 }
 function void
 debug_free_arena_chunk(void *chunk)
-{//NOTE(kv) Called before "chunk" is actually freed.
+{// NOTE(kv) Called before "chunk" is actually freed.
  Debug_State *debug = &global_debug_state;
  Debug_Arena *shadow_arena = debug_get_arena_by_last_chunk(debug, chunk);
  Debug_Arena_Chunk *shadow_chunk = shadow_arena->last_chunk;
@@ -121,15 +126,19 @@ debug_free_arena_chunk(void *chunk)
  if(shadow_arena->last_chunk == 0){
   //-Free the arena
   Debug_Arena *arena = shadow_arena;
-  if(debug->first_arena == arena){
+  if(debug->first_arena == arena)
+  {
    debug->first_arena = arena->next;
-  }else{
+  }
+  else
+  {
    for(Debug_Arena *scan = debug->first_arena;
        scan;
        scan = scan->next)
-   {//NOTE(kv) Arenas usually are created and destroyed like stacks,
-    //  so this scan might not be that bad.
-    if(scan->next == arena){
+   {// NOTE(kv) Arenas usually are created and destroyed like stacks,
+    // so this scan might not be that bad.
+    if(scan->next == arena)
+    {
      scan->next = arena->next;
      break;
     }

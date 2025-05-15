@@ -46,6 +46,8 @@
 #include "notebook_main.cpp"
 #include "game_config.gen.cpp"
 
+global const v1 vertex_indicator_radius = 3*millimeter;
+
 //#include "test_image.cpp"
 /*
 IMPORTANT Rule for the renderer
@@ -65,6 +67,8 @@ memory_functions_xlist(X);
 // NOTE(kv) temporary
 /*#define fv(value, ...) value
 #define fbool fv*/
+
+global v1 default_meter_to_pixel = 4050.6329f;
 
 function b32
 just_pressed(Game_Input *input, Key_Code keycode, Key_Mods modifiers=0)
@@ -462,25 +466,24 @@ setup_camera(Camera_Data const &data)
  return camera;
 }
 function mat4
-get_clip_from_world(Camera const &camera, v2 clip_radius, b32 orthographic)
+get_clip_from_camera(Camera const &camera, v2 clip_radius, b32 orthographic)
 {// NOTE(kv) We call this "clip space" by D3D terminology, opengl is probably the same
  // https://learn.microsoft.com/en-us/windows/win32/dxtecharts/the-direct3d-transformation-pipeline
- mat4 result;
- v1 focal = camera.focal_length;
- v1 n = camera.near_clip;
- v1 f = camera.far_clip;
  
- //NOTE: Compute the depth from z
- //NOTE: revserse z
- result = mat4{{
+ // NOTE(kv) Revserse z, to get the depth
+ mat4 result = mat4{{
    1,0, 0,0,
    0,1, 0,0,
    0,0,-1,0,
    0,0, 0,1,
-  }} * camera.cam_from_world;
+  }};
  
- v1 a = focal/clip_radius.x - 1.f;
- v1 b = focal/clip_radius.y - 1.f;
+ v1 focal = camera.focal_length;
+ v1 n = camera.near_clip;
+ v1 f = camera.far_clip;
+ 
+ v1 a = focal/clip_radius.x;
+ v1 b = focal/clip_radius.y;
  if (orthographic)
  {//-View all objects as if they're at the origin
   // NOTE(kv) We normalize the z dimension here, why?
@@ -505,12 +508,21 @@ get_clip_from_world(Camera const &camera, v2 clip_radius, b32 orthographic)
  }
  return result;
 }
+function mat4
+get_clip_from_world(Camera const &camera, v2 clip_radius, b32 orthographic)
+{
+ mat4 clip_from_cam = get_clip_from_camera(camera, clip_radius, orthographic);
+ mat4 result = clip_from_cam * camera.cam_from_world;
+ return result;
+}
 function void
 convert_primitives_to_camera_space(Camera &camera)
 {
- auto m = the_model;
- if(not m->converted_primitives_to_camera_space)
+ Model *m = the_model;
+ if(not m->primitives_are_in_camera_space)
  {
+  m->primitives_are_in_camera_space = 1;
+  
   Bone_ID cur_bone = {};
   mat4 camera_from_bone = {};
   mat4 camera_from_world = camera.cam_from_world;
@@ -525,13 +537,18 @@ convert_primitives_to_camera_space(Camera &camera)
    }
   };
   
-  m->converted_primitives_to_camera_space = true;
-  
-  for_i32(i, 0, m->vertices.count)
+  sarray(Vertex) vertex_array = m->vertices;
+  for_i32(ai, 0, 2)
   {
-   Vertex &vertex = m->vertices[i];
-   update_current_bone(vertex.bone_id);
-   mat4vert(camera_from_bone, &vertex.pos);
+   if(ai == 1) { vertex_array = m->persistent.vertices; }
+   
+   for_i32(vi, 0, vertex_array.count)
+   {
+    // bookmark: Updating the position is no good!
+    Vertex &vertex = vertex_array[vi];
+    update_current_bone(vertex.bone_id);
+    mat4vert(camera_from_bone, &vertex.pos);
+   }
   }
   
   for_i32(iprim, 0, m->primitives.count)
@@ -564,7 +581,7 @@ convert_primitives_to_camera_space(Camera &camera)
 }
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
-                   i32 viewport_id, Mouse_State mouse, rect2 clip_box)
+                   i32 viewport_id, Mouse_State mouse, v2 clip_radius)
 {
  Driver_API *driver = &state->driver_api;
  if(is_valid(driver))
@@ -577,18 +594,6 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   Scratch_Block tmp;
   Viewport *viewport = &state->viewports[viewport_id-1];
   
-  i32 scale_down_pow2 = (0); // ;scale_down_slider
-  v1 meter_to_pixel;
-  {
-   ClampBot(scale_down_pow2, 0);
-   v1 render_scale = 1.f;
-   for_i32 (it,0,scale_down_pow2) { render_scale *= 0.5f; }
-   v1 default_meter_to_pixel = 4050.6329f;
-   meter_to_pixel = default_meter_to_pixel * render_scale;
-  }
-  v1 pixel_to_meter = 1.f / meter_to_pixel;
-  viewport->clip_radius = pixel_to_meter*get_radius(clip_box);
-  
   Camera camera = setup_camera(viewport->camera);
   
   painter->looping_time = state->looping_time;
@@ -599,7 +604,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
    b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
    b32 orthographic = painter->show_grid and (camera_frontal or camera_profile);
-   painter->clip_from_world = get_clip_from_world(camera, viewport->clip_radius, orthographic);
+   painter->clip_from_world = get_clip_from_world(camera, clip_radius, orthographic);
   }
   painter->target       = target;
   painter->camera       = camera;
@@ -616,8 +621,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   Render_Config *config = draw_new_group(target);
   {
    set_y_up(target, config);
-   config->scale_down_pow2 = scale_down_pow2;
-   config->meter_to_pixel  = meter_to_pixel;
+   config->meter_to_pixel  = default_meter_to_pixel;
    config->viewport_id     = viewport->index+1;
    config->clip_from_world = painter->clip_from_world;
    config->world_from_cam  = camera.world_from_camera;
@@ -633,54 +637,64 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   }
   
   if(viewport_id == 1)
-  {//-Highlighted vertices
+  {// NOTE Highlighted vertices
    convert_primitives_to_camera_space(camera);
    v3 cursor_camera = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
    Bone *camera_bone = make_bone(mk_bone_id(Bone_Camera), camera.world_from_camera);
    BoneBlock(camera_bone->id);
-   for_i32(vi, 0, the_model->vertices.count)
-   {// NOTE(kv) Having to loop through vertices here because
-    // there are vertices that weren't submitted while rendering.
-    Vertex &vertex = the_model->vertices[vi];
-    Vertex_Info &info = driver_data.vertices_info[vertex.info_index];
-    argb color = linear_argb_yellow;
-    v3 pos = vertex.pos;
-    {//TODO(kv) I'm NOT happy with overlays, I'd rather just have depth offset.
-     b32 draw_all_near_cursor = false;
-     b32 cursor_near = false;
-     if(draw_all_near_cursor)
-     {
-      v1 cursor_dist = length_squared(pos - cursor_camera);
-      cursor_near = cursor_dist < squared(3*centimeter);
-     }
-     
-     set_draw_location(info.location);
-     b32 is_hot = current_location_is_hot();
-     
-     b32 should_draw = (is_hot or
-                        painter->viz_level >= info.indicator_level or
-                        cursor_near);
-     if(should_draw)
-     {//NOTE Draw
-      Paint_Params &cparams = painter->params;
-      v1 depth_offset = cparams.line_depth_offset - 1*centimeter;
-      Poly_Flags flags = {};
-      // NOTE: If lines are overlayed, so are indicators
-      if(info.overlay or is_hot)
+   
+   sarray(Vertex) vertex_array = the_model->vertices;
+   for_i32(array_index, 0, 2)
+   {
+    if(array_index == 1)
+    {
+     vertex_array = the_model->persistent.vertices;
+    }
+    
+    for_i32(vi, 0, vertex_array.count)
+    {// NOTE(kv) Having to loop through vertices here because
+     // there are vertices that weren't submitted while rendering.
+     Vertex &vertex = vertex_array[vi];
+     Vertex_Info info = get_vertex_info(vertex);
+     argb color = linear_argb_yellow;
+     v3 pos = vertex.pos;
+     {// TODO(kv) I'm NOT happy with overlays, I'd rather just have depth offset.
+      b32 draw_all_near_cursor = false;
+      b32 cursor_near = false;
+      if(draw_all_near_cursor)
       {
-       flags.v |= Poly_Overlay;
+       v1 cursor_dist = length_squared(pos - cursor_camera);
+       cursor_near = cursor_dist < squared(3*centimeter);
       }
       
-      if(is_hot)
-      {
-       color = (color == hot_color) ? hot_color2 : hot_color;
+      set_draw_location(info.location);
+      b32 is_hot = current_location_is_hot();
+      
+      b32 should_draw = (is_hot or
+                         painter->viz_level >= info.indicator_level or
+                         cursor_near);
+      if(should_draw)
+      {// NOTE Draw
+       Paint_Params &cparams = painter->params;
+       v1 depth_offset = cparams.line_depth_offset - 1*centimeter;
+       Poly_Flags flags = {};
+       // NOTE: If lines are overlayed, so are indicators
+       if(info.overlay or is_hot)
+       {
+        flags.v |= Poly_Overlay;
+       }
+       
+       if(is_hot)
+       {
+        color = (color == hot_color) ? hot_color2 : hot_color;
+       }
+       fill_disk_camera_space(pos, vertex_indicator_radius,
+                              color, flags);
       }
-      const v1 radius = 3*millimeter;
-      draw_disk_camera_space(pos, radius, color, flags);
+      clear_draw_location();
      }
-     clear_draw_location();
-    }
-   }
+    }// vertex loop
+   }// array loop
   }
   
   i32 active_viewport_id = get_active_game_viewport_id(app);
@@ -740,20 +754,22 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
    game_load(state, app, state->autosave_path);
   }
  }
+ 
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {// ;frame_arena_init
   Viewport *viewport = &state->viewports[viewport_index];
   viewport->render_arena = make_arena();
   viewport->index = viewport_index;
-  viewport->previous_phi_snap = -1.f;
-  viewport->current_phi_snap = -1.f;
  }
- {//-NOTE: Dear Imgui init
-  state->imgui_state = imgui_state;
- }
- {//-IMPORTANT: Reload is a part of init
-  game_reload(state, ed_api, ed_api_new, true);
- }
+ 
+ //-NOTE: Dear Imgui init
+ state->imgui_state = imgui_state;
+ 
+ // NOTE(kv) IMPORTANT: Reload is a part of init
+ game_reload(state, ed_api, ed_api_new, true);
+ 
+ init_dynamic(the_model->persistent.vertices, &state->permanent_arena, 128);
+ 
  return state;
 }
 
@@ -768,7 +784,7 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
 {
  the_model = &state->model;
  import_api_from_editor(ed_api, ed_api_new);
- state->sending_data = true;
+ state->sending_data = 1;
  
  if(not first_time)
  {
@@ -996,11 +1012,17 @@ g_jump_to_pos(App *app, i64 pos)
  view_set_buffer_named(app, view, DRIVER_FILE_NAME);
  view_set_cursor(app, view, seek_pos(pos));
 }
+
 function void
 snap_camera(Camera_Data *cam, Viewport *viewport)
 {
- v1 previous_phi_snap = viewport->previous_phi_snap;
- v1 current_phi_snap  = viewport->current_phi_snap;
+ v1 &prev    = viewport->previous_phi_snap;
+ v1 &current = viewport->current_phi_snap;
+ 
+ if(prev == 0.f and current == 0.f)
+ {// NOTE(kv) Initialize state
+  prev = 0.25f;
+ }
  
  v1 phi4 = roundv1(cam->phi * 4.f);
  // NOTE Initial snapping effort, would be so simple if it was this easy!
@@ -1009,24 +1031,21 @@ snap_camera(Camera_Data *cam, Viewport *viewport)
  if(cam->phi == new_phi)
  {// NOTE We're already at a snap point
   // NOTE -1.f is the sentinel written in @game_init
-  b32 previous_phi_snap_valid = previous_phi_snap != -1.f;
-  if(previous_phi_snap_valid)
-  {
-   new_phi = viewport->previous_phi_snap;
-  }
+  new_phi = prev;
  } 
- else if(new_phi == current_phi_snap)
+ else if(new_phi == current)
  {// NOTE Snapping to the current snap -> find another snap point,
   // in the direction of the user movement.
   v1 dir = signof(cam->phi - new_phi);
   new_phi = cycle01(new_phi + 0.25f * dir);
  }
  
- viewport->previous_phi_snap = viewport->current_phi_snap;
- viewport->current_phi_snap = new_phi;
+ prev = current;
+ current = new_phi;
  cam->phi = new_phi;
  cam->theta = 0;
 }
+
 function void
 do_work_after_loading_driver(Game_State *state, Driver_API *driver)
 {
@@ -1187,12 +1206,62 @@ struct Plane
  v3 n;
  v1 d;
 };
-function v3
-ray_plane_intersection(Plane plane, v3 ray_dir)
+
+function v1
+hit_test_ray_triangle(v3 ray_P, v3 ray_dir,
+                      v3 O, v3 A, v3 B)
 {
- v3 intersection;
- return intersection;
+ v1 result = INFINITY;
+ 
+ A -= O;
+ B -= O;
+ 
+ v3 h = cross(ray_dir, B);
+ v1 det = dot(A, h);
+ 
+ if(absolute(det) < 1e-5f)
+ {// NOTE(kv) This happens when "h" is perpendicular to "A",
+  // which happens when "ray_dir" is perpendicular to the
+  // normal of the plane containing the triangle "(O,A,B)".
+ }
+ else
+ {
+  ray_P -= O;
+  v1 det_inv = 1.f / det;
+  v1 u = det_inv * dot(ray_P, h);
+  
+  if(u < 0.f or u > 1.f)
+  {
+   // NOTE Outside
+  }
+  else
+  {
+   v3 q = cross(ray_P,A);
+   v1 v = det_inv * dot(ray_dir, q);
+   
+   if (v < 0.0 or u + v > 1.0)
+   {
+    // NOTE outside
+   }
+   else
+   {// NOTE At this stage we can compute "t" to find out where
+    // the intersection point is on the line.
+    v1 t = det_inv * dot(B,q);
+    
+    if(t > 1e-5f)  // ray intersection
+    {
+     result = t;
+    }
+    else
+    {// NOTE This means that there is a line intersection
+     // but not a ray intersection
+    }
+   }
+  }
+ }
+ return result;
 }
+
 function v1
 get_distance_squared_point_to_triangle(v3 test_point, Poly3 poly3)
 {
@@ -1224,134 +1293,211 @@ get_distance_squared_point_to_triangle(v3 test_point, Poly3 poly3)
  }
  return dsq;
 }
-function Location
-find_primitive_closest_to_keyboard_cursor(Game_State *state)
+
+
+function sarray(Poly3)
+poly4_to_poly3(Arena *arena, v3 p[4])
 {
- Camera camera = setup_camera(state->viewports[0].camera);
- convert_primitives_to_camera_space(camera);
- b32 fill_only = false;
- if(state->viewports[0].preset == 1)
- {
-  fill_only = true;
+ sarray(Poly3) result;
+ init_static(result, arena, 2);
+ result[0] = Poly3{p[0], p[1], p[2]};
+ result[1] = Poly3{p[0], p[2], p[3]};
+ return result;
+}
+
+function sarray(Poly3)
+get_hit_triangles_from_vertex(Arena *arena, v3 pos)
+{// NOTE(kv) Just place a square around the vertex,
+ // #Hack we're working in camera space for now, so it's easier.
+ const v1 radius = vertex_indicator_radius;
+ v2 radius_v2 = V2(radius, radius);
+ v2 min = pos.xy - radius_v2;
+ v2 max = pos.xy + radius_v2;
+ 
+ v2 pv2[4];
+ pv2[0] = V2(min.x, min.y);
+ pv2[1] = V2(max.x, min.y);
+ pv2[2] = V2(max.x, max.y);
+ pv2[3] = V2(min.x, max.y);
+ 
+ v3 pv3[4];
+ for_i32(i, 0, 4)
+ {// NOTE Copy the z of the vertex
+  pv3[i] = V3(pv2[i], pos.z);
  }
  
- i32 const hit_test_bezier_poly_nslice = 8;
+ sarray(Poly3) result = poly4_to_poly3(arena, pv3);
+ 
+ return result;
+}
+
+function Location
+get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
+                           i2 params_mouse_p)
+{
  Location hot_location = {};
  
- v3 curpos = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
- v1 min_lensq = max_f32;
- 
- if(not fill_only)
+ if(mouse_viewport)
  {
-  Vertices vertices = the_model->vertices;
-  for_i32(vi, 0, vertices.count)
-  {//-Closest vertices
-   Vertex &vertex = vertices.items[vi];
-   v1 l = length_squared(curpos - vertex.pos);
-   if(l < min_lensq)
+  v2 center = get_center(mouse_viewport->clip_box);
+  v2 mouse_px = V2(params_mouse_p) - center;
+  v2 mouse_meter_ = mouse_px / default_meter_to_pixel;
+  v1 mouse_z = -tweaks->focal_length;  // TODO #Hack
+  v3 mouse_cam = V3(mouse_meter_, mouse_z);
+  mouse_cam.y *= -1.f;
+  
+  // TODO(kv) There are multiple cameras, so this is a no-win, huh?
+  Camera camera = setup_camera(state->viewports[0].camera);
+  convert_primitives_to_camera_space(camera);
+  b32 fill_only = 0;
+  if(state->viewports[0].preset == 1)
+  {
+   fill_only = 1;
+  }
+  
+  v1 min_t = INFINITY;
+  
+  // NOTE(kv) in camera space
+  v3 ray_P = V3();
+  v3 ray_dir = noz(mouse_cam);
+  
+  if(not fill_only)
+  {// NOTE(kv) Vertices
+   Scratch_Block tmp;
+   Vertices vertices = the_model->vertices;
+   for_i32(vi, 0, vertices.count)
    {
-    min_lensq = l;
-    Vertex_Info &info = driver_data.vertices_info[vertex.info_index];
-    hot_location = info.location;
+    arena_clear(tmp);
+    
+    Vertex &vertex = vertices.items[vi];
+    sarray(Poly3) triangles = get_hit_triangles_from_vertex(tmp, vertex.pos);
+    
+    for_i32(ti, 0, triangles.count)
+    {// NOTE(kv) Hit test
+     Poly3 triangle = triangles[ti];
+     v1 hit_t = hit_test_ray_triangle(ray_P, ray_dir, expand3(triangle));
+     if(hit_t < min_t)
+     {
+      // TODO(kv) ...
+      Vertex_Info info = get_vertex_info(vertex);
+      hot_location = info.location;
+      min_t = hit_t;
+     }
+    }
    }
   }
+  
+  Scratch_Block tmp;
+  for_i32(pi, 0, the_model->primitives.count)
+  {// NOTE(kv) Closest primitive
+   arena_clear(tmp);
+   Recorded_Primitive &primitive = the_model->primitives[pi];
+   darray(Poly3) triangles;
+   init_dynamic(triangles, tmp);
+   
+   switch(primitive.type)
+   {
+    case Primitive_Type_Curve:
+    {
+     if(not fill_only)
+     {
+      tvert *curve = primitive.curve;
+      const i32 test_segment_count = 8;
+      // NOTE(kv) We know the triangle count,
+      // But just in case we mess up the code...
+      set_cap_min(&triangles, 2*test_segment_count);
+      
+      v1 test_t_interval = 1.0f / v1(test_segment_count);
+      v3 A = curve[0];
+      
+      for_i32(si, 0, test_segment_count)
+      {
+       v1 B_t = test_t_interval * v1(si+1);
+       v3 B = bezier_sample(curve, B_t);
+       
+       // NOTE(kv) We just assume that these two points are on the same plane.
+       v2 u = B.xy - A.xy;
+       v2 v_ = vertex_indicator_radius * noz(perp(u));
+       v3 v = V3(v_);
+       
+       v3 R[4];
+       R[0] = A - v;
+       R[1] = B - v;
+       R[2] = B + v;
+       R[3] = A + v;
+       
+       sarray(Poly3) segment_triangles = poly4_to_poly3(tmp, R);
+       for_i32(i, 0, 2)
+       {
+        push(&triangles, segment_triangles[i]);
+       }
+       
+       A = B;
+      }
+     }
+    }break;
+    
+    case Primitive_Type_Poly3:
+    {//-Projection onto the curve
+     push(&triangles, primitive.poly3);
+    }break;
+    
+    case Primitive_Type_Dual_Bezier:
+    {
+     i32 const nslices = 8;
+     set_cap_min(&triangles, nslices*2);
+     
+     Bezier P = primitive.dual_bezier->P;
+     Bezier Q = primitive.dual_bezier->Q;
+     v1 inv_nslices = 1.f / (v1)nslices;
+     v3 A0 = P[0];
+     v3 B0 = Q[0];
+     for_i32(sample_index, 0, nslices)
+     {
+      v1 u = inv_nslices * (v1)(sample_index+1);
+      v3 A = bezier_sample(P,u);
+      v3 B = bezier_sample(Q,u);
+      
+      push(&triangles, {A0, A, B0});
+      push(&triangles, {A, B, B0});
+      
+      A0 = A;
+      B0 = B;
+     }
+    }break;
+   }
+   
+   for_i32(ti, 0, triangles.count)
+   {// NOTE Hit test #copypasta
+    Poly3 triangle = triangles[ti];
+    v1 hit_t = hit_test_ray_triangle(ray_P, ray_dir, expand3(triangle));
+    if(hit_t < min_t)
+    {
+     hot_location = primitive.location;
+     min_t = hit_t;
+    }
+   }
+  }// NOTE Loop over primitives
  }
  
- for_i32(ci,0,the_model->primitives.count)
- {//-Closest primitive
-  Recorded_Primitive primitive = the_model->primitives[ci];
-  v1 dsq_to_prim = max_f32;
-  v3 projection = {};
-  switch(primitive.type)
-  {
-   case Primitive_Type_Curve:
-   {
-    if(not fill_only)
-    {
-     tvert *computed = primitive.curve;
-     v1 sd_squared;
-     {//-Convex box culling
-      v3 min_corner = V3(max_f32);
-      v3 max_corner = V3(min_f32);
-      for_i32(i,0,4)
-      {
-       min_corner = min(min_corner, computed[i]);
-       max_corner = max(max_corner, computed[i]);
-      }
-      v3 center = lerp(min_corner, 0.5f, max_corner);
-      v3 p = curpos-center;
-      v3 r = 0.5f*(max_corner-min_corner);
-      v3 q = absolute(p)-r;
-      sd_squared = length_squared(max(q,0.f));  // NOTE zero for anything inside, which is what we want
-     }
-     
-     if(sd_squared < min_lensq)
-     {
-      v1 l = max_f32;
-      const i32 test_segment_count = 8;
-      for_i1(iseg,1,test_segment_count)
-      {
-       //NOTE(kv) Don't need to test the endpoints, those are vertices.
-       v1 t = v1(iseg) / v1(test_segment_count);
-       v3 sample = bezier_sample(computed,t);
-       l = min(l,length_squared(curpos-sample));
-      }
-      dsq_to_prim = l;
-     }
-    }
-   }break;
-   
-   case Primitive_Type_Poly3:
-   {//-Projection onto the curve
-    Poly3 points = primitive.poly3;
-    dsq_to_prim = get_distance_squared_point_to_triangle(curpos, points);
-   }break;
-   
-   case Primitive_Type_Dual_Bezier:
-   {
-    Bezier P = primitive.dual_bezier->P;
-    Bezier Q = primitive.dual_bezier->Q;
-    i32 nslices = hit_test_bezier_poly_nslice;
-    v1 inv_nslices = 1.f / (v1)nslices;
-    v3 A0;
-    v3 B0;
-    for_i32(sample_index, 0, nslices+1)
-    {
-     v1 u = inv_nslices * (v1)sample_index;
-     v3 A = bezier_sample(P,u);
-     v3 B = bezier_sample(Q,u);
-     if(sample_index != 0)
-     {
-      v1 dsq1 = get_distance_squared_point_to_triangle(curpos, {A0, A, B0});
-      v1 dsq2 = get_distance_squared_point_to_triangle(curpos, {A, B, B0});
-      ClampTop(dsq_to_prim, dsq1);
-      ClampTop(dsq_to_prim, dsq2);
-     }
-     A0 = A;
-     B0 = B;
-    }
-   }break;
-  }
-  
-  v1 bias = 0.f;
-  switch(primitive.type)
-  {
-   case Primitive_Type_Curve: { bias = 0.f; } break;
-   default: { bias = 1.f*centimeter; }break;
-  }
-  // TODO(kv) I wanna just bias the distance, but only have the squared...
-  // NOTE(kv) Overflow doesn't happen small values (tested).
-  dsq_to_prim += squared(bias);
-  
-  if(dsq_to_prim < min_lensq)
-  {
-   min_lensq = dsq_to_prim;
-   hot_location = primitive.location;
-  }
- }
- DEBUG_VALUE(square_root(min_lensq));
  return hot_location;
 }
+
+
+function Live_Viewport *
+get_live_viewport_by_id(sarray(Live_Viewport) viewports, Viewport_ID id)
+{
+ Live_Viewport *result = 0;
+ for_i32(index, 0, viewports.count)
+ {
+  if(viewports[index].id == id)
+  {
+   return &viewports[index];
+  }
+ }
+ return 0;
+}
+
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
@@ -1403,13 +1549,13 @@ game_update(Game_Update_Params params)
  }
  
  Driver_API *driver = &state->driver_api;
- if(driver_enabled)
+ if(DRIVER_ENABLED)
  {
   b32 loaded;
   load_latest_driver_code(state, app, driver, &loaded);
  }
- b32 driver_on = driver_enabled and is_valid(driver);
- //if(driver_on)
+ b32 driver_on = DRIVER_ENABLED and is_valid(driver);
+ 
  {
   if(driver_on)
   {
@@ -1428,8 +1574,8 @@ game_update(Game_Update_Params params)
   
   b32 cursor_on = state->kb_cursor.on;
   i32 active_viewport_id = get_active_game_viewport_id(app);
-  b32 in_viewport = driver_on and active_viewport_id != 0;
-  if(in_viewport or fui_is_active())
+  b32 viewport_focused = driver_on and active_viewport_id != 0;
+  if(viewport_focused or fui_is_active())
   {
    should_animate_next_frame = true;
   }
@@ -1472,9 +1618,80 @@ game_update(Game_Update_Params params)
   }
   
   Location hot_location = {};
-  if(cursor_on and in_viewport)
-  {
-   hot_location = find_primitive_closest_to_keyboard_cursor(state);
+  if(0)
+  {// NOTE(kv) Mouse cursor disabled
+   if(cursor_on and viewport_focused)
+   {
+    // hot_location = find_primitive_closest_to_keyboard_cursor(state);
+   }
+  }
+  
+  Live_Viewport *mouse_viewport = 0;
+  {// NOTE Get mouse viewport
+   v2 mouse_px = V2(params.mouse.p);
+   sarray(Live_Viewport) viewports = params.live_viewports;
+   for_i32(index, 0, viewports.count)
+   {
+    Live_Viewport *viewport = &viewports[index];
+    rect2 box = viewport->clip_box;
+    if(contains(box, mouse_px))
+    {
+     mouse_viewport = viewport;
+     break;
+    }
+   }
+  }
+  
+  hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
+  
+  if(params.mouse.press_left)
+  {// NOTE(kv) Jump to code location
+   if(is_valid(hot_location))
+   {
+    g_jump_to_pos(app, resolve_location(hot_location).min);
+   }
+  }
+  
+  {// NOTE(kv) Right-click menu
+   if(params.mouse.press_right)
+   {
+    ImGui::OpenPopup("right_click_popup");
+   }
+   
+   if(ImGui::BeginPopup("right_click_popup"))
+   {
+    // NOTE(kv) Drawing the menu
+    i32 selected = 0;
+    const char *menu_items[] = { "NONE", "Add Vertex" };
+    for_i32(i, 1, alen(menu_items))
+    {
+     if(ImGui::Selectable(menu_items[i]))
+     {
+      selected = i;
+      break;
+     }
+    }
+    
+    // NOTE(kv) Handling selected items
+    const i32 add_vertex_index = 1; // TODO #Hack
+    switch(selected)
+    {
+     case add_vertex_index:
+     {
+      if(selected == add_vertex_index)
+      {
+       // bookmark Draw this vertex
+       Vertex vertex = {};
+       vertex.ninfo_index = -1;
+       vertex.bone_id = mk_bone_id(Bone_None);
+       vertex.pos = {};  // TODO(kv) Where should it be?
+       push(&the_model->persistent.vertices, vertex);
+      }
+     }break;
+    }
+    
+    ImGui::EndPopup();
+   }
   }
   
   {//-Work based on editor cursor position
@@ -1597,7 +1814,7 @@ game_update(Game_Update_Params params)
    }
   }
   
-  if(key_strokes.count and in_viewport)
+  if(key_strokes.count and viewport_focused)
   {
    seconds_since_last_keystroke_2 = 0;
   }
@@ -1612,7 +1829,7 @@ game_update(Game_Update_Params params)
    const u32 S = Key_Mod_Sft;
    const u32 C = Key_Mod_Ctl;
    const u32 M = Key_Mod_Alt;
-   if(in_viewport)
+   if(viewport_focused)
    {
     if(mods==Key_Mod_Ctl and is_v3_key(keycode))
     {
@@ -1647,7 +1864,8 @@ game_update(Game_Update_Params params)
       case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
       
       case C|Key_Code_Return:{ game_save(state, app, false); }break;
-      case Key_Code_A:{
+      case Key_Code_A:
+      {
        snap_camera(cam_data, update_viewport);
       }break;
       case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
@@ -1672,9 +1890,12 @@ game_update(Game_Update_Params params)
       
       case Key_Code_Return:
       {
-       if(is_valid(hot_location))
-       {
-        g_jump_to_pos(app, resolve_location(hot_location).min);
+       if(0)
+       {// NOTE(kv) OLD mouse cursor code
+        if(is_valid(hot_location))
+        {
+         g_jump_to_pos(app, resolve_location(hot_location).min);
+        }
        }
       }break;
       
@@ -1859,26 +2080,18 @@ game_update(Game_Update_Params params)
    block_copy(data.data, &value, data.size);
   }
   
-  if(params.mouse.press_l)
-  {// TODO(kv) Left click handling needs raycast logic
-  }
-  
+  if(mouse_viewport)
   {
    i32 wheel = signof(params.mouse.wheel);  // NOTE(kv) We have WEIRD +/-100 mouse wheel values!
    if(wheel)
    {
-    i32 viewport_id = mouse_viewport_id(app);
-    if(viewport_id)
-    {
-     i32 viewport_index = viewport_id-1;
-     Viewport &viewport = state->viewports[viewport_index];
-     v1 &distance = viewport.target_camera.distance;
-     distance = update_camera_distance(distance, wheel);
-    }
+    Viewport &viewport = state->viewports[mouse_viewport->id-1];
+    v1 &distance = viewport.target_camera.distance;
+    distance = update_camera_distance(distance, wheel);
    }
   }
   
-  if(in_viewport and cursor_on)
+  if(viewport_focused and cursor_on)
   {//-NOTE(kv) update cursor
    Camera &cam = update_target_camera;
    Camera_Data *cam_data = update_target_camera_data;
@@ -1913,7 +2126,14 @@ game_update(Game_Update_Params params)
    {//NOTE(kv) Clamping screen and cursor position (Pretty Involved)
     //TODO(kv) #bug We assume orthographic mode
     v3 cursor_cam = mat4vert(cam.cam_from_world, cursor.pos);
-    v2 radius_on_cam = 0.875f * update_viewport->clip_radius;
+    
+    Live_Viewport *update_viewport2 = &params.live_viewports[update_viewport_index];
+    
+    v1 meter_to_pixel = default_meter_to_pixel;
+    v1 pixel_to_meter = 1.f / meter_to_pixel;
+    v2 clip_radius = pixel_to_meter*get_radius(update_viewport2->clip_box);
+    
+    v2 radius_on_cam = 0.875f * clip_radius;
     v1 zoom_ratio = absolute(cursor_cam.z / cam.focal_length);
     v2 radius_at_cursor_z = zoom_ratio*radius_on_cam;
     
@@ -1961,7 +2181,7 @@ game_update(Game_Update_Params params)
   {
    DEBUG_NAME("work cycles", params.frame.work_cycles);
    DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
-   DEBUG_NAME("work ms", params.frame.work_seconds * 1e3f);
+   DEBUG_NAME("work us", params.frame.work_useconds);
   }
   
   //show_image_preview(strlit("G:/My Drive/Art/arm medial.jpg"));
@@ -2002,14 +2222,15 @@ game_update(Game_Update_Params params)
  
  if(driver_on)
  {
-  {//-driver update
-   {//;clear_model
-    auto m = the_model;
-    i32 vertex_cap = maximum(256, m->vertices.count);
-    i32 entity_cap = maximum(256, m->primitives.count);
+  {// NOTE(kv) Driver update
+   {// ;clear_model
+    Model *m = the_model;
     
+    Model_Persistent persistent = m->persistent;
     zero_struct(m);
-    Arena *frame_arena = &state->model_frame_arena;
+    m->persistent = persistent;
+    
+    Arena *frame_arena = &state->frame_arena;
     arena_clear(frame_arena);
     //-
     m->frame_arena = frame_arena;
@@ -2020,6 +2241,8 @@ game_update(Game_Update_Params params)
     init_dynamic(m->bone_stack, frame_arena, 16);
     push(&m->bone_stack, m->bones.items+0);
     
+    i32 vertex_cap = maximum(256, m->vertices.count);
+    i32 entity_cap = maximum(256, m->primitives.count);
     init_dynamic(m->vertices, frame_arena, vertex_cap);
     init_dynamic(m->primitives, frame_arena, entity_cap);
    }
@@ -2033,7 +2256,7 @@ game_update(Game_Update_Params params)
   {//-Rendering
    Live_Viewport live_viewport = params.live_viewports[index];
    {//-Animate viewport
-    i32 viewport_index = get_viewport_index(live_viewport.viewport);
+    i32 viewport_index = get_viewport_index(live_viewport.id);
     Viewport *viewport = &state->viewports[viewport_index];
     {// NOTE Camera animation
      Camera_Data *target  = &viewport->target_camera;
@@ -2048,7 +2271,13 @@ game_update(Game_Update_Params params)
     
     Render_Config *old_config = target_last_config(live_viewport.target);
     draw_set_clip(app, clip_box);
-    call_driver_render(state, app, live_viewport.target, live_viewport.viewport, params.mouse, clip_box);
+    
+    v1 meter_to_pixel = default_meter_to_pixel;
+    v1 pixel_to_meter = 1.f / meter_to_pixel;
+    v2 clip_radius = pixel_to_meter*get_radius(clip_box);
+    
+    call_driver_render(state, app, live_viewport.target, live_viewport.id,
+                       params.mouse, clip_radius);
     {
      Render_Config *config = draw_new_group(live_viewport.target);
      *config = *old_config; 

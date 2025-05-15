@@ -17,7 +17,7 @@ F4_RenderBufferLite(App *app, View_ID view_id, Face_ID face_id,
                     Rect_f32 rect, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);
-    ProfileScope(app, "[Fleury] Render Buffer");
+    ProfileBlock(app, "[Fleury] Render Buffer");
     
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
@@ -83,7 +83,7 @@ F4_RenderLite(App *app, Frame_Info frame_info, View_ID view_id)
 {
     F4_RecentFiles_RefreshView(app, view_id);
     
-    ProfileScope(app, "[Fleury] Render");
+    ProfileBlock(app, "[Fleury] Render");
     Scratch_Block scratch(app);
     
     View_ID active_view = get_active_view(app, Access_Always);

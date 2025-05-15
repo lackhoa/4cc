@@ -13,7 +13,7 @@ patterns = {
  "*.txt",
  "*.glsl",
  "*.py",
- "*.kh",  // NOTE(kv) My made-up C++ preprocessor files
+ "*.kh",
  "*.kc",
  "*.kt",
  "*.bt",
@@ -28,7 +28,7 @@ blacklist_patterns = {
 fcoder_source = { .path="" , .relative=true, .recursive=true, };
 
 load_paths = {
- .win   = { fcoder_source, { .path="~/remedybg", .recursive=true } },
+ .win   = { fcoder_source },
  .linux = { fcoder_source },
  .mac   = { fcoder_source },
 };

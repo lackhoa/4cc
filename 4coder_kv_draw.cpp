@@ -88,7 +88,7 @@ F4_RenderDividerComments(App *app, Buffer_ID buffer, View_ID view,
 {
  if(!def_get_config_b32(vars_intern_lit("f4_disable_divider_comments")))
  {
-  ProfileScope(app, "[F4] Divider Comments");
+  ProfileBlock( "[F4] Divider Comments");
   
   Token_Array token_array = get_token_array_from_buffer(app, buffer);
   Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
@@ -449,7 +449,7 @@ function Render_Caller_Function kv_render_caller;
 function void
 kv_render_caller(App *app, Frame_Info frame, View_ID view)
 {
- ProfileScope(app, "render caller");
+ ProfileBlock( "render caller");
  b32 view_active = view_is_active(app, view);
  
  rect2 clip      = view_get_screen_rect(app, view);
@@ -529,7 +529,7 @@ kv_render_caller(App *app, Frame_Info frame, View_ID view)
  
  {// NOTE(kv): kv_render_buffer(app, frame, view, face_id, buffer, text_layout_id, clip);
   // NOTE(kv): originally from "byp_render_buffer"
-  ProfileScope(app, "render buffer");
+  ProfileBlock( "render buffer");
   rect2 pre_buffer_clip = draw_set_clip(app, clip);
   defer( draw_set_clip(app, pre_buffer_clip); );
   

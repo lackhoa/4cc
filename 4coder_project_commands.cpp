@@ -119,9 +119,9 @@ prj_open_files_pattern_filter__rec(App *app, String path,
 {
  Scratch_Block scratch(app);
  
- ProfileScopeNamed(app, "get file list", profile_get_file_list);
+ ProfileBegin( "get file list");
  File_List list = system_get_file_list(scratch, path);
- ProfileCloseNow(profile_get_file_list);
+ ProfileEnd();
  
  File_Info **info = list.infos;
  for (u32 i = 0; i < list.count; ++i, ++info)
@@ -167,7 +167,7 @@ prj_open_files_pattern_filter__rec(App *app, String path,
 function void
 prj_open_files_pattern_filter(App *app, String dir, Prj_Open_File_Config config)
 {
- ProfileScope(app, "open all files in directory pattern");
+ ProfileBlock( "open all files in directory pattern");
  Scratch_Block tmp;
  String directory = dir;
  if( !is_file_slash(string_get_character(directory, directory.size-1)) )
@@ -600,7 +600,7 @@ load_project(App_Cmd *app)
 {
  // TODO(allen): compress this _thoughtfully_
  
- ProfileScope(app, "load project");
+ ProfileBlock( "load project");
  save_all_dirty_buffers(app);
  Scratch_Block tmp;
  
@@ -770,7 +770,7 @@ load_project_current_dir(App_Cmd *app)
 function void 
 project_fkey_command(App_Cmd *app)
 {
-    ProfileScope(app, "project fkey command");
+    ProfileBlock( "project fkey command");
     User_Input input = get_current_input(app);
     b32 got_ind = false;
     i1 ind = 0;

@@ -510,7 +510,7 @@ void fleury_custom_layer_init(App *app)
 CUSTOM_COMMAND_SIG(fleury_startup)
 CUSTOM_DOC("Fleury startup event")
 {
-    ProfileScope(app, "default startup");
+    ProfileBlock(app, "default startup");
     
     User_Input input = get_current_input(app);
     if(!match_core_code(&input, CoreCode_Startup))

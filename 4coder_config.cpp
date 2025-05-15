@@ -41,7 +41,7 @@ def_search_normal_fopen(Arena *arena, char *filename, char *opt){
 function String_Array
 parse_extension_line_to_extension_list(App *app, Arena *arena, String8 str)
 {
- ProfileScope(app, "parse extension line to extension list");
+ ProfileBlock( "parse extension line to extension list");
  i1 count = 0;
  for (u64 i = 0; i < str.size; i += 1){
   if (str.str[i] == '.'){
@@ -70,7 +70,7 @@ parse_extension_line_to_extension_list(App *app, Arena *arena, String8 str)
 function Token_Array
 token_array_from_text(App *app, Arena *arena, Stringz data)
 {
-    ProfileScope(app, "token array from text");
+    ProfileBlock( "token array from text");
     Token_List list = lex_full_input_cpp(arena, data);
     return (token_array_from_list(arena, &list));
 }
@@ -81,7 +81,7 @@ token_array_from_text(App *app, Arena *arena, Stringz data)
 function Error_Location
 get_error_location(App *app, u8 *base, u8 *pos)
 {
-    ProfileScope(app, "get error location");
+    ProfileBlock( "get error location");
     Error_Location location = {};
     location.line_number = 1;
     location.column_number = 1;
@@ -102,7 +102,7 @@ get_error_location(App *app, u8 *base, u8 *pos)
 function String8
 config_stringize_errors(App *app, Arena *arena, Config *parsed)
 {
-    ProfileScope(app, "stringize errors");
+    ProfileBlock( "stringize errors");
     String8 result = {};
     if (parsed->errors.first != 0)
     {
@@ -597,7 +597,7 @@ config_parser_top(Config_Parser *p)
 function Config*
 config_parse(App *app, Arena *arena, String8 filename, String8 data, Token_Array array)
 {
-    ProfileScope(app, "config parse");
+    ProfileBlock( "config parse");
     Temp_Memory restore_point = begin_temp_memory(arena);
     Config_Parser p = config_parser_init(arena, filename, data, array);
     Config *config = config_parser_top(&p);

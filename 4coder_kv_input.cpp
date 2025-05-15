@@ -123,7 +123,7 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
 {
  App_Cmd app_value = app_cmd_automated(app0);
  App_Cmd *app      = &app_value;
- ProfileScope(app, "kv_handle_keyboard_input");
+ ProfileBlock( "kv_handle_keyboard_input");
  
  if (vim_state.mode == VIM_Replace)
  {
@@ -135,7 +135,7 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
  }
  else if (event->kind == InputEventKind_TextInsert)
  {
-  ProfileScope(app, "InputEventKind_TextInsert");
+  ProfileBlock( "InputEventKind_TextInsert");
   String8 in_string = to_writable(event);
   if ((vim_state.mode == VIM_Insert) &&
       (in_string.size == 1))
@@ -146,7 +146,7 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
  }
  else if (event->kind == InputEventKind_KeyStroke)
  {
-  ProfileScope(app, "InputEventKind_KeyStroke");
+  ProfileBlock( "InputEventKind_KeyStroke");
   Key_Code code = event->key.code;
   if ( is_modifier_key(code) )
   {
@@ -168,7 +168,7 @@ kv_handle_vim_keyboard_input(App *app0, Input_Event *event)
   u64 function_data = 0;
   if ( table_read(vim_maps + vim_state.mode + (u32)vim_state.sub_mode*(u32)VIM_MODE_COUNT, code, &function_data) )
   {
-   ProfileScope(app, "execute vim_func from vim_maps");
+   ProfileBlock( "execute vim_func from vim_maps");
    Custom_Command_Function *vim_func = (Custom_Command_Function *)IntAsPtr(function_data);
    if (vim_func)
    {
@@ -272,7 +272,7 @@ kv_view_input_handler(App *app0)
   }
 #endif
   
-  ProfileScopeNamed(app, "before view input", view_input_profile);
+  ProfileBlockNamed("before view input", before_view_input_block);
   
   // NOTE(allen): Mouse Suppression
   Event_Property event_properties = get_event_properties(&input.event);
@@ -324,14 +324,14 @@ kv_view_input_handler(App *app0)
     {
      // NOTE(allen): Run the command and pre/post command stuff
      default_pre_command(app, scope);
-     ProfileCloseNow(view_input_profile);
+     ProfileBlockEnd(&before_view_input_block);
      
      {
-      ProfileScope(app, "map_result_command_profile");
+      ProfileBlock("map_result_command_profile");
       map_result.command(app);
      }
      
-     ProfileScope(app, "after view input");
+     ProfileBlock("after view input");
      default_post_command(app, scope);
      handled = 1;
     }

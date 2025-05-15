@@ -17,6 +17,10 @@ make_system_api(Arena *arena)
  API_Definition *api = begin_api(arena, "system");
  
  {
+  API_Call *call = api_call(arena, api, "running", "b32");
+ }
+ 
+ {
   API_Call *call = api_call(arena, api, "error_box", "void");
   api_param(arena, call, "char*", "msg");
  }
@@ -143,12 +147,12 @@ make_system_api(Arena *arena)
  {
   API_Call *call = api_call(arena, api, "get_clipboard", "String");
   api_param(arena, call, "Arena*", "arena");
-  api_param(arena, call, "i1", "index");
+  api_param(arena, call, "i32", "index");
  }
  {
   API_Call *call = api_call(arena, api, "post_clipboard", "void");
   api_param(arena, call, "String", "str");
-  api_param(arena, call, "i1", "index");
+  api_param(arena, call, "i32", "index");
  }
  
  {
@@ -211,7 +215,7 @@ make_system_api(Arena *arena)
  }
  
  {
-  api_call(arena, api, "thread_get_id", "i1");
+  api_call(arena, api, "thread_get_id", "i32");
  }
  
  {
@@ -252,6 +256,7 @@ make_system_api(Arena *arena)
   API_Call *call = api_call(arena, api, "condition_variable_wait", "void");
   api_param(arena, call, "System_Condition_Variable", "cv");
   api_param(arena, call, "System_Mutex", "mutex");
+  api_param(arena, call, "i32", "timeout_ms");
  }
  
  {
@@ -285,7 +290,7 @@ make_system_api(Arena *arena)
  
  {
   API_Call *call = api_call(arena, api, "show_mouse_cursor", "void");
-  api_param(arena, call, "i1", "show");
+  api_param(arena, call, "i32", "show");
  }
  {
   API_Call *call = api_call(arena, api, "set_fullscreen", "b32");
@@ -305,7 +310,8 @@ make_system_api(Arena *arena)
   api_param(arena, call, "Key_Mode", "mode");
  }
  
- if(0){
+ if(0)
+ {
   {
    API_Call *call = api_call(arena, api, "set_source_mixer", "void");
    api_param(arena, call, "void*", "ctx");

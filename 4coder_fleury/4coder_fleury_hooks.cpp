@@ -17,7 +17,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
                 Rect_f32 rect, Frame_Info frame_info)
 {
     Scratch_Block scratch(app);
-    ProfileScope(app, "[Fleury] Render Buffer");
+    ProfileBlock(app, "[Fleury] Render Buffer");
     
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
@@ -116,7 +116,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     // NOTE(jack): Token Occurance Highlight
     if (!def_get_config_b32(vars_intern_lit("f4_disable_cursor_token_occurance"))) 
     {
-        ProfileScope(app, "[Fleury] Token Occurance Highlight");
+        ProfileBlock(app, "[Fleury] Token Occurance Highlight");
         
         // NOTE(jack): Get the active cursor's token string
         Buffer_ID active_cursor_buffer = view_get_buffer(app, active_view, Access_Always);
@@ -175,7 +175,7 @@ F4_RenderBuffer(App *app, View_ID view_id, Face_ID face_id,
     // NOTE(jack): if "f4_disable_cursor_token_occurance" is set, just highlight the cusror 
     else
     {
-        ProfileScope(app, "[Fleury] Token Highlight");
+        ProfileBlock(app, "[Fleury] Token Highlight");
         
         Token_Iterator_Array it = token_it_at_pos(0, &token_array, cursor_pos);
         Token *token = token_it_read(&it);
@@ -423,7 +423,7 @@ F4_Render(App *app, Frame_Info frame_info, View_ID view_id)
 {
     F4_RecentFiles_RefreshView(app, view_id);
     
-    ProfileScope(app, "[Fleury] Render");
+    ProfileBlock(app, "[Fleury] Render");
     Scratch_Block scratch(app);
     
     View_ID active_view = get_active_view(app, Access_Always);
@@ -564,7 +564,7 @@ F4_Render(App *app, Frame_Info frame_info, View_ID view_id)
 function i32
 F4_BeginBuffer(App *app, Buffer_ID buffer_id)
 {
- ProfileScope(app, "[Fleury] Begin Buffer");
+ ProfileBlock(app, "[Fleury] Begin Buffer");
  
  Scratch_Block scratch(app);
  b32 treat_as_code = false;

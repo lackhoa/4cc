@@ -44,7 +44,7 @@ typedef i32 Viewport_ID;
 
 struct Live_Viewport
 {
- Viewport_ID viewport;
+ Viewport_ID id;
  rect2 clip_box;
  Render_Target *target;
 };

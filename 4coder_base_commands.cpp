@@ -8,7 +8,7 @@ moving the cursor, which work even without the default 4coder framework.
 function void
 write_text(App_Cmd *app, String insert, b32 move_cursor)
 {
- ProfileScope(app, "write text");
+ ProfileBlock( "write text");
  if (insert.str != 0 && insert.size > 0)
  {
   View_ID view = get_active_view(app, Access_ReadWriteVisible);
@@ -204,7 +204,7 @@ click_set_cursor_if_lbutton(App_Cmd *app)
 {
  View_ID view = get_active_view(app, Access_ReadVisible);
  Mouse_State mouse = get_mouse_state(app);
- if (mouse.l){
+ if (mouse.left){
   i64 pos = view_pos_from_xy(app, view, V2(mouse.p));
   view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
  }
@@ -232,7 +232,7 @@ mouse_wheel_scroll(App_Cmd *app)
   scroll.target = view_move_buffer_point(app, view, scroll.target, V2(0.f, (f32)mouse.wheel));
   view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
  }
- if (mouse.l){
+ if (mouse.left){
   no_mark_snap_to_cursor(app, view);
  }
 }
@@ -242,7 +242,7 @@ mouse_wheel_scroll(App_Cmd *app)
 function void
 move_vertical_pixels(App *app, View_ID view, f32 pixels)
 {
- ProfileScope(app, "move vertical pixels");
+ ProfileBlock( "move vertical pixels");
  i64 pos = view_get_cursor_pos(app, view);
  Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
  Rect_f32 r = view_padded_box_of_pos(app, view, cursor.line, pos);
@@ -436,7 +436,7 @@ enum{
 function void
 clean_all_lines_buffer(App_Cmd *app, Buffer_ID buffer, Clean_All_Lines_Mode mode)
 {
- ProfileScope(app, "clean all lines");
+ ProfileBlock( "clean all lines");
  Scratch_Block scratch(app);
  Batch_Edit *batch_first = 0;
  Batch_Edit *batch_last = 0;
@@ -497,7 +497,7 @@ clean_all_lines_buffer(App_Cmd *app, Buffer_ID buffer, Clean_All_Lines_Mode mode
 function void
 clean_all_lines(App_Cmd *app)
 {
- ProfileScope(app, "clean all lines");
+ ProfileBlock( "clean all lines");
  View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  clean_all_lines_buffer(app, buffer, CleanAllLinesMode_RemoveBlankLines);
@@ -506,7 +506,7 @@ clean_all_lines(App_Cmd *app)
 function void
 clean_trailing_whitespace(App_Cmd *app)
 {
-    ProfileScope(app, "clean all lines");
+    ProfileBlock( "clean all lines");
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
  Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
  clean_all_lines_buffer(app, buffer, CleanAllLinesMode_LeaveBlankLines);

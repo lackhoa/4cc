@@ -68,12 +68,12 @@ is_valid(Texture_Handle texture)
 api(custom)
 struct Mouse_State
 {
- b8 l;
- b8 r;
- b8 press_l;
- b8 press_r;
- b8 release_l;
- b8 release_r;
+ b8 left;
+ b8 right;
+ b8 press_left;
+ b8 press_right;
+ b8 release_left;
+ b8 release_right;
  b8 out_of_window;
  i32 wheel;
  union {
@@ -88,7 +88,7 @@ struct Frame_Info{
  v1 literal_dt;
  v1 animation_dt;
  u32 work_cycles;
- v1  work_seconds;
+ v1  work_useconds;
  u32 hot_prim_id;
 };
 

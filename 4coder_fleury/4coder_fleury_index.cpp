@@ -353,17 +353,17 @@ F4_Index_MakeNote(F4_Index_ParseCtx *ctx, Range_i64 name_range, F4_Index_NoteKin
 function void
 _F4_Index_Parse(App *app, F4_Index_File *file, String8 string, Token_Array tokens, F4_Language *language)
 {
- F4_Index_ParseCtx ctx =
- {
-  .done=false,
-  .app=app,
-  .file=file,
-  .string=string,
-  .tokens=tokens,
-  .it=tkarr_at_pos(0, &ctx.tokens, 0),
- };
  if(language != 0)
  {
+  F4_Index_ParseCtx ctx =
+  {
+   .done=false,
+   .app=app,
+   .file=file,
+   .string=string,
+   .tokens=tokens,
+   .it=tkarr_at_pos(0, &ctx.tokens, 0),
+  };
   language->IndexFile(&ctx);
  }
 }
@@ -686,11 +686,13 @@ F4_Parse_Buffer(App *app, Buffer_ID buffer_id)
  Scratch_Block scratch;
  String contents = push_whole_buffer(app, scratch, buffer_id);
  Token_Array tokens = get_token_array_from_buffer(app, buffer_id);
- if(tokens.count > 0){
+ if(tokens.count > 0)
+ {
   F4_Index_Lock();
   F4_Index_File *file = F4_Index_LookupOrMakeFile(app, buffer_id);
-  if(file){
-   ProfileScope(app, "[f] reparse");
+  if(file)
+  {
+   ProfileBlock( "[f] reparse");
    F4_Index_ClearFile(file);
    F4_Index_ParseFile(app, file, contents, tokens);
   }
@@ -701,8 +703,7 @@ F4_Parse_Buffer(App *app, Buffer_ID buffer_id)
 function void
 F4_Index_Tick(App *app)
 {
- Scratch_Block scratch(app);
- for(Buffer_Modified_Node *node = global_buffer_modified_set.first; 
+ for(Buffer_Modified_Node *node = global_buffer_modified_set.first;
      node;
      node = node->next)
  {
@@ -713,7 +714,6 @@ F4_Index_Tick(App *app)
 function void
 F4_Index_Reset(App_Cmd *app)
 {
- Scratch_Block scratch;
  Buffer_ID buffer = 0;
  while((buffer = get_buffer_next(app, buffer, 0)))
  {

@@ -95,7 +95,7 @@ F4_PosContext_Render(App *app, View_ID view, Buffer_ID buffer,
         return;
     }
     
-    ProfileScope(app, "[F4] Pos Context Rendering");
+    ProfileBlock(app, "[F4] Pos Context Rendering");
     Scratch_Block scratch(app);
     
     text_layout_character_on_screen(app, text_layout_id, pos);

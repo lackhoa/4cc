@@ -50,7 +50,7 @@ struct Application_Step_Input
  Input_List events;
  String clipboard;
  b32 trying_to_kill;
- v1  work_seconds;
+ v1  work_useconds;
  u32 work_cycles;
  u32 hot_prim_id;
  b32 window_is_active;

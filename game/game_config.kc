@@ -1,6 +1,4 @@
 //
-global b32 driver_enabled = 0;
-
 function void
 update_game_config()
 {

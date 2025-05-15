@@ -14,14 +14,14 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
         return;
     }
     
-    ProfileScope(app, "[Fleury] Error Annotations");
+    ProfileBlock(app, "[Fleury] Error Annotations");
     
     Heap *heap = &global_heap;
     Scratch_Block scratch(app);
     
     Locked_Jump_State jump_state = {};
     {
-        ProfileScope(app, "[Fleury] Error Annotations (Get Locked Jump State)");
+        ProfileBlock(app, "[Fleury] Error Annotations (Get Locked Jump State)");
         jump_state = get_locked_jump_state(app, heap);
     }
     
@@ -32,20 +32,20 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
     {
         Managed_Scope buffer_scopes[2];
         {
-            ProfileScope(app, "[Fleury] Error Annotations (Buffer Get Managed Scope)");
+            ProfileBlock(app, "[Fleury] Error Annotations (Buffer Get Managed Scope)");
             buffer_scopes[0] = buffer_get_managed_scope(app, jump_buffer);
             buffer_scopes[1] = buffer_get_managed_scope(app, buffer);
         }
         
         Managed_Scope comp_scope = 0;
         {
-            ProfileScope(app, "[Fleury] Error Annotations (Get Managed Scope)");
+            ProfileBlock(app, "[Fleury] Error Annotations (Get Managed Scope)");
             comp_scope = get_managed_scope_with_multiple_dependencies(app, buffer_scopes, ArrayCount(buffer_scopes));
         }
         
         Managed_Object *buffer_markers_object = 0;
         {
-            ProfileScope(app, "[Fleury] Error Annotations (Scope Attachment)");
+            ProfileBlock(app, "[Fleury] Error Annotations (Scope Attachment)");
             buffer_markers_object = scope_attachment(app, comp_scope, sticky_jump_marker_handle, Managed_Object);
         }
         
@@ -53,7 +53,7 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
         i1 buffer_marker_count = 0;
         Marker *buffer_markers = 0;
         {
-            ProfileScope(app, "[Fleury] Error Annotations (Load Managed Object Data)");
+            ProfileBlock(app, "[Fleury] Error Annotations (Load Managed Object Data)");
             buffer_marker_count = managed_object_get_item_count(app, *buffer_markers_object);
             buffer_markers = push_array(scratch, Marker, buffer_marker_count);
             managed_object_load_data(app, *buffer_markers_object, 0, buffer_marker_count, buffer_markers);
@@ -63,14 +63,14 @@ F4_RenderErrorAnnotations(App *app, Buffer_ID buffer,
         
         for(i1 i = 0; i < buffer_marker_count; i += 1)
         {
-            ProfileScope(app, "[Fleury] Error Annotations (Buffer Loop)");
+            ProfileBlock(app, "[Fleury] Error Annotations (Buffer Loop)");
             
             i64 jump_line_number = get_line_from_list(app, jump_state.list, i);
             i64 code_line_number = get_line_number_from_pos(app, buffer, buffer_markers[i].pos);
             
             if(code_line_number != last_line)
             {
-                ProfileScope(app, "[Fleury] Error Annotations (Jump Line)");
+                ProfileBlock(app, "[Fleury] Error Annotations (Jump Line)");
                 
                 String jump_line = push_buffer_line(app, scratch, jump_buffer, jump_line_number);
                 

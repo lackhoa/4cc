@@ -259,6 +259,7 @@ typedef float v1;
 #define global_decl   extern //NOTE(kv) Global variable that is forward-declared (C doesn't let us forward-declare static variable, so it must be "extern")
 #define xglobal              //NOTE(kv) exported variable
 #define auto_lambda   auto
+#define member_function
 
 #define PP_Concat(arg1, arg2)   PP_Concat1(arg1, arg2)
 #define PP_Concat1(arg1, arg2)  PP_Concat2(arg1, arg2)

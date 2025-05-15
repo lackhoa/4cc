@@ -198,7 +198,8 @@ file_get_layout_func(Editing_File *file){
 }
 
 function void
-file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes) {
+file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file, String val, File_Attributes attributes)
+{
  Scratch_Block scratch;
  
  Base_Allocator *allocator = &malloc_base_allocator;
@@ -236,7 +237,8 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
  
  ////////////////////////////////
  
- if (models->begin_buffer != 0){
+ if (models->begin_buffer != 0)
+ {
   App app = {};
   app.tctx = tctx;
   app.cmd_context = models;

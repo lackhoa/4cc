@@ -24,7 +24,8 @@ struct Debug_Arena
  File_Line file_line;
  Debug_Arena_Chunk *last_chunk;
 };
-enum Debug_Event_Type{
+enum Debug_Event_Type
+{
  Debug_Event_None,
  Debug_Event_Register_Arena_Chunk,
  Debug_Event_Free_Arena_Chunk,

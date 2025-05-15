@@ -50,9 +50,9 @@ default_implicit_map(App *app, String_ID lang, String_ID mode, Input_Event *even
  return(result);
 }
 
+/*
 function void
 default_view_input_handler(App_Cmd *app)
-
 {
  Scratch_Block scratch(app);
  default_input_handler_init(app, scratch);
@@ -60,39 +60,50 @@ default_view_input_handler(App_Cmd *app)
  View_ID view = get_this_ctx_view(app, Access_Always);
  Managed_Scope scope = view_get_managed_scope(app, view);
  
- for (;;){
+ for(;;)
+ {
   // NOTE(allen): Get input
   User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
-  if (input.abort){
+  if(input.abort)
+  {
    break;
   }
   
-  ProfileScopeNamed(app, "before view input", view_input_profile);
+  ProfileBlockNamed("before view input", before_view_input_block);
   
   // NOTE(allen): Mouse Suppression
   Event_Property event_properties = get_event_properties(&input.event);
-  if (suppressing_mouse && (event_properties & EventPropertyGroup_AnyMouseEvent) != 0){
+  if(suppressing_mouse && (event_properties & EventPropertyGroup_AnyMouseEvent) != 0)
+  {
    continue;
   }
-  
-  // NOTE(allen): Get binding
-  if (implicit_map_function == 0){
-   implicit_map_function = default_implicit_map;
+  else
+  {
+   // NOTE(allen): Get binding
+   if(implicit_map_function == 0)
+   {
+    implicit_map_function = default_implicit_map;
+   }
+   Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
+   if (map_result.command == 0)
+   {
+    leave_current_input_unhandled(app);
+    continue;
+   }
+   else
+   {// NOTE(allen): Run the command and pre/post command stuff
+    default_pre_command(app, scope);
+    ProfileBlockEnd(&before_view_input_block);
+    
+    map_result.command(app);
+    
+    ProfileBlock( "after view input");
+    default_post_command(app, scope);
+   }
   }
-  Implicit_Map_Result map_result = implicit_map_function(app, 0, 0, &input.event);
-  if (map_result.command == 0){
-   leave_current_input_unhandled(app);
-   continue;
-  }
-  
-  // NOTE(allen): Run the command and pre/post command stuff
-  default_pre_command(app, scope);
-  ProfileCloseNow(view_input_profile);
-  map_result.command(app);
-  ProfileScope(app, "after view input");
-  default_post_command(app, scope);
  }
-}
+}*/
+
 //NOTE(kv) This function actually does... thing.
 //  IDK what but the editor crashes if you don't call it
 function void
@@ -259,7 +270,7 @@ HOOK_SIG(default_view_adjust){
 }
 
 BUFFER_NAME_RESOLVER_SIG(default_buffer_name_resolution){
-    ProfileScope(app, "default buffer name resolution");
+    ProfileBlock( "default buffer name resolution");
     if (conflict_count > 1){
         // List of unresolved conflicts
         Scratch_Block scratch(app);
@@ -374,7 +385,7 @@ function void
 parse_async__inner(Async_Context *actx, Buffer_ID buffer_id,
                    String contents, Token_Array *tokens, i32 limit_factor){
     App *app = actx->app;
-    ProfileBlock(app, "async parse");
+    ProfileBlock( "async parse");
     
     Arena arena = make_arena(KB(16));
     Code_Index_File *index = push_array0(&arena, Code_Index_File, 1);
@@ -412,14 +423,14 @@ function void
 do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id)
 {
  App *app = actx->app;
- ProfileScope(app, "async lex");
+ ProfileBlock( "async lex");
  Scratch_Block scratch(app);
  
  Stringz contents = empty_string;
  {
-  ProfileBlock(app, "async lex contents (before mutex)");
+  ProfileBlock( "async lex contents (before mutex)");
   acquire_global_frame_mutex(app);
-  ProfileBlock(app, "async lex contents (after mutex)");
+  ProfileBlock( "async lex contents (after mutex)");
   contents = push_whole_buffer(app, scratch, buffer_id);
   release_global_frame_mutex(app);
  }
@@ -432,7 +443,7 @@ do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id)
  Lex_State_Cpp state = {};
  lex_full_input_cpp_init(&state, contents);
  for (;;){
-  ProfileBlock(app, "async lex block");
+  ProfileBlock( "async lex block");
   if (lex_full_input_cpp_breaks(scratch, &list, &state, limit_factor)){
    break;
   }
@@ -443,9 +454,9 @@ do_full_lex_async__inner(Async_Context *actx, Buffer_ID buffer_id)
  }
  
  if (!canceled){
-  ProfileBlock(app, "async lex save results (before mutex)");
+  ProfileBlock( "async lex save results (before mutex)");
   acquire_global_frame_mutex(app);
-  ProfileBlock(app, "async lex save results (after mutex)");
+  ProfileBlock( "async lex save results (after mutex)");
   Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
   if (scope != 0){
    Base_Allocator *allocator = managed_scope_allocator(app, scope);
@@ -474,7 +485,7 @@ do_full_lex_async(Async_Context *actx, String data){
 function i32
 default_begin_buffer(App *app, Buffer_ID buffer_id)
 {
- ProfileScope(app, "begin buffer");
+ ProfileBlock( "begin buffer");
  
  Scratch_Block scratch(app);
  
@@ -578,7 +589,7 @@ default_begin_buffer(App *app, Buffer_ID buffer_id)
  }
  
  if (use_lexer){
-  ProfileBlock(app, "begin buffer kick off lexer");
+  ProfileBlock( "begin buffer kick off lexer");
   Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
   *lex_task_ptr = async_task_no_dep(&global_async_system, do_full_lex_async, make_data_struct(&buffer_id));
  }
@@ -600,7 +611,7 @@ default_file_save(App *app0, Buffer_ID buffer_id)
  // buffer_id
  App_Cmd app_value = app_cmd_automated(app0);
  App_Cmd *app      = &app_value;
- ProfileScope(app, "default file save");
+ ProfileBlock( "default file save");
  
  b32 auto_indent = def_get_config_b32(vars_intern_lit("automatically_indent_text_on_save"));
  b32 is_virtual = def_get_config_b32(vars_intern_lit("enable_virtual_whitespace"));
@@ -626,9 +637,10 @@ default_file_save(App *app0, Buffer_ID buffer_id)
  return(0);
 }
 
-BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
+BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range)
+{
     // buffer_id, new_range, original_size
-    ProfileScope(app, "default edit range");
+    ProfileBlock( "default edit range");
     
     Range_i64 old_range = Ii64(old_cursor_range.min.pos, old_cursor_range.max.pos);
     
@@ -663,7 +675,7 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
     
     Token_Array *ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
     if (ptr != 0 && ptr->tokens != 0){
-        ProfileBlockNamed(app, "attempt resync", profile_attempt_resync);
+        ProfileBegin( "attempt resync");
         
         i64 token_index_first = token_relex_first(ptr, old_range.first, 1);
         i64 token_index_resync_guess =
@@ -686,13 +698,13 @@ BUFFER_EDIT_RANGE_SIG(default_buffer_edit_range){
             
             Token_Relex relex = token_relex(relex_list, relex_range.first - text_shift, ptr->tokens, token_index_first, token_index_resync_guess);
             
-            ProfileCloseNow(profile_attempt_resync);
+            ProfileEnd();
             
             if (!relex.successful_resync){
                 do_full_relex = true;
             }
             else{
-                ProfileBlock(app, "apply resync");
+                ProfileBlock( "apply resync");
                 
                 i64 token_index_resync = relex.first_resync_index;
                 
@@ -767,7 +779,7 @@ set_all_default_hooks(App *app)
 {
  set_custom_hook(app, HookID_BufferViewerUpdate, default_view_adjust);
  
- set_custom_hook(app, HookID_ViewEventHandler, default_view_input_handler);
+ //set_custom_hook(app, HookID_ViewEventHandler, default_view_input_handler);
  set_custom_hook(app, HookID_Tick, default_tick);
  set_custom_hook(app, HookID_RenderCaller, default_render_caller);
  set_custom_hook(app, HookID_WholeScreenRenderCaller, default_whole_screen_render_caller);

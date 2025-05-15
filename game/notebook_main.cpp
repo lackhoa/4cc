@@ -1,4 +1,6 @@
 //-
+global Arena notebook_frame_arena;
+
 struct mat2
 {
  union
@@ -285,5 +287,6 @@ forward_difference(v1 *e, i32 i)
  return result;
 }
 
+#include "backprop.cpp"
 #include "notebook.gen.cpp"
 //-

@@ -542,7 +542,7 @@ vim_run_lister(App *app0, Lister *lister)
 		// NOTE: This is a bit of a hack to make clicking the lister not change views
 		Mouse_State mouse_state = get_mouse_state(app);
 		v2 mouse_pos = V2(mouse_state.p);
-		if(mouse_state.press_l){
+		if(mouse_state.press_left){
 			void *clicked = vim_lister_user_data_at_p(app, view, lister, mouse_pos, col_num);
    if(clicked){
     lister_activate(app, lister, clicked, true);

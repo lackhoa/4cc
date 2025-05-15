@@ -63,17 +63,23 @@ get_command_metadata_from_name(String name){
 ////////////////////////////////
 function Token_Array
 get_token_array_from_buffer(App *app, Buffer_ID buffer)
-{
+{// NOTE(kv) in @kv_begin_buffer, we should already kicked off a lex task.
+ // And I think we always either has the valid token list, or have a lex task running.
+ // So this function should always return a token list, unless the buffer isn't tokenized.
+ // TODO(kv) We should just have a token list always,
+ // with one token being the entire buffer!
  Token_Array result = {};
  Managed_Scope scope = buffer_get_managed_scope(app, buffer);
- Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
- if (lex_task_ptr != 0){
-  async_task_wait(app, &global_async_system, *lex_task_ptr);
+ Async_Task *lex_task = scope_attachment(app, scope, buffer_lex_task, Async_Task);
+ 
+ if(lex_task)
+ {
+  async_task_wait(app, &global_async_system, *lex_task);
  }
+ 
  Token_Array *ptr = scope_attachment(app, scope, attachment_tokens, Token_Array);
- if (ptr != 0){
-  result = *ptr;
- }
+ if(ptr != 0){ result = *ptr; }
+ 
  return(result);
 }
 function Token *

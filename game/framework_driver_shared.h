@@ -369,6 +369,12 @@ struct Location
 // NOTE(kv) Take care of padding, so we can compare values with block comparison.
 static_assert(sizeof(Location) == 8);
 
+myinline b32
+is_valid(Location location)
+{
+ return location.file.index != 0;
+}
+
 // NOTE(kv) The reason why we have @Unresolved_Location,
 // is because we don't know that the marker indexes are
 // when we have to emit @set_draw_location_unresolved.
@@ -388,14 +394,9 @@ operator==(Location a, Location b)
 {
  return block_match(&a, &b, sizeof(a));
 }
-myinline b32
-is_valid(Location location)
-{
- return location.file.index != 0;
-}
 struct Vertex
 {
- i32 info_index;
+ i32 ninfo_index;
  Bone_ID bone_id;
  v3 pos;
 };
@@ -436,12 +437,16 @@ struct Recorded_Primitive
   Dual_Bezier *dual_bezier;
  };
 };
+struct Model_Persistent
+{
+ darray(Vertex) vertices;
+};
 struct Model
 {
  // NOTE(kv) I tried getting "is_right" from the bone,
  // but we don't know what "is_right" would be at the start -> that's bad!
  b32 is_right;
- b32 converted_primitives_to_camera_space;
+ b32 primitives_are_in_camera_space;
  Arena *frame_arena;
  
  darray(Bone) bones;
@@ -449,13 +454,14 @@ struct Model
  
  darray(Vertex) vertices;
  darray(Recorded_Primitive) primitives;
+ 
+ Model_Persistent persistent;
 };
 struct Viewport
 {// NOTE For init code, view @game_init
  i32 index;  // NOTE(kv) Redundant data
  Camera_Data camera;  // NOTE(kv) Current camera, as opposed to the target camera, which is serialized.
  Arena render_arena;
- v2 clip_radius;  // TODO(kv) @Cleanup This is due to "the issue" with separating update and render, cut it out!
  v1 previous_phi_snap;
  v1 current_phi_snap;
  
@@ -645,7 +651,7 @@ struct Text_Object
  
  union {
   Image_Info image;
-  //or
+  // or
   Reference_Preset preset;
  };
 };

@@ -7,6 +7,7 @@
 #include <float.h>
 #include <stdlib.h> // malloc, free
 #include <stdio.h>  // printf, perror
+#include <math.h>
 #include <cstdint>
 #include <string.h>
 
@@ -131,7 +132,9 @@ block_zero(void *mem, u64 size)
 {
  gb_zero_size(mem, size);
 }
-#define zero_struct(POINTER)     block_zero(POINTER, sizeof(*POINTER))
+
+#define zero_struct(POINTER) \
+block_zero(POINTER, sizeof(*(POINTER)))
 
 myinline void
 block_fill_ones(void *mem, u64 size)
@@ -157,7 +160,6 @@ cubed(v1 value)
 {
  return value*value*value;
 }
-
 
 // NOTE: Integer power
 function v1
@@ -226,6 +228,25 @@ myinline i32
 absolute(i32 x)
 {
  i32 result = (x >= 0) ? x : -x;
+ return result;
+}
+
+myinline f64
+absolute(f64 x)
+{
+ f64 result;
+#if COMPILER_MSVC
+ result = fabs(x);
+#else
+ result = __builtin_fabs(x);
+#endif
+ return result;
+}
+
+myinline f32
+absolute(f32 x)
+{
+ f32 result = (f32)absolute((f64)x);
  return result;
 }
 
@@ -1097,26 +1118,26 @@ string_concat(String_u8 *dst, String src)
 myinline u32
 atomic_add_u32(u32 volatile *Value, u32 Addend)
 {
- u32 Result = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
- return(Result);
+ u32 initial = _InterlockedExchangeAdd((long volatile*)Value, (long)Addend);
+ return(initial);
 }
 myinline u64
 atomic_add_u64(u64 volatile *Value, u64 Addend)
 {
- u64 Result = _InterlockedExchangeAdd64((__int64 volatile *)Value, Addend);
- return(Result);
+ u64 initial = _InterlockedExchangeAdd64((__int64 volatile *)Value, Addend);
+ return(initial);
 }
 myinline u32
 atomic_compare_exchange_u32(u32 volatile *Value, u32 New, u32 Expected)
 {
- u32 Result = _InterlockedCompareExchange((long volatile *)Value, New, Expected);
- return(Result);
+ u32 actual = _InterlockedCompareExchange((long volatile *)Value, New, Expected);
+ return(actual);
 }
 myinline u64
 atomic_exchange_u64(u64 volatile *Value, u64 New)
 {
- u64 Result = _InterlockedExchange64((__int64 volatile *)Value, New);
- return(Result);
+ u64 actual = _InterlockedExchange64((__int64 volatile *)Value, New);
+ return(actual);
 }
 #endif
 //
@@ -1464,22 +1485,10 @@ struct Dynamic_Array : Static_Array2<T>
    cap = new_cap;
   }
  }
- void set_cap_min(i32 cap_min, DEBUG_file_line_defparams)
- {// NOTE(kv): Growth logic:
-  // 1. Natural growth: doubling
-  // 2. User-dictated growth: just set the cap to the dictated value
-  if(cap_min > cap)
-  {
-   i32 new_cap = cap_min;
-   if(cap != 0){
-    new_cap = macro_min(cap_min, 2*cap);
-   }
-   set_cap_inner(new_cap, file_line);
-  }
- }
+ 
  void set_count(i32 new_count, DEBUG_file_line_defparams)
  {
-  set_cap_min(new_count, file_line);
+  set_cap_min(this, new_count, file_line);
   this->count = new_count;
   kv_assert(this->count <= cap);
  }
@@ -1510,6 +1519,24 @@ struct Dynamic_Array : Static_Array2<T>
   return result;
  }
 };
+
+template<class T>
+function void
+set_cap_min(darray(T) *a, i32 cap_min, DEBUG_file_line_defparams)
+{// NOTE(kv): Growth logic:
+ // 1. Natural growth: doubling
+ // 2. User-dictated growth: just set the cap to the dictated value
+ if(cap_min > a->cap)
+ {
+  i32 new_cap = cap_min;
+  if(a->cap != 0)
+  {
+   new_cap = macro_min(cap_min, 2*a->cap);
+  }
+  a->set_cap_inner(new_cap, file_line);
+ }
+}
+
 
 template<class T>
 myinline T &
@@ -1546,11 +1573,11 @@ init_static(darray(T) &array, T *backing_buffer, i32 cap)
  array.items      = backing_buffer;
 }
 template<class T> function void
-init_dynamic(darray(T) &array, Arena *arena, i32 initial_size=0)
-{
- array = {};
- array.arena = arena;
- array.set_cap_min(initial_size);
+init_dynamic(darray(T) &a, Arena *arena, i32 initial_size=0)
+{// NOTE(kv) Shouldn't have used reference here, oh well...
+ a = {};
+ a.arena = arena;
+ set_cap_min(&a, initial_size);
 }
 
 template<class T> myinline T *

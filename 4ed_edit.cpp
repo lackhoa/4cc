@@ -250,7 +250,7 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
  // NOTE(allen): history update
  if (!behaviors.no_post_to_history)
  {
-  ProfileTLBlock(tctx, &models->profile_list, "edit apply history");
+  ProfileBlock( "edit apply history");
   history_record_edit(&models->global_history, &file->state.history, buffer,
                       behaviors.pos_before_edit, edit, behaviors.automated);
   file->state.current_record_index =
@@ -258,7 +258,7 @@ edit__apply(Thread_Context *tctx, Models *models, Editing_File *file,
  }
  
  {
-  ProfileTLBlock(tctx, &models->profile_list, "edit apply replace range");
+  ProfileBlock( "edit apply replace range");
   //i64 shift_amount = replace_range_shift(edit.range, (i64)edit.text.size);
   gap_buffer_replace_range(buffer, edit.range, edit.text);
  }
@@ -445,16 +445,17 @@ edit_merge_history_range(Thread_Context *tctx, Models *models, Editing_File *fil
 }
 
 function b32
-edit_batch_check(Thread_Context *tctx, Profile_Global_List *list, Batch_Edit *batch){
-    ProfileTLScope(tctx, list, "batch check");
-    b32 result = true;
-    Range_i64 prev_range = Ii64(-1, 0);
-    for (;batch != 0;
-         batch = batch->next){
-        if (batch->edit.range.first <= prev_range.first ||
-            batch->edit.range.first < prev_range.opl){
-            result = false;
-            break;
+edit_batch_check(Thread_Context *tctx, Profile_Global_List *list, Batch_Edit *batch)
+{
+ ProfileBlock( "batch check");
+ b32 result = true;
+ Range_i64 prev_range = Ii64(-1, 0);
+ for (;batch != 0;
+      batch = batch->next){
+  if (batch->edit.range.first <= prev_range.first ||
+      batch->edit.range.first < prev_range.opl){
+   result = false;
+   break;
   }
  }
  return(result);
@@ -469,7 +470,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
   if ( !edit_batch_check(tctx, &models->profile_list, batch) ) {
    result = false;
   } else {
-   ProfileTLScope(tctx, &models->profile_list, "batch apply");
+   ProfileBlock( "batch apply");
    
    pre_edit_state_change(models, file);
    pre_edit_history_prep(file, behaviors);
@@ -479,7 +480,7 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
     start_index = file->state.current_record_index;
    }
    
-   ProfileTLBlockNamed(tctx, &models->profile_list, "batch text edits", profile_edits);
+   ProfileBegin("batch text edits");
    
    Range_i64 old_range = {};
    old_range.min = batch->edit.range.min;
@@ -525,7 +526,8 @@ edit_batch(Thread_Context *tctx, Models *models, Editing_File *file,
      break;
     }
    }
-   ProfileCloseNow(profile_edits);
+   
+   ProfileEnd();
    
    if ( history_is_activated(&file->state.history) ) {
     History_Record_Index last_index = file->state.current_record_index;

@@ -23,14 +23,14 @@ kv_new_file(App_Cmd *app, Buffer_ID buffer_id)
 	return 0;
 }
 function i32
-kv_begin_buffer(App_Cmd *app, Buffer_ID buffer_id)
+kv_begin_buffer(App_Cmd *app, Buffer_ID buffer)
 {
- ProfileScope(app, "[kv] Begin Buffer");
+ ProfileBlock( "[kv] Begin Buffer");
  
  Scratch_Block scratch(app);
  b32 treat_as_code = false;
- String8 filename = push_buffer_filepath(app, scratch, buffer_id);
- String8 buffer_name = push_buffer_base_name(app, scratch, buffer_id);
+ String8 filename = push_buffer_filepath(app, scratch, buffer);
+ String8 buffer_name = push_buffer_base_name(app, scratch, buffer);
  
  // NOTE(rjf): Treat as code if the config tells us to.
  if(treat_as_code == false)
@@ -54,7 +54,7 @@ kv_begin_buffer(App_Cmd *app, Buffer_ID buffer_id)
  // NOTE(rjf): Treat as code if we've identified the language of a file.
  if(treat_as_code == false)
  {
-  F4_Language *language = F4_LanguageFromBuffer(app, buffer_id);
+  F4_Language *language = F4_LanguageFromBuffer(app, buffer);
   if (language)
   {
    treat_as_code = true;
@@ -65,11 +65,11 @@ kv_begin_buffer(App_Cmd *app, Buffer_ID buffer_id)
  String_ID code_map_id = vars_intern_lit("keys_code");
  
  Command_Map_ID map_id = (treat_as_code) ? (code_map_id) : (file_map_id);
- Managed_Scope scope = buffer_get_managed_scope(app, buffer_id);
+ Managed_Scope scope = buffer_get_managed_scope(app, buffer);
  Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID);
  *map_id_ptr = map_id;
  
- Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer_id);
+ Line_Ending_Kind setting = guess_line_ending_kind_from_buffer(app, buffer);
  Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting, Line_Ending_Kind);
  *eol_setting = setting;
  
@@ -80,15 +80,13 @@ kv_begin_buffer(App_Cmd *app, Buffer_ID buffer_id)
   use_lexer = true;
  }
  
- if (use_lexer)
+ if(use_lexer)
  {
-  ProfileBlock(app, "begin buffer kick off lexer");
-  Async_Task *lex_task_ptr = scope_attachment(app, scope, buffer_lex_task, Async_Task);
-  *lex_task_ptr = async_task_no_dep(&global_async_system, F4_DoFullLex_ASYNC, make_data_struct(&buffer_id));
+  submit_full_lex_work(app, buffer);
  }
  
- buffer_set_layout(app, buffer_id, layout_basic);
- vim_begin_buffer(app, buffer_id);
+ buffer_set_layout(app, buffer, layout_basic);
+ vim_begin_buffer(app, buffer);
  
  // no meaning for return
  return(0);
@@ -98,7 +96,8 @@ BUFFER_EDIT_RANGE_SIG(kv_buffer_edit_range)
  // NOTE(kv): Fleury
  F4_BufferEditRange(app, buffer_id, new_range, old_cursor_range, automated);
  Game_API *game = get_game_code(Game_On);
- if(game){
+ if(game)
+ {
   game->game_buffer_edit_range(ed_game_state_pointer, app, buffer_id, new_range, old_cursor_range);
  }
  return 0;
@@ -148,7 +147,7 @@ kv_tick(App *app, Frame_Info frame)
   u32 saved_count = 0;
   u32 reloaded_count = 0;
   {
-   ProfileScope(app, "save all dirty buffers");
+   ProfileBlock( "save all dirty buffers");
    for(Buffer_ID buffer = get_buffer_next(app, 0, Access_ReadWriteVisible);
        buffer != 0;
        buffer = get_buffer_next(app, buffer, Access_ReadWriteVisible))

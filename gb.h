@@ -1408,9 +1408,13 @@ inline void *gb_resize_align(gbAllocator a, void *ptr, isize old_size, isize new
 //
 
 #if defined(COMPILER_MSVC) && !defined(__clang__)
+
 inline u64 gb_rdtsc(void) { return __rdtsc(); }
+
 #elif defined(__x86_64__)
-inline u64 gb_rdtsc(void) {
+
+inline u64 gb_rdtsc(void)
+{
  u32 hi, lo;
  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
  return (cast(u64)lo) | ((cast(u64)hi)<<32);
