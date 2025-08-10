@@ -151,7 +151,8 @@ return &Type_Info_tnormal;
 
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:436:
-enum Bone_Type{Bone_None = 0,
+enum Bone_Type{Bone_Invalid = -1,
+Bone_None = 0,
 Bone_Head = 1,
 Bone_Arm = 2,
 Bone_Forearm = 3,

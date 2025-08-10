@@ -55,7 +55,7 @@ maybe_add_link(Link_State *state, String new_link,
 {
  maybe_add_link_inner(state, new_link, location);
 }
-myinline b32
+function b32
 maybe_add_note(Link_State *state, String new_link)
 {
  b32 added = 0;
@@ -67,6 +67,7 @@ maybe_add_note(Link_State *state, String new_link)
  }
  return added;
 }
+
 function void
 link_parse_comment(Link_State *state, String comment_string, i64 begin_position)
 {
@@ -94,6 +95,7 @@ link_parse_comment(Link_State *state, String comment_string, i64 begin_position)
    u8 *note_begin = character;
    while(character_is_alnum(*character)){ character++; }
    u8 *note_end = character;
+   
    if(note_end > note_begin)
    {
     String new_note = {.str=note_begin, .count=u64(note_end-note_begin)};
@@ -107,6 +109,7 @@ link_parse_comment(Link_State *state, String comment_string, i64 begin_position)
   }
  }
 }
+
 function void
 link_parse_body(Link_State *state, Ed_Parser *p)
 {
@@ -205,7 +208,7 @@ collect_links_and_notes(Arena *arena, Link_Table table, Lexed_File source)
       ep_eat(p);
       ep_id(p);  // note The target type
       String type_name = ep_id(p);
-      ep_char(p, ';');
+      ep_char_inc_all(p, ';');
       if(p->ok_)
       {
        maybe_add_note(state, type_name);
@@ -250,9 +253,9 @@ collect_links_and_notes(Arena *arena, Link_Table table, Lexed_File source)
   parsing = parsing and p->ok_;
   if(parsing)
   {
-   Token *token00 = token0;
+   Token *token0_old = token0;
    token0 = ep_get_token(p);
-   if(token0 == token00)
+   if(token0 == token0_old)
    {
     ep_eat_inc_all(p);
     token0 = ep_get_token(p);

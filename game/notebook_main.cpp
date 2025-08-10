@@ -1,4 +1,9 @@
-//-
+//------------
+// NOTE(kv): I'm just putting some unrelated educational code here.
+// Because can't be bothered to make a new repo.
+// Also I can just share the code and the build script ->
+// cutting down on some nonsense!
+//------------
 global Arena notebook_frame_arena;
 
 struct mat2
@@ -288,5 +293,6 @@ forward_difference(v1 *e, i32 i)
 }
 
 #include "backprop.cpp"
-#include "notebook.gen.cpp"
+#include "nb_internet.cpp"
+#include "notebook.gen.cpp"  // "notebook.kc"
 //-

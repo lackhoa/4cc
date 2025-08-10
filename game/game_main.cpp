@@ -43,7 +43,10 @@
 #include "ad_serialize.cpp"
 #include "meta_all.gen.cpp"
 
-#include "notebook_main.cpp"
+#if NOTEBOOK_MODE
+#  include "notebook_main.cpp"
+#endif
+
 #include "game_config.gen.cpp"
 
 global const v1 vertex_indicator_radius = 3*millimeter;
@@ -413,7 +416,8 @@ game_load(Game_State *state, App *app, Stringz filename)
     read_binary_i1(r, &camera_count);
     ClampTop(camera_count, GAME_VIEWPORT_COUNT);
     
-    for_i32(cam_index, 0, camera_count){
+    for_i32(cam_index, 0, camera_count)
+    {
      Camera_Data *cam = &state->viewports[cam_index].target_camera;
      read_binary_Camera_Data(r, cam);
     }
@@ -523,7 +527,7 @@ convert_primitives_to_camera_space(Camera &camera)
  {
   m->primitives_are_in_camera_space = 1;
   
-  Bone_ID cur_bone = {};
+  Bone_ID cur_bone = mk_bone_id(Bone_Invalid);
   mat4 camera_from_bone = {};
   mat4 camera_from_world = camera.cam_from_world;
   
@@ -531,24 +535,20 @@ convert_primitives_to_camera_space(Camera &camera)
   {
    if(new_bone_id != cur_bone)
    {
-    Bone *bone = get_bone(new_bone_id);
+    // NOTE(kv) We only send primitives on the left (ref @should_send_model_data)
+    Bone *bone = get_bone(new_bone_id, /*left*/0);
     cur_bone = bone->id;
     camera_from_bone = matmul(camera_from_world, bone->world_from_bone);
    }
   };
   
-  sarray(Vertex) vertex_array = m->vertices;
-  for_i32(ai, 0, 2)
+  update_current_bone(cur_bone);
+  
+  for_i32(vi, 0, m->vertices.count)
   {
-   if(ai == 1) { vertex_array = m->persistent.vertices; }
-   
-   for_i32(vi, 0, vertex_array.count)
-   {
-    // bookmark: Updating the position is no good!
-    Vertex &vertex = vertex_array[vi];
-    update_current_bone(vertex.bone_id);
-    mat4vert(camera_from_bone, &vertex.pos);
-   }
+   Vertex &vertex = m->vertices[vi];
+   update_current_bone(vertex.bone_id);
+   mat4vert(camera_from_bone, &vertex.pos);
   }
   
   for_i32(iprim, 0, m->primitives.count)
@@ -644,12 +644,12 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    BoneBlock(camera_bone->id);
    
    sarray(Vertex) vertex_array = the_model->vertices;
-   for_i32(array_index, 0, 2)
+   for_i32(array_index, 0, 1)
    {
-    if(array_index == 1)
+    /*if(array_index == 1)
     {
      vertex_array = the_model->persistent.vertices;
-    }
+    }*/
     
     for_i32(vi, 0, vertex_array.count)
     {// NOTE(kv) Having to loop through vertices here because
@@ -1680,12 +1680,21 @@ game_update(Game_Update_Params params)
      {
       if(selected == add_vertex_index)
       {
-       // bookmark Draw this vertex
+       darray(Vertex) *vertices = &the_model->persistent.vertices;
+       
        Vertex vertex = {};
        vertex.ninfo_index = -1;
        vertex.bone_id = mk_bone_id(Bone_None);
-       vertex.pos = {};  // TODO(kv) Where should it be?
-       push(&the_model->persistent.vertices, vertex);
+       {// NOTE(kv) Hacking the vertex position
+        v3 pos = {};
+        if(vertices->count == 1)
+        {
+         pos = V3(0.1f,0,0);
+        }
+        vertex.pos = pos;
+       }
+       
+       push(vertices, vertex);
       }
      }break;
     }
@@ -2245,6 +2254,14 @@ game_update(Game_Update_Params params)
     i32 entity_cap = maximum(256, m->primitives.count);
     init_dynamic(m->vertices, frame_arena, vertex_cap);
     init_dynamic(m->primitives, frame_arena, entity_cap);
+    
+    {// NOTE(kv) Add persistent primitives to primitive list.
+     // TODO(kv) We'll have to change this to support multiple viewports.
+     set_count(&m->vertices, m->persistent.vertices.count);
+     Vertex *src = m->persistent.vertices.items;
+     isize size = sizeof(*src) * m->persistent.vertices.count;
+     block_copy(m->vertices.items, src, size);
+    }
    }
    
    v1 anim_time = state->looping_time;
@@ -2286,7 +2303,9 @@ game_update(Game_Update_Params params)
   }
  }
  
+#if NOTEBOOK_MODE
  notebook_update(0);
+#endif
  
  return{
   .should_animate_next_frame = should_animate_next_frame,

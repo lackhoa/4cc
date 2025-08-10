@@ -551,6 +551,7 @@ main_normal(String *args, i32 arg_count)
    i32 broken_link_count = 0;
    i32 total_link_count = 0;
    myprintf("Broken links: \n");
+   
    for_i32(entry_index, 0, table.count)
    {
     for(Link_Table_Node *node = table[entry_index];

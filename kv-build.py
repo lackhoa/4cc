@@ -25,17 +25,17 @@ if args.release:
     args.full = True
 run_only = args.action == 'run'
 
-################ 
+################
 ################ NOTE: Configuration begin #########################
-################ 
+################
 
-hotload_notebook  = 0
+notebook_mode     = 1
 hotload_driver    = 0
 do_build_editor   = 0
 do_test_klang     = 0 # NOTE test.kc
 
 do_build_game     = 1
-do_build_driver   = 1
+driver_enabled    = 0
 lexer_build_level = 1
 imgui_build_level = 1
 no_force_inline   = 0
@@ -51,13 +51,14 @@ OPTIMIZE_EDITOR = 0
 ############## Configuration end ############################
 ################ 
 
+if driver_enabled:
+    notebook_mode = 0  # TODO(kv) use an enum!
+
 do_build_meta = 1
 
-if hotload_notebook:
+if notebook_mode:
     print("[notebook mode]")
-    do_build_driver = 0
-    do_build_meta = 0
-    do_build_editor = 0
+    driver_enabled = 0
 
 if hotload_driver:
     print("[hotload driver]")
@@ -393,10 +394,13 @@ def build_and_run_metaprogram():
         meta_config += " --test-klang"
     if hotload_driver:
         meta_config += " --hotload-driver"
-    if do_build_driver:
-        meta_config += " --build_driver"
+    if driver_enabled:
+        meta_config += " --driver_enabled"
     if no_force_inline:
         meta_config += " --no-force-inline"
+    if notebook_mode:
+        meta_config += " --notebook-mode"
+
     run(f"ad_meta {" ".join(sys.argv[1:])} {meta_config}")
 
 try:

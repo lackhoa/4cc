@@ -11,6 +11,7 @@
 
 enum Bone_Type
 {
+ Bone_Invalid        = -1,
  Bone_None           = 0,
  Bone_Head           = 1,
  Bone_Arm            = 2,

@@ -2,6 +2,8 @@
 function void
 notebook_update(Notebook_State *state)
 {// NOTE(kv) These should only run once... but whatever
+ DEBUG_TEXT("Notebook is running!");  // NOTE(kv) So we know to turn it off
+ 
  arena_clear(&notebook_frame_arena);
  
  if(fbool(0))
@@ -279,7 +281,7 @@ notebook_update(Notebook_State *state)
   DEBUG_VALUE(a.grad);
  }
  
- if(fbool(1))
+ if(fbool(0))
  {// ;chain_rule_test
   // Suppose z = g(y) = sin(y); y = f(x) = x^2
   function v1 g(v1 y) { return y*y*y; }
@@ -296,6 +298,11 @@ notebook_update(Notebook_State *state)
   v1 dy_over_dx_at_x0 = 2.f*x0;
   v1 rhs = dz_over_dy_at_y0 * dy_over_dx_at_x0;
   DEBUG_VALUE(rhs);
+ }
+ 
+ if(fbool(1))
+ {
+  nb_internet_main();
  }
 }
 //

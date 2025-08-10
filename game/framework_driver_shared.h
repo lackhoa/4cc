@@ -446,14 +446,15 @@ struct Model
  // NOTE(kv) I tried getting "is_right" from the bone,
  // but we don't know what "is_right" would be at the start -> that's bad!
  b32 is_right;
+ 
  b32 primitives_are_in_camera_space;
  Arena *frame_arena;
  
  darray(Bone) bones;
  darray(Bone *) bone_stack;
  
- darray(Vertex) vertices;
  darray(Recorded_Primitive) primitives;
+ darray(Vertex) vertices;
  
  Model_Persistent persistent;
 };

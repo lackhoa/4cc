@@ -3,6 +3,7 @@
 
 function void
 notebook_update(Notebook_State *state){
+DEBUG_TEXT("Notebook is running!");
 arena_clear(&notebook_frame_arena);
 if(ReadSlider(0)){
 mat2 A = {1, 3, 3, 5};
@@ -265,5 +266,8 @@ v1 dz_over_dy_at_y0 = 3.f * y0 * y0;
 v1 dy_over_dx_at_x0 = 2.f * x0;
 v1 rhs = dz_over_dy_at_y0 * dy_over_dx_at_x0;
 DEBUG_VALUE(rhs);
+}
+if(ReadSlider(21)){
+nb_internet_main();
 }
 }

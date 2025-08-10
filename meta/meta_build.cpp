@@ -372,7 +372,8 @@ build_framework(Thread_Info info, void *arg)
  
  b32 DEV_BUILD = true;
  add_define_symbol(params, "KV_INTERNAL", DEV_BUILD);
- add_define_symbol(params, "DRIVER_ENABLED", s.build_driver);
+ add_define_symbol(params, "DRIVER_ENABLED", s.driver_enabled);
+ add_define_symbol(params, "NOTEBOOK_MODE", s.notebook_mode);
  add_include(params, dirs.code);
  add_include(params, s.libs_dir);
  add_linker_arg(params, strlit("-DLL -export:game_api_export"));
@@ -432,22 +433,23 @@ build_main(i32 arg_count, String *args)
  {//-Script arguments
   String arg = args[argi];
   if(0);
-  else if(arg == "--build_driver") { s.build_driver = 1; }
-  else if(arg == "--release")      { s.release_editor  = 1; }
-  else if(arg == "--build-editor") { do_build_editor   = 1; }
-  else if(arg == "--build-game")   { do_build_game     = 1; }
-  else if(arg == "--asan-on")      { s.asan_on         = 1; }
+  else if(arg == "--driver_enabled") { s.driver_enabled  = 1; }
+  else if(arg == "--release")        { s.release_editor  = 1; }
+  else if(arg == "--build-editor")   { do_build_editor   = 1; }
+  else if(arg == "--build-game")     { do_build_game     = 1; }
+  else if(arg == "--asan-on")        { s.asan_on         = 1; }
   else if(arg == "--no-force-inline"){ s.no_force_inline = 1; }
+  else if(arg == "--notebook-mode")  { s.notebook_mode   = 1; }
  }
  
  if(s.release_editor){ do_build_editor = true; }
  
- // NOTE Disable hotload to track bugs
+ // NOTE(kv) Disable hotload to track bugs
  //s.hotload_driver = false;
  
  if(meta.hotload_driver)
  {
-  do_build_game = true;
+  do_build_game   = true;
   do_build_editor = false;
  }
  if(s.release_editor){ do_build_game = false; }
@@ -528,7 +530,7 @@ build_main(i32 arg_count, String *args)
    push_work(&queue, build_framework, 0);
   }
   
-  if(s.build_driver)
+  if(s.driver_enabled)
   {//-Driver
    Build_Params common = build_parameters();
    {// NOTE Common build params
