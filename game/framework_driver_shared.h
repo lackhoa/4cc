@@ -788,7 +788,7 @@ make_bone(Bone_ID id, mat4i const&mom_from_kid)
 {
  sarray(Bone *) stack = the_model->bone_stack;
  mat4i &mom = stack[stack.count-1]->world_from_bone;
- Bone *bone = push(&the_model->bones);
+ Bone *bone = push_zero(&the_model->bones);
  bone->id       = id;
  bone->is_right = is_right();
  bone->world_from_bone = matmul(mom, mom_from_kid);

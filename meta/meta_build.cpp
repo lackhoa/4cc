@@ -125,7 +125,8 @@ run_compiler(Compiler compiler, Build_Params params)
  }
  push(&cmd, compiler_name);
  
- if(params.compile_only){
+ if(params.compile_only)
+ {
   push(&cmd, strlit("-c"));
  }
  

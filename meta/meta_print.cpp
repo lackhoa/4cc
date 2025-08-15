@@ -83,7 +83,7 @@ m_get_type_names(String type_name)
  
  //Note(kv) not found
  Arena *arena = &thread_permanent_arena;
- Meta_Type_Names *new_item = store.push();
+ Meta_Type_Names *new_item = push_zero(&store);
  *new_item = {
   .type_name          = push_string(arena, type_name),
   .info_function_name = push_stringf(arena, "get_type_info_%S", type_name),

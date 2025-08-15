@@ -77,7 +77,7 @@ log_string_spam(String string)
     spam_list->count = 0;
    }
    
-   spam_entry = push(spam_list);
+   spam_entry = push_zero(spam_list);
    *spam_entry = {};
   }
   

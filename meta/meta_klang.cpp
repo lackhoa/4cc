@@ -487,7 +487,7 @@ X(fimage) X(fpreset) \
   b32 is_slider = MATCH(fv) or MATCH(runtime_fv);
   if(is_slider)
   {//-Slider
-   Meta_Slider *slider = push(&driver->sliders);
+   Meta_Slider *slider = push_zero(&driver->sliders);
    slider->file = get_file_index(driver);
    i32 slider_index = driver->sliders.count - 1;
    
@@ -595,7 +595,7 @@ X(fimage) X(fpreset) \
       {
        Meta_Expression &string_expr = call->args[0];
        String filename = print_expression(arena, string_expr);  // NOTE(kv) Let's keep the quotes
-       M_Text_Object *image = push(&driver->text_objects);
+       M_Text_Object *image = push_zero(&driver->text_objects);
        image->file  = get_file_index(driver);
        image->kind  = Text_Object_Image;
        image->range = push_text_range(driver, result->range);
@@ -728,7 +728,7 @@ parse_compound_literal(Klang_Parser *p, Meta_Expression *result)
  {
   if(ep_maybe_char(p, '}')){ break; }
   
-  Compound_Item *item = result->compound_items.push();
+  Compound_Item *item = push_zero(&result->compound_items);
   if(ep_maybe_char(p, '.'))
   {//-has key name
    item->key = ep_id(p);
@@ -880,7 +880,7 @@ parse_expression(Klang_Parser *p, Precedence max_precedence,
     {
      if (ep_maybe_char(p, ')')) break; 
      
-     Meta_Expression *argument = call->args.push();
+     Meta_Expression *argument = push_zero(&call->args);
      parse_expression(p, Precedence_Max, argument);
      
      if(ep_maybe_char(p, ')')) break; 
@@ -955,6 +955,7 @@ parse_expression(Klang_Parser *p, Precedence max_precedence,
   }
  }
 }
+
 function Type_And_Name
 parse_type_and_name(Klang_Parser *p)
 {// NOTE(kv) We're cheesing the type HARD!
@@ -967,7 +968,20 @@ parse_type_and_name(Klang_Parser *p)
   type.flags |= Parsed_Type_IsConst;
  }
  
- type.name = ep_id(p);
+ Token *type_token = ep_get_token(p);
+ String type_name = ep_id(p);
+ if(type_name == "sarray" or
+    type_name == "darray")
+ {// NOTE(kv) Generic array type
+  ep_char(p, '(');
+  k_eat_until_char(p, strlit(")"));
+  ep_char(p, ')');
+  type.name = k_string_from_token_to_current(p, type_token);
+ }
+ else
+ {
+  type.name = type_name;
+ }
  
  if(ep_maybe_id(p, strlit("const")))
  {// NOTE(kv) The "proper" way is to put "const"
@@ -1015,6 +1029,7 @@ parse_type_and_name(Klang_Parser *p)
    }
   }
  }
+ 
  return out;
 }
 function void
@@ -1053,7 +1068,7 @@ parse_struct_body(Arena *arena, Klang_Parser *p)
  init_dynamic(result, arena);
  m_brace_open(p);
  while(p->ok_ && !m_maybe_brace_close(p)){
-  M_Struct_Member *member = result.push();
+  M_Struct_Member *member = push_zero(&result);
   parse_struct_member(p, member);
  }
  return result;
@@ -1100,7 +1115,7 @@ parse_statement_to_pointer(Klang_Parser *p, /*out*/Meta_Statement *ostatement)
    Statement_Header_And_Body *header_body = &ostatement->header_and_body;
    if(ep_maybe_char(p, '('))
    {
-    //NOTE optional parameters
+    // NOTE optional parameters
     k_eat_until_char(p, strlit(")"));
     ep_char(p, ')');
    }
@@ -1151,7 +1166,7 @@ parse_statement_to_pointer(Klang_Parser *p, /*out*/Meta_Statement *ostatement)
     ep_char(p, '{');
     while(p->ok_ && not ep_maybe_char(p, '}'))
     {
-     Switch_Case *case0 = switch0->cases.push();
+     Switch_Case *case0 = push_zero(&switch0->cases);
      ep_id(p, strlit("case"));
      parse_expression_full(p, &case0->expression);
      ep_char(p, ':');
@@ -1231,7 +1246,7 @@ parse_statement_block(Klang_Parser *p)
  ep_skip_semicolons(p);
  while(p->ok_ and (not ep_maybe_char(p,'}')))
  {//-Statement
-  parse_statement_to_pointer(p, statements.push());
+  parse_statement_to_pointer(p, push_zero(&statements));
   ep_skip_semicolons(p);
  }
  return statements;
@@ -1314,11 +1329,12 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   else if(ep_maybe_id(p, "struct"))
   {//-parse struct
    darray(M_Struct_Member) members = {};
+   init_dynamic(members, tmp);
    type_name = ep_id(p);
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p))
    {// NOTE: Field
-    M_Struct_Member *member = members.push();
+    M_Struct_Member *member = push_zero(&members);
     
     if(ep_maybe_id(p, "meta_removed"))
     {//-meta_removed
@@ -1368,10 +1384,12 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
    }
    
    print_struct(printer, type_name, members, is_packed);
-   if(do_info){
+   if(do_info)
+   {
     print_struct_info(printer, type_name, members);
    }
-   if(do_embed){
+   if(do_embed)
+   {
     print_struct_embed(printer, type_name, members);
    }
   }
@@ -1382,11 +1400,14 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   else if(ep_maybe_id(p, "enum"))
   {//-Enum
    darray(String) enum_names = {};
+   init_dynamic(enum_names, tmp);
    darray(i1) enum_vals      = {};
+   init_dynamic(enum_vals, tmp);
    type_name = ep_maybe_id(p);
    m_brace_open(p);
-   while(p->ok_ && !m_maybe_brace_close(p)){
-    //NOTE(kv) Enum value
+   
+   while(p->ok_ && !m_maybe_brace_close(p))
+   {//NOTE(kv) Enum value
     push(&enum_names, ep_id(p));
     ep_char(p, '=');
     push(&enum_vals, ep_i1(p));
@@ -1446,7 +1467,7 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
    mpa_parens{
     parameters = ep_capture_until_char(p,')');
    }
-   Meta_Statement *func0 = top_levels.push();
+   Meta_Statement *func0 = push_zero(&top_levels);
    Statement_Function *func = (Statement_Function *)func0;
    func0->kind = Statement_Kind_Function;
    if(ep_maybe_char(p, ';'))
@@ -1544,7 +1565,9 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   }
   else if(ep_maybe_id(p, strlit("meta_table")))
   {//-tables
-   T_Table *table = push(&tables);
+   T_Table *table = push_zero(&tables);
+   init_dynamic(table->field_names, tmp_file);
+   
    {//-Fields
     ep_char(p, '(');
     while(p->ok_ and not ep_maybe_char(p, ')'))
@@ -1579,7 +1602,8 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   }
   else if(ep_maybe_id(p, strlit("api_table")))
   {//-api table (NOTE "api" is taken, plus "api_table" is clearer, also I mean who cares)
-   T_Table *table = tables.push();
+   T_Table *table = push_zero(&tables);
+   init_dynamic(table->field_names, tmp_file);
    table->field_names.set_count(3);
    table->field_names[0] = strlit("name");
    table->field_names[1] = strlit("return");
@@ -2094,7 +2118,7 @@ klang_main(sarray(Lexed_File) all_files)
   init_dynamic(driver->vertices,     tmp, 256);
   init_dynamic(driver->text_objects, tmp, 512);
   
-  push(&driver->files);
+  push_zero(&driver->files);
   init_dynamic(driver->file.positions, file_tmp, 2048);
  }
  

@@ -385,7 +385,8 @@ a = b; \
 b = temp; \
 }
 
-#define ArrayAndCount(v)   v, alen(v)
+#define ArrayAndCount(v)   v, alen(v)  // NOTE(kv) Deprecated
+#define arrexpand(v)       v, alen(v)  // NOTE(kv) Use this instead of @ArrayAndCount!
 #define swap_minmax(a,b) if (a > b) { macro_swap(a,b); }
 // TODO: Deprecate these
 #define v2_expand(v) v.x, v.y
@@ -850,7 +851,7 @@ typedef u32 abgr;  // NOTE(kv) abgr is register order. This one is for Dear ImGU
 
 typedef String String8;  // #Deprecated
 
-//NOTE(kv) nil-terminated string (cutnpaste)
+// NOTE(kv) nil-terminated string
 struct Stringz : String
 {
 };
@@ -1411,6 +1412,7 @@ struct Static_Array2
 {
  T  *items;
  i32 count;
+ i32 cap;
  
  myinline T &operator[](i32 index){ return items[index]; }
  operator T*(){ return items; }
@@ -1418,12 +1420,23 @@ struct Static_Array2
 
 #define sarray(T) Static_Array2<T>
 
+#define to_sarray(c_array)    mk_sarray(c_array, alen(c_array))
+#define sarrexpand(array)     array.items, array.count
+
+template<class T>
+function sarray(T)
+mk_sarray(T *items, i32 count)
+{
+ return {.items=items, .count=count};
+}
+
 template<class T>
 function void
 init_static(sarray(T) &array, Arena *arena, i32 count)
 {
- array.count = count;
  array.items = push_array(arena, T, count);
+ array.count = count;
+ array.cap   = count;
 }
 template<class T>
 function void
@@ -1465,7 +1478,8 @@ struct Dynamic_Array : Static_Array2<T>
  b32 fixed_size;
  Arena *arena;
  //-
- myinline T& get(i32 index) {
+ myinline T& get(i32 index)
+ {
   kv_assert(index < this->count);
   return this->items[index];
  }
@@ -1477,9 +1491,12 @@ struct Dynamic_Array : Static_Array2<T>
    kv_assert(not fixed_size);
    T *old_items = this->items;
    
-   Arena *used_arena = arena;
-   if(not arena){ used_arena = &thread_permanent_arena; }
-   this->items = push_array(used_arena, T, new_cap, default_push_params, file_line);
+   Arena *arena_1 = arena;
+   if(not arena)
+   {
+    arena_1 = &thread_permanent_arena;
+   }
+   this->items = push_array(arena_1, T, new_cap, default_push_params, file_line);
    
    block_copy(this->items, old_items, this->count*sizeof(T));
    cap = new_cap;
@@ -1498,20 +1515,23 @@ struct Dynamic_Array : Static_Array2<T>
   kv_assert(this->count > 0);
   set_count(this->count - 1);
  }
+ 
  inline T *push_nozero(DEBUG_file_line_defparams)
  {
   set_count(this->count+1, file_line);
   T *result = this->items + (this->count-1);
   return result;
  }
- inline T *push(DEBUG_file_line_defparams)
+ 
+ inline T *push_zero(DEBUG_file_line_defparams)
  {
   T *result = this->push_nozero(file_line);
   *result = {};
   return result;
  }
  
- darray(T) copy(Arena *to_arena) {
+ darray(T) copy(Arena *to_arena)
+ {
   darray(T) result = *this;
   result.items = push_array(to_arena, T, this->count);
   umm size = this->count*sizeof(T);
@@ -1540,7 +1560,7 @@ set_cap_min(darray(T) *a, i32 cap_min, DEBUG_file_line_defparams)
 
 template<class T>
 myinline T &
-get_last(darray(T) &array)
+get_last(sarray(T) &array)
 {
  kv_assert(array.count > 0);
  return array[array.count-1];
@@ -1581,9 +1601,9 @@ init_dynamic(darray(T) &a, Arena *arena, i32 initial_size=0)
 }
 
 template<class T> myinline T *
-push(darray(T) *array, DEBUG_file_line_defparams)
+push_zero(darray(T) *array, DEBUG_file_line_defparams)
 {
- return array->push(file_line);
+ return array->push_zero(file_line);
 }
 template<class T> function T *
 push(darray(T) *array, T const&value, DEBUG_file_line_defparams)
@@ -1613,6 +1633,15 @@ insert_at(darray(T) *array, T const&new_item, i32 insert_index,
  }
  array->items[insert_index] = new_item;
 }
+
+template<class T> function void
+remove_at_fast(darray(T) *array, i32 index)
+{
+ kv_assert(array->count > index);
+ array[index] = array[array->count - 1];
+ array->count -= 1;
+}
+
 template<class T> function void
 push_first(darray(T) *array, T const&new_item, DEBUG_file_line_defparams)
 {
@@ -1626,12 +1655,12 @@ copy_array(Arena *arena, sarray(T) src)
  block_copy(result.items, src.items, sizeof(T)*src.count);
  return result;
 }
-/*template<class T> function sarray(T)
+template<class T> function sarray(T)
 copy_array(Arena *arena, darray(T) src)
 {// #Stroustrup
 sarray(T) src2 = {src.items, src.count};
 return copy_array(arena, src2);
-}*/
+}
 
 //NOTE(kv) stroustrup!
 function void
@@ -1649,17 +1678,44 @@ push_unique(darray(T) *array, T const&item)
 {
  T *result = 0;
  b32 ok = true;
- for_i32(index,0,array->count){
-  if(array->items[index] == item){
+ for_i32(index,0,array->count)
+ {
+  if(array->items[index] == item)
+  {
    ok = false;
    break;
   }
  }
- if(ok){
+ if(ok)
+ {
   result = push(array, item);
  }
  return result;
 }
+
+template<class T>
+function i32
+darray_find(darray(T) *array, T const&item)
+{
+ i32 result = -1;
+ for_i32(index, 0, array->count)
+ {
+  if(array->items[index] == item)
+  {
+   result = index;
+   break;
+  }
+ }
+ return result;
+}
+
+template<class T>
+function i32
+darray_contains(darray(T) *array, T const&item)
+{
+ return darray_find(array, item) != -1;
+}
+
 //~
 // TODO(kv) Rename this to "Scratch_Auto"
 struct Scratch_Block
@@ -1910,14 +1966,16 @@ make_printer_file(FILE *file)
 }
 //-
 function Stringz
-printer_get_string(Printer &p){
+printer_get_string(Printer &p)
+{
  Stringz result = {};
- if(p.type==Printer_Type_Buffer){
+ if(p.type==Printer_Type_Buffer)
+ {
   result = { p.base, (u64)p.byte_pos };
   p.base[p.byte_pos++] = 0;  //NOTE nil-termination
- }else{
-  invalid_code_path;
  }
+ else { invalid_code_path; }
+ 
  return result;
 }
 myinline void

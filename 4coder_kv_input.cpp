@@ -30,7 +30,7 @@ kv_quail_defrule(App *app, char *key, char *insert,
  }
  
  KvQuailEntry entry = {key, insert, delete_before, delete_after, cursor_index};
- table->push();
+ push_zero(table);
  for(i32 i=table->count-1;
      i >= entry_index+1;
      i--)

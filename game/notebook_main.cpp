@@ -292,7 +292,8 @@ forward_difference(v1 *e, i32 i)
  return result;
 }
 
-#include "backprop.cpp"
+#include "nb_backprop.cpp"
 #include "nb_internet.cpp"
-#include "notebook.gen.cpp"  // "notebook.kc"
+#include "nb_btree.cpp"
+#include "notebook.cpp"  // "notebook.kc"
 //-

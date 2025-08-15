@@ -147,7 +147,7 @@ template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
    //-loop variable
    ep_eat(parser);
    
-   Template_Node *node = for_loop_nodes.push();
+   Template_Node *node = push_zero(&for_loop_nodes);
    String field_name;
    if(ep_maybe_char(parser, '(')){
     field_name = ep_id(parser);
@@ -191,7 +191,7 @@ template_gen_for(darray(T_Table) *tables, Ed_Parser *parser,
     last->text.size += token0->size;
    }else{
     //-make a new text node
-    Template_Node *new_node = for_loop_nodes.push();
+    Template_Node *new_node = push_zero(&for_loop_nodes);
     new_node->text = token0_string;
    }
   }
@@ -263,7 +263,7 @@ xx_template_main(Lexed_File source)
   }
   else if(ep_maybe_id(p, strlit("meta_table")))
   {//-table
-   T_Table *table = push(&tables);
+   T_Table *table = push_zero(&tables);
    {//-Fields
     ep_char(p, '(');
     while(p->ok_ and not ep_maybe_char(p, ')'))
@@ -298,7 +298,7 @@ xx_template_main(Lexed_File source)
   }
   else if(ep_maybe_id(p, strlit("api_table")))
   {//-api table (NOTE "api" is taken, plus "api_table" is clearer, also I mean who cares)
-   T_Table *table = tables.push();
+   T_Table *table = push_zero(&tables);
    table->field_names.set_count(3);
    table->field_names[0] = strlit("name");
    table->field_names[1] = strlit("return");

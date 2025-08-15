@@ -193,7 +193,7 @@ generate_4coder_custom()
     if(ep_maybe_char(parser, '}')){
      break;
     }
-    Meta_Custom_Command *command = commands.push();
+    Meta_Custom_Command *command = push_zero(&commands);
     *command = {};
     command->name = ep_id(parser);
     command->documentation = ep_string_literal(parser);
@@ -207,7 +207,7 @@ generate_4coder_custom()
     if(ep_maybe_char(parser, '}')){
      break;
     }
-    Meta_Custom_Command *command = commands.push();
+    Meta_Custom_Command *command = push_zero(&commands);
     *command = {};
     command->name = ep_id(parser);
     command->documentation = ep_string_literal(parser);
@@ -223,7 +223,7 @@ generate_4coder_custom()
     if(ep_maybe_char(parser, '}')){
      break;
     }
-    Meta_Custom_ID *id = custom_ids.push();
+    Meta_Custom_ID *id = push_zero(&custom_ids);
     id->name = ep_id(parser);
     id->group = ep_id(parser);
     ep_maybe_char(parser, ',');
@@ -387,6 +387,7 @@ main_normal(String *args, i32 arg_count)
  
  b32 ok = 1;
  Arena *tmp = &thread_permanent_arena;
+ init_dynamic(meta_type_name_store, tmp);
  String caller_file = {};
  for_i32(argi, 1, arg_count)
  {

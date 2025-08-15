@@ -6,7 +6,7 @@ notebook_update(Notebook_State *state)
  
  arena_clear(&notebook_frame_arena);
  
- if(fbool(0))
+ if((0))
  {// ;cramers_rule_test
   mat2 A = {
    1,3,
@@ -26,7 +26,7 @@ notebook_update(Notebook_State *state)
   DEBUG_VALUE(b);
  }
  
- if(fbool(0))
+ if((0))
  {// ;Menelaos_theorem_test @Menelaos_theorem
   GraphBlock;
   v1 t = .3f;
@@ -55,7 +55,7 @@ notebook_update(Notebook_State *state)
   graph_point(bts);
  }
  
- if(fbool(0))
+ if((0))
  {// ;test_Leibniz_formula
   v1 alpha = -0.9f;
   v1 beta  = 1.9f;
@@ -106,7 +106,7 @@ notebook_update(Notebook_State *state)
   }
  }
  
- if(fbool(0))
+ if((0))
  {// ;Blossom_Vector_Test
   GraphBlock;
   const i32 n = 3;
@@ -115,8 +115,8 @@ notebook_update(Notebook_State *state)
    
    for_i32(i, 0, n+1) { graph_point(b[i]); }
    
-   v1 t = fv(0.0863f);
-   v1 v = fv(1.f);
+   v1 t = (0.0863f);
+   v1 v = (1.f);
    
    // NOTE deCasteljau repeatedly with a vector argument: doesn't look like anything?
    v2 dcb_vector = dcb(b, n, v, /*is_vector*/1);
@@ -125,7 +125,7 @@ notebook_update(Notebook_State *state)
    DEBUG_VALUE(dcb_vector);
   }
   
-  if(fbool(0))
+  if((0))
   {// NOTE What if we tried to blossom with multiple vectors, swapping places?
    v4 b = {2.f, 1.f, 5.f, 3.f};
    v3 v = {.3f, .2f, .9f};
@@ -153,7 +153,7 @@ notebook_update(Notebook_State *state)
   }
  }
  
- if(fbool(0))
+ if((0))
  {// ;thm_5_15_test (it finally works!)
   const i32 n = 3;
   v4 b = {2.f, 1.f, 5.f, 3.f};
@@ -176,7 +176,7 @@ notebook_update(Notebook_State *state)
   }
  }
  
- if(fbool(0))
+ if((0))
  {// ;bezier_derivative_test
   GraphBlock;
   const i32 n = 3;
@@ -184,7 +184,7 @@ notebook_update(Notebook_State *state)
   
   for_i32(i, 0, n+1) { graph_point(b[i]); }
   
-  v1 t = fv(0.0428f);
+  v1 t = (0.0428f);
   v2 derivative = {};
   {
    v2 b_tmp[n+1];
@@ -201,11 +201,11 @@ notebook_update(Notebook_State *state)
   DEBUG_VALUE(derivative);
  }
  
- if(fbool(0))
+ if((0))
  {// NOTE ;eq_5_27_test
   v4 b = {2.f, 1.f, 5.f, 3.f};
   const i32 n = 3;
-  v1 t = fv(0.6362f);
+  v1 t = (0.6362f);
   v1 lhs = dcb(b, t);
   v1 rhs = 0.f;
   for_i32(i, 0, n+1)
@@ -216,22 +216,22 @@ notebook_update(Notebook_State *state)
   DEBUG_VALUE(rhs);
  }
  
- if(fbool(0))
+ if((0))
  {// NOTE ;test_5_28
   v4 b = {2.f, 1.f, 5.f, 3.f};
   const i32 n = 3;
-  v1 t = fv(5.9991f);
+  v1 t = (5.9991f);
   v1 a = 2.f;
   v1 b2 = 6.f;
-  function v1 u_from_t(v1 t1){ return (t1-a)/(b2-a); };
+  auto u_from_t = [&](v1 t1) -> v1 { return (t1-a)/(b2-a); };
   v1 u = u_from_t(t);
-  function v1 x_from_u(v1 u1) { return dcb(b, u1); };
-  function v1 x_from_t(v1 t1) { return x_from_u(u_from_t(t1)); }
+  auto x_from_u = [&](v1 u1) { return dcb(b, u1); };
+  auto x_from_t = [&](v1 t1) { return x_from_u(u_from_t(t1)); };
   v1 x = x_from_t(t);
   DEBUG_VALUE(t);
   DEBUG_VALUE(u);
   DEBUG_VALUE(x);
-  v1 epsilon = integer_power(0.5f, fv(12));
+  v1 epsilon = integer_power(0.5f, (12));
   DEBUG_VALUE(epsilon);
   v1 dx_dt = (x_from_t(t+epsilon) - x_from_t(t)) / epsilon;
   v1 dx_du = (x_from_u(u+epsilon) - x_from_u(u)) / epsilon;
@@ -247,12 +247,12 @@ notebook_update(Notebook_State *state)
   }
  }
  
- if(fbool(0))
+ if((0))
  {// ;figure_polar_form
   GraphBlock;
   const i32 n = 3;
   v2 b[n+1] = { {1.f, 2.f}, {2.f, 1.f}, {3.f, 3.f}, {2.f, 4.f} };
-  v1 t1 = fv(0.7817f);
+  v1 t1 = (0.7817f);
   graph_bezier(b,n);
   
   // NOTE p1
@@ -266,29 +266,21 @@ notebook_update(Notebook_State *state)
   for_i32(islice, 0, nslices+1)
   {
    v1 t = interval * islice;
-   if(fbool(0))
+   if((0))
    {
     graph_line(dcb(b,n,t), dcb(p1,n-1,t), ImGui::GetColorU32(ImGuiCol_Text));
    }
   }
  }
  
- if(fbool(0))
- {
-  LLM_Value a = mk_value(3.f, strlit("a"));
-  LLM_Value b = mk_value_add(&a, &a, strlit("b"));
-  backprop(&b);
-  DEBUG_VALUE(a.grad);
- }
- 
- if(fbool(0))
+ if(0)
  {// ;chain_rule_test
   // Suppose z = g(y) = sin(y); y = f(x) = x^2
-  function v1 g(v1 y) { return y*y*y; }
-  function v1 f(v1 x) { return x*x; }
+  auto g = [&](v1 y) { return y*y*y; };
+  auto f = [&](v1 x) { return x*x; };
   
   // NOTE dz / dx at x0
-  v1 x0 = fv(2.4578f);
+  v1 x0 = (2.4578f);
   v1 h = 0.0001f;
   v1 approx = (g(f(x0 + h)) - g(f(x0))) / h;
   DEBUG_VALUE(approx);
@@ -300,9 +292,85 @@ notebook_update(Notebook_State *state)
   DEBUG_VALUE(rhs);
  }
  
- if(fbool(1))
+ if(0)
  {
   nb_internet_main();
+ }
+ 
+ {// NOTE(kv) LLM
+  if(0)
+  {// NOTE(kv) Backprop
+   v1 a_val = 3.f;
+   {
+    LLM_Value a = mk_value(a_val);
+    LLM_Value o = mk_value_tanh(a);
+    backprop(o);
+    DEBUG_VALUE(o.p->value);
+    DEBUG_VALUE(a.p->grad);
+   }
+   {// NOTE(kv) Breaking the tanh into its constituents...
+    // Would it still work?
+    LLM_Value a = mk_value(a_val);
+    LLM_Value o = mk_value_tanh_graph(a);
+    backprop(o);
+    DEBUG_VALUE(o.p->value);
+    DEBUG_VALUE(a.p->grad);
+   }
+  }
+  
+  if(1)
+  {
+   srand(12345);
+   Scratch_Block tmp;
+   
+   v1 xs[4][3] = {
+    {2.f,   3.f,  -1.f},
+    {3.f,  -1.f,  0.5f},
+    {0.5f,  1.f,  1.f},
+    {1.f,   1.f,  -1.f},
+   };
+   
+   i32 neuron_counts[] = {4,4,1};
+   MLP mlp = mk_mlp(3, to_sarray(neuron_counts));
+   
+   v1 ys[] = {1.f, -1.f, -1.f, 1.f};
+   
+   auto forward = [&]() -> LLM_Value
+   {
+    LLM_Value loss = mk_value(0.f);
+    for_i32(x_index, 0, alen(xs))
+    {
+     LLM_Value pred = mlp_apply(mlp, to_sarray(xs[x_index]))[0];
+     LLM_Value delta = pred - mk_value(ys[x_index]);
+     loss = loss + delta * delta;
+    }
+    return loss;
+   };
+   
+   v1 step_size = 0.01f;
+   
+   sarray(LLM_Value) params = get_mlp_parameters(tmp, mlp);
+   i32 it_count = 25;
+   for_i32(iteration, 0, it_count)
+   {
+    LLM_Value loss = forward();
+    //
+    if((iteration % (it_count/5) == 0) or
+       iteration == it_count-1)
+    {
+     DEBUG_VALUE(loss.p->value);
+    }
+    
+    backprop(loss);
+    
+    // NOTE(kv) Tune
+    for_i32(param_index, 0, params.count)
+    {
+     LLM_Value param = params[param_index];
+     param.p->value -= step_size * param.p->grad;
+    }
+   }
+  }
  }
 }
 //
