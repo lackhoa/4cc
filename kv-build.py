@@ -65,7 +65,7 @@ if hotload_driver:
     do_build_meta = 0
 
 if args.release:
-    do_editor = 1
+    do_build_editor = 1
 
 default_build_level = 0
 
@@ -401,7 +401,11 @@ def build_and_run_metaprogram():
     if notebook_mode:
         meta_config += " --notebook-mode"
 
-    run(f"ad_meta {" ".join(sys.argv[1:])} {meta_config}")
+    # NOTE explicit path: bare "ad_meta" resolves via PATH when
+    # NoDefaultCurrentDirectoryInExePath is set (or on a machine with another
+    # ad_meta on PATH), silently running the wrong binary
+    ad_meta_exe = pjoin(OUTDIR, "ad_meta.exe")
+    run(f"{ad_meta_exe} {" ".join(sys.argv[1:])} {meta_config}")
 
 try:
     if asan_on:

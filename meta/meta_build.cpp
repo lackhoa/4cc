@@ -303,8 +303,8 @@ build_editor(Thread_Info info, void *arg)
  Stringz bkp_name = strcat(tmp, binary_stem, strlit(".bkp.exe"));
  
  if(s.release_editor)
- {// NOTE backup
-  ok = ok and move_file(binary_name, bkp_name);
+ {// NOTE backup (best-effort: a fresh install has no prior binary to back up)
+  move_file(binary_name, bkp_name);
  }
  Build_Params params = build_parameters();
  
