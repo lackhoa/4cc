@@ -161,6 +161,22 @@ struct Paint_Params
  v1 line_depth_offset;
  v1 fill_depth_offset;
 };
+// NOTE(kv) Field table for Paint_Params: X(enum_suffix, member_path).
+// Single source for the PaintField_* bits and paint_params_diff_mask
+// (game_draw.cpp) -- extend HERE when Paint_Params grows.
+#define PaintFieldList(X) \
+X(painting,          painting)                 \
+X(line_radii,        line.radii)               \
+X(line_lightness,    line.lightness_additions) \
+X(line_flags,        line.flags)               \
+X(alignment_min,     line.alignment_min)       \
+X(fill_color,        fill.color)               \
+X(fill_flags,        fill.flags)               \
+X(radius_mult,       radius_mult)              \
+X(nslice_per_meter,  nslice_per_meter)         \
+X(line_color,        line_color)               \
+X(line_depth_offset, line_depth_offset)        \
+X(fill_depth_offset, fill_depth_offset)        \
 
 struct Bezier
 {
@@ -429,17 +445,51 @@ struct Recorded_Primitive
  Primitive_Type type;
  Location location;
  Bone_ID bone_id;
- 
+ i32 group_index;  // index into Model.groups
+
  union
  {
   Bezier curve;
   Poly3  poly3;
-  Dual_Bezier *dual_bezier;
+  Dual_Bezier dual_bezier;
  };
+};
+// NOTE(kv) Which Paint_Params fields a group overrides vs its parent (the "delta" view).
+// The group's "params" is always the FULL effective state; the mask is metadata.
+// Generated from PaintFieldList (next to Paint_Params).
+enum
+{
+#define X(name, path) PaintFieldIndex_##name,
+ PaintFieldList(X)
+#undef X
+};
+enum
+{
+#define X(name, path) PaintField_##name = (1 << PaintFieldIndex_##name),
+ PaintFieldList(X)
+#undef X
+};
+struct Recorded_Group
+{// NOTE(kv) One paint scope during the recording run (see Paint_Params_Block).
+ // Groups form a forest: parent_index == -1 means top-level.
+ i32 parent_index;
+ Location location;   // first draw under this scope (best-effort name)
+ Paint_Params params; // full effective paint state for leaves of this group
+ u32 changed_mask;    // PaintField_* bits differing from the parent group
+ // NOTE(kv) Params are only knowable after the scope body ran its mutations, so
+ // they're snapshotted lazily ("frozen") at the first event that needs them --
+ // first own primitive, a child scope opening, or scope close. Capture-time only.
+ b32 params_frozen;
 };
 struct Model_Persistent
 {
  darray(Vertex) vertices;
+};
+struct Group_Scope_Stack
+{// NOTE(kv) One slot per open Paint_Params_Block scope, holding that scope's group
+ // index. Eager: every scope gets a group at entry (slot 0 = the root group), so
+ // slots always hold valid indices. Operations live in game_draw.cpp.
+ darray(i32) slots;
 };
 struct Model
 {
@@ -453,7 +503,13 @@ struct Model
  darray(Bone) bones;
  darray(Bone *) bone_stack;
  
+ // NOTE(kv) The recording: bone-space, immutable after capture (recording_arena).
  darray(Recorded_Primitive) primitives;
+ darray(Recorded_Group) groups;
+ Group_Scope_Stack group_stack;
+ // NOTE(kv) Camera-space copy of `primitives` (frame_arena), rebuilt per frame on
+ // demand -- consumers needing camera space read this, never transform the recording.
+ darray(Recorded_Primitive) camera_primitives;
  darray(Vertex) vertices;
  
  Model_Persistent persistent;

@@ -27,6 +27,11 @@ struct Game_State
  Arena permanent_arena;
  Arena data_load_arena;  // NOTE(kv) Cleared on data load
  Arena frame_arena;
+ // NOTE(kv) Home of the recording (Model primitives/groups). Cleared per capture run
+ // (currently every frame, since the driver still re-records each frame), NOT shared
+ // with per-frame scratch -- the recording must outlive frame data once capture is
+ // one-time.
+ Arena recording_arena;
  //Arena model_frame_arena;
  Arena driver_arena;
  

@@ -170,11 +170,86 @@ global u32 bs_cycle_counter;
 /*#define symx_off SetInBlock(painter->symx, false)
 #define symx_on  SetInBlock(painter->symx, true)*/
 
+function u32
+paint_params_diff_mask(Paint_Params &a, Paint_Params &b)
+{// NOTE(kv) Field list generated from PaintFieldList (framework_driver_shared.h).
+ // Bitwise compare is correct here: both sides are same-run copies of painter->params,
+ // so equal values are bit-identical (no float-representation drift).
+ u32 mask = 0;
+#define X(name, path) if(not block_match_struct(&a.path, &b.path)){ mask |= PaintField_##name; }
+ PaintFieldList(X)
+#undef X
+ return mask;
+}
+function b32
+should_send_model_data()
+{
+ b32 left = not is_right();
+ b32 main_viewport = implies(painter != 0, is_main_viewport(painter->viewport));
+ return left and main_viewport;
+}
+
+//-NOTE(kv) Group recording (eager: every Paint_Params_Block scope is a group)
+function i32
+current_group_index(Group_Scope_Stack &stack)
+{
+ return stack.slots.items[stack.slots.count-1];
+}
+function void
+freeze_group_params(Model *m, i32 group_index)
+{// NOTE(kv) A group's params are only knowable after its scope body ran its
+ // mutations, so we snapshot lazily -- at the group's first own primitive, at a
+ // child scope opening, or at scope close, whichever comes first.
+ Recorded_Group &group = m->groups.items[group_index];
+ if(not group.params_frozen)
+ {
+  group.params_frozen = true;
+  group.location = painter->current_draw_location;
+  group.params   = painter->params;
+  group.changed_mask = 0;
+  if(group.parent_index != -1)
+  {
+   group.changed_mask = paint_params_diff_mask(group.params,
+                                               m->groups.items[group.parent_index].params);
+  }
+ }
+}
+function void
+open_group_scope()
+{// NOTE(kv) Empty groups are kept on purpose: a scope that opened but drew nothing
+ // marks a conditional draw that must become a visibility flag (plan step 4).
+ Model *m = the_model;
+ Group_Scope_Stack &stack = m->group_stack;
+ i32 parent_index = current_group_index(stack);
+ freeze_group_params(m, parent_index);  // parent's own mutations are complete by now
+ Recorded_Group group = {.parent_index = parent_index};
+ i32 index = m->groups.count;
+ push(&m->groups, group);
+ push(&stack.slots, index);
+}
+function void
+close_group_scope()
+{// NOTE(kv) Freeze before pop: even an empty group records the params its scope set
+ // (this runs before ~Paint_Params_Block restores them).
+ Model *m = the_model;
+ freeze_group_params(m, current_group_index(m->group_stack));
+ m->group_stack.slots.count--;
+}
+//-
+
 struct Paint_Params_Block
 {
  Paint_Params saved_params;
- myinline Paint_Params_Block() { this->saved_params = painter->params; }
- myinline ~Paint_Params_Block(){ painter->params = this->saved_params; }
+ b32 scope_opened;
+ myinline Paint_Params_Block() {
+  this->saved_params = painter->params;
+  this->scope_opened = should_send_model_data();
+  if(this->scope_opened) { open_group_scope(); }
+ }
+ myinline ~Paint_Params_Block(){
+  if(this->scope_opened) { close_group_scope(); }
+  painter->params = this->saved_params;
+ }
 };
 #define PaintBlock Paint_Params_Block line_unique_var
 
@@ -184,12 +259,28 @@ painter->params = mk_highlight_params(__VA_ARGS__)
 
 #define hl_block  hl_block_color(0)
 
-function b32
-should_send_model_data()
-{
- b32 left = not is_right();
- b32 main_viewport = implies(painter != 0, is_main_viewport(painter->viewport));
- return left and main_viewport;
+function i32
+current_recorded_group_index()
+{// NOTE(kv) Stack top is always the current scope's group (eager). First primitive
+ // freezes the group's params; a later primitive with differing params means a
+ // mid-scope mutation -> sibling group under the same parent.
+ Model *m = the_model;
+ Group_Scope_Stack &stack = m->group_stack;
+ i32 result = current_group_index(stack);
+ Recorded_Group &group = m->groups.items[result];
+ if(not group.params_frozen)
+ {
+  freeze_group_params(m, result);
+ }
+ else if(paint_params_diff_mask(painter->params, group.params) != 0)
+ {// Mid-scope mutation -> sibling under the same parent
+  Recorded_Group sibling = {.parent_index = group.parent_index};
+  result = m->groups.count;
+  push(&m->groups, sibling);  // NOTE(kv) `group` reference is dead past this point
+  freeze_group_params(m, result);
+  stack.slots.items[stack.slots.count-1] = result;
+ }
+ return result;
 }
 function void
 send_primitive(Recorded_Primitive &primitive)
@@ -199,6 +290,7 @@ send_primitive(Recorded_Primitive &primitive)
  {
   primitive.location = location;
   primitive.bone_id = current_bone()->id;
+  primitive.group_index = current_recorded_group_index();
   push(&the_model->primitives, primitive);
  }
 }
@@ -514,9 +606,8 @@ fill_dual_bez(tvert P[4], tvert Q[4], Fill_Params params=get_fill_params())
 {
  {//-Sending data
   Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
-  primitive.dual_bezier = push_struct(the_model->frame_arena, Dual_Bezier);
-  block_copy(primitive.dual_bezier->P, P, 4*sizeof(v3));
-  block_copy(primitive.dual_bezier->Q, Q, 4*sizeof(v3));
+  block_copy(primitive.dual_bezier.P, P, 4*sizeof(v3));
+  block_copy(primitive.dual_bezier.Q, Q, 4*sizeof(v3));
   send_primitive(primitive);
  }
  

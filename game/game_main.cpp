@@ -551,9 +551,12 @@ convert_primitives_to_camera_space(Camera &camera)
    mat4vert(camera_from_bone, &vertex.pos);
   }
   
+  // NOTE(kv) Transform a copy into camera_primitives -- the recording itself
+  // stays bone-space (it is the source of truth, never mutated by a camera).
+  init_dynamic(m->camera_primitives, m->frame_arena, m->primitives.count);
   for_i32(iprim, 0, m->primitives.count)
   {
-   Recorded_Primitive &primitive = m->primitives[iprim];
+   Recorded_Primitive primitive = m->primitives[iprim];
    update_current_bone(primitive.bone_id);
    switch(primitive.type)
    {
@@ -561,7 +564,7 @@ convert_primitives_to_camera_space(Camera &camera)
     {
      mat4bez(camera_from_bone, &primitive.curve);
     }break;
-    
+
     case Primitive_Type_Poly3:
     {
      for_i32(i,0,3)
@@ -569,13 +572,14 @@ convert_primitives_to_camera_space(Camera &camera)
       mat4vert(camera_from_bone, &primitive.poly3[i]);
      }
     }break;
-    
+
     case Primitive_Type_Dual_Bezier:
     {
-     mat4bez(camera_from_bone, &primitive.dual_bezier->P);
-     mat4bez(camera_from_bone, &primitive.dual_bezier->Q);
+     mat4bez(camera_from_bone, &primitive.dual_bezier.P);
+     mat4bez(camera_from_bone, &primitive.dual_bezier.Q);
     }break;
    }
+   push(&m->camera_primitives, primitive);
   }
  }
 }
@@ -1388,10 +1392,10 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
   }
   
   Scratch_Block tmp;
-  for_i32(pi, 0, the_model->primitives.count)
+  for_i32(pi, 0, the_model->camera_primitives.count)
   {// NOTE(kv) Closest primitive
    arena_clear(tmp);
-   Recorded_Primitive &primitive = the_model->primitives[pi];
+   Recorded_Primitive &primitive = the_model->camera_primitives[pi];
    darray(Poly3) triangles;
    init_dynamic(triangles, tmp);
    
@@ -1447,8 +1451,8 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
      i32 const nslices = 8;
      set_cap_min(&triangles, nslices*2);
      
-     Bezier P = primitive.dual_bezier->P;
-     Bezier Q = primitive.dual_bezier->Q;
+     Bezier P = primitive.dual_bezier.P;
+     Bezier Q = primitive.dual_bezier.Q;
      v1 inv_nslices = 1.f / (v1)nslices;
      v3 A0 = P[0];
      v3 B0 = Q[0];
@@ -2253,7 +2257,19 @@ game_update(Game_Update_Params params)
     i32 vertex_cap = maximum(256, m->vertices.count);
     i32 entity_cap = maximum(256, m->primitives.count);
     init_dynamic(m->vertices, frame_arena, vertex_cap);
-    init_dynamic(m->primitives, frame_arena, entity_cap);
+
+    // NOTE(kv) The recording lives on its own arena, cleared per capture run
+    // (still every frame while the driver re-records each frame).
+    Arena *recording_arena = &state->recording_arena;
+    arena_clear(recording_arena);
+    init_dynamic(m->primitives, recording_arena, entity_cap);
+    init_dynamic(m->groups, recording_arena, 64);
+    init_dynamic(m->group_stack.slots, recording_arena, 16);
+    {// NOTE(kv) Root group for draws outside any PaintBlock; params freeze at first use.
+     Recorded_Group root = {.parent_index = -1};
+     push(&m->groups, root);
+     push(&m->group_stack.slots, 0);
+    }
     
     {// NOTE(kv) Add persistent primitives to primitive list.
      // TODO(kv) We'll have to change this to support multiple viewports.
