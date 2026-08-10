@@ -334,11 +334,10 @@ kv_startup(App_Cmd *app)
  
  initialize_stylist_fonts(app);
  
-#if KV_INTERNAL
  if(!def_get_config_b32(vars_intern_lit("dev_disable_game_on_startup"))){
   turn_game_on();
+  switch_to_game_panel(app);  // NOTE(kv) show the game right away (skip the g,o dance)
  }
-#endif
 }
 
 // ;binding
