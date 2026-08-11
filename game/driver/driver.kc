@@ -1986,14 +1986,7 @@ render_head(Pose &pose)
   set_line_color_lightness(1.5096f);
   tvert a1626 = fvert(0.2651f, -0.5154f, 0.8715f);
   tvert b1627 = fvert(0.5636f, -0.3601f, 0.5385f);
-  draw(bez_unit2(a1626,
-                 V4(0.f, 0.1801f, 0.0364f, 0.3141f),
-                 V3(0.866f, 0.f, 0.5f),
-                 b1627),
-       small_to_big());
   tvert c1633 = fvert(0.5266f, -0.6385f, 0.68f);
-  draw(bez_unit2(b1627, V4(), V3(), c1633),
-       big_to_small());
  }
  
  b32 hair_on = fbool(1);
