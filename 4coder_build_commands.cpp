@@ -44,6 +44,22 @@ global String standard_build_cmd_string_array[] =  {
 #endif
 };
 
+// NOTE(kv) Interpreter to put in FRONT of the (quoted) script path.
+// .py has no file association on some machines, so a bare "kv-build.py"
+// dies instantly and leaves an empty *compilation* buffer.
+// Parallel to the two arrays above -- keep the order in sync.
+global String standard_build_prefix_array[] =  {
+ strlit("python -u "),
+ strlit(""),
+ strlit("python -u "),
+ strlit(""),
+ strlit(""),
+ strlit(""),
+#if OS_WINDOWS
+ strlit(""),
+#endif
+};
+
 function String
 push_fallback_command(Arena *arena, String filename){
     return(push_stringf(arena, "echo could not find %.*s", string_expand(filename)));
@@ -74,11 +90,13 @@ standard_search_and_build_from_dir(App_Cmd *app, View_ID view, String8 start_dir
  // NOTE(allen): Search
  String8 full_file_path = {};
  String8 cmd_string  = {};
+ String8 cmd_prefix  = {};
  for (u32 i = 0; i < ArrayCount(standard_build_filename_array); i += 1)
  {
   full_file_path = search_up_path(scratch, start_dir, standard_build_filename_array[i]);
   if (full_file_path.size > 0){
    cmd_string = standard_build_cmd_string_array[i];
+   cmd_prefix = standard_build_prefix_array[i];
    break;
   }
  }
@@ -88,7 +106,8 @@ standard_search_and_build_from_dir(App_Cmd *app, View_ID view, String8 start_dir
  {
   // NOTE(allen): Build
   String8 path = path_dir(full_file_path);
-  String8 command = push_stringf(scratch, "\"%.*s/%.*s\" %s",
+  String8 command = push_stringf(scratch, "%.*s\"%.*s/%.*s\" %s",
+                                  string_expand(cmd_prefix),
                                   string_expand(path),
                                   string_expand(cmd_string),
                                   command_args);
