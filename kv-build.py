@@ -35,7 +35,7 @@ do_build_editor   = 0
 do_test_klang     = 0 # NOTE test.kc
 
 do_build_game     = 1
-driver_enabled    = 0
+driver_enabled    = 1
 lexer_build_level = 1
 imgui_build_level = 1
 no_force_inline   = 0
