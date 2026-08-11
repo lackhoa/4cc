@@ -347,10 +347,10 @@ notebook_update(Notebook_State *state)
     return loss;
    };
    
-   v1 step_size = 0.01f;
+   v1 step_size = 0.05f;
    
    sarray(LLM_Value) params = get_mlp_parameters(tmp, mlp);
-   i32 it_count = 25;
+   i32 it_count = 52;
    for_i32(iteration, 0, it_count)
    {
     LLM_Value loss = forward();
@@ -369,6 +369,12 @@ notebook_update(Notebook_State *state)
      LLM_Value param = params[param_index];
      param.p->value -= step_size * param.p->grad;
     }
+   }
+   
+   for_i32(x_index, 0, alen(xs))
+   {
+    LLM_Value pred = mlp_apply(mlp, to_sarray(xs[x_index]))[0];
+    DEBUG_VALUE(pred.p->value);
    }
   }
  }
