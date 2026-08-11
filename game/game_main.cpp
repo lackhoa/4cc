@@ -31,6 +31,7 @@
 
 #include "4ed_kv_parser.cpp"
 #include "framework.h"
+#include "game_replay.cpp"
 
 #include "framework_fui.cpp"
 
@@ -578,6 +579,22 @@ convert_primitives_to_camera_space(Camera &camera)
      mat4bez(camera_from_bone, &primitive.dual_bezier.P);
      mat4bez(camera_from_bone, &primitive.dual_bezier.Q);
     }break;
+
+    case Primitive_Type_Patch:
+    {
+     for_i32(i,0,4)
+     {
+      for_i32(j,0,4)
+      {
+       mat4vert(camera_from_bone, &primitive.patch.e[i][j].v);
+      }
+     }
+    }break;
+
+    case Primitive_Type_Disk:
+    {
+     mat4vert(camera_from_bone, &primitive.disk.center);
+    }break;
    }
    push(&m->camera_primitives, primitive);
   }
@@ -636,10 +653,46 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   }
   push_view_vector(tvert());
   
-  {//-Drawing the movie
+  {//-Drawing the movie (+ replay, draw-as-data step 3)
+   Replay_State &replay = state->replay;
+   b32 do_diff = replay.diff_requested and viewport_id == 1;
+
+   Vertex_Tee tee_code = {};
+   if(do_diff)
+   {// NOTE(kv) Buffer A: the code path's vertex stream (rendered normally).
+    init_vertex_tee(&tee_code, tmp);
+    global_vertex_tee = &tee_code;
+   }
+   // NOTE(kv) Mode B mute only applies to the code path's recorded scope --
+   // scoped tightly around driver_render so cursor/indicator drawing stays live.
+   global_replay_display = replay.display_replay;
    driver->driver_render(tmp, painter);
+   global_replay_display = false;
+   global_vertex_tee = 0;
+
+   if(viewport_id == 1 and (do_diff or replay.display_replay))
+   {
+    Vertex_Tee tee_replay = {};
+    if(do_diff)
+    {// NOTE(kv) Buffer B: the replay's vertex stream.
+     init_vertex_tee(&tee_replay, tmp);
+     global_vertex_tee = &tee_replay;
+    }
+    // NOTE(kv) In mode A the replay is diff-only: mute its pushes so it doesn't
+    // draw over the code path (Q24). In mode B the replay IS the display.
+    global_rendering_suppressed = not replay.display_replay;
+    replay_recording();
+    global_rendering_suppressed = false;
+    global_vertex_tee = 0;
+
+    if(do_diff)
+    {
+     replay.last_diff = diff_vertex_tees(&tee_code, &tee_replay);
+     replay.diff_requested = false;
+    }
+   }
   }
-  
+
   if(viewport_id == 1)
   {// NOTE Highlighted vertices
    convert_primitives_to_camera_space(camera);
@@ -2231,8 +2284,46 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
+
+  {//-Replay panel (draw-as-data step 3, Q23)
+   Replay_State &replay = state->replay;
+   im_begin("Replay", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+
+   int mode = replay.display_replay ? 1 : 0;
+   ImGui::RadioButton("code path", &mode, 0);
+   ImGui::SameLine();
+   ImGui::RadioButton("replay", &mode, 1);
+   replay.display_replay = (mode == 1);
+
+   if(ImGui::Button("Diff now")){ replay.diff_requested = true; }
+
+   Replay_Diff_Result &diff = replay.last_diff;
+   if(diff.valid)
+   {
+    if(diff.match)
+    {
+     im_text("match (%d vertices)", diff.code_vertex_count);
+    }
+    else
+    {
+     im_text("MISMATCH: code %d vs replay %d vertices",
+             diff.code_vertex_count, diff.replay_vertex_count);
+     if(diff.first_diff_vertex != -1)
+     {
+      im_text("first diff at vertex %d", diff.first_diff_vertex);
+     }
+     im_text("code loc: file %d [%d,%d)",
+             diff.code_location.file.index,
+             diff.code_location.range.min, diff.code_location.range.max);
+     im_text("replay loc: file %d [%d,%d)",
+             diff.replay_location.file.index,
+             diff.replay_location.range.min, diff.replay_location.range.max);
+    }
+   }
+   im_end();
+  }
  }
- 
+
  if(driver_on)
  {
   {// NOTE(kv) Driver update

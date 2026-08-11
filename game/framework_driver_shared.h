@@ -433,12 +433,19 @@ struct Dual_Bezier
  Bezier P;
  Bezier Q;
 };
+struct Disk
+{// NOTE(kv) fill_disk arguments (the tessellation is camera-dependent, re-run at replay)
+ v3 center;
+ v1 radius;  // bone-space (tdim)
+};
 enum Primitive_Type
 {
  Primitive_Type_None,
  Primitive_Type_Curve,
  Primitive_Type_Poly3,
  Primitive_Type_Dual_Bezier,
+ Primitive_Type_Patch,
+ Primitive_Type_Disk,
 };
 struct Recorded_Primitive
 {
@@ -447,11 +454,24 @@ struct Recorded_Primitive
  Bone_ID bone_id;
  i32 group_index;  // index into Model.groups
 
+ // NOTE(kv) Per-call param overrides (Q21): part of the draw call's argument list,
+ // never routed through painter->params, so the group mechanism can't see them.
+ union
+ {
+  Line_Params line_params;  // Primitive_Type_Curve
+  Fill_Params fill_params;  // all fill types
+ };
+ // NOTE(kv) fill_dual_bez culling input: the view-vector stack isn't recorded,
+ // so the vector in effect at capture time is snapshotted per primitive.
+ v3 view_vector;
+
  union
  {
   Bezier curve;
   Poly3  poly3;
   Dual_Bezier dual_bezier;
+  Patch  patch;
+  Disk   disk;
  };
 };
 // NOTE(kv) Which Paint_Params fields a group overrides vs its parent (the "delta" view).

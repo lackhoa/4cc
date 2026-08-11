@@ -1,6 +1,30 @@
 //-;framework_draw
 global u32 draw_cycle_counter;
 
+//-NOTE(kv) Replay vertex tee (draw-as-data step 3): when `global_vertex_tee` is set,
+// poly3_inner also appends every recorded-scope push into it, so the code path and
+// the replay can be diffed as raw vertex streams (see game_replay.cpp).
+struct Vertex_Tee_Entry
+{
+ Location location;  // painter->current_draw_location at push time
+ Vertex_Type type;
+ i32 vertex_count;   // its vertices live in Vertex_Tee.vertices, in push order
+};
+struct Vertex_Tee
+{
+ darray(Render_Vertex) vertices;
+ darray(Vertex_Tee_Entry) entries;
+};
+global Vertex_Tee *global_vertex_tee;
+// NOTE(kv) Q24: mutes the platform push in poly3_inner (the tee still records) --
+// lets the diff re-run a path without double-drawing.
+global b32 global_rendering_suppressed;
+// NOTE(kv) Rendering mode B: recorded-scope pushes from the CODE path are muted and
+// the replay draws that scope instead. Only raised around driver_render (game_main.cpp)
+// so post-render drawing (cursor, vertex indicators) is unaffected.
+global b32 global_replay_display;
+//-
+
 function void
 poly3_inner(Poly3 points,
             argb c0, argb c1, argb c2,
@@ -49,7 +73,21 @@ poly3_inner(Poly3 points,
  
  Vertex_Type type = Vertex_Poly;
  if(is_overlay){ type = Vertex_Overlay; }
- draw__push_vertices(painter->target, ArrayAndCount(vertices), type);
+
+ // NOTE(kv) Q25: single game-side funnel for ALL geometry -> tee + mute live here.
+ b32 in_recorded_scope = should_send_model_data();
+ if(global_vertex_tee and in_recorded_scope)
+ {
+  Vertex_Tee_Entry entry = {painter->current_draw_location, type, (i32)alen(vertices)};
+  push(&global_vertex_tee->entries, entry);
+  for_u32(i, 0, alen(vertices)){ push(&global_vertex_tee->vertices, vertices[i]); }
+ }
+ b32 muted = (global_rendering_suppressed or
+              (global_replay_display and in_recorded_scope));
+ if(not muted)
+ {
+  draw__push_vertices(painter->target, ArrayAndCount(vertices), type);
+ }
 }
 function void
 draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color)

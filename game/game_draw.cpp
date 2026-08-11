@@ -54,6 +54,11 @@ is_painting_enabled()
 myinline b32 is_fill_enabled(){ return is_painting_enabled(); }
 myinline b32 is_line_enabled(){ return is_painting_enabled(); }
 //-
+// NOTE(kv) Set while replay_recording() (game_replay.cpp) re-issues draw calls:
+// suppresses send_primitive so the replay doesn't re-record what it reads.
+global b32 global_replaying;
+function void send_primitive(Recorded_Primitive &primitive);
+//-
 // NOTE used in @draw_bezier_inner
 function void
 fill_disk_camera_space(v3 center, v1 radius,
@@ -82,6 +87,13 @@ fill_disk_camera_space(v3 center, v1 radius,
 function void
 fill_disk(v3 center, tdim radius_bone_space, Fill_Params params=get_fill_params())
 {
+ {//-send data
+  Recorded_Primitive primitive = {.type = Primitive_Type_Disk};
+  primitive.disk = {center, radius_bone_space.v};
+  primitive.fill_params = params;
+  send_primitive(primitive);
+ }
+
  if(is_fill_enabled())
  {
   Poly_Flags flags = to_poly_flags(params.flags);
@@ -117,6 +129,13 @@ poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3,
 function void
 fill_patch(tvert P[4][4], Fill_Params params=get_fill_params())
 {
+ {//-send data
+  Recorded_Primitive primitive = {.type = Primitive_Type_Patch};
+  block_copy(primitive.patch.e, P, sizeof(primitive.patch.e));
+  primitive.fill_params = params;
+  send_primitive(primitive);
+ }
+
  if(is_fill_enabled())
  {
   Poly_Flags flags = to_poly_flags(params.flags);
@@ -285,6 +304,7 @@ current_recorded_group_index()
 function void
 send_primitive(Recorded_Primitive &primitive)
 {
+ if(global_replaying){ return; }
  Location location = painter->current_draw_location;
  if(should_send_model_data() and is_valid(location))
  {
@@ -296,11 +316,11 @@ send_primitive(Recorded_Primitive &primitive)
 }
 
 function void
-send_poly3(Poly3 points)
+send_poly3(Poly3 points, Fill_Params params)
 {
- Location location = painter->current_draw_location;
  Recorded_Primitive fill = {.type = Primitive_Type_Poly3};
  fill.poly3 = points;
+ fill.fill_params = params;
  send_primitive(fill);
 }
 function void
@@ -313,7 +333,7 @@ fill3(v3 p0, v3 p1, v3 p2,
       Fill_Params params=get_fill_params())
 {
  Poly3 points = {p0,p1,p2};
- send_poly3(points);
+ send_poly3(points, params);
  
  if(is_fill_enabled())
  {
@@ -468,6 +488,7 @@ draw_bezier(tvert P[4], Line_Params params)
   {
    primitive.curve[i] = P[i];
   }
+  primitive.line_params = params;
   send_primitive(primitive);
  }
  
@@ -608,6 +629,8 @@ fill_dual_bez(tvert P[4], tvert Q[4], Fill_Params params=get_fill_params())
   Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
   block_copy(primitive.dual_bezier.P, P, 4*sizeof(v3));
   block_copy(primitive.dual_bezier.Q, Q, 4*sizeof(v3));
+  primitive.fill_params = params;
+  primitive.view_vector = get_view_vector();
   send_primitive(primitive);
  }
  

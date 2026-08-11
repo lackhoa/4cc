@@ -21,6 +21,22 @@ struct Game_Transient_State
  darray(Location) pinned_locations;
  darray(Location) hot_locations;
 };
+struct Replay_Diff_Result
+{// NOTE(kv) Last "Diff now" outcome (game_replay.cpp); shown in the Replay ImGui panel.
+ b32 valid;
+ b32 match;
+ i32 code_vertex_count;
+ i32 replay_vertex_count;
+ i32 first_diff_vertex;   // -1 when the streams only differ in length
+ Location code_location;  // owning push of the first divergent vertex, per stream
+ Location replay_location;
+};
+struct Replay_State
+{// NOTE(kv) Draw-as-data step 3 dev UI state (survives DLL reloads via Game_State).
+ b32 display_replay;  // rendering mode B: the replay draws the recorded scope
+ b32 diff_requested;  // one-shot, consumed by call_driver_render (main viewport)
+ Replay_Diff_Result last_diff;
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -63,6 +79,7 @@ struct Game_State
  b32 save_failed;
  b32 load_failed;
  Game_ImGui_State imgui_state;
+ Replay_State replay;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate
