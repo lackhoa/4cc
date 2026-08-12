@@ -64,6 +64,13 @@ replay_recording()
    {
     fill_disk(prim.disk.center, {prim.disk.radius}, prim.fill_params);
    }break;
+
+   case Primitive_Type_Image:
+   {
+    draw_image(prim.image.filename,
+               prim.image.o, prim.image.x, prim.image.y,
+               prim.image.alpha, prim.image.color);
+   }break;
   }
  }
 

@@ -438,6 +438,14 @@ struct Disk
  v3 center;
  v1 radius;  // bone-space (tdim)
 };
+struct Recorded_Image
+{// NOTE(kv) draw_image arguments. color/alpha are PRE-tint -- hot highlighting is
+ // per-frame (like culling), so it's re-applied at replay, not baked here.
+ Stringz filename;  // pointer into static fimage storage; serializer writes the bytes
+ v3 o, x, y;
+ v3 color;
+ v1 alpha;
+};
 enum Primitive_Type
 {
  Primitive_Type_None,
@@ -446,6 +454,7 @@ enum Primitive_Type
  Primitive_Type_Dual_Bezier,
  Primitive_Type_Patch,
  Primitive_Type_Disk,
+ Primitive_Type_Image,
 };
 struct Recorded_Primitive
 {
@@ -472,6 +481,7 @@ struct Recorded_Primitive
   Dual_Bezier dual_bezier;
   Patch  patch;
   Disk   disk;
+  Recorded_Image image;
  };
 };
 // NOTE(kv) Which Paint_Params fields a group overrides vs its parent (the "delta" view).
@@ -895,5 +905,26 @@ pop_bone_painter()
 //-
 
 #include "4coder_debug_value.h"
+
+//-NOTE(kv) Draw-mute state. Defined here (before game_draw.cpp) so BOTH the game_main
+// translation unit and the driver_precompiled PCH unit -- which pulls in game_draw.cpp
+// via this header but NOT framework_draw.cpp -- can see them. (The Vertex_Tee itself
+// lives in framework_draw.cpp; draw_is_muted doesn't need it.)
+// Q24: mutes the platform push -- lets the diff re-run a path without double-drawing.
+global b32 global_rendering_suppressed;
+// Rendering mode B: recorded-scope pushes from the CODE path are muted and the replay
+// draws that scope instead. Only raised around driver_render (game_main.cpp).
+global b32 global_replay_display;
+// Shared mute predicate for BOTH funnels (poly3_inner + draw_image): a push is muted in
+// mode-A replay (suppressed, diff-only) or when the code path is replaced by the replay
+// in mode B.
+function b32
+draw_is_muted(b32 in_recorded_scope)
+{
+ return (global_rendering_suppressed or
+         (global_replay_display and in_recorded_scope));
+}
+//-
+
 #include "game_draw.cpp"
 //-

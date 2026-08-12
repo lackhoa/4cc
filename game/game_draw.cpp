@@ -856,12 +856,25 @@ draw_image(Stringz image_file,
            v3 o, v3 x, v3 y,
            v1 alpha=1.f, v3 color={1,1,1})
 {
+ {//-send data
+  // NOTE(kv) pre-tint: hot highlighting is per-frame (re-applied at replay), so store
+  // the raw color/alpha, not the tinted argb. See Recorded_Image.
+  Recorded_Primitive primitive = {.type = Primitive_Type_Image};
+  primitive.image = {image_file, o, x, y, color, alpha};
+  send_primitive(primitive);
+ }
+
  if(current_location_is_hot())
  {// NOTE: tint it
   color = V3(1.f, 1.f, 0.f)*color;
  }
  argb argb_color = argb_pack( V4(color,alpha) );
- push_image(painter->target, image_file, o,x,y,argb_color);
+ // NOTE(kv) images don't go through poly3_inner (they're RET_Image entries, not
+ // Render_Vertex), so mute the platform push here directly during replay/diff.
+ if(not draw_is_muted(should_send_model_data()))
+ {
+  push_image(painter->target, image_file, o,x,y,argb_color);
+ }
 }
 function Bezier
 bez_lerp(Bezier &begin, v1 t, Bezier &end)

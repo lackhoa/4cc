@@ -16,13 +16,8 @@ struct Vertex_Tee
  darray(Vertex_Tee_Entry) entries;
 };
 global Vertex_Tee *global_vertex_tee;
-// NOTE(kv) Q24: mutes the platform push in poly3_inner (the tee still records) --
-// lets the diff re-run a path without double-drawing.
-global b32 global_rendering_suppressed;
-// NOTE(kv) Rendering mode B: recorded-scope pushes from the CODE path are muted and
-// the replay draws that scope instead. Only raised around driver_render (game_main.cpp)
-// so post-render drawing (cursor, vertex indicators) is unaffected.
-global b32 global_replay_display;
+// NOTE(kv) global_rendering_suppressed / global_replay_display and the shared draw_is_muted
+// predicate live in framework_driver_shared.h (before game_draw.cpp) so both TUs see them.
 //-
 
 function void
@@ -82,9 +77,7 @@ poly3_inner(Poly3 points,
   push(&global_vertex_tee->entries, entry);
   for_u32(i, 0, alen(vertices)){ push(&global_vertex_tee->vertices, vertices[i]); }
  }
- b32 muted = (global_rendering_suppressed or
-              (global_replay_display and in_recorded_scope));
- if(not muted)
+ if(not draw_is_muted(in_recorded_scope))
  {
   draw__push_vertices(painter->target, ArrayAndCount(vertices), type);
  }
