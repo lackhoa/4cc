@@ -405,7 +405,7 @@ tvert internal_condyle = ReadSlider(50);
 tvert external_condyle = internal_condyle + V3(0.4031f, 0.1064f, 0.0402f);
 {
 PaintBlock;
-ShowIf(showing_skeleton());
+ShowGroupIf(Vis_Skeleton, showing_skeleton());
 fimage(image_skeletal_meat_outline);
 set_skeleton_params();
 tvert sock = ReadSlider(51);
@@ -606,7 +606,7 @@ tvert forearm_view_center = ReadSlider(105);
 ViewCenterBlock(forearm_view_center);
 {
 PaintBlock;
-ShowIf(showing_skeleton());
+ShowGroupIf(Vis_Skeleton, showing_skeleton());
 set_skeleton_params();
 fimage(image_skeletal_meat_outline);
 Line_Params params = lp(0.5f);
@@ -764,7 +764,7 @@ Bezier collar_out = bez_offset(delt_collar + V3(-0.0957f, 0.0021f, 0.016f), V3(0
 (set_draw_location_unresolved({2,162}), draw(bez_offset(shoulder_in, V3(0.0993f, -0.0342f, -0.f), V3(-0.0356f, 0.0675f, -0.0634f), shoulder), I4(5, 3, 3, 1)), clear_draw_location());
 {
 PaintBlock;
-ShowIf2(show_body_skeleton);
+ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
 if(showing_skeleton()){
 set_skeleton_params();
 }
@@ -839,7 +839,7 @@ tvert back_archL = bezier_sample(hip_back_line, 0.5606f);
 (set_draw_location_unresolved({2,184}), draw(bez_v3v3(trap_bot, V3(0.235f, 0.3261f, -0.0079f), V3(0.0805f, 0.f, 0.0552f), back_archL)), clear_draw_location());
 {
 PaintBlock;
-ShowIf2(show_body_skeleton);
+ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
 fimage(image_scapula_profile);
 fimage(image_socket_and_ball);
 fimage(image_skeletal_meat_outline);

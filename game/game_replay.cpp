@@ -34,7 +34,13 @@ replay_recording()
 
   clear_draw_location();  // NOTE(kv) set_draw_location only ever raises the hot flag
   set_draw_location(prim.location);
-  p->params = m->groups.items[prim.group_index].params;
+  Recorded_Group &group = m->groups.items[prim.group_index];
+  p->params = group.params;
+  // NOTE(kv) Q32 live visibility: re-AND the frozen `painting` with the tag's live
+  // value (driver publishes vis_live each frame). AND -- not overwrite -- so nested
+  // conditions baked into the freeze (e.g. front_back_aligned) survive; a capture
+  // taken with the toggle ON decomposes as painting = other_conditions AND toggle.
+  p->params.painting = (p->params.painting and m->vis_live[group.vis_tag]);
 
   switch(prim.type)
   {

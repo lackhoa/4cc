@@ -298,6 +298,16 @@ SetInBlock(painter->params.painting, painter->params.painting and condition)
 #define ShowIf2(condition) \
 SetInBlock(painter->params.painting, condition)
 
+// NOTE(kv) ShowIf + a live-visibility tag on the recorded group (Q32): the recorder
+// can't infer WHY painting flipped, so the binding is declared at the call site.
+#define ShowGroupIf(vis, condition) \
+tag_group_visibility(vis); \
+SetInBlock(painter->params.painting, painter->params.painting and condition)
+
+#define ShowGroupIf2(vis, condition) \
+tag_group_visibility(vis); \
+SetInBlock(painter->params.painting, condition)
+
 #define lp get_line_params
 #define fp get_fill_params
 

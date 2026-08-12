@@ -209,10 +209,15 @@ should_send_model_data()
 }
 
 //-NOTE(kv) Group recording (eager: every Paint_Params_Block scope is a group)
+function Group_Scope_Slot &
+current_group_slot(Group_Scope_Stack &stack)
+{
+ return stack.slots.items[stack.slots.count-1];
+}
 function i32
 current_group_index(Group_Scope_Stack &stack)
 {
- return stack.slots.items[stack.slots.count-1];
+ return current_group_slot(stack).group_index;
 }
 function void
 freeze_group_params(Model *m, i32 group_index)
@@ -239,12 +244,16 @@ open_group_scope()
  // marks a conditional draw that must become a visibility flag (plan step 4).
  Model *m = the_model;
  Group_Scope_Stack &stack = m->group_stack;
- i32 parent_index = current_group_index(stack);
+ Group_Scope_Slot &parent = current_group_slot(stack);
+ i32 parent_index = parent.group_index;
  freeze_group_params(m, parent_index);  // parent's own mutations are complete by now
- Recorded_Group group = {.parent_index = parent_index};
+ // NOTE(kv) Child scopes inherit the visibility tag: a PaintBlock nested inside a
+ // skeleton scope is still skeleton-bound.
+ Recorded_Group group = {.parent_index = parent_index, .vis_tag = parent.vis_tag};
  i32 index = m->groups.count;
  push(&m->groups, group);
- push(&stack.slots, index);
+ Group_Scope_Slot slot = {index, parent.vis_tag};
+ push(&stack.slots, slot);
 }
 function void
 close_group_scope()
@@ -253,6 +262,25 @@ close_group_scope()
  Model *m = the_model;
  freeze_group_params(m, current_group_index(m->group_stack));
  m->group_stack.slots.count--;
+}
+function void
+tag_group_visibility(Group_Vis vis)
+{// NOTE(kv) Q32: bind the current scope's visibility to a live source. Called by
+ // ShowGroupIf right where the show/hide condition is applied.
+ if(should_send_model_data())
+ {
+  Model *m = the_model;
+  Group_Scope_Slot &slot = current_group_slot(m->group_stack);
+  slot.vis_tag = vis;
+  m->groups.items[slot.group_index].vis_tag = vis;
+ }
+}
+function void
+publish_group_visibility(Group_Vis vis, b32 value)
+{// NOTE(kv) Driver publishes its live toggle values here each frame (it owns the
+ // sliders; replay runs in the game TU and can't read driver globals).
+ // Guard: the driver TU's the_model is null until driver_update sets it.
+ if(the_model){ the_model->vis_live[vis] = value; }
 }
 //-
 
@@ -292,12 +320,13 @@ current_recorded_group_index()
   freeze_group_params(m, result);
  }
  else if(paint_params_diff_mask(painter->params, group.params) != 0)
- {// Mid-scope mutation -> sibling under the same parent
-  Recorded_Group sibling = {.parent_index = group.parent_index};
+ {// Mid-scope mutation -> sibling under the same parent (keeps the scope's vis_tag)
+  Group_Scope_Slot &slot = current_group_slot(stack);
+  Recorded_Group sibling = {.parent_index = group.parent_index, .vis_tag = slot.vis_tag};
   result = m->groups.count;
   push(&m->groups, sibling);  // NOTE(kv) `group` reference is dead past this point
   freeze_group_params(m, result);
-  stack.slots.items[stack.slots.count-1] = result;
+  slot.group_index = result;
  }
  return result;
 }

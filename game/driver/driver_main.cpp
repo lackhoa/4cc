@@ -12,6 +12,10 @@ function void
 driver_update(Model *model, v1 anim_time)
 {// NOTE @driver_api
  the_model = model;
+ // NOTE(kv) Replay runs in the game TU and can't read driver globals -> publish
+ // live toggles for tagged groups (Q32). Must run after the frame's clear_model
+ // (which zeroes vis_live) and after driver_update_tweaks set the toggle values.
+ publish_group_visibility(Vis_Skeleton, show_skeleton);
  update_driver_data();
  crappy_tests(anim_time);
 }

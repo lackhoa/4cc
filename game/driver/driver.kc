@@ -524,7 +524,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  tvert external_condyle = internal_condyle+V3(0.4031f, 0.1064f, 0.0402f);
  {//NOTE: The skeleton (humerus and ulna)
   PaintBlock;
-  ShowIf(showing_skeleton());
+  ShowGroupIf(Vis_Skeleton, showing_skeleton());
   fimage(image_skeletal_meat_outline);
   set_skeleton_params();
   
@@ -819,7 +819,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
  
  {// NOTE The forearm bones from the front view (as rough guide)
   PaintBlock;
-  ShowIf(showing_skeleton());
+  ShowGroupIf(Vis_Skeleton, showing_skeleton());
   set_skeleton_params();
   fimage(image_skeletal_meat_outline);
   Line_Params params = lp(0.5f);
@@ -1050,7 +1050,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
        I4(5,3,3,1));
   {
    PaintBlock;
-   ShowIf2(show_body_skeleton);
+   ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
    if(showing_skeleton()){ set_skeleton_params(); }
    draw(collar_out);
    draw(collar_in);
@@ -1173,7 +1173,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   //if (level2 || preset == 3 || preset == 4)
   {
    PaintBlock;
-   ShowIf2(show_body_skeleton);
+   ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
    fimage(image_scapula_profile);
    fimage(image_socket_and_ball);
    fimage(image_skeletal_meat_outline);

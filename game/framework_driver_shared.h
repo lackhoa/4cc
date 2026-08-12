@@ -499,6 +499,15 @@ enum
  PaintFieldList(X)
 #undef X
 };
+enum Group_Vis
+{// NOTE(kv) Live visibility binding (Q32): a tagged group's `painting` is re-ANDed at
+ // replay with Model.vis_live[tag] (published by the driver each frame) instead of
+ // trusting only the capture-time frozen value. Vis_None slot is always true.
+ Vis_None,
+ Vis_Skeleton,
+ //
+ Group_Vis_Count,
+};
 struct Recorded_Group
 {// NOTE(kv) One paint scope during the recording run (see Paint_Params_Block).
  // Groups form a forest: parent_index == -1 means top-level.
@@ -506,6 +515,7 @@ struct Recorded_Group
  Location location;   // first draw under this scope (best-effort name)
  Paint_Params params; // full effective paint state for leaves of this group
  u32 changed_mask;    // PaintField_* bits differing from the parent group
+ Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
  // NOTE(kv) Params are only knowable after the scope body ran its mutations, so
  // they're snapshotted lazily ("frozen") at the first event that needs them --
  // first own primitive, a child scope opening, or scope close. Capture-time only.
@@ -515,11 +525,19 @@ struct Model_Persistent
 {
  darray(Vertex) vertices;
 };
+struct Group_Scope_Slot
+{
+ i32 group_index;
+ // NOTE(kv) Tag lives on the SCOPE, not just the group row: a mid-scope param
+ // mutation sibling-splits the group (current_recorded_group_index), and the sibling
+ // must keep the tag.
+ Group_Vis vis_tag;
+};
 struct Group_Scope_Stack
 {// NOTE(kv) One slot per open Paint_Params_Block scope, holding that scope's group
  // index. Eager: every scope gets a group at entry (slot 0 = the root group), so
  // slots always hold valid indices. Operations live in game_draw.cpp.
- darray(i32) slots;
+ darray(Group_Scope_Slot) slots;
 };
 struct Model
 {
@@ -537,6 +555,9 @@ struct Model
  darray(Recorded_Primitive) primitives;
  darray(Recorded_Group) groups;
  Group_Scope_Stack group_stack;
+ // NOTE(kv) Live visibility per Group_Vis tag, published by the driver each frame
+ // (before replay runs). vis_live[Vis_None] is always true.
+ b32 vis_live[Group_Vis_Count];
  // NOTE(kv) Camera-space copy of `primitives` (frame_arena), rebuilt per frame on
  // demand -- consumers needing camera space read this, never transform the recording.
  darray(Recorded_Primitive) camera_primitives;

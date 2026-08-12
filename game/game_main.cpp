@@ -2359,7 +2359,11 @@ game_update(Game_Update_Params params)
     {// NOTE(kv) Root group for draws outside any PaintBlock; params freeze at first use.
      Recorded_Group root = {.parent_index = -1};
      push(&m->groups, root);
-     push(&m->group_stack.slots, 0);
+     Group_Scope_Slot root_slot = {0, Vis_None};
+     push(&m->group_stack.slots, root_slot);
+     // NOTE(kv) Untagged groups always pass the live-visibility AND; the driver
+     // re-publishes tagged slots (e.g. Vis_Skeleton) during its render below.
+     m->vis_live[Vis_None] = true;
     }
     
     {// NOTE(kv) Add persistent primitives to primitive list.
