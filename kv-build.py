@@ -19,6 +19,8 @@ parser.add_argument('-a', '--action', type=str, default="build")
 parser.add_argument('--file',    type=str, default="")
 parser.add_argument('--full',    action="store_true")
 parser.add_argument('--release', action="store_true")
+parser.add_argument('--lexer',   action="store_true",
+                    help="regenerate lexer_cpp.gen.cpp (output is nondeterministic -- hash seeds)")
 #
 args = parser.parse_args()
 if args.release:
@@ -364,7 +366,10 @@ def build_and_run_metaprogram():
     SYMBOLS=f'-DKV_INTERNAL=1'  # NOTE(kv) Don't turn this off, we need asserts!
     compiler_flags=f"{SYMBOLS} {INCLUDES}"
     
-    if meets_level(lexer_build_level) or args.full:
+    # NOTE(kv) Only on explicit --lexer: the generator's hash tables are
+    # nondeterministic, so an implicit regen (e.g. --release implying --full)
+    # dirties lexer_cpp.gen.cpp on every build for no reason.
+    if args.lexer:
         print('Lexer: Generate (one-time thing)')
         # TODO(kv) There should just be one program to generate all the lexer things!
         # run_compiler(Compiler.Cl, pjoin(CODE, '4coder_kv_skm_lexer_gen.cpp'), "skm_lexer_gen.exe",

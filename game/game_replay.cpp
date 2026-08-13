@@ -4,12 +4,48 @@
 // Plan + decisions: ~/notes/tasks/autodraw_draw_as_data/plan-replay-path.md
 
 function void
-replay_recording()
-{// NOTE(kv) Same-frame second consumer of the recording: bones/camera/painter are the
- // ones the capture ran with. Correctness bar: the vertex stream is bit-identical to
- // the code path's (verified by the Diff-now button).
+store_recording(i32 preset)
+{// NOTE(kv) Snapshot the per-frame capture (Model.primitives/groups) into the
+ // preset's slot (Q36). Runs right after viewport 0's driver_render, so the
+ // painter still holds that render's viz/grid state for the header.
+ Model *m = the_model;
+ kv_assert(0 <= preset and preset < Game_Preset_Count);
+ Recording &rec = m->recordings.slots[preset];
+ arena_clear(&rec.arena);
+ init_dynamic(rec.primitives, &rec.arena, maximum(1, m->primitives.count));
+ init_dynamic(rec.groups,     &rec.arena, maximum(1, m->groups.count));
+ set_count(&rec.primitives, m->primitives.count);
+ block_copy(rec.primitives.items, m->primitives.items,
+            sizeof(Recorded_Primitive) * m->primitives.count);
+ set_count(&rec.groups, m->groups.count);
+ block_copy(rec.groups.items, m->groups.items,
+            sizeof(Recorded_Group) * m->groups.count);
+ rec.viz_level            = painter->viz_level;
+ rec.ignore_radii         = painter->ignore_radii;
+ rec.ignore_alignment_min = painter->ignore_alignment_min;
+ rec.show_grid            = painter->show_grid;
+ rec.captured = true;
+}
+
+function void
+replay_recording(Recording &rec)
+{// NOTE(kv) Second consumer of a captured recording: bones/camera are live, the
+ // primitives/groups come from the preset's slot. Correctness bar (same-frame,
+ // same-preset): the vertex stream is bit-identical to the code path's (Diff-now).
  Model *m = the_model;
  Painter *p = painter;
+
+ // NOTE(kv) Painter-level capture state (Q36): these alter tessellation/culling
+ // inside the re-issued draws but are NOT Paint_Params, so the group freeze never
+ // sees them. Restore the recording's values for the duration of the replay.
+ i32 saved_viz_level            = p->viz_level;
+ b32 saved_ignore_radii         = p->ignore_radii;
+ b32 saved_ignore_alignment_min = p->ignore_alignment_min;
+ b32 saved_show_grid            = p->show_grid;
+ p->viz_level            = rec.viz_level;
+ p->ignore_radii         = rec.ignore_radii;
+ p->ignore_alignment_min = rec.ignore_alignment_min;
+ p->show_grid            = rec.show_grid;
 
  global_replaying = true;  // NOTE(kv) suppress send_primitive during replay
  Paint_Params saved_params = p->params;
@@ -21,9 +57,9 @@ replay_recording()
  push(&m->bone_stack, m->bone_stack.items[0]);
  Bone *cur_bone = 0;
 
- for_i32(iprim, 0, m->primitives.count)
+ for_i32(iprim, 0, rec.primitives.count)
  {
-  Recorded_Primitive &prim = m->primitives.items[iprim];
+  Recorded_Primitive &prim = rec.primitives.items[iprim];
 
   if(cur_bone == 0 or not (prim.bone_id == cur_bone->id))
   {
@@ -34,7 +70,7 @@ replay_recording()
 
   clear_draw_location();  // NOTE(kv) set_draw_location only ever raises the hot flag
   set_draw_location(prim.location);
-  Recorded_Group &group = m->groups.items[prim.group_index];
+  Recorded_Group &group = rec.groups.items[prim.group_index];
   p->params = group.params;
   // NOTE(kv) Q32 live visibility: re-AND the frozen `painting` with the tag's live
   // value (driver publishes vis_live each frame). AND -- not overwrite -- so nested
@@ -85,6 +121,10 @@ replay_recording()
  set_bone_transform(current_world_from_bone());
  m->is_right = saved_is_right;
  p->params = saved_params;
+ p->viz_level            = saved_viz_level;
+ p->ignore_radii         = saved_ignore_radii;
+ p->ignore_alignment_min = saved_ignore_alignment_min;
+ p->show_grid            = saved_show_grid;
  global_replaying = false;
 }
 

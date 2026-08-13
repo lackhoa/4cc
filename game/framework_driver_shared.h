@@ -539,6 +539,27 @@ struct Group_Scope_Stack
  // slots always hold valid indices. Operations live in game_draw.cpp.
  darray(Group_Scope_Slot) slots;
 };
+#define Game_Preset_Count 10  // digit-key presets (game_main.cpp key handler)
+struct Recording
+{// NOTE(kv) One preset's captured tree (Q27/Q36). The slot arena owns
+ // primitives+groups; recapturing the SAME preset clears and refills it, other
+ // slots keep their last capture (Q30: manual pass per preset).
+ Arena arena;
+ darray(Recorded_Primitive) primitives;
+ darray(Recorded_Group) groups;
+ b32 captured;
+ // NOTE(kv) Painter-level state -- NOT Paint_Params, so invisible to the group
+ // freeze -- that alters tessellation/culling inside the re-issued draws.
+ // Restored onto the painter for the duration of replay.
+ i32 viz_level;
+ b32 ignore_radii;
+ b32 ignore_alignment_min;
+ b32 show_grid;
+};
+struct Model_Recordings
+{
+ Recording slots[Game_Preset_Count];
+};
 struct Model
 {
  // NOTE(kv) I tried getting "is_right" from the bone,
@@ -562,7 +583,11 @@ struct Model
  // demand -- consumers needing camera space read this, never transform the recording.
  darray(Recorded_Primitive) camera_primitives;
  darray(Vertex) vertices;
- 
+
+ // NOTE(kv) Per-preset recordings (Q36). Survives the per-frame model reset
+ // (preserved across the clear-model block like `persistent`).
+ Model_Recordings recordings;
+
  Model_Persistent persistent;
 };
 struct Viewport

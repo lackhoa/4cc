@@ -1551,7 +1551,7 @@ set_cap_min(darray(T) *a, i32 cap_min, DEBUG_file_line_defparams)
   i32 new_cap = cap_min;
   if(a->cap != 0)
   {
-   new_cap = macro_min(cap_min, 2*a->cap);
+   new_cap = macro_max(cap_min, 2*a->cap);
   }
   a->set_cap_inner(new_cap, file_line);
  }

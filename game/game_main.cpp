@@ -657,6 +657,13 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    Replay_State &replay = state->replay;
    b32 do_diff = replay.diff_requested and viewport_id == 1;
 
+   if(viewport_id == 1)
+   {// NOTE(kv) Two editor panels can show the same viewport, so this renders more
+    // than once per frame -- without the reset the recording accumulates one
+    // bitwise-identical copy per pass (caught by Diff-now: replay = 2x code).
+    reset_capture();
+   }
+
    Vertex_Tee tee_code = {};
    if(do_diff)
    {// NOTE(kv) Buffer A: the code path's vertex stream (rendered normally).
@@ -670,7 +677,16 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    global_replay_display = false;
    global_vertex_tee = 0;
 
-   if(viewport_id == 1 and (do_diff or replay.display_replay))
+   if(viewport_id == 1)
+   {// NOTE(kv) Q36: snapshot this frame's capture into the active preset's slot.
+    // Mode B doesn't stop the capture (mute suppresses rendering, not recording),
+    // so the slot stays fresh either way.
+    store_recording(viewport->preset);
+   }
+
+   Recording &replay_rec = the_model->recordings.slots[viewport->preset];
+   if(viewport_id == 1 and replay_rec.captured
+      and (do_diff or replay.display_replay))
    {
     Vertex_Tee tee_replay = {};
     if(do_diff)
@@ -681,7 +697,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     // NOTE(kv) In mode A the replay is diff-only: mute its pushes so it doesn't
     // draw over the code path (Q24). In mode B the replay IS the display.
     global_rendering_suppressed = not replay.display_replay;
-    replay_recording();
+    replay_recording(replay_rec);
     global_rendering_suppressed = false;
     global_vertex_tee = 0;
 
@@ -1555,6 +1571,10 @@ get_live_viewport_by_id(sarray(Live_Viewport) viewports, Viewport_ID id)
  return 0;
 }
 
+// NOTE(kv) Debug: keep frames flowing while the app is idle/unfocused, so a debugger
+// can drive the app without UI input (cdb: `ed gameN!global_debug_force_animate 1`).
+global b32 global_debug_force_animate;
+
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
@@ -2331,8 +2351,10 @@ game_update(Game_Update_Params params)
     Model *m = the_model;
     
     Model_Persistent persistent = m->persistent;
+    Model_Recordings recordings = m->recordings;
     zero_struct(m);
     m->persistent = persistent;
+    m->recordings = recordings;
     
     Arena *frame_arena = &state->frame_arena;
     arena_clear(frame_arena);
@@ -2356,15 +2378,10 @@ game_update(Game_Update_Params params)
     init_dynamic(m->primitives, recording_arena, entity_cap);
     init_dynamic(m->groups, recording_arena, 64);
     init_dynamic(m->group_stack.slots, recording_arena, 16);
-    {// NOTE(kv) Root group for draws outside any PaintBlock; params freeze at first use.
-     Recorded_Group root = {.parent_index = -1};
-     push(&m->groups, root);
-     Group_Scope_Slot root_slot = {0, Vis_None};
-     push(&m->group_stack.slots, root_slot);
-     // NOTE(kv) Untagged groups always pass the live-visibility AND; the driver
-     // re-publishes tagged slots (e.g. Vis_Skeleton) during its render below.
-     m->vis_live[Vis_None] = true;
-    }
+    reset_capture();  // pushes the root group + root scope slot
+    // NOTE(kv) Untagged groups always pass the live-visibility AND; the driver
+    // re-publishes tagged slots (e.g. Vis_Skeleton) during its render below.
+    m->vis_live[Vis_None] = true;
     
     {// NOTE(kv) Add persistent primitives to primitive list.
      // TODO(kv) We'll have to change this to support multiple viewports.
@@ -2419,7 +2436,7 @@ game_update(Game_Update_Params params)
 #endif
  
  return{
-  .should_animate_next_frame = should_animate_next_frame,
+  .should_animate_next_frame = should_animate_next_frame or global_debug_force_animate,
   .game_commands             = game_commands,
  };
 }

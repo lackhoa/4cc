@@ -209,6 +209,22 @@ should_send_model_data()
 }
 
 //-NOTE(kv) Group recording (eager: every Paint_Params_Block scope is a group)
+function void
+reset_capture()
+{// NOTE(kv) Rewind the recording to empty (counts only -- storage stays on
+ // recording_arena, cleared once per frame at @clear_model). Needed because the
+ // same viewport can render more than once per frame (two editor panels showing
+ // it), and the recording must hold exactly one render's draws.
+ Model *m = the_model;
+ m->primitives.count = 0;
+ m->groups.count = 0;
+ m->group_stack.slots.count = 0;
+ // NOTE(kv) Root group for draws outside any PaintBlock; params freeze at first use.
+ Recorded_Group root = {.parent_index = -1};
+ push(&m->groups, root);
+ Group_Scope_Slot root_slot = {0, Vis_None};
+ push(&m->group_stack.slots, root_slot);
+}
 function Group_Scope_Slot &
 current_group_slot(Group_Scope_Stack &stack)
 {

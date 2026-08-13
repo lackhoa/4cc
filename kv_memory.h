@@ -161,7 +161,10 @@ get_arena_chunk(usize size)
     u8 *commit_base = store->base + store->committed;
     usize commit_size = MB(128);
     ClampBot(commit_size, chunk_size_total);  //NOTE(kv) Actual constraint
-    system_memory_commit(commit_base, commit_size);
+    b32 commit_ok = system_memory_commit(commit_base, commit_size);
+    // NOTE(kv) A failed commit (or running past the GB(8) reservation) used to go
+    // unnoticed -- the caller then writes into uncommitted pages and AVs far away.
+    kv_assert(commit_ok);
     store->committed += commit_size;
    }
    kv_assert(store->pos <= store->committed);
