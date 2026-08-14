@@ -1575,6 +1575,8 @@ get_live_viewport_by_id(sarray(Live_Viewport) viewports, Viewport_ID id)
 // can drive the app without UI input (cdb: `ed gameN!global_debug_force_animate 1`).
 global b32 global_debug_force_animate;
 
+#include "game_debug_channel.cpp"
+
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
@@ -1582,6 +1584,7 @@ game_update(Game_Update_Params params)
  update_game_config();
  Game_State *state = params.state;
  App *app = params.app;
+ debug_channel_update(state);
  b32 should_animate_next_frame = false;
  arena_clear(&state->frame_arena);
  //-
@@ -2436,7 +2439,8 @@ game_update(Game_Update_Params params)
 #endif
  
  return{
-  .should_animate_next_frame = should_animate_next_frame or global_debug_force_animate,
+  .should_animate_next_frame = should_animate_next_frame or global_debug_force_animate
+                               or debug_channel_wants_animate,
   .game_commands             = game_commands,
  };
 }

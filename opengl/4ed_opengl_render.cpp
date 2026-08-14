@@ -1091,4 +1091,83 @@ ogl_render(i2 mousep_ydown, i32 window_id)
   }
  }
 }
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+// NOTE(kv) Debug screenshot for the file-based debug channel (game_debug_channel.cpp;
+// plan: ~/notes/tasks/autodraw_draw_as_data/plan-self-debug-visibility.md).
+// The game DLL can't capture the composed frame itself: at game_update time the back
+// buffer is post-swap garbage and GL_FRONT reads all-black under DWM (tested
+// 2026-08-14). So the game channel drops debug/screenshot_request.txt, and we capture
+// here -- called after all rendering (incl. ImGui), before SwapBuffers, window 0 only.
+// Gated by the same `-debug-cmd` launch arg. Writes the png path (or an error) to
+// debug/screenshot_result.txt.
+function void
+ogl_debug_maybe_screenshot(void)
+{
+ local_persist i32 enabled = -1;  // -1 = not initialized
+ local_persist char debug_dir[MAX_PATH];
+ local_persist char request_path[MAX_PATH];
+ local_persist char result_path[MAX_PATH];
+ local_persist i32 counter;
+ if(enabled == -1)
+ {
+  enabled = (strstr(GetCommandLineA(), "-debug-cmd") != 0);
+  if(enabled)
+  {
+   char exe_path[MAX_PATH];
+   GetModuleFileNameA(0, exe_path, sizeof(exe_path));
+   char *last_slash = strrchr(exe_path, '\\');
+   if(last_slash){ *last_slash = 0; }
+   snprintf(debug_dir,    sizeof(debug_dir),    "%s\\debug", exe_path);
+   snprintf(request_path, sizeof(request_path), "%s\\screenshot_request.txt", debug_dir);
+   snprintf(result_path,  sizeof(result_path),  "%s\\screenshot_result.txt", debug_dir);
+   CreateDirectoryA(debug_dir, 0);
+  }
+ }
+ if(!enabled){ return; }
+ if(GetFileAttributesA(request_path) == INVALID_FILE_ATTRIBUTES){ return; }
+ DeleteFileA(request_path);
+
+ FILE *result = fopen(result_path, "wb");
+ if(!result){ return; }
+
+ HWND window = WindowFromDC(wglGetCurrentDC());
+ RECT client;
+ GetClientRect(window, &client);
+ i32 width  = client.right  - client.left;
+ i32 height = client.bottom - client.top;
+ if(width <= 0 || height <= 0)
+ {
+  fprintf(result, "error: bad client rect %dx%d\n", width, height);
+  fclose(result);
+  return;
+ }
+
+ u8 *pixels = (u8 *)malloc((size_t)width * height * 4);
+ while(glGetError()){}  // drain stale errors so a failure below is attributable
+ glBindFramebuffer(GL_READ_FRAMEBUFFER, DEFAULT_FRAMEBUFFER);
+ // NOTE(kv) Default read buffer is GL_BACK, which right now (pre-swap) holds the
+ // fully-rendered frame. Don't call glReadBuffer(GL_BACK) -- it errors 0x502 here.
+ glPixelStorei(GL_PACK_ALIGNMENT, 1);
+ glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+ GLenum gl_error = glGetError();
+ if(gl_error)
+ {
+  fprintf(result, "error: glReadPixels failed (0x%x)\n", gl_error);
+ }
+ else
+ {
+  counter += 1;
+  char png_path[MAX_PATH];
+  snprintf(png_path, sizeof(png_path), "%s\\screenshot_%d.png", debug_dir, counter);
+  stbi_flip_vertically_on_write(1);  // GL rows are bottom-up
+  int write_ok = stbi_write_png(png_path, width, height, 4, pixels, width*4);
+  if(write_ok){ fprintf(result, "screenshot: %s (%dx%d)\n", png_path, width, height); }
+  else        { fprintf(result, "error: png write failed: %s\n", png_path); }
+ }
+ free(pixels);
+ fclose(result);
+}
 //~ EOF

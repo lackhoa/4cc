@@ -2389,6 +2389,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
      // NOTE: imgui render
      ImDrawData* draw_data = ImGui::GetDrawData();
      ImGui_ImplOpenGL3_RenderDrawData(draw_data);
+     ogl_debug_maybe_screenshot();  // debug channel: capture pre-swap (see game_debug_channel.cpp)
     }
    }
    
