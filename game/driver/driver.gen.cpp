@@ -415,7 +415,7 @@ tvert v89 = internal_condyle + ReadSlider(52);
 (set_draw_location_unresolved({2,51}), draw(bez_unit2(v89, V4(0.f, 0.4207f, 0.f, 0.f), V3(0.5647f, -0.8253f, 0.f), internal_condyle), lp(0.5f * big_to_small())), clear_draw_location());
 }
 {
-ShowIf(front_back_aligned(ReadSlider(54)));
+ShowAlignedSymIf(V3z(1.f), ReadSlider(54));
 tvert a = external_condyle + ReadSlider(55);
 tvert b = ReadSlider(56);
 (set_draw_location_unresolved({2,52}), draw(bez_unit2(a, V4(0.f, 1.0357f, 0.f, 0.f), V3(-0.1623f, -0.9867f, 0.f), external_condyle)), clear_draw_location());
@@ -425,7 +425,7 @@ tvert v98 = sock + V3(0.0947f, 0.1683f, 0.2105f);
 tvert v99 = v98 + V3(-0.f, -0.6114f, -0.0063f);
 {
 ;
-ShowIf(profile_aligned(ReadSlider(60)));
+ShowAlignedSymIf(V3x(1.f), ReadSlider(60));
 (set_draw_location_unresolved({2,55}), draw(bez_parabola(v98, ReadSlider(61), v99)), clear_draw_location());
 tvert v01 = v99 + ReadSlider(62);
 (set_draw_location_unresolved({2,56}), draw(bez_v3v2(v99, V3(-0.f, 0.f, -0.0834f), V2(0.2691f, 0.0874f), v01)), clear_draw_location());
@@ -526,7 +526,7 @@ if(level1){
 fimage(image_left_arm_back, bez_v2_offset(ReadSlider(83), ReadSlider(84), ReadSlider(85)));
 fimage(image_triceps_long_head);
 fimage(image_arm_muscle_connection);
-ShowIf(aligned(V3z(-1), ReadSlider(86)));
+ShowAlignedIf(V3z(-1), ReadSlider(86));
 ;
 (set_draw_location_unresolved({2,97}), draw(bez_v3v2(torso.scap_sock_bot, ReadSlider(87), ReadSlider(88), white_in), lp(I4(0, 0, 8, 0))), clear_draw_location());
 }
@@ -538,7 +538,7 @@ tvert hinge_out = bezier_sample(front_out, 0.6758f);
 Bez front_in = bez_unit2(bicep_in_top, V4(0.f, 0.0397f, 0.0201f, 0.1254f), V3(-0.8434f, 0.f, 0.5373f), bicep_in_bot);
 fimage(image_upper_body_front_muscle, bez_v2_offset(ReadSlider(89), ReadSlider(90), ReadSlider(91)));
 {
-ShowIf(aligned(V3z(1), ReadSlider(92)));
+ShowAlignedIf(V3z(1), ReadSlider(92));
 (set_draw_location_unresolved({2,100}), draw(front_in, lp(I4(0, 0, 0, 4))), clear_draw_location());
 }
 (set_draw_location_unresolved({2,101}), fill_dual_bez(front_in, front_out), clear_draw_location());
@@ -623,7 +623,7 @@ tvert up1 = up + ReadSlider(107);
 down_common = palm_in + ReadSlider(108);
 Bez l492 = bez_parabola(down_common, ReadSlider(109), up1);
 {
-ShowIf(front_back_aligned());
+ShowAlignedSymIf(V3z(1.f), cos_45_degree);
 (set_draw_location_unresolved({2,117}), draw(l492), clear_draw_location());
 {
 PaintBlock;
@@ -639,7 +639,7 @@ painter->params.line.alignment_min = ReadSlider(113);
 (set_draw_location_unresolved({2,119}), draw(bez_v3v2(v676, ReadSlider(114), V2(0.f, 0.0936f), v677)), clear_draw_location());
 }
 {
-ShowIf(front_back_aligned());
+ShowAlignedSymIf(V3z(1.f), cos_45_degree);
 PaintBlock;
 painter->params.line.alignment_min = 0.5f;
 tvert up596 = bezier_sample(l492, 0.9006f);
@@ -650,7 +650,7 @@ tvert up2 = up + ReadSlider(117);
 }
 }
 {
-ShowIf(front_back_aligned());
+ShowAlignedSymIf(V3z(1.f), cos_45_degree);
 fimage(image_brachialis_vs_skeleton, bez_v2_offset(ReadSlider(119), ReadSlider(120), ReadSlider(121)));
 Bez line = bez_v3v2(arm.brachialis_begin, ReadSlider(122), ReadSlider(123), arm.brachio_a);
 (set_draw_location_unresolved({2,123}), draw(line, line_params_from_fui(ReadSlider(124))), clear_draw_location());
@@ -706,7 +706,7 @@ tvert low_out = o + ReadSlider(133);
 }
 }
 {
-ShowIf(front_back_aligned());
+ShowAlignedSymIf(V3z(1.f), cos_45_degree);
 fimage(image_brachio_front, bez_v2_offset(ReadSlider(134), ReadSlider(135), ReadSlider(136)));
 (set_draw_location_unresolved({2,141}), draw(bez_v3v2(arm.brachio_humerus, ReadSlider(137), ReadSlider(138), arm.brachio_a)), clear_draw_location());
 fimage(image_brachio_front, bez_v2_offset(ReadSlider(139), ReadSlider(140), ReadSlider(141)));
@@ -819,7 +819,9 @@ tvert rib_back;
 {
 v1 rib_midY = shoulder.y - 0.65f * head_unit + -0.0775f;
 rib_mid = mkvert(0.f, rib_midY, 0.8061f);
-if(is_left() and profile_aligned(ReadSlider(159))){
+{
+ShowIf(is_left());
+ShowAlignedSymIf(V3x(1.f), ReadSlider(159));
 (set_draw_location_unresolved({2,170}), draw(bez_bezd_old(sternum, V3(0.f, 0.0027f, 0.2265f), V2(0.f, 0.0935f), rib_mid)), clear_draw_location());
 }
 tvert ribL = rib_mid + V3(0.559f, -0.7158f, -0.2772f);
@@ -1303,7 +1305,7 @@ painter->params.line.flags |= Line_Invisible;
 (set_draw_location_unresolved({2,250}), fill_dual_bez(nose_line_side, nose_line_sideR), clear_draw_location());
 }
 {
-ShowIf(profile_aligned(cosine(0.25f * 0.70f)));
+ShowAlignedSymIf(V3x(1.f), cosine(0.25f * 0.70f));
 (set_draw_location_unresolved({2,251}), draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up)), clear_draw_location());
 }
 if(is_left()){
@@ -1446,7 +1448,8 @@ PaintBlock;
 scale_line_radius(0.25f);
 tvert mouth_low_valley = lip_low_center + ReadSlider(210);
 {
-ShowIf(is_left() and profile_aligned(cosine(0.25f * 0.73f)));
+ShowIf(is_left());
+ShowAlignedSymIf(V3x(1.f), cosine(0.25f * 0.73f));
 {
 Line_Params params = lp();
 params.lightness_additions = ReadSlider(211);
@@ -1471,7 +1474,8 @@ if(level1){
 }
 tvert head_neck_junction = ReadSlider(212);
 if(is_left()){
-if(profile_aligned(ReadSlider(213))){
+{
+ShowAlignedSymIf(V3x(1.f), ReadSlider(213));
 (set_draw_location_unresolved({2,284}), draw(bez_line(chin_middle, head_neck_junction)), clear_draw_location());
 }
 (set_draw_location_unresolved({2,285}), fill3(head_neck_junction, chinL, jaw), clear_draw_location());

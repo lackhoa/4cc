@@ -2096,8 +2096,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  }
  
  for_i32(index,0,WINDOW_COUNT)
- {
-  ShowWindow(win32vars.window_handles[index], SW_SHOW);
+ {// NOTE(kv) Main window starts maximized (the default size is tiny).
+  ShowWindow(win32vars.window_handles[index],
+             (index == 0) ? SW_SHOWMAXIMIZED : SW_SHOW);
  }
  SetForegroundWindow(win32vars.window_handles[0]);
  SetActiveWindow(win32vars.window_handles[0]);

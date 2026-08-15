@@ -270,10 +270,11 @@ open_group_scope()
  freeze_group_params(m, parent_index);  // parent's own mutations are complete by now
  // NOTE(kv) Child scopes inherit the visibility tag: a PaintBlock nested inside a
  // skeleton scope is still skeleton-bound.
- Recorded_Group group = {.parent_index = parent_index, .vis_tag = parent.vis_tag};
+ Recorded_Group group = {.parent_index = parent_index, .vis_tag = parent.vis_tag,
+                         .cam_vis = parent.cam_vis};
  i32 index = m->groups.count;
  push(&m->groups, group);
- Group_Scope_Slot slot = {index, parent.vis_tag};
+ Group_Scope_Slot slot = {index, parent.vis_tag, parent.cam_vis};
  push(&stack.slots, slot);
 }
 function void
@@ -295,6 +296,23 @@ tag_group_visibility(Group_Vis vis)
   slot.vis_tag = vis;
   m->groups.items[slot.group_index].vis_tag = vis;
  }
+}
+function b32
+tag_group_cam_vis(v3 normal, v1 min_alignment, b32 symmetric)
+{// NOTE(kv) Q38: record the camera-alignment condition on the current scope's group
+ // (and its slot, so sibling-splits keep it), then return the capture-time verdict
+ // for ShowAlignedIf to AND into painting.
+ if(should_send_model_data())
+ {
+  Model *m = the_model;
+  Group_Scope_Slot &slot = current_group_slot(m->group_stack);
+  Group_Cam_Vis cam_vis = {true, normal, min_alignment, symmetric};
+  slot.cam_vis = cam_vis;
+  m->groups.items[slot.group_index].cam_vis = cam_vis;
+ }
+ v1 alignment = dot(normal, get_view_vector());
+ if(symmetric){ alignment = absolute(alignment); }
+ return alignment > min_alignment;
 }
 function void
 publish_group_visibility(Group_Vis vis, b32 value)
@@ -348,7 +366,8 @@ current_recorded_group_index()
  {// Mid-scope mutation (params, bone, or view scope) -> sibling under the same
   // parent (keeps the scope's vis_tag)
   Group_Scope_Slot &slot = current_group_slot(stack);
-  Recorded_Group sibling = {.parent_index = group.parent_index, .vis_tag = slot.vis_tag};
+  Recorded_Group sibling = {.parent_index = group.parent_index, .vis_tag = slot.vis_tag,
+                            .cam_vis = slot.cam_vis};
   result = m->groups.count;
   push(&m->groups, sibling);  // NOTE(kv) `group` reference is dead past this point
   freeze_group_params(m, result);

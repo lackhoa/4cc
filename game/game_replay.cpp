@@ -77,6 +77,16 @@ replay_recording(Recording &rec)
   // conditions baked into the freeze (e.g. front_back_aligned) survive; a capture
   // taken with the toggle ON decomposes as painting = other_conditions AND toggle.
   p->params.painting = (p->params.painting and m->vis_live[group.vis_tag]);
+  if(group.cam_vis.active)
+  {// NOTE(kv) Q38 camera-bound visibility: re-evaluate the recorded condition against
+   // the LIVE view vector (derived from the group's view scope + current camera, Q42)
+   // and AND it in -- same decomposition argument as the vis_live re-AND above.
+   v3 live_view = view_vector_from(get_bone(group.view_bone, /*is_right*/false)->world_from_bone,
+                                   group.view_center);
+   v1 alignment = dot(group.cam_vis.normal, live_view);
+   if(group.cam_vis.symmetric){ alignment = absolute(alignment); }
+   p->params.painting = (p->params.painting and (alignment > group.cam_vis.min_alignment));
+  }
 
   switch(prim.type)
   {

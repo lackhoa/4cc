@@ -538,7 +538,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
         lp(0.5f*big_to_small()));
   }
   {//NOTE: External condyle
-   ShowIf(front_back_aligned(fv(.7f)));
+   ShowAlignedSymIf(V3z(1.f), fv(.7f));
    tvert a = external_condyle+fv3(-0.1216f, 0.1472f, -0.0402f);
    tvert b = fvert(0.13f, 0.7829f, -0.2688f);
    draw(bez_unit2(a, V4(0.f, 1.0357f, 0.f, 0.f),
@@ -550,7 +550,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
   tvert v99 = v98+V3(-0.f, -0.6114f, -0.0063f);
   {
    fpreset(Preset_Arm_Profile);
-   ShowIf(profile_aligned(fv(.7f)));
+   ShowAlignedSymIf(V3x(1.f), fv(.7f));
    draw(bez_parabola(v98, fv3(-0.f, -0.1087f, 0.0612f), v99));
    tvert v01 = v99 + fv3(0.f, -1.2272f, 0.03f);
    draw(bez_v3v2(v99, V3(-0.f, 0.f, -0.0834f),
@@ -697,7 +697,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
     fimage(image_left_arm_back, bez_v2_offset(fv2(0.8346f, 0.8079f), fv2(-0.03f, -0.1844f), fv2(0.66f, 0.553f)));
     fimage(image_triceps_long_head);
     fimage(image_arm_muscle_connection);
-    ShowIf(aligned(V3z(-1), fv(0.9248f)));
+    ShowAlignedIf(V3z(-1), fv(0.9248f));
     fpreset(Preset_Back);
     draw(bez_v3v2(torso.scap_sock_bot, fv3(-0.2236f, 0.048f, 0.f),
                   fv2(-0.2884f, 0.0577f), white_in),
@@ -722,7 +722,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
    fimage(image_upper_body_front_muscle,
           bez_v2_offset(fv2(0.3494f, 0.5376f), fv2(0.0504f, -0.0868f), fv2(0.4786f, 0.4232f)));
    {// todo Let's make alignment adjustment better, with this as example
-    ShowIf(aligned(V3z(1), fv(.7f)));
+    ShowAlignedIf(V3z(1), fv(.7f));
     draw(front_in, lp(I4(0,0,0,4)));
    }
    
@@ -837,7 +837,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
   down_common  = palm_in+fv3(0.1191f, 0.0489f, 0.f);
   Bez l492 = bez_parabola(down_common, fv3(-0.0036f, -0.2325f, 0.f), up1);
   {
-   ShowIf(front_back_aligned());
+   ShowAlignedSymIf(V3z(1.f), cos_45_degree);
    draw(l492);
    {
     PaintBlock;
@@ -855,7 +855,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
   }
   
   {//NOTE: Radius (outer)
-   ShowIf(front_back_aligned());
+   ShowAlignedSymIf(V3z(1.f), cos_45_degree);
    PaintBlock;
    painter->params.line.alignment_min = 0.5f;
    tvert up596 = bezier_sample(l492, 0.9006f);
@@ -867,7 +867,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
  }
  
  {// todo This line shows the bicep at the front, but it should only show at the front
-  ShowIf(front_back_aligned());
+  ShowAlignedSymIf(V3z(1.f), cos_45_degree);
   fimage(image_brachialis_vs_skeleton,
          bez_v2_offset(fv2(0.5488f, 0.5653f), fv2(-0.2152f, -0.1208f), fv2(0.2632f, 0.2864f)));
   Bez line = bez_v3v2(arm.brachialis_begin, fv3(0.145f, 0.0775f, 0.f),
@@ -935,7 +935,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
  
  // brachio_top
  {
-  ShowIf(front_back_aligned());
+  ShowAlignedSymIf(V3z(1.f), cos_45_degree);
   fimage(image_brachio_front,
          bez_v2_offset(fv2(0.383f, 0.5666f), fv2(0.1002f, 0.0001f), fv2(0.5336f, 0.3928f)));
   draw(bez_v3v2(arm.brachio_humerus,
@@ -1114,8 +1114,9 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   // NOTE rib_midY is lower than half shoulder to navel
   v1 rib_midY = shoulder.y - 0.65f*head_unit + -0.0775f;
   rib_mid = mkvert(0.f, rib_midY, 0.8061f);
-  if(is_left() and profile_aligned(fv(0.87f)))
   {
+   ShowIf(is_left());
+   ShowAlignedSymIf(V3x(1.f), fv(0.87f));
    draw(bez_bezd_old(sternum,
                      V3(0.f, 0.0027f, 0.2265f),
                      V2(0.f, 0.0935f),
@@ -1776,7 +1777,7 @@ render_head(Pose &pose)
  }
  
  {//NOTE: Draw that tasty nose wing :>
-  ShowIf(profile_aligned(cosine(0.25f*0.70f)));
+  ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.70f));
   draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up));
  }
  if(is_left())
@@ -1984,7 +1985,8 @@ render_head(Pose &pose)
    scale_line_radius(0.25f);
    tvert mouth_low_valley = lip_low_center+fv3(0.f, -0.0704f, -0.0417f);
    {
-    ShowIf(is_left() and profile_aligned(cosine(0.25f*0.73f)));
+    ShowIf(is_left());
+    ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.73f));
     {
      Line_Params params = lp();
      params.lightness_additions = fv4(0.1672f, 2.0761f, 1.3853f, 3.0361f);
@@ -2018,8 +2020,8 @@ render_head(Pose &pose)
  tvert head_neck_junction = fvert(0.f, -1.1949f, 0.3195f);
  if(is_left())
  {
-  if(profile_aligned(fv(.8f)))
   {
+   ShowAlignedSymIf(V3x(1.f), fv(.8f));
    draw(bez_line(chin_middle, head_neck_junction));
   }
   fill3(head_neck_junction, chinL, jaw);

@@ -504,6 +504,16 @@ enum Group_Vis
  //
  Group_Vis_Count,
 };
+struct Group_Cam_Vis
+{// NOTE(kv) Camera-bound visibility condition (Q38): recorded parameters, not a
+ // frozen verdict. Replay re-ANDs `dot(normal, live_view) > min_alignment` (absolute
+ // value if symmetric) into painting, where live_view is derived from the group's
+ // view scope and the current camera (Q42).
+ b32 active;
+ v3 normal;
+ v1 min_alignment;
+ b32 symmetric;
+};
 struct Recorded_Group
 {// NOTE(kv) One paint scope during the recording run (see Paint_Params_Block).
  // Groups form a forest: parent_index == -1 means top-level.
@@ -512,6 +522,7 @@ struct Recorded_Group
  Paint_Params params; // full effective paint state for leaves of this group
  u32 changed_mask;    // PaintField_* bits differing from the parent group
  Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
+ Group_Cam_Vis cam_vis;  // zero-init = inactive; inherited like vis_tag
  // NOTE(kv) Scoped context folded onto the group (Q43a/Q43b): exactly one bone per
  // group (mid-scope bone switch sibling-splits), and the view scope's center --
  // recorded as {center, the bone it was expressed in} so replay can derive the
@@ -535,6 +546,7 @@ struct Group_Scope_Slot
  // mutation sibling-splits the group (current_recorded_group_index), and the sibling
  // must keep the tag.
  Group_Vis vis_tag;
+ Group_Cam_Vis cam_vis;
 };
 struct Group_Scope_Stack
 {// NOTE(kv) One slot per open Paint_Params_Block scope, holding that scope's group

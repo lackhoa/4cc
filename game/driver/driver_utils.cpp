@@ -55,29 +55,6 @@ get_eye_min_distance(v3 center, v1 radius, Bezier line)
 
 global v1 const cos_45_degree = 1.f / square_root(2.f);
 
-function b32
-aligned(v3 normal, v1 min_alignment=cos_45_degree)
-{
- v1 alignment = dot(normal, get_view_vector());
- return alignment > min_alignment;
-}
-function b32
-aligned_symmetric(v3 normal, v1 min_alignment=cos_45_degree)
-{
- v3 view_vector = get_view_vector();
- v1 alignment = absolute(dot(normal, view_vector));
- return alignment > min_alignment;
-}
-myinline b32
-front_back_aligned(v1 min_alignment=cos_45_degree)
-{
- return aligned_symmetric(V3z(1.f), min_alignment);
-}
-myinline b32
-profile_aligned(v1 min_alignment=cos_45_degree)
-{
- return aligned_symmetric(V3x(1.f), min_alignment);
-}
 function void
 debug_view_vector(i32 location)
 {
@@ -293,13 +270,31 @@ SetInBlock(painter->params.painting, condition)
 
 // NOTE(kv) ShowIf + a live-visibility tag on the recorded group (Q32): the recorder
 // can't infer WHY painting flipped, so the binding is declared at the call site.
+// Opens its own paint scope so the tag covers exactly the block the condition
+// governs (same shape as ShowAlignedIf below).
 #define ShowGroupIf(vis, condition) \
+Paint_Params_Block PP_Concat(group_vis_block_, __LINE__); \
 tag_group_visibility(vis); \
 SetInBlock(painter->params.painting, painter->params.painting and condition)
 
 #define ShowGroupIf2(vis, condition) \
+Paint_Params_Block PP_Concat(group_vis_block_, __LINE__); \
 tag_group_visibility(vis); \
 SetInBlock(painter->params.painting, condition)
+
+// NOTE(kv) Q38/Q39 camera-bound visibility: like ShowGroupIf, but the live source is
+// the camera. tag_group_cam_vis records {normal, min_alignment, symmetric} on the
+// group and returns the capture-time verdict; replay re-ANDs the condition against
+// the live view vector. Opens its own paint scope so the tag covers exactly the
+// block the condition governs (a named block var -- PaintBlock's line_unique_var
+// would collide with SetInBlock's on the same line).
+#define ShowAlignedIfEx(normal, min, symmetric) \
+Paint_Params_Block PP_Concat(cam_vis_block_, __LINE__); \
+SetInBlock(painter->params.painting, \
+           painter->params.painting and tag_group_cam_vis(normal, min, symmetric))
+
+#define ShowAlignedIf(normal, min)    ShowAlignedIfEx(normal, min, false)
+#define ShowAlignedSymIf(normal, min) ShowAlignedIfEx(normal, min, true)
 
 #define lp get_line_params
 #define fp get_fill_params
