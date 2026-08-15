@@ -456,27 +456,23 @@ enum Primitive_Type
  Primitive_Type_Disk,
  Primitive_Type_Image,
 };
+struct Recorded_Curve
+{// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
+ // parameterization live with the geometry; all style folds down the group path.
+ Bezier bezier;
+ v4 radii;
+ v4 lightness_additions;
+ b32 straight;  // Line_Straight, set by the straight-line helper
+};
 struct Recorded_Primitive
 {
  Primitive_Type type;
  Location location;
- Bone_ID bone_id;
  i32 group_index;  // index into Model.groups
 
- // NOTE(kv) Per-call param overrides (Q21): part of the draw call's argument list,
- // never routed through painter->params, so the group mechanism can't see them.
  union
  {
-  Line_Params line_params;  // Primitive_Type_Curve
-  Fill_Params fill_params;  // all fill types
- };
- // NOTE(kv) fill_dual_bez culling input: the view-vector stack isn't recorded,
- // so the vector in effect at capture time is snapshotted per primitive.
- v3 view_vector;
-
- union
- {
-  Bezier curve;
+  Recorded_Curve curve;
   Poly3  poly3;
   Dual_Bezier dual_bezier;
   Patch  patch;
@@ -516,6 +512,13 @@ struct Recorded_Group
  Paint_Params params; // full effective paint state for leaves of this group
  u32 changed_mask;    // PaintField_* bits differing from the parent group
  Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
+ // NOTE(kv) Scoped context folded onto the group (Q43a/Q43b): exactly one bone per
+ // group (mid-scope bone switch sibling-splits), and the view scope's center --
+ // recorded as {center, the bone it was expressed in} so replay can derive the
+ // view vector live from the current camera instead of a frozen snapshot.
+ Bone_ID bone_id;
+ v3 view_center;
+ Bone_ID view_bone;
  // NOTE(kv) Params are only knowable after the scope body ran its mutations, so
  // they're snapshotted lazily ("frozen") at the first event that needs them --
  // first own primitive, a child scope opening, or scope close. Capture-time only.
@@ -607,6 +610,15 @@ struct Viewport
 
 myinline b32 is_main_viewport(Viewport *viewport){ return viewport->index==0; }
 
+struct View_Scope
+{// NOTE(kv) One ViewCenterBlock entry: the derived view vector plus the center it
+ // was computed from and the bone that center is expressed in (recorded onto
+ // groups so replay can re-derive the vector from the live camera, Q43b).
+ v3 vector;
+ v3 center;
+ Bone_ID bone;
+};
+
 struct Painter
 {// NOTE(kv) This is a convenient global store.
  // IMPORTANT See @init_painter and @init_painter_2
@@ -622,8 +634,8 @@ struct Painter
  mat4  clip_from_bone; // see @set_bone_transform
  mat4i cam_from_bone;  // see @set_bone_transform
  
- i32 view_vector_count;
- v3  view_vector_stack[16];
+ i32 view_scope_count;
+ View_Scope view_scope_stack[16];
  
  //-Debug collection
  i32 clipped_curve_count;
@@ -657,10 +669,8 @@ get_line_params(){
  return painter->params.line;
 }
 myinline Fill_Params
-get_fill_params(argb color=0){
- Fill_Params result = painter->params.fill;
- if(color){result.color = color;}
- return result;
+get_fill_params(){
+ return painter->params.fill;
 }
 myinline Line_Params
 get_line_params(v4 radii)
@@ -674,13 +684,6 @@ get_line_params(i4 radii)
 {
  Line_Params result = get_line_params();
  result.radii = i2f6(radii);
- return result;
-}
-myinline Line_Params
-lp_invisible()
-{
- Line_Params result = get_line_params();
- result.flags |= Line_Invisible;
  return result;
 }
 
@@ -881,20 +884,29 @@ push_view_vector(v3 object_center)
  Painter *p = painter;
  v3 camera_obj = camera_object_position();
  v3 view_vector = noz(camera_obj - object_center);
- p->view_vector_stack[p->view_vector_count++] = view_vector;
- kv_assert(p->view_vector_count < alen(p->view_vector_stack));
+ View_Scope scope = {};
+ scope.vector = view_vector;
+ scope.center = object_center;
+ scope.bone   = current_bone()->id;
+ p->view_scope_stack[p->view_scope_count++] = scope;
+ kv_assert(p->view_scope_count < alen(p->view_scope_stack));
 }
 myinline v3
 get_view_vector()
 {
- return painter->view_vector_stack[painter->view_vector_count-1];
+ return painter->view_scope_stack[painter->view_scope_count-1].vector;
+}
+myinline View_Scope
+get_view_scope()
+{
+ return painter->view_scope_stack[painter->view_scope_count-1];
 }
 myinline void
 pop_view_vector()
 {
  Painter *p = painter;
- p->view_vector_count--;
- kv_assert(p->view_vector_count > 0);
+ p->view_scope_count--;
+ kv_assert(p->view_scope_count > 0);
 }
 #define ViewCenterBlock(center) \
 push_view_vector(center); \

@@ -602,12 +602,16 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
                              delt_bot);
   fill3(delt_back, delt_bot, delt_top_back);
   
-  draw(delt_vmid, lp_alignment_min((0.8202f)));
+  {
+   PaintBlock;
+   painter->params.line.alignment_min = (0.8202f);
+   draw(delt_vmid);
+  }
   //if (level1)
   {
-   Line_Params params = lp_alignment_min((0.6061f));
-   params.radii = V4(0.712f, 0.f, 0.f, 0.5464f);
-   draw(delt_vback, params);
+   PaintBlock;
+   painter->params.line.alignment_min = (0.6061f);
+   draw(delt_vback, lp(V4(0.712f, 0.f, 0.f, 0.5464f)));
    fill_bez(delt_vback);
   }
   delt_bot_line = bez_bezd_old(delt_bot, (V3()),
@@ -741,7 +745,11 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
                                     V3z(1.f),
                                     bicep_side_bot2);
     
-    draw(bicep_side_line2, lp(alignment, I4(4,3,1,0)));
+    {
+     PaintBlock;
+     painter->params.line.alignment_min = alignment;
+     draw(bicep_side_line2, lp(I4(4,3,1,0)));
+    }
     b32 drawn = painter->previous_draw_result;
     
     if(drawn){
@@ -791,9 +799,9 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
   Bezier lb = bez_v3v2(a+fv3(0.f, -0.0972f, 0.4466f),
                        fv3(0.f, -0.0943f, 0.0532f), fv2(0,0),
                        b+fv3(0.f, 0.f, 0.1265f));
-  Fill_Params params = fp();
-  params.flags.v |= Fill_Culled;
-  fill_dual_bez(la, lb, params);
+  PaintBlock;
+  painter->params.fill.flags.v |= Fill_Culled;
+  fill_dual_bez(la, lb);
  }
  
  fimage(image_brachialis_vs_skeleton, fv2(0.539f, 0.5534f));
@@ -822,7 +830,6 @@ render_forearm(Arm arm, tvert elbow_up_out)
   ShowGroupIf(Vis_Skeleton, showing_skeleton());
   set_skeleton_params();
   fimage(image_skeletal_meat_outline);
-  Line_Params params = lp(0.5f);
   tvert down_common;
   tvert up = fvert(-0.2363f, -1.1833f, -0.1252f);
   //NOTE: ulna (inner, main bone)
@@ -832,20 +839,30 @@ render_forearm(Arm arm, tvert elbow_up_out)
   {
    ShowIf(front_back_aligned());
    draw(l492);
-   draw(bez_parabola(up, (fv3(0.0822f, 0.1457f, 0.f)), palm_in), params);
+   {
+    PaintBlock;
+    painter->params.line.alignment_min = 0.5f;
+    draw(bez_parabola(up, (fv3(0.0822f, 0.1457f, 0.f)), palm_in));
+   }
   }
   tvert v676 = fvert(-0.1753f, -0.854f, -0.0817f);
   tvert v677 = v676+fv3(0.f, -0.3293f, -0.0435f);
-  draw(bez_v3v2(v676, fv3(-0.f, 0.1052f, -0.0852f),
-                V2(0.f, 0.0936f), v677), lp_alignment_min(fv(.7f)));
+  {
+   PaintBlock;
+   painter->params.line.alignment_min = fv(.7f);
+   draw(bez_v3v2(v676, fv3(-0.f, 0.1052f, -0.0852f),
+                 V2(0.f, 0.0936f), v677));
+  }
   
   {//NOTE: Radius (outer)
    ShowIf(front_back_aligned());
+   PaintBlock;
+   painter->params.line.alignment_min = 0.5f;
    tvert up596 = bezier_sample(l492, 0.9006f);
-   draw(bez_parabola(down_common, fv3(0.0871f, 0.0251f, 0.f), up596), params);
+   draw(bez_parabola(down_common, fv3(0.0871f, 0.0251f, 0.f), up596));
    tvert down2 = down_common + fv3(0.175f, -0.0472f, 0.f);
    tvert up2 = up + fv(V3(0.3198f, -0.0241f, -0.019f));
-   draw(bez_parabola(down2, fv3(0.0988f, -0.2945f, 0.f), up2), params);
+   draw(bez_parabola(down2, fv3(0.0988f, -0.2945f, 0.f), up2));
   }
  }
  
@@ -1022,7 +1039,11 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   Bezier neck_front_vline = bez_bezd_old(head.head_neck_junction,
                                          V3(-0.f, 0.f, -0.0968f), 
                                          V2(0.f, 0.2897f), sternum);
-  draw(neck_front_vline, lp_alignment_min(cosine(0.25f*0.5f)));
+  {
+   PaintBlock;
+   painter->params.line.alignment_min = cosine(0.25f*0.5f);
+   draw(neck_front_vline);
+  }
   
   Bezier neck_back_line = bez_offset(head.trapezius_head,
                                      V3(-0.1529f, -0.1932f, 0.2857f),
@@ -1136,7 +1157,11 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
                                 V2(0.151f, 0.0235f),
                                 V3(1.f, 0.f, -0.f),
                                 latis_arm);
-  draw(latis_arm_line, lp_alignment_min(0.7f));
+  {
+   PaintBlock;
+   painter->params.line.alignment_min = 0.7f;
+   draw(latis_arm_line);
+  }
  }
  
  fpreset(Preset_Arm_Profile);
@@ -1254,7 +1279,11 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
                             V2(0,0), 
                             (V3(0,0,-1)),
                             rib_back);
-  draw(latis_side,lp_alignment_min(0.7f));
+  {
+   PaintBlock;
+   painter->params.line.alignment_min = 0.7f;
+   draw(latis_side);
+  }
  }
  
  if(is_left())
@@ -1341,8 +1370,11 @@ render_eyes(Pose &pose)
                                    eye_out);
  fill_point_bez(es_up_in, eye_up_line);
  argb eye_in_shade = painter->shade_color;
- fill3(nose_rootL, eye_in, es_up_in, 
-       fp(eye_in_shade));
+ {
+  PaintBlock;
+  painter->params.fill.color = eye_in_shade;
+  fill3(nose_rootL, eye_in, es_up_in);
+ }
  //-
  v4 eye_up_line_radii;
  v4 eye_low_line_radii;
@@ -1373,8 +1405,11 @@ render_eyes(Pose &pose)
                                 lerp(eye_up_line[2], tblink, eye_low_line[2]),
                                 eye_out);
   draw(eye_up_line_now, eye_up_line_radii);
-  // NOTE: The eyelid
-  fill_dual_bez(eye_up_line, eye_up_line_now, fp(eye_in_shade));
+  {// NOTE: The eyelid
+   PaintBlock;
+   painter->params.fill.color = eye_in_shade;
+   fill_dual_bez(eye_up_line, eye_up_line_now);
+  }
  }
  {//~NOTE: Eyeball
   BoneBlock(mk_bone_id(Bone_Eyeball));
@@ -1654,8 +1689,9 @@ render_head(Pose &pose)
   
   if(is_left())
   {// NOTE: philtrum
-   v1 threshold = (0.8284f);
-   draw(philtrum_line, lp(threshold, I4(0,0,3,0)));
+   PaintBlock;
+   painter->params.line.alignment_min = (0.8284f);
+   draw(philtrum_line, lp(I4(0,0,3,0)));
   }
   
   tvert philtrum_lowL = philtrum_low+V3x(philtrumX);
@@ -1717,7 +1753,11 @@ render_head(Pose &pose)
                                 V4(),
                                 V3(0.f, 0.f, 1.f),
                                 v1219);
- draw(nose_line_side, lp_invisible());
+ {
+  PaintBlock;
+  painter->params.line.flags |= Line_Invisible;
+  draw(nose_line_side);
+ }
  tvert nose_tipL = (nose_tip+V3x(nose_sideX));
  draw(bez_offset(nose_tipL,
                  V3(0.0121f, -0.0404f, -0.1108f),
@@ -1727,7 +1767,11 @@ render_head(Pose &pose)
  
  if(is_left()){
   Bez nose_line_sideR = bez_negateX(nose_line_side);
-  draw(nose_line_sideR, lp_invisible());
+  {
+   PaintBlock;
+   painter->params.line.flags |= Line_Invisible;
+   draw(nose_line_sideR);
+  }
   fill_dual_bez(nose_line_side, nose_line_sideR);
  }
  
@@ -1895,9 +1939,11 @@ render_head(Pose &pose)
   if (level2) { draw(head_back_in_line); }
   fill_patch( head_back);
   
-  //NOTE: draw vertical line
-  draw(get_uline(head_back, 0.5f), lp((0.9797f),
-                                      I4(1,3,3,0)));
+  {//NOTE: draw vertical line
+   PaintBlock;
+   painter->params.line.alignment_min = (0.9797f);
+   draw(get_uline(head_back, 0.5f), lp(I4(1,3,3,0)));
+  }
  }
  
  fill_point_bez(ear_center, head_top_out_line);
@@ -2039,7 +2085,9 @@ render_head(Pose &pose)
                                  V4(0.f, 0.2629f, 0.1602f, 0.3068f),
                                  V3(0.f, 0.f, 1.f),
                                  bang_midpoint);
-   draw(bang_vline, lp_alignment_min(cosine(0.25f*0.4036f)));
+   PaintBlock;
+   painter->params.line.alignment_min = cosine(0.25f*0.4036f);
+   draw(bang_vline);
   }
   tvert bang_tip;
   {
@@ -2104,8 +2152,12 @@ render_head(Pose &pose)
                             V3(0.3694f, 0.2549f, -0.0512f),
                             V2(0.0175f, 0.2904f),
                             ear_center);
-   draw(over1); 
-   draw(over2, lp_alignment_min((0.4764f)));
+   draw(over1);
+   {
+    PaintBlock;
+    painter->params.line.alignment_min = (0.4764f);
+    draw(over2);
+   }
   }
   if(is_left())
   {

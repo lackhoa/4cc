@@ -121,7 +121,7 @@ global Text_Object text_objects_[316] ={
 {.location={452, 453}, .kind=Text_Object_Image, .image={.filename=image_skeletal_meat_outline}},
 {.location={462, 463}, .kind=Text_Object_Drawn},
 {.location={464, 467}, .kind=Text_Object_Drawn},
-{.location={472, 477}, .kind=Text_Object_Drawn},
+{.location={474, 477}, .kind=Text_Object_Drawn},
 {.location={478, 481}, .kind=Text_Object_Drawn},
 {.location={486, 489}, .kind=Text_Object_Drawn},
 {.location={490, 497}, .kind=Text_Object_Image, .image={.filename=image_brachialis_vs_skeleton}},

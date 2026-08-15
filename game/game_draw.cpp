@@ -90,7 +90,6 @@ fill_disk(v3 center, tdim radius_bone_space, Fill_Params params=get_fill_params(
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Disk};
   primitive.disk = {center, radius_bone_space.v};
-  primitive.fill_params = params;
   send_primitive(primitive);
  }
 
@@ -132,7 +131,6 @@ fill_patch(tvert P[4][4], Fill_Params params=get_fill_params())
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Patch};
   block_copy(primitive.patch.e, P, sizeof(primitive.patch.e));
-  primitive.fill_params = params;
   send_primitive(primitive);
  }
 
@@ -246,6 +244,13 @@ freeze_group_params(Model *m, i32 group_index)
   group.params_frozen = true;
   group.location = painter->current_draw_location;
   group.params   = painter->params;
+  // NOTE(kv) Scoped context (Q43a/Q43b): the group's bone and view scope, frozen
+  // with the params (a mid-scope change of either sibling-splits, so one group =
+  // one bone = one view scope by construction).
+  group.bone_id = current_bone()->id;
+  View_Scope view_scope = get_view_scope();
+  group.view_center = view_scope.center;
+  group.view_bone   = view_scope.bone;
   group.changed_mask = 0;
   if(group.parent_index != -1)
   {
@@ -331,12 +336,17 @@ current_recorded_group_index()
  Group_Scope_Stack &stack = m->group_stack;
  i32 result = current_group_index(stack);
  Recorded_Group &group = m->groups.items[result];
+ View_Scope view_scope = get_view_scope();
  if(not group.params_frozen)
  {
   freeze_group_params(m, result);
  }
- else if(paint_params_diff_mask(painter->params, group.params) != 0)
- {// Mid-scope mutation -> sibling under the same parent (keeps the scope's vis_tag)
+ else if(paint_params_diff_mask(painter->params, group.params) != 0 or
+         not block_match_struct(&group.bone_id, &current_bone()->id) or
+         not block_match_struct(&group.view_center, &view_scope.center) or
+         not block_match_struct(&group.view_bone, &view_scope.bone))
+ {// Mid-scope mutation (params, bone, or view scope) -> sibling under the same
+  // parent (keeps the scope's vis_tag)
   Group_Scope_Slot &slot = current_group_slot(stack);
   Recorded_Group sibling = {.parent_index = group.parent_index, .vis_tag = slot.vis_tag};
   result = m->groups.count;
@@ -354,7 +364,6 @@ send_primitive(Recorded_Primitive &primitive)
  if(should_send_model_data() and is_valid(location))
  {
   primitive.location = location;
-  primitive.bone_id = current_bone()->id;
   primitive.group_index = current_recorded_group_index();
   push(&the_model->primitives, primitive);
  }
@@ -365,7 +374,6 @@ send_poly3(Poly3 points, Fill_Params params)
 {
  Recorded_Primitive fill = {.type = Primitive_Type_Poly3};
  fill.poly3 = points;
- fill.fill_params = params;
  send_primitive(fill);
 }
 function void
@@ -531,9 +539,11 @@ draw_bezier(tvert P[4], Line_Params params)
   Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
   for_i32(i,0,4)
   {
-   primitive.curve[i] = P[i];
+   primitive.curve.bezier[i] = P[i];
   }
-  primitive.line_params = params;
+  primitive.curve.radii = params.radii;
+  primitive.curve.lightness_additions = params.lightness_additions;
+  primitive.curve.straight = (params.flags & Line_Straight);
   send_primitive(primitive);
  }
  
@@ -674,8 +684,6 @@ fill_dual_bez(tvert P[4], tvert Q[4], Fill_Params params=get_fill_params())
   Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
   block_copy(primitive.dual_bezier.P, P, 4*sizeof(v3));
   block_copy(primitive.dual_bezier.Q, Q, 4*sizeof(v3));
-  primitive.fill_params = params;
-  primitive.view_vector = get_view_vector();
   send_primitive(primitive);
  }
  
@@ -876,14 +884,6 @@ myinline i4
 I4_sym(i2 v)
 {
  return i4{v[0], v[1], v[1], v[0]};
-}
-function Line_Params
-get_line_params(v1 alignment_min, i4 radii={})
-{
- Line_Params result = get_line_params();
- result.alignment_min = alignment_min;
- result.radii         = i2f6(radii);
- return result;
 }
 myinline void
 nduo_line( v3 a, v3 b, v3 c)

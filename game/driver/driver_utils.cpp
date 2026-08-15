@@ -78,13 +78,6 @@ profile_aligned(v1 min_alignment=cos_45_degree)
 {
  return aligned_symmetric(V3x(1.f), min_alignment);
 }
-myinline Line_Params
-lp_alignment_min(v1 min)
-{
- Line_Params result = get_line_params();
- result.alignment_min = min;
- return result;
-}
 function void
 debug_view_vector(i32 location)
 {

@@ -558,12 +558,12 @@ convert_primitives_to_camera_space(Camera &camera)
   for_i32(iprim, 0, m->primitives.count)
   {
    Recorded_Primitive primitive = m->primitives[iprim];
-   update_current_bone(primitive.bone_id);
+   update_current_bone(m->groups[primitive.group_index].bone_id);
    switch(primitive.type)
    {
     case Primitive_Type_Curve:
     {
-     mat4bez(camera_from_bone, &primitive.curve);
+     mat4bez(camera_from_bone, &primitive.curve.bezier);
     }break;
 
     case Primitive_Type_Poly3:
@@ -1474,7 +1474,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     {
      if(not fill_only)
      {
-      tvert *curve = primitive.curve;
+      tvert *curve = primitive.curve.bezier;
       const i32 test_segment_count = 8;
       // NOTE(kv) We know the triangle count,
       // But just in case we mess up the code...

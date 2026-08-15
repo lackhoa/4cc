@@ -60,17 +60,17 @@ replay_recording(Recording &rec)
  for_i32(iprim, 0, rec.primitives.count)
  {
   Recorded_Primitive &prim = rec.primitives.items[iprim];
+  Recorded_Group &group = rec.groups.items[prim.group_index];
 
-  if(cur_bone == 0 or not (prim.bone_id == cur_bone->id))
-  {
-   cur_bone = get_bone(prim.bone_id, /*is_right*/false);
+  if(cur_bone == 0 or not (group.bone_id == cur_bone->id))
+  {// NOTE(kv) Bone is a group property (Q43a): one bone per group by construction.
+   cur_bone = get_bone(group.bone_id, /*is_right*/false);
    m->bone_stack.items[m->bone_stack.count-1] = cur_bone;
    set_bone_transform(cur_bone->world_from_bone);
   }
 
   clear_draw_location();  // NOTE(kv) set_draw_location only ever raises the hot flag
   set_draw_location(prim.location);
-  Recorded_Group &group = rec.groups.items[prim.group_index];
   p->params = group.params;
   // NOTE(kv) Q32 live visibility: re-AND the frozen `painting` with the tag's live
   // value (driver publishes vis_live each frame). AND -- not overwrite -- so nested
@@ -81,30 +81,42 @@ replay_recording(Recording &rec)
   switch(prim.type)
   {
    case Primitive_Type_Curve:
-   {
-    draw_bezier(prim.curve.e, prim.line_params);
+   {// NOTE(kv) Style from the group fold + per-curve shape (Q44/Q47c).
+    Line_Params line_params = p->params.line;
+    line_params.radii = prim.curve.radii;
+    line_params.lightness_additions = prim.curve.lightness_additions;
+    if(prim.curve.straight){ line_params.flags |= Line_Straight; }
+    draw_bezier(prim.curve.bezier.e, line_params);
    }break;
 
    case Primitive_Type_Poly3:
    {
-    fill3(prim.poly3[0], prim.poly3[1], prim.poly3[2], prim.fill_params);
+    fill3(prim.poly3[0], prim.poly3[1], prim.poly3[2], get_fill_params());
    }break;
 
    case Primitive_Type_Dual_Bezier:
-   {// NOTE(kv) Culling reads the view-vector stack; restore the recorded vector.
-    p->view_vector_stack[p->view_vector_count++] = prim.view_vector;
-    fill_dual_bez(prim.dual_bezier.P.e, prim.dual_bezier.Q.e, prim.fill_params);
-    p->view_vector_count--;
+   {// NOTE(kv) Culling reads the view-scope stack; derive the view vector LIVE from
+    // the group's recorded {view_center, view_bone} and the current camera (Q43b) --
+    // same arithmetic as push_view_vector, so a same-frame diff is bit-identical.
+    View_Scope scope = {};
+    scope.center = group.view_center;
+    scope.bone   = group.view_bone;
+    v3 camera_obj = (get_bone(group.view_bone, /*is_right*/false)->world_from_bone.inv *
+                     camera_world_position(p->camera));
+    scope.vector = noz(camera_obj - group.view_center);
+    p->view_scope_stack[p->view_scope_count++] = scope;
+    fill_dual_bez(prim.dual_bezier.P.e, prim.dual_bezier.Q.e, get_fill_params());
+    p->view_scope_count--;
    }break;
 
    case Primitive_Type_Patch:
    {
-    fill_patch(prim.patch.e, prim.fill_params);
+    fill_patch(prim.patch.e, get_fill_params());
    }break;
 
    case Primitive_Type_Disk:
    {
-    fill_disk(prim.disk.center, {prim.disk.radius}, prim.fill_params);
+    fill_disk(prim.disk.center, {prim.disk.radius}, get_fill_params());
    }break;
 
    case Primitive_Type_Image:
