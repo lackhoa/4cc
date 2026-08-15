@@ -559,6 +559,8 @@ struct Recording
 {// NOTE(kv) One preset's captured tree (Q27/Q36). The slot arena owns
  // primitives+groups; recapturing the SAME preset clears and refills it, other
  // slots keep their last capture (Q30: manual pass per preset).
+ // Persisted raw-block by ad_serialize_recording.cpp -- bump Data_Version when
+ // any recorded struct changes (see ad_data.h).
  Arena arena;
  darray(Recorded_Primitive) primitives;
  darray(Recorded_Group) groups;

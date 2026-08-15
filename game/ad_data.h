@@ -18,6 +18,10 @@ enum
  Version_AddCursorOn          = 19,
  Version_AddViewport          = 20,
  Version_AddReferencePreset   = 21,
+ // NOTE(kv) recording.ad (ad_serialize_recording.cpp) requires version == current:
+ // bump on ANY change to the recorded structs (Recorded_Primitive/Recorded_Group
+ // and everything embedded), or the raw-block load misreads old files.
+ Version_AddRecordingFile     = 22,
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

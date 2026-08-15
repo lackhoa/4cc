@@ -188,6 +188,47 @@ debug_channel_update(Game_State *state)
  {
   debug_channel_dump_state(out, state);
  }
+ else if(strcmp(cmd, "save_recording") == 0)
+ {
+  b32 ok = save_recording_file(state);
+  fprintf(out, "save_recording: %s\n", ok ? "ok" : "FAILED");
+ }
+ else if(strcmp(cmd, "load_recording") == 0)
+ {
+  b32 ok = load_recording_file(state);
+  fprintf(out, "load_recording: %s\n", ok ? "ok" : "FAILED");
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "recapture", 9) == 0)
+ {
+  global_debug_recapture = (atoi(cmd+9) != 0);
+  fprintf(out, "recapture: %d\n", global_debug_recapture);
+ }
+ else if(strncmp(cmd, "display_replay", 14) == 0)
+ {
+  state->replay.display_replay = (atoi(cmd+14) != 0);
+  fprintf(out, "display_replay: %d\n", state->replay.display_replay);
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "set_camera", 10) == 0)
+ {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport). Sets both
+  // target AND current camera so the effect is immediate, no animation tail.
+  float theta = 0, phi = 0;
+  if(sscanf(cmd+10, "%f %f", &theta, &phi) == 2)
+  {
+   Viewport *viewport = &state->viewports[0];
+   viewport->target_camera.theta = theta;
+   viewport->target_camera.phi   = phi;
+   viewport->camera.theta = theta;
+   viewport->camera.phi   = phi;
+   fprintf(out, "set_camera: theta=%f phi=%f\n", theta, phi);
+   debug_channel_wants_animate = true;
+  }
+  else
+  {
+   fprintf(out, "error: usage: set_camera <theta> <phi>\n");
+  }
+ }
  else
  {
   fprintf(out, "error: unknown command\n");

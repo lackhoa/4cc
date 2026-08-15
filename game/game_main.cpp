@@ -377,6 +377,8 @@ read_debug_string(Binary_Reader *r, Stringz string)
   r->pos += size;
  }
 }
+#include "ad_serialize_recording.cpp"
+
 function b32
 game_load(Game_State *state, App *app, Stringz filename)
 {// IMPORTANT(kv) This function overwrites edit history.
@@ -677,10 +679,10 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    global_replay_display = false;
    global_vertex_tee = 0;
 
-   if(viewport_id == 1)
+   if(viewport_id == 1 and global_debug_recapture)
    {// NOTE(kv) Q36: snapshot this frame's capture into the active preset's slot.
     // Mode B doesn't stop the capture (mute suppresses rendering, not recording),
-    // so the slot stays fresh either way.
+    // so the slot stays fresh either way (unless the Q52 recapture gate is off).
     store_recording(viewport->preset);
    }
 
@@ -825,6 +827,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   {// NOTE: Load state
    state->data_load_arena = make_arena();
    game_load(state, app, state->autosave_path);
+   load_recording_file(state);
   }
  }
  
@@ -994,8 +997,11 @@ game_save(Game_State *state, App *app, b32 is_manual)
  }
  if(ok){
   vim_set_bottom_text(strlit("Saved game state!"));
+  // NOTE(kv) Q51: recording.ad rides the same cadence as autosave.ad; its own
+  // failure only logs -- the state save above already succeeded.
+  save_recording_file(state);
  }
- state->save_failed = not ok; 
+ state->save_failed = not ok;
  return ok;
 }
 

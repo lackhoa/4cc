@@ -3,6 +3,11 @@
 // so culling / hot-highlight / tessellation logic is shared by construction (Q22).
 // Plan + decisions: ~/notes/tasks/autodraw_draw_as_data/plan-replay-path.md
 
+// NOTE(kv) Q52: gates the per-frame store_recording below. Default on = today's
+// behavior; debug-channel `recapture 0` freezes the slots so a loaded recording
+// survives frames (frozen document mode, for testing cross-frame behavior).
+global b32 global_debug_recapture = true;
+
 function void
 store_recording(i32 preset)
 {// NOTE(kv) Snapshot the per-frame capture (Model.primitives/groups) into the

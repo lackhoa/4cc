@@ -2176,6 +2176,9 @@ read_binary_size(Binary_Reader *r, usize size, void *dst)
  }
 }
 
+#define read_lvalue(reader, lvalue) \
+read_binary_size(reader, sizeof(lvalue), &lvalue)
+
 //~NOTE(kv): bucket array
 #if 0
 struct bucket_array_bucket
