@@ -564,21 +564,28 @@ struct Group_Scope_Stack
  darray(Group_Scope_Slot) slots;
 };
 #define Game_Preset_Count 10  // digit-key presets (game_main.cpp key handler)
+// NOTE(kv) The one list of Preset_Settings bool toggles: expands the struct fields,
+// the debug-channel `toggle` ladder, and the ImGui preset panel. Reordering or adding
+// entries changes the persisted raw block -- bump Data_Version.
+#define PRESET_BOOL_FIELDS(X) \
+ X(show_eyeball) \
+ X(show_loomis_ball) \
+ X(show_grid) \
+ X(fill_only_picking)     /* mouse-pick tests fills only, skipping curve vertices */ \
+ X(show_arm_medial_right) /* right-camera reference image */ \
+ X(show_arm_back_bone)    /* back-camera reference image */ \
+ X(show_arm_profile_left) /* left-camera reference image */ \
+ X(ignore_radii) \
+ X(ignore_alignment_min)
 struct Preset_Settings
 {// NOTE(kv) One digit-key preset = a bundle of small display settings over the ONE
  // model (Q57/Q61). Rows live in Model_Recordings (shared across TUs, survives
  // clear_model); seeded by seed_preset_settings, persisted in recording.ad.
  i32 viz_level;             // 0/1/2
- b32 show_eyeball;
- b32 show_loomis_ball;
- b32 show_grid;
- b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
  i32 reference_image;       // front-camera reference selector: -1 = none, else ref-table index
- b32 show_arm_medial_right; // right-camera reference image
- b32 show_arm_back_bone;    // back-camera reference image
- b32 show_arm_profile_left; // left-camera reference image
- b32 ignore_radii;
- b32 ignore_alignment_min;
+#define X(name) b32 name;
+ PRESET_BOOL_FIELDS(X)
+#undef X
 };
 struct Recording
 {// NOTE(kv) The ONE captured tree over the one model (Q57: presets are settings
@@ -676,7 +683,15 @@ struct Painter
  i32 total_curve_count;
  
  Paint_Params params;
- 
+ // NOTE(kv) Live visibility bindings for the current scope (Q7 preset-followups):
+ // drawing evaluates these against live state (vis_live table / current view vector)
+ // exactly the way replay evaluates the recorded group's tags -- one visibility
+ // mechanism for both paths, and nothing toggle-shaped enters the frozen params.
+ // Scoped via SetInBlock in ShowGroup/ShowAlignedIfEx; the innermost binding wins,
+ // same as replay's re-AND (so don't nest tagged scopes).
+ Group_Vis     live_vis_tag;  // zero-init = Vis_None (vis_live[Vis_None] is true)
+ Group_Cam_Vis live_cam_vis;  // zero-init = inactive
+
  //-misc
  b32 shading_on;
  b32 previous_draw_result;  // view @draw_bezier

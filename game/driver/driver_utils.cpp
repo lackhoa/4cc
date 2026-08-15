@@ -151,11 +151,6 @@ myinline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
-myinline i1
-get_preset()
-{
- return painter->viewport->preset;
-}
 myinline Reference_Preset
 get_reference_preset()
 {
@@ -268,30 +263,28 @@ SetInBlock(painter->params.painting, painter->params.painting and condition)
 #define ShowIf2(condition) \
 SetInBlock(painter->params.painting, condition)
 
-// NOTE(kv) ShowIf + a live-visibility tag on the recorded group (Q32): the recorder
-// can't infer WHY painting flipped, so the binding is declared at the call site.
-// Opens its own paint scope so the tag covers exactly the block the condition
-// governs (same shape as ShowAlignedIf below).
-#define ShowGroupIf(vis, condition) \
+// NOTE(kv) Bind this scope's visibility to a live-published tag (Q32/Q7): the tag IS
+// the show/hide condition -- drawing looks up vis_live[tag] at each draw, exactly what
+// replay does with the recorded group's tag, so code path and replay share one
+// visibility mechanism and nothing toggle-shaped enters the frozen params. Opens its
+// own paint scope so the tag covers exactly the governed block (same shape as
+// ShowAlignedIf below). The innermost tag wins on both paths -- don't nest tagged
+// scopes.
+#define ShowGroup(vis) \
 Paint_Params_Block PP_Concat(group_vis_block_, __LINE__); \
 tag_group_visibility(vis); \
-SetInBlock(painter->params.painting, painter->params.painting and condition)
+SetInBlock(painter->live_vis_tag, vis)
 
-#define ShowGroupIf2(vis, condition) \
-Paint_Params_Block PP_Concat(group_vis_block_, __LINE__); \
-tag_group_visibility(vis); \
-SetInBlock(painter->params.painting, condition)
-
-// NOTE(kv) Q38/Q39 camera-bound visibility: like ShowGroupIf, but the live source is
+// NOTE(kv) Q38/Q39 camera-bound visibility: like ShowGroup, but the live source is
 // the camera. tag_group_cam_vis records {normal, min_alignment, symmetric} on the
-// group and returns the capture-time verdict; replay re-ANDs the condition against
-// the live view vector. Opens its own paint scope so the tag covers exactly the
-// block the condition governs (a named block var -- PaintBlock's line_unique_var
-// would collide with SetInBlock's on the same line).
+// group and returns the condition; binding it to painter->live_cam_vis makes drawing
+// evaluate it against the live view vector per draw (Q7) -- same evaluation replay
+// runs on the recorded group. Opens its own paint scope so the tag covers exactly
+// the block the condition governs (a named block var -- PaintBlock's
+// line_unique_var would collide with SetInBlock's on the same line).
 #define ShowAlignedIfEx(normal, min, symmetric) \
 Paint_Params_Block PP_Concat(cam_vis_block_, __LINE__); \
-SetInBlock(painter->params.painting, \
-           painter->params.painting and tag_group_cam_vis(normal, min, symmetric))
+SetInBlock(painter->live_cam_vis, tag_group_cam_vis(normal, min, symmetric))
 
 #define ShowAlignedIf(normal, min)    ShowAlignedIfEx(normal, min, false)
 #define ShowAlignedSymIf(normal, min) ShowAlignedIfEx(normal, min, true)

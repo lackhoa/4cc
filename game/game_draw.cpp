@@ -48,8 +48,15 @@ current_location_is_hot()
 myinline b32
 is_painting_enabled()
 {
- return (painter->params.painting or
-         (current_location_is_hot() and is_left()));
+ Painter *p = painter;
+ b32 visible = (p->params.painting and the_model->vis_live[p->live_vis_tag]);
+ if(visible and p->live_cam_vis.active)
+ {
+  v1 alignment = dot(p->live_cam_vis.normal, get_view_vector());
+  if(p->live_cam_vis.symmetric){ alignment = absolute(alignment); }
+  visible = (alignment > p->live_cam_vis.min_alignment);
+ }
+ return (visible or (current_location_is_hot() and is_left()));
 }
 myinline b32 is_fill_enabled(){ return is_painting_enabled(); }
 myinline b32 is_line_enabled(){ return is_painting_enabled(); }
@@ -288,7 +295,7 @@ close_group_scope()
 function void
 tag_group_visibility(Group_Vis vis)
 {// NOTE(kv) Q32: bind the current scope's visibility to a live source. Called by
- // ShowGroupIf right where the show/hide condition is applied.
+ // ShowGroup right where the visibility binding is declared.
  if(should_send_model_data())
  {
   Model *m = the_model;
@@ -297,22 +304,20 @@ tag_group_visibility(Group_Vis vis)
   m->groups.items[slot.group_index].vis_tag = vis;
  }
 }
-function b32
+function Group_Cam_Vis
 tag_group_cam_vis(v3 normal, v1 min_alignment, b32 symmetric)
 {// NOTE(kv) Q38: record the camera-alignment condition on the current scope's group
- // (and its slot, so sibling-splits keep it), then return the capture-time verdict
- // for ShowAlignedIf to AND into painting.
+ // (and its slot, so sibling-splits keep it). Returns the condition so ShowAlignedIfEx
+ // can bind it to painter->live_cam_vis -- drawing evaluates it live per draw (Q7).
+ Group_Cam_Vis cam_vis = {true, normal, min_alignment, symmetric};
  if(should_send_model_data())
  {
   Model *m = the_model;
   Group_Scope_Slot &slot = current_group_slot(m->group_stack);
-  Group_Cam_Vis cam_vis = {true, normal, min_alignment, symmetric};
   slot.cam_vis = cam_vis;
   m->groups.items[slot.group_index].cam_vis = cam_vis;
  }
- v1 alignment = dot(normal, get_view_vector());
- if(symmetric){ alignment = absolute(alignment); }
- return alignment > min_alignment;
+ return cam_vis;
 }
 function void
 publish_group_visibility(Group_Vis vis, b32 value)
@@ -936,7 +941,7 @@ draw_image(Stringz image_file,
  // NOTE(kv) images don't go through poly3_inner (they're RET_Image entries, not
  // Render_Vertex), so mute the platform push here directly during replay/diff.
  // The is_fill_enabled() check makes images respect `painting` like every other
- // primitive (required for ShowGroupIf-tagged reference images).
+ // primitive (required for ShowGroup-tagged reference images).
  if(is_fill_enabled() and not draw_is_muted(should_send_model_data()))
  {
   push_image(painter->target, image_file, o,x,y,argb_color);

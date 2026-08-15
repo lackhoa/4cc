@@ -83,6 +83,12 @@ replay_recording(Recording &rec)
 
  global_replaying = true;  // NOTE(kv) suppress send_primitive during replay
  Paint_Params saved_params = p->params;
+ // NOTE(kv) Replay visibility is fully decided by the per-group re-ANDs below; any
+ // live binding left over from the code path must not leak into the replayed draws.
+ Group_Vis     saved_live_vis_tag = p->live_vis_tag;
+ Group_Cam_Vis saved_live_cam_vis = p->live_cam_vis;
+ p->live_vis_tag = Vis_None;
+ p->live_cam_vis = {};
  b32 saved_is_right = m->is_right;
  m->is_right = false;  // NOTE(kv) the recording is left-side only (should_send_model_data)
 
@@ -106,10 +112,10 @@ replay_recording(Recording &rec)
   clear_draw_location();  // NOTE(kv) set_draw_location only ever raises the hot flag
   set_draw_location(prim.location);
   p->params = group.params;
-  // NOTE(kv) Q32 live visibility: re-AND the frozen `painting` with the tag's live
-  // value (driver publishes vis_live each frame). AND -- not overwrite -- so nested
-  // conditions baked into the freeze (e.g. front_back_aligned) survive; a capture
-  // taken with the toggle ON decomposes as painting = other_conditions AND toggle.
+  // NOTE(kv) Q32 live visibility: AND the tag's live value (driver publishes
+  // vis_live each frame) into the frozen `painting`. The freeze never includes the
+  // toggle (ShowGroup binds it to painter->live_vis_tag, outside params), so a
+  // capture taken with the toggle OFF still replays correctly once it turns on.
   p->params.painting = (p->params.painting and m->vis_live[group.vis_tag]);
   if(group.cam_vis.active)
   {// NOTE(kv) Q38 camera-bound visibility: re-evaluate the recorded condition against
@@ -174,6 +180,8 @@ replay_recording(Recording &rec)
  m->bone_stack.count--;
  set_bone_transform(current_world_from_bone());
  m->is_right = saved_is_right;
+ p->live_vis_tag = saved_live_vis_tag;
+ p->live_cam_vis = saved_live_cam_vis;
  p->params = saved_params;
  global_replaying = false;
 }

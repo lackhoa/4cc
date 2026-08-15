@@ -2355,18 +2355,10 @@ game_update(Game_Update_Params params)
    im_text("preset %d", state->viewports[0].preset);
    ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
    ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
-#define preset_checkbox(field) \
+#define X(field) \
    { bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
-   preset_checkbox(show_eyeball);
-   preset_checkbox(show_loomis_ball);
-   preset_checkbox(show_grid);
-   preset_checkbox(fill_only_picking);
-   preset_checkbox(show_arm_medial_right);
-   preset_checkbox(show_arm_back_bone);
-   preset_checkbox(show_arm_profile_left);
-   preset_checkbox(ignore_radii);
-   preset_checkbox(ignore_alignment_min);
-#undef preset_checkbox
+   PRESET_BOOL_FIELDS(X)
+#undef X
    im_end();
   }
  }

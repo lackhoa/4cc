@@ -524,7 +524,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  tvert external_condyle = internal_condyle+V3(0.4031f, 0.1064f, 0.0402f);
  {//NOTE: The skeleton (humerus and ulna)
   PaintBlock;
-  ShowGroupIf(Vis_Skeleton, showing_skeleton());
+  ShowGroup(Vis_Skeleton);
   fimage(image_skeletal_meat_outline);
   set_skeleton_params();
   
@@ -827,7 +827,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
  
  {// NOTE The forearm bones from the front view (as rough guide)
   PaintBlock;
-  ShowGroupIf(Vis_Skeleton, showing_skeleton());
+  ShowGroup(Vis_Skeleton);
   set_skeleton_params();
   fimage(image_skeletal_meat_outline);
   tvert down_common;
@@ -1004,9 +1004,8 @@ render_forearm(Arm arm, tvert elbow_up_out)
 function Torso
 render_torso(Pose &pose, Pelvis pelvis, Head head)
 {
- b32 show_body_skeleton = painter->params.painting and showing_skeleton();
- ShowIf(fv(1));  //;show_body  NOTE: Her face somehow looks a lot worse when the body is on?
- 
+ // NOTE: Her face somehow looks a lot worse when the body is on?
+
  ViewCenterBlock(V3(0.f, -2.3176f, 0.3862f));
  mat4i ot = current_world_from_bone();
  mat4i pelvisT = get_world_from_bone(mk_bone_id(Bone_Pelvis));
@@ -1071,7 +1070,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
        I4(5,3,3,1));
   {
    PaintBlock;
-   ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
+   ShowGroup(Vis_Skeleton);
    if(showing_skeleton()){ set_skeleton_params(); }
    draw(collar_out);
    draw(collar_in);
@@ -1199,7 +1198,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   //if (level2 || preset == 3 || preset == 4)
   {
    PaintBlock;
-   ShowGroupIf2(Vis_Skeleton, show_body_skeleton);
+   ShowGroup(Vis_Skeleton);
    fimage(image_scapula_profile);
    fimage(image_socket_and_ball);
    fimage(image_skeletal_meat_outline);
@@ -1415,7 +1414,7 @@ render_eyes(Pose &pose)
  {//~NOTE: Eyeball
   BoneBlock(mk_bone_id(Bone_Eyeball));
   {//-Eyeball visualization
-   ShowGroupIf(Vis_Eyeball, active_preset_settings().show_eyeball);
+   ShowGroup(Vis_Eyeball);
    hl_block;
    v4 eyeball_radii;
    {
@@ -2027,10 +2026,8 @@ render_head(Pose &pose)
   tvert c1633 = fvert(0.5266f, -0.6385f, 0.68f);
  }
  
- b32 hair_on = fbool(1);
  {//~NOTE: Hair omg
   PaintBlock;
-  ShowIf(hair_on);
   painter->params.nslice_per_meter = 1.5162f*128.f;
   scale_line_radius(0.5489f);
   //NOTE: Fine tip hair -> thicker, more even radius
@@ -2168,7 +2165,7 @@ render_head(Pose &pose)
  
  if(is_left())
  {//~NOTE: Loomis ball
-  ShowGroupIf(Vis_Loomis_Ball, active_preset_settings().show_loomis_ball);
+  ShowGroup(Vis_Loomis_Ball);
   PaintBlock;
   hl_block_color(linear_argb_dark_blue);
   //NOTE: The face
@@ -2258,7 +2255,7 @@ show_reference_images()
   {// NOTE: The #ReferenceImage experience
    if(camera_is_right())
    {
-    ShowGroupIf(Vis_Ref_Arm_Medial_Right, settings.show_arm_medial_right);
+    ShowGroup(Vis_Ref_Arm_Medial_Right);
     tvert center = fvert(-0.2112f, -4.5306f, -0.2689f);
     v1 width = 0.7966f;
     Stringz filename = fimage(strlit("G:/My Drive/Art/arm medial.jpg"));
@@ -2303,16 +2300,15 @@ show_reference_images()
     
     for_i32(ref_index, 0, alen(references))
     {// NOTE(kv) Every front reference is emitted+tagged; the active row's
-     // reference_image selects which one is live (all others painting=false).
-     ShowGroupIf(cast(Group_Vis)(Vis_Ref_Front_0 + ref_index),
-                 settings.reference_image == ref_index);
+     // reference_image selects which one is live via vis_live (all others hidden).
+     ShowGroup(cast(Group_Vis)(Vis_Ref_Front_0 + ref_index));
      draw_reference_image_from_data(references[ref_index]);
     }
    }
    
    if(camera_is_back())
    {// NOTE ;back_reference @armT
-    ShowGroupIf(Vis_Ref_Arm_Back_Bone, settings.show_arm_back_bone);
+    ShowGroup(Vis_Ref_Arm_Back_Bone);
     {
      tvert center = fvert(2.1904f, -3.8928f, -0.2689f);
      v1 width  = 2.4645f;
@@ -2323,7 +2319,7 @@ show_reference_images()
    }
    if(camera_is_left())
    {
-    ShowGroupIf(Vis_Ref_Arm_Profile_Left, settings.show_arm_profile_left);
+    ShowGroup(Vis_Ref_Arm_Profile_Left);
     {
      tvert center = fvert(-0.2112f, -3.9204f, 0.5898f);
      v1 width  = 1.1454f;
@@ -2355,9 +2351,10 @@ driver_render(Arena *tmp, Painter *painter0)
  bs_cycle_counter = 0;
  //f64 start_time  = gb_time_now();
  
+ // NOTE(kv) default_fill/default_line_color are viz-level-independent: painter is
+ // zero-init here, so `level1` always read false at this point (Q1, preset-followups).
  argb default_fill = painter->background_color;
- if(level1){default_fill = argb_lightness(default_fill, 0.7797f);}
- 
+
  v1 default_line_radius_min = 0.5089f;
  v1 default_line_end_radius = default_line_radius_min;
  if(fbool(1)){
@@ -2380,7 +2377,6 @@ driver_render(Arena *tmp, Painter *painter0)
    //argb default_line_color = argb_gray(srgb_to_linear1(0.3389f));
    // ;default_line_color
    argb default_line_color = argb_gray(fv(0.03f));
-   if(level1){default_line_color = linear_argb_dark_blue;} // because otw blends in too much with the shading
    pp.line_color = default_line_color;
   }
   p->viz_level            = viz_level;

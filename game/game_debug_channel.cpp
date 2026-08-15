@@ -219,16 +219,10 @@ debug_channel_update(Game_State *state)
   {
    Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
    b32 *target = 0;
+#define X(name) else if(strcmp(field, #name) == 0){ target = &row.name; }
    if(0);
-   else if(strcmp(field, "show_eyeball")          == 0){ target = &row.show_eyeball; }
-   else if(strcmp(field, "show_loomis_ball")      == 0){ target = &row.show_loomis_ball; }
-   else if(strcmp(field, "show_grid")             == 0){ target = &row.show_grid; }
-   else if(strcmp(field, "fill_only_picking")     == 0){ target = &row.fill_only_picking; }
-   else if(strcmp(field, "show_arm_medial_right") == 0){ target = &row.show_arm_medial_right; }
-   else if(strcmp(field, "show_arm_back_bone")    == 0){ target = &row.show_arm_back_bone; }
-   else if(strcmp(field, "show_arm_profile_left") == 0){ target = &row.show_arm_profile_left; }
-   else if(strcmp(field, "ignore_radii")          == 0){ target = &row.ignore_radii; }
-   else if(strcmp(field, "ignore_alignment_min")  == 0){ target = &row.ignore_alignment_min; }
+   PRESET_BOOL_FIELDS(X)
+#undef X
    if(target)
    {
     *target = (value != 0);
