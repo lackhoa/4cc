@@ -622,7 +622,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   painter->looping_time = state->looping_time;
   painter->anim_time    = game_update_result.anim_time;
   
-  painter->show_grid = viewport->preset >= 3;
+  painter->show_grid = state->model.recordings.preset_settings[viewport->preset].show_grid;
   {
    b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
    b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
@@ -680,13 +680,13 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    global_vertex_tee = 0;
 
    if(viewport_id == 1 and global_debug_recapture)
-   {// NOTE(kv) Q36: snapshot this frame's capture into the active preset's slot.
+   {// NOTE(kv) Q36: snapshot this frame's capture into the one recording.
     // Mode B doesn't stop the capture (mute suppresses rendering, not recording),
-    // so the slot stays fresh either way (unless the Q52 recapture gate is off).
-    store_recording(viewport->preset);
+    // so it stays fresh either way (unless the Q52 recapture gate is off).
+    store_recording();
    }
 
-   Recording &replay_rec = the_model->recordings.slots[viewport->preset];
+   Recording &replay_rec = the_model->recordings.recording;
    if(viewport_id == 1 and replay_rec.captured
       and (do_diff or replay.display_replay))
    {
@@ -826,6 +826,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   
   {// NOTE: Load state
    state->data_load_arena = make_arena();
+   seed_preset_settings(state->model.recordings.preset_settings);
    game_load(state, app, state->autosave_path);
    load_recording_file(state);
   }
@@ -1428,11 +1429,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
   // TODO(kv) There are multiple cameras, so this is a no-win, huh?
   Camera camera = setup_camera(state->viewports[0].camera);
   convert_primitives_to_camera_space(camera);
-  b32 fill_only = 0;
-  if(state->viewports[0].preset == 1)
-  {
-   fill_only = 1;
-  }
+  b32 fill_only = state->model.recordings.preset_settings[state->viewports[0].preset].fill_only_picking;
   
   v1 min_t = INFINITY;
   
@@ -2351,6 +2348,27 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
+
+  {//-Preset settings panel (preset-rethink step 6): edits the ACTIVE preset's row.
+   Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
+   im_begin("Preset settings", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+   im_text("preset %d", state->viewports[0].preset);
+   ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
+   ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
+#define preset_checkbox(field) \
+   { bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
+   preset_checkbox(show_eyeball);
+   preset_checkbox(show_loomis_ball);
+   preset_checkbox(show_grid);
+   preset_checkbox(fill_only_picking);
+   preset_checkbox(show_arm_medial_right);
+   preset_checkbox(show_arm_back_bone);
+   preset_checkbox(show_arm_profile_left);
+   preset_checkbox(ignore_radii);
+   preset_checkbox(ignore_alignment_min);
+#undef preset_checkbox
+   im_end();
+  }
  }
 
  if(driver_on)
@@ -2391,6 +2409,19 @@ game_update(Game_Update_Params params)
     // NOTE(kv) Untagged groups always pass the live-visibility AND; the driver
     // re-publishes tagged slots (e.g. Vis_Skeleton) during its render below.
     m->vis_live[Vis_None] = true;
+    {// NOTE(kv) Preset-toggle live visibility (plan-preset-rethink): published from
+     // the main viewport's settings row, consumed by replay's vis_live re-AND.
+     Preset_Settings &row = m->recordings.preset_settings[state->viewports[0].preset];
+     m->vis_live[Vis_Eyeball]              = row.show_eyeball;
+     m->vis_live[Vis_Loomis_Ball]          = row.show_loomis_ball;
+     m->vis_live[Vis_Ref_Arm_Medial_Right] = row.show_arm_medial_right;
+     m->vis_live[Vis_Ref_Arm_Back_Bone]    = row.show_arm_back_bone;
+     m->vis_live[Vis_Ref_Arm_Profile_Left] = row.show_arm_profile_left;
+     for_i32(ref_index, 0, Vis_Ref_Front_Last - Vis_Ref_Front_0 + 1)
+     {
+      m->vis_live[Vis_Ref_Front_0 + ref_index] = (row.reference_image == ref_index);
+     }
+    }
     
     {// NOTE(kv) Add persistent primitives to primitive list.
      // TODO(kv) We'll have to change this to support multiple viewports.

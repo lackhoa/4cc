@@ -4,18 +4,59 @@
 // Plan + decisions: ~/notes/tasks/autodraw_draw_as_data/plan-replay-path.md
 
 // NOTE(kv) Q52: gates the per-frame store_recording below. Default on = today's
-// behavior; debug-channel `recapture 0` freezes the slots so a loaded recording
+// behavior; debug-channel `recapture 0` freezes the recording so a loaded one
 // survives frames (frozen document mode, for testing cross-frame behavior).
 global b32 global_debug_recapture = true;
 
 function void
-store_recording(i32 preset)
-{// NOTE(kv) Snapshot the per-frame capture (Model.primitives/groups) into the
- // preset's slot (Q36). Runs right after viewport 0's driver_render, so the
- // painter still holds that render's viz/grid state for the header.
+seed_preset_settings(Preset_Settings settings[Game_Preset_Count])
+{// NOTE(kv) Hardcoded defaults reproducing the digit-key behavior the presets had
+ // when they were code branches (plan-preset-rethink Q57 inventory). First-run seed;
+ // recording.ad overwrites these rows once the settings table persists.
+ block_zero(settings, sizeof(Preset_Settings) * Game_Preset_Count);
+ for_i32(preset, 0, Game_Preset_Count)
+ {
+  Preset_Settings &row = settings[preset];
+  row.reference_image = -1;
+  switch(preset)
+  {
+   case 1:
+   {
+    row.viz_level = 1;
+    row.fill_only_picking = true;
+   }break;
+   case 2:
+   {
+    row.viz_level = 2;
+    row.show_eyeball = true;
+    row.show_loomis_ball = true;  // was the level2 default in render_head
+   }break;
+   case 3:
+   {
+    row.show_loomis_ball = true;
+   }break;
+   default: break;
+  }
+  if(preset >= 3)
+  {// NOTE(kv) The old `render_preset >= 3` reference-image block.
+   row.show_grid = true;
+   row.show_arm_medial_right = true;
+   i32 front_ref = preset - 4;
+   if(0 <= front_ref and front_ref < 5){ row.reference_image = front_ref; }
+   row.show_arm_back_bone    = (preset == 4);
+   row.show_arm_profile_left = (preset >= 4);
+  }
+  row.ignore_radii         = (row.viz_level != 0);
+  row.ignore_alignment_min = (row.viz_level != 0);
+ }
+}
+
+function void
+store_recording()
+{// NOTE(kv) Snapshot the per-frame capture (Model.primitives/groups) into the one
+ // recording (Q36/Q57). Runs right after viewport 0's driver_render.
  Model *m = the_model;
- kv_assert(0 <= preset and preset < Game_Preset_Count);
- Recording &rec = m->recordings.slots[preset];
+ Recording &rec = m->recordings.recording;
  arena_clear(&rec.arena);
  init_dynamic(rec.primitives, &rec.arena, maximum(1, m->primitives.count));
  init_dynamic(rec.groups,     &rec.arena, maximum(1, m->groups.count));
@@ -25,10 +66,6 @@ store_recording(i32 preset)
  set_count(&rec.groups, m->groups.count);
  block_copy(rec.groups.items, m->groups.items,
             sizeof(Recorded_Group) * m->groups.count);
- rec.viz_level            = painter->viz_level;
- rec.ignore_radii         = painter->ignore_radii;
- rec.ignore_alignment_min = painter->ignore_alignment_min;
- rec.show_grid            = painter->show_grid;
  rec.captured = true;
 }
 
@@ -40,17 +77,9 @@ replay_recording(Recording &rec)
  Model *m = the_model;
  Painter *p = painter;
 
- // NOTE(kv) Painter-level capture state (Q36): these alter tessellation/culling
- // inside the re-issued draws but are NOT Paint_Params, so the group freeze never
- // sees them. Restore the recording's values for the duration of the replay.
- i32 saved_viz_level            = p->viz_level;
- b32 saved_ignore_radii         = p->ignore_radii;
- b32 saved_ignore_alignment_min = p->ignore_alignment_min;
- b32 saved_show_grid            = p->show_grid;
- p->viz_level            = rec.viz_level;
- p->ignore_radii         = rec.ignore_radii;
- p->ignore_alignment_min = rec.ignore_alignment_min;
- p->show_grid            = rec.show_grid;
+ // NOTE(kv) Painter-level display state (viz_level/ignore/show_grid) is applied
+ // LIVE from the active preset's settings row: the painter already holds those
+ // values from this frame's driver_render, so nothing to save/restore (Q57).
 
  global_replaying = true;  // NOTE(kv) suppress send_primitive during replay
  Paint_Params saved_params = p->params;
@@ -146,10 +175,6 @@ replay_recording(Recording &rec)
  set_bone_transform(current_world_from_bone());
  m->is_right = saved_is_right;
  p->params = saved_params;
- p->viz_level            = saved_viz_level;
- p->ignore_radii         = saved_ignore_radii;
- p->ignore_alignment_min = saved_ignore_alignment_min;
- p->show_grid            = saved_show_grid;
  global_replaying = false;
 }
 

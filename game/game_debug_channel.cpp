@@ -210,6 +210,70 @@ debug_channel_update(Game_State *state)
   fprintf(out, "display_replay: %d\n", state->replay.display_replay);
   debug_channel_wants_animate = true;
  }
+ else if(strncmp(cmd, "toggle ", 7) == 0)
+ {// NOTE(kv) Preset-rethink step 6: flip a bool on the ACTIVE preset's settings row
+  // (viewport 0). Persisted via the settings table in recording.ad.
+  char field[64] = {};
+  int value = 0;
+  if(sscanf(cmd+7, "%63s %d", field, &value) == 2)
+  {
+   Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
+   b32 *target = 0;
+   if(0);
+   else if(strcmp(field, "show_eyeball")          == 0){ target = &row.show_eyeball; }
+   else if(strcmp(field, "show_loomis_ball")      == 0){ target = &row.show_loomis_ball; }
+   else if(strcmp(field, "show_grid")             == 0){ target = &row.show_grid; }
+   else if(strcmp(field, "fill_only_picking")     == 0){ target = &row.fill_only_picking; }
+   else if(strcmp(field, "show_arm_medial_right") == 0){ target = &row.show_arm_medial_right; }
+   else if(strcmp(field, "show_arm_back_bone")    == 0){ target = &row.show_arm_back_bone; }
+   else if(strcmp(field, "show_arm_profile_left") == 0){ target = &row.show_arm_profile_left; }
+   else if(strcmp(field, "ignore_radii")          == 0){ target = &row.ignore_radii; }
+   else if(strcmp(field, "ignore_alignment_min")  == 0){ target = &row.ignore_alignment_min; }
+   if(target)
+   {
+    *target = (value != 0);
+    fprintf(out, "toggle %s: %d\n", field, *target);
+    debug_channel_wants_animate = true;
+   }
+   else
+   {
+    fprintf(out, "error: unknown field %s\n", field);
+   }
+  }
+  else
+  {
+   fprintf(out, "error: usage: toggle <field> 0|1\n");
+  }
+ }
+ else if(strncmp(cmd, "set ", 4) == 0)
+ {// NOTE(kv) i32 fields on the active row: viz_level 0..2, reference_image -1..4.
+  char field[64] = {};
+  int value = 0;
+  if(sscanf(cmd+4, "%63s %d", field, &value) == 2)
+  {
+   Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
+   if(strcmp(field, "viz_level") == 0)
+   {
+    row.viz_level = value;
+    fprintf(out, "set viz_level: %d\n", row.viz_level);
+    debug_channel_wants_animate = true;
+   }
+   else if(strcmp(field, "reference_image") == 0)
+   {
+    row.reference_image = value;
+    fprintf(out, "set reference_image: %d\n", row.reference_image);
+    debug_channel_wants_animate = true;
+   }
+   else
+   {
+    fprintf(out, "error: unknown field %s\n", field);
+   }
+  }
+  else
+  {
+   fprintf(out, "error: usage: set <field> <n>\n");
+  }
+ }
  else if(strncmp(cmd, "set_camera", 10) == 0)
  {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport). Sets both
   // target AND current camera so the effect is immediate, no animation tail.

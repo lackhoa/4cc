@@ -22,6 +22,7 @@ enum
  // bump on ANY change to the recorded structs (Recorded_Primitive/Recorded_Group
  // and everything embedded), or the raw-block load misreads old files.
  Version_AddRecordingFile     = 22,
+ Version_PresetSettingsTable  = 23,
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

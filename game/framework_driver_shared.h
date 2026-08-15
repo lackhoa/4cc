@@ -501,6 +501,15 @@ enum Group_Vis
  // trusting only the capture-time frozen value. Vis_None slot is always true.
  Vis_None,
  Vis_Skeleton,
+ // NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published
+ // each frame from the main viewport's Preset_Settings row.
+ Vis_Eyeball,
+ Vis_Loomis_Ball,
+ Vis_Ref_Arm_Medial_Right,
+ Vis_Ref_Arm_Back_Bone,
+ Vis_Ref_Arm_Profile_Left,
+ Vis_Ref_Front_0,  // NOTE(kv) 5 consecutive slots, one per front-camera reference image
+ Vis_Ref_Front_Last = Vis_Ref_Front_0 + 4,
  //
  Group_Vis_Count,
 };
@@ -555,27 +564,38 @@ struct Group_Scope_Stack
  darray(Group_Scope_Slot) slots;
 };
 #define Game_Preset_Count 10  // digit-key presets (game_main.cpp key handler)
+struct Preset_Settings
+{// NOTE(kv) One digit-key preset = a bundle of small display settings over the ONE
+ // model (Q57/Q61). Rows live in Model_Recordings (shared across TUs, survives
+ // clear_model); seeded by seed_preset_settings, persisted in recording.ad.
+ i32 viz_level;             // 0/1/2
+ b32 show_eyeball;
+ b32 show_loomis_ball;
+ b32 show_grid;
+ b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
+ i32 reference_image;       // front-camera reference selector: -1 = none, else ref-table index
+ b32 show_arm_medial_right; // right-camera reference image
+ b32 show_arm_back_bone;    // back-camera reference image
+ b32 show_arm_profile_left; // left-camera reference image
+ b32 ignore_radii;
+ b32 ignore_alignment_min;
+};
 struct Recording
-{// NOTE(kv) One preset's captured tree (Q27/Q36). The slot arena owns
- // primitives+groups; recapturing the SAME preset clears and refills it, other
- // slots keep their last capture (Q30: manual pass per preset).
+{// NOTE(kv) The ONE captured tree over the one model (Q57: presets are settings
+ // rows, not separate captures). The arena owns primitives+groups; recapture
+ // clears and refills it. Painter-level display state (viz_level etc.) lives in
+ // Preset_Settings, applied live at replay -- not baked into the capture.
  // Persisted raw-block by ad_serialize_recording.cpp -- bump Data_Version when
  // any recorded struct changes (see ad_data.h).
  Arena arena;
  darray(Recorded_Primitive) primitives;
  darray(Recorded_Group) groups;
  b32 captured;
- // NOTE(kv) Painter-level state -- NOT Paint_Params, so invisible to the group
- // freeze -- that alters tessellation/culling inside the re-issued draws.
- // Restored onto the painter for the duration of replay.
- i32 viz_level;
- b32 ignore_radii;
- b32 ignore_alignment_min;
- b32 show_grid;
 };
 struct Model_Recordings
 {
- Recording slots[Game_Preset_Count];
+ Recording recording;
+ Preset_Settings preset_settings[Game_Preset_Count];
 };
 struct Model
 {
@@ -676,6 +696,12 @@ struct Painter
 
 global Painter *painter;  // see @init_painter
 global Model *the_model;  // see @clear_model
+
+myinline Preset_Settings &
+active_preset_settings()
+{// NOTE(kv) Settings row of the digit-key preset for the viewport being rendered.
+ return the_model->recordings.preset_settings[painter->viewport->preset];
+}
 
 //myinline u32 get_hot_prim_id(){ return painter->hot_prim_id; }
 myinline Line_Params

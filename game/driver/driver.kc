@@ -1415,18 +1415,16 @@ render_eyes(Pose &pose)
  {//~NOTE: Eyeball
   BoneBlock(mk_bone_id(Bone_Eyeball));
   {//-Eyeball visualization
-   b32 show_eyeball = get_preset() == 2;
-   if(show_eyeball){
-    hl_block;
-    v4 eyeball_radii;
-    {
-     v1 big   = 0.5f;
-     v1 small = 0.25f;
-     eyeball_radii = V4(big,small,small,big);
-    }
-    draw_circle(V3(),{V3z(1)},{1},eyeball_radii);  // NOTE: A prime meridian
-    draw_circle(V3(),{V3x(1)},{1},eyeball_radii);
+   ShowGroupIf(Vis_Eyeball, active_preset_settings().show_eyeball);
+   hl_block;
+   v4 eyeball_radii;
+   {
+    v1 big   = 0.5f;
+    v1 small = 0.25f;
+    eyeball_radii = V4(big,small,small,big);
    }
+   draw_circle(V3(),{V3z(1)},{1},eyeball_radii);  // NOTE: A prime meridian
+   draw_circle(V3(),{V3x(1)},{1},eyeball_radii);
   }
   {//-Iris (featuring Mr. Depth-Offset-Hack)
    PaintBlock;
@@ -1601,15 +1599,7 @@ render_head(Pose &pose)
  //lp_block(nslice_per_meter, 4.1128f * 100.f);//NOTE: crank up the lod
  v1 head_unit = 1.f+square_root(2);
  
- b32 show_loomis_ball = fbool(0);
- if(level2){ show_loomis_ball = true; }
- 
- i32 preset = get_preset();
- {
-  if(preset == 3){show_loomis_ball = fbool(1);}
-  if(preset == 4){show_loomis_ball = fbool(0);}
- }
- 
+
  mat4i ot = current_world_from_bone();
  
  v1 noseY = -loomis_unit;
@@ -2176,8 +2166,9 @@ render_head(Pose &pose)
   render_grid();
  }
  
- if(show_loomis_ball and is_left())
- {
+ if(is_left())
+ {//~NOTE: Loomis ball
+  ShowGroupIf(Vis_Loomis_Ball, active_preset_settings().show_loomis_ball);
   PaintBlock;
   hl_block_color(linear_argb_dark_blue);
   //NOTE: The face
@@ -2263,11 +2254,11 @@ show_reference_images()
  }
  else
  {//-Old render preset path
-  i32 render_preset = get_preset();
-  if(render_preset >= 3)
+  Preset_Settings &settings = active_preset_settings();
   {// NOTE: The #ReferenceImage experience
    if(camera_is_right())
    {
+    ShowGroupIf(Vis_Ref_Arm_Medial_Right, settings.show_arm_medial_right);
     tvert center = fvert(-0.2112f, -4.5306f, -0.2689f);
     v1 width = 0.7966f;
     Stringz filename = fimage(strlit("G:/My Drive/Art/arm medial.jpg"));
@@ -2310,19 +2301,18 @@ show_reference_images()
      },
     };
     
-    i1 ref_index = render_preset - 4;
-    if(ref_index >= 0 and
-       ref_index < alen(references))
-    {
-     Reference_Image &ref = references[ref_index];
-     draw_reference_image_from_data(ref);
+    for_i32(ref_index, 0, alen(references))
+    {// NOTE(kv) Every front reference is emitted+tagged; the active row's
+     // reference_image selects which one is live (all others painting=false).
+     ShowGroupIf(cast(Group_Vis)(Vis_Ref_Front_0 + ref_index),
+                 settings.reference_image == ref_index);
+     draw_reference_image_from_data(references[ref_index]);
     }
    }
    
    if(camera_is_back())
    {// NOTE ;back_reference @armT
-    if(0);
-    else if (render_preset == 4)
+    ShowGroupIf(Vis_Ref_Arm_Back_Bone, settings.show_arm_back_bone);
     {
      tvert center = fvert(2.1904f, -3.8928f, -0.2689f);
      v1 width  = 2.4645f;
@@ -2333,7 +2323,7 @@ show_reference_images()
    }
    if(camera_is_left())
    {
-    if (render_preset >= 4)
+    ShowGroupIf(Vis_Ref_Arm_Profile_Left, settings.show_arm_profile_left);
     {
      tvert center = fvert(-0.2112f, -3.9204f, 0.5898f);
      v1 width  = 1.1454f;
@@ -2358,12 +2348,8 @@ driver_render(Arena *tmp, Painter *painter0)
  Pose pose = driver_animate(painter->anim_time);
  compute_bones_from_pose(pose);
  
- i32 viz_level = 0;
- switch(get_preset())
- {
-  case 1: viz_level = 1; break;
-  case 2: viz_level = 2; break;
- } 
+ Preset_Settings &preset_settings = active_preset_settings();
+ i32 viz_level = preset_settings.viz_level;
  
  u64 start_cycle = __rdtsc();
  bs_cycle_counter = 0;
@@ -2398,8 +2384,8 @@ driver_render(Arena *tmp, Painter *painter0)
    pp.line_color = default_line_color;
   }
   p->viz_level            = viz_level;
-  p->ignore_radii         = viz_level!=0;
-  p->ignore_alignment_min = viz_level!=0;
+  p->ignore_radii         = preset_settings.ignore_radii;
+  p->ignore_alignment_min = preset_settings.ignore_alignment_min;
  }
  
  render_character(pose);

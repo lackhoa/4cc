@@ -935,7 +935,9 @@ draw_image(Stringz image_file,
  argb argb_color = argb_pack( V4(color,alpha) );
  // NOTE(kv) images don't go through poly3_inner (they're RET_Image entries, not
  // Render_Vertex), so mute the platform push here directly during replay/diff.
- if(not draw_is_muted(should_send_model_data()))
+ // The is_fill_enabled() check makes images respect `painting` like every other
+ // primitive (required for ShowGroupIf-tagged reference images).
+ if(is_fill_enabled() and not draw_is_muted(should_send_model_data()))
  {
   push_image(painter->target, image_file, o,x,y,argb_color);
  }
