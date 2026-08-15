@@ -878,12 +878,19 @@ camera_object_position()
               camera_world_position(painter->camera));
  return result;
 }
+// NOTE(kv) Shared by capture (push_view_vector) and replay (dual-bezier culling)
+// so the two derivations stay bit-identical.
+function v3
+view_vector_from(mat4i const&world_from_bone, v3 object_center)
+{
+ v3 camera_obj = world_from_bone.inv * camera_world_position(painter->camera);
+ return noz(camera_obj - object_center);
+}
 function void
 push_view_vector(v3 object_center)
 {
  Painter *p = painter;
- v3 camera_obj = camera_object_position();
- v3 view_vector = noz(camera_obj - object_center);
+ v3 view_vector = view_vector_from(current_world_from_bone(), object_center);
  View_Scope scope = {};
  scope.vector = view_vector;
  scope.center = object_center;

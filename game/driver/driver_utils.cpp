@@ -317,9 +317,8 @@ line_params_from_fui(FUI_Line_Params src)
   result.lightness_additions = src.lightness_additions;
  }
  
- // TODO(kv) IDK what to do about flags...
- // should we say that every flag will have its own... flag?
- // I really don't know and don't care rn.
+ // NOTE(kv) Style flags live on groups; per-call FUI data may only carry shape.
+ kv_assert((src.line_flags & ~Line_Straight) == 0);
  result.flags |= src.line_flags;
  
  return result;

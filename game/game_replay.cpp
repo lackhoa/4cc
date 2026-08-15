@@ -96,14 +96,12 @@ replay_recording(Recording &rec)
 
    case Primitive_Type_Dual_Bezier:
    {// NOTE(kv) Culling reads the view-scope stack; derive the view vector LIVE from
-    // the group's recorded {view_center, view_bone} and the current camera (Q43b) --
-    // same arithmetic as push_view_vector, so a same-frame diff is bit-identical.
+    // the group's recorded {view_center, view_bone} and the current camera (Q43b).
     View_Scope scope = {};
     scope.center = group.view_center;
     scope.bone   = group.view_bone;
-    v3 camera_obj = (get_bone(group.view_bone, /*is_right*/false)->world_from_bone.inv *
-                     camera_world_position(p->camera));
-    scope.vector = noz(camera_obj - group.view_center);
+    scope.vector = view_vector_from(get_bone(group.view_bone, /*is_right*/false)->world_from_bone,
+                                    group.view_center);
     p->view_scope_stack[p->view_scope_count++] = scope;
     fill_dual_bez(prim.dual_bezier.P.e, prim.dual_bezier.Q.e, get_fill_params());
     p->view_scope_count--;
