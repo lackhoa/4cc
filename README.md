@@ -75,4 +75,39 @@ SOFTWARE.
 6. The codebase has a very weak base layer with key features that were added very late, so lots of code was written in the absence of useful features to bind things together. To make matters worse the base layer is split by the distinction of custom layer & core layer, leading to some double definitions and some incosistencies.
 
 
+# Debug Channel (kv fork)
+
+A file-based command channel so an agent (or a script) can drive and inspect a
+running instance without desktop automation or debugger pokes. Off by default;
+enable with the `-debug-cmd` launch arg:
+
+```
+4ed_stable.exe -debug-cmd
+```
+
+The app then polls `<exe_dir>/debug/cmd.txt` every game frame. Write one command
+to that file, ending with a newline — the newline is the "write complete"
+terminator, so `echo cmd > cmd.txt` is safe but a `printf` without `\n` is
+ignored forever. The app executes the command, writes the result to
+`debug/out.txt` (overwritten per command, first line `ack: <cmd>`), and deletes
+cmd.txt.
+
+Commands:
+
+| command | effect |
+| --- | --- |
+| `dump_state` | key model counts (primitives/groups/vertices) + replay/diff state |
+| `diff` | trigger Replay Diff-now; result written on the NEXT frame (computed during render) |
+| `force_animate 0\|1` | keep frames (and therefore polls) flowing while driving |
+| `screenshot` | full composed frame -> `debug/screenshot_<n>.png`, path in `debug/screenshot_result.txt` |
+
+Implementation: `game/game_debug_channel.cpp` (hot-reloadable, called from the
+top of `game_update`). The screenshot capture itself lives in the EXE
+(`ogl_debug_maybe_screenshot` in `opengl/4ed_opengl_render.cpp`, called pre-swap
+from win32_4ed.cpp) because game code only runs at update time, when the frame
+is not readable — the back buffer is post-swap garbage and GL_FRONT reads black
+under the DWM compositor. Changing that half requires an editor rebuild
+(`kv-build.py --release`, app closed).
+
+
 
