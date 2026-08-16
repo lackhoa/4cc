@@ -254,6 +254,20 @@ get_world_from_bone(Bone_Type type, i32 lr_index=is_right())
 {
  return get_world_from_bone(mk_bone_id(type), lr_index);
 }
+
+template<class Part> function void
+import_vertices(Part &part, Bone_ID src_bone)
+{// NOTE This is a bone funnel: converted points keep cur-bone-space COORDS but are
+ // tagged with their source bone, so draw-time can re-resolve them live
+ // (canonicalize_point_bone/resolve_point_bone, game_draw.cpp).
+ mat4 to_local = current_world_from_bone().inverse * get_world_from_bone(src_bone).forward;
+ i32 vert_count = (i32)(sizeof(Part) / sizeof(tvert));
+ for_i32(index,0,vert_count)
+ {
+  part.verts[index] = to_local * part.verts[index];
+  part.verts[index].bone_id = src_bone;
+ }
+}
 #define rebase(o, e) e
 
 // TODO(kv) Fold this into paint params block, too!

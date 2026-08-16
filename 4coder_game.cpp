@@ -143,24 +143,32 @@ load_latest_game_code(App *app, b32 *out_loaded)
 #else
 # define PREFIX ""
 #endif
-    Stringz DLL2 = pjoin(scratch, binary_dir, strlit(PREFIX "game2.dll"));
-    Stringz DLL3 = pjoin(scratch, binary_dir, strlit(PREFIX "game3.dll"));
-#undef PREFIX
-    
     b32 never_loaded_before = (current_game_dll.mtime == 0);
     u64 mtime_on_disk = file_mtime(GAME_DLL_PATH);
     ok = ok and (mtime_on_disk != 0);
     if(current_game_dll.mtime < mtime_on_disk)
     {// NOTE: We have new game code
-     // NOTE(kv): Ping-pong temp DLL, to avoid hiccups
-     u32 temp_index = 2;
-     if (current_game_dll.temp_index == 2) { temp_index = 3; }
-     
-     Stringz temp_path = (temp_index == 2) ? DLL2 : DLL3;
+     // NOTE(kv) Retry over temp slots (same trick as the driver loader): a slot that's
+     // loaded -- by us or by ANOTHER running instance -- is file-locked, so the copy
+     // fails and we move on to a free slot. Fixes multi-instance startup.
+     u32 temp_index = 0;
+     Stringz temp_path = {};
+     b32 copied = false;
      //NOTE(kv) Copy and not move because next run we might not have the code
      //TODO(kv) just have separate debug+release DLL and just do rename?
      //  We could just recompile the game, we always do that anyway.
-     ok = ok and copy_file(GAME_DLL_PATH, temp_path, false);
+     for_i32(index, 2, 10)
+     {
+      temp_path = push_stringf(scratch, "%S/" PREFIX "game%d.dll", binary_dir, index);
+      copied = copy_file(GAME_DLL_PATH, temp_path, false);
+      if(copied)
+      {
+       temp_index = (u32)index;
+       break;
+      }
+     }
+#undef PREFIX
+     ok = ok and copied;
      if(!ok){ vim_set_bottom_text_lit("failed to copy dll to a temp file"); }
      
      if(ok)

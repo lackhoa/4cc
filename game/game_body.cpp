@@ -81,15 +81,6 @@ global_const i32 forearm_vert_count = sizeof(Forearm) / sizeof(tvert);
 #undef XStructMemberTvert
 
 //-
-
-function void
-import_vertices(tvert *dst, mat4i &dstT, mat4i &srcT,
-                i32 vert_count)
-{
- mat4 to_local = dstT.inverse * srcT.forward;
- for_i32(index,0,vert_count)
- {
-  dst[index] = to_local * dst[index];
- }
-}
+// NOTE import_vertices (the bone funnel over these structs) lives in
+// driver_utils.cpp: it needs get_world_from_bone, which is defined after this file.
 //-

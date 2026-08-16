@@ -24,6 +24,7 @@ enum
  Version_AddRecordingFile     = 22,
  Version_PresetSettingsTable  = 23,
  Version_PresetFieldXMacro    = 24,  // bool fields reordered after the i32s
+ Version_MultiBonePoints      = 25,  // tvert grows bone_id (per-control-point bone refs)
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

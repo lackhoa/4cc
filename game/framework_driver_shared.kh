@@ -2,13 +2,6 @@
 [info] typedef u32 argb;
 [info] typedef i1  b32;
 
-[info] wrapper_type v1 tdim(constructor=mkdim);
-[info] wrapper_type v3 tvert(constructor=mkvert);
-[info] wrapper_type v3 tnormal(constructor=mk_normal);
-// NOTE(kv) We just leave @tvec as @v3
-// then other types just have to wrap v3, if they don't wanna be vector...
-// it's kinda weird, but what are you gonna do?
-
 enum Bone_Type
 {
  Bone_Invalid        = -1,
@@ -34,6 +27,14 @@ struct Bone_ID
  Bone_Type type;
  i32       id;
 };
+// NOTE Bone_ID must precede the wrapper_type lines: tvert embeds a Bone_ID.
+
+[info] wrapper_type v1 tdim(constructor=mkdim);
+[info] wrapper_type v3 tvert(constructor=mkvert);
+[info] wrapper_type v3 tnormal(constructor=mk_normal);
+// NOTE(kv) We just leave @tvec as @v3
+// then other types just have to wrap v3, if they don't wanna be vector...
+// it's kinda weird, but what are you gonna do?
 
 [info]
 typedef u32 Line_Flags;

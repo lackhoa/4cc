@@ -65,6 +65,41 @@ myinline b32 is_line_enabled(){ return is_painting_enabled(); }
 // suppresses send_primitive so the replay doesn't re-record what it reads.
 global b32 global_replaying;
 function void send_primitive(Recorded_Primitive &primitive);
+//-NOTE Per-point bone references.
+// A tagged point (bone_id != Bone_None) is OWNED by that bone, but its coords are
+// expressed in different spaces depending on where the point lives:
+//   - driver authoring code: CURRENT-bone-space (the funnels -- import_vertices,
+//     arm_local*fvert -- tag the bone but leave the tuned numbers as-is);
+//   - the recording: OWNING-bone-space.
+// These two functions convert between those spaces at the draw/fill funnels:
+//   canonicalize_point_bone: current -> owning (what gets recorded);
+//   resolve_point_bone:      owning -> current, using the LIVE bone transforms,
+//                            so a frozen recording still tracks the animation.
+// Replay's input is already owning-space, so it skips canonicalize (via
+// global_replaying) and runs only resolve -- same matrices as the code path on the
+// same frame, which is why the diff stays bit-exact.
+function tvert
+canonicalize_point_bone(tvert vert)
+{// current-bone-space -> owning-bone-space; no-op for untagged points and during replay
+ if(vert.bone_id.type != Bone_None and not global_replaying)
+ {
+  mat4 own_from_cur = (get_bone(vert.bone_id)->world_from_bone.inverse *
+                       current_world_from_bone().forward);
+  vert.v = mat4vert(own_from_cur, vert.v);
+ }
+ return vert;
+}
+function tvert
+resolve_point_bone(tvert vert)
+{// owning-bone-space -> current-bone-space, via live transforms
+ if(vert.bone_id.type != Bone_None)
+ {
+  mat4 cur_from_own = (current_world_from_bone().inverse *
+                       get_bone(vert.bone_id)->world_from_bone.forward);
+  vert.v = mat4vert(cur_from_own, vert.v);
+ }
+ return vert;
+}
 //-
 // NOTE used in @draw_bezier_inner
 function void
@@ -133,11 +168,21 @@ poly4_inner(v3 p0, v3 p1, v3 p2, v3 p3,
  poly3_inner({p0,p2,p3}, repeat3(c0), flags);
 }
 function void
-fill_patch(tvert P[4][4], Fill_Params params=get_fill_params())
+fill_patch(tvert P_in[4][4], Fill_Params params=get_fill_params())
 {
+ tvert P_rec[4][4];  // owning-bone coords — recorded
+ tvert P[4][4];      // current-bone coords via live transforms — rendered
+ for_i32(i,0,4)
+ {
+  for_i32(j,0,4)
+  {
+   P_rec[i][j] = canonicalize_point_bone(P_in[i][j]);
+   P[i][j] = resolve_point_bone(P_rec[i][j]);
+  }
+ }
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Patch};
-  block_copy(primitive.patch.e, P, sizeof(primitive.patch.e));
+  block_copy(primitive.patch.e, P_rec, sizeof(primitive.patch.e));
   send_primitive(primitive);
  }
 
@@ -423,12 +468,12 @@ fill3(v3 p0, v3 p1, v3 p2,
 myinline Bezier
 bez_raw(v3 p0, v3 p1, v3 p2, v3 p3)
 {
- return Bezier{ p0,p1,p2,p3 };
+ return Bezier{ mkvert(p0),mkvert(p1),mkvert(p2),mkvert(p3) };
 }
 myinline Bezier
 bez_raw(v3 P[4])
 {
- return Bezier{ P[0],P[1],P[2],P[3] };
+ return Bezier{ mkvert(P[0]),mkvert(P[1]),mkvert(P[2]),mkvert(P[3]) };
 }
 myinline Bezier
 bez_offset(v3 p0, v3 d0, v3 d3, v3 p3)
@@ -483,7 +528,7 @@ bez_v3v2(v3 p0, v3 d0, v2 d3, v3 p3)
   v3 v = cross(w, u);  // NOTE: u and v has the same magnitude
   p2 = 0.5f*(p1+p3) + (d3.x*u + d3.y*v);
  }
- return Bezier{p0, p1, p2, p3};
+ return Bezier{mkvert(p0), mkvert(p1), mkvert(p2), mkvert(p3)};
 }
 
 // NOTE: Planar curve with unit vector guide
@@ -559,11 +604,20 @@ radii_c2(v4 ref, v2 d_p3)
 function void
 draw_bezier(tvert P[4], Line_Params params)
 {
+ // NOTE Local copies: never mutate the caller's points (same Bezier is reused for
+ // draw + fill).
+ tvert P_rec[4];   // owning-bone coords — what the recording stores
+ tvert P_draw[4];  // current-bone coords via live transforms — what we render
+ for_i32(i,0,4)
+ {
+  P_rec[i]  = canonicalize_point_bone(P[i]);
+  P_draw[i] = resolve_point_bone(P_rec[i]);
+ }
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
   for_i32(i,0,4)
   {
-   primitive.curve.bezier[i] = P[i];
+   primitive.curve.bezier[i] = P_rec[i];
   }
   primitive.curve.radii = params.radii;
   primitive.curve.lightness_additions = params.lightness_additions;
@@ -594,10 +648,10 @@ draw_bezier(tvert P[4], Line_Params params)
                             params.alignment_min > 0.f);
   if(do_check_alignment)
   {//-NOTE(kv) Alignment business
-   tvert A = P[0];
-   tvert B = P[1];
-   tvert C = P[2];
-   tvert D = P[3];
+   tvert A = P_draw[0];
+   tvert B = P_draw[1];
+   tvert C = P_draw[2];
+   tvert D = P_draw[3];
    // NOTE(kv) The normal is only defined when the curve is planar; choosing ABD or ACD is arbitrary
    v3 normal = noz(cross(B-A, D-A));
    if(normal != v3{})
@@ -618,7 +672,7 @@ draw_bezier(tvert P[4], Line_Params params)
   {
    argb color = (is_hot ? hot_color
                  : painter->params.line_color);
-   draw_bezier_inner(P, params, color);
+   draw_bezier_inner(P_draw, params, color);
   }
   
   // NOTE(kv) We want "draw" to be like a command, so don't return anything.
@@ -635,10 +689,10 @@ myinline Bezier
 bez_line(v3 a, v3 b)
 {
  return Bezier{
-  a,
-  (2.f*a+b)/3.f,
-  (a+2.f*b)/3.f,
-  b
+  mkvert(a),
+  mkvert((2.f*a+b)/3.f),
+  mkvert((a+2.f*b)/3.f),
+  mkvert(b)
  };
 }
 myinline void
@@ -702,19 +756,28 @@ get_triangle_normal(v3 a, v3 b, v3 c)
 }
 
 function void
-fill_dual_bez(tvert P[4], tvert Q[4], Fill_Params params=get_fill_params())
+fill_dual_bez(tvert P_in[4], tvert Q_in[4], Fill_Params params=get_fill_params())
 {
+ tvert P_rec[4], Q_rec[4];    // owning-bone coords — recorded
+ tvert P[4], Q[4];            // current-bone coords via live transforms — rendered
+ for_i32(i,0,4)
+ {
+  P_rec[i] = canonicalize_point_bone(P_in[i]);
+  Q_rec[i] = canonicalize_point_bone(Q_in[i]);
+  P[i] = resolve_point_bone(P_rec[i]);
+  Q[i] = resolve_point_bone(Q_rec[i]);
+ }
  {//-Sending data
   Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
-  block_copy(primitive.dual_bezier.P, P, 4*sizeof(v3));
-  block_copy(primitive.dual_bezier.Q, Q, 4*sizeof(v3));
+  block_copy(primitive.dual_bezier.P, P_rec, 4*sizeof(tvert));
+  block_copy(primitive.dual_bezier.Q, Q_rec, 4*sizeof(tvert));
   send_primitive(primitive);
  }
- 
+
  if(is_fill_enabled())
  {
   b32 do_fill = true;
-  
+
   if(do_fill and
      (params.flags.v & Fill_Culled) and
      not current_location_is_hot())

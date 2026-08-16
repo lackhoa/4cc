@@ -31,7 +31,7 @@ myinline tdim mkdim(v1 x){ return {x}; }
 myinline tvert mkvert(v1 x, v1 y, v1 z){ return {v3{x,y,z}}; }
 
 // TODO(kv) This function can be auto-generated.
-myinline tvert mkvert(v3 v){ return *(tvert*)&v; }
+myinline tvert mkvert(v3 v){ tvert result = {}; result.v = v; return result; }
 
 myinline tvert mkvert(){ return {}; }
 myinline tvert mkvertx(v1 x){ tvert result = {}; result.x=x; return result; }
@@ -46,15 +46,19 @@ myinline tvec mkvecy(v1 y){ return tvec{0,y,0}; }
 myinline tvec mkvecz(v1 z){ return tvec{0,0,z}; }
 
 // NOTE(kv) Having different types has *some* benefit...
+// NOTE bone_id propagation: vert-with-offset keeps the vert's bone; a blend of
+// two verts on DIFFERENT bones drops to Bone_None ("use the group's bone").
 myinline tvert
 operator *(mat4 const&mat, tvert vert)
 {
- return mkvert(mat4vert(mat, vert.v));
+ vert.v = mat4vert(mat, vert.v);
+ return vert;
 }
 myinline tvert
 operator +(tvert vert, tvec vec)
 {
- return mkvert(vert.v + vec);
+ vert.v += vec;
+ return vert;
 }
 myinline void
 operator +=(tvert &vert, v3 offset)
@@ -64,7 +68,8 @@ operator +=(tvert &vert, v3 offset)
 myinline tvert
 operator -(tvert vert, tvec vec)
 {
- return mkvert(vert.v - vec);
+ vert.v -= vec;
+ return vert;
 }
 myinline tvec
 operator -(tvert a, tvert b)
@@ -74,7 +79,12 @@ operator -(tvert a, tvert b)
 myinline tvert
 lerp(tvert a, v1 t, tvert b)
 {// NOTE(kv) Lerp between vertices
- return mkvert(lerp(a.v, t, b.v));
+ tvert result = mkvert(lerp(a.v, t, b.v));
+ if(a.bone_id.type == b.bone_id.type && a.bone_id.id == b.bone_id.id)
+ {
+  result.bone_id = a.bone_id;
+ }
+ return result;
 }
 myinline tvert
 negateX(tvert vert)
@@ -199,8 +209,9 @@ bezier_sample(TYPE P[4], v1 t)
 // NOTE(kv) By the brilliance of C++, we have to do crap like this.
 myinline tvert
 bezier_sample(tvert *bez, v1 u)
-{
- v3 result = bezier_sample((v3 *)bez, u);
+{// NOTE sampled point is a blend -> bone_id stays Bone_None (group default)
+ v3 P[4] = {bez[0].v, bez[1].v, bez[2].v, bez[3].v};
+ v3 result = bezier_sample(P, u);
  return mkvert(result);
 }
 myinline v1
@@ -352,6 +363,13 @@ operator==(Bone_ID a, Bone_ID b)
 
 myinline Bone_ID mk_bone_id(Bone_ID id) { return id; }
 myinline Bone_ID mk_bone_id(Bone_Type type, i32 id=0){ return Bone_ID{type, id}; }
+myinline tvert
+tag_bone(Bone_ID bone_id, tvert vert)
+{// NOTE Bone funnel for inline conversions (e.g. arm_local*fvert): the point keeps
+ // its converted coords but remembers which bone it rides.
+ vert.bone_id = bone_id;
+ return vert;
+}
 
 struct Bone
 {

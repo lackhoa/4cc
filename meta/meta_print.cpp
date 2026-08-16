@@ -581,7 +581,12 @@ print_wrapper_type(Printer &p, String wrapper, String wrapped,
     print(p, strcode(struct{v1 x,y,z;};\n));
     print(p, strlit("};\n"));
    }
-   
+
+   if(wrapper == strcode(tvert))
+   {// NOTE Per-control-point bone reference: Bone_None means "use the group's bone".
+    print(p, strcode(Bone_ID bone_id;\n));
+   }
+
    printf(p, strcode(myinline operator %S(){ return v; }\n), wrapped);
   }
   print(p, ";\n");

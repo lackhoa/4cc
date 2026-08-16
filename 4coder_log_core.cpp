@@ -110,6 +110,47 @@ log_flush(Thread_Context *tctx, Models *models)
                                     separator, StringSeparator_AfterLast,
                                     StringFill_NoTerminate);
   output_file_append(tctx, models, models->log_buffer, text, /*automated*/true);
+  {// NOTE(kv) Tee the log to <exe_dir>/debug/log_<pid>.txt so it's readable from
+   // outside the editor (tail -f, Claude). One file per instance (pid suffix),
+   // truncated at startup.
+   local_persist FILE *log_file = 0;
+   local_persist b32 open_attempted = false;
+   if(not open_attempted)
+   {
+    open_attempted = true;
+    Scratch_Scope scratch;
+    String binary_dir = system_get_path(scratch, SystemPath_BinaryDirectory);
+    char dir_path[MAX_PATH];
+    snprintf(dir_path, sizeof(dir_path), "%.*s/debug",
+             (i32)binary_dir.size, binary_dir.str);
+    CreateDirectoryA(dir_path, 0);
+    {// NOTE(kv) Sweep stale logs from previous runs. A live instance holds its log
+     // open (CRT denies delete-sharing), so DeleteFile fails on it and we skip it.
+     char pattern[MAX_PATH];
+     snprintf(pattern, sizeof(pattern), "%s/log_*.txt", dir_path);
+     WIN32_FIND_DATAA find_data;
+     HANDLE find_handle = FindFirstFileA(pattern, &find_data);
+     if(find_handle != INVALID_HANDLE_VALUE)
+     {
+      do{
+       char stale_path[MAX_PATH];
+       snprintf(stale_path, sizeof(stale_path), "%s/%s", dir_path, find_data.cFileName);
+       DeleteFileA(stale_path);
+      }while(FindNextFileA(find_handle, &find_data));
+      FindClose(find_handle);
+     }
+    }
+    char file_path[MAX_PATH];
+    snprintf(file_path, sizeof(file_path), "%s/log_%lu.txt",
+             dir_path, GetCurrentProcessId());
+    log_file = fopen(file_path, "wb");
+   }
+   if(log_file)
+   {
+    fwrite(text.str, 1, text.size, log_file);
+    fflush(log_file);
+   }
+  }
   result = true;
  }
  arena_free(&global_log.message_arena);

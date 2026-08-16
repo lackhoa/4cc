@@ -56,6 +56,32 @@ read_binary_i1(r, dst);
 #endif
 ;
 
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:436:
+enum Bone_Type{Bone_Invalid = -1,
+Bone_None = 0,
+Bone_Head = 1,
+Bone_Arm = 2,
+Bone_Forearm = 3,
+Bone_Bottom_Phalanx = 4,
+Bone_Mid_Phalanx = 5,
+Bone_Top_Phalanx = 6,
+Bone_Torso = 7,
+Bone_References = 8,
+Bone_Hand = 9,
+Bone_Thumb = 10,
+Bone_Pelvis = 11,
+Bone_Eyeball = 12,
+Bone_Test = 13,
+Bone_Camera = 14,};
+;
+
+struct Bone_ID{
+Bone_Type type;
+i32 id;
+};
+;
+
+
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:569:
 struct tdim
 {
@@ -63,7 +89,7 @@ v1 v;
 myinline operator v1(){ return v; }
 };
 #if WANT_TYPE_INFO
-// C:\Users\vodan\4ed\code\meta\meta_print.cpp:593:
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:598:
 function Type_Info
 get_type_info_tdim(){
 Type_Info result = {};
@@ -91,10 +117,11 @@ union{
 v3 v;
 struct{v1 x,y,z;};
 };
+Bone_ID bone_id;
 myinline operator v3(){ return v; }
 };
 #if WANT_TYPE_INFO
-// C:\Users\vodan\4ed\code\meta\meta_print.cpp:593:
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:598:
 function Type_Info
 get_type_info_tvert(){
 Type_Info result = {};
@@ -125,7 +152,7 @@ struct{v1 x,y,z;};
 myinline operator v3(){ return v; }
 };
 #if WANT_TYPE_INFO
-// C:\Users\vodan\4ed\code\meta\meta_print.cpp:593:
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:598:
 function Type_Info
 get_type_info_tnormal(){
 Type_Info result = {};
@@ -149,31 +176,6 @@ return &Type_Info_tnormal;
 
 
 
-
-// C:\Users\vodan\4ed\code\meta\meta_print.cpp:436:
-enum Bone_Type{Bone_Invalid = -1,
-Bone_None = 0,
-Bone_Head = 1,
-Bone_Arm = 2,
-Bone_Forearm = 3,
-Bone_Bottom_Phalanx = 4,
-Bone_Mid_Phalanx = 5,
-Bone_Top_Phalanx = 6,
-Bone_Torso = 7,
-Bone_References = 8,
-Bone_Hand = 9,
-Bone_Thumb = 10,
-Bone_Pelvis = 11,
-Bone_Eyeball = 12,
-Bone_Test = 13,
-Bone_Camera = 14,};
-;
-
-struct Bone_ID{
-Bone_Type type;
-i32 id;
-};
-;
 
 typedef u32 Line_Flags;
 #if WANT_TYPE_INFO

@@ -274,8 +274,7 @@ PaintBlock;
 scale_line_radius(0.5038f);
 painter->params.nslice_per_meter = 5.9797f * 100.f;
 mat4i ot = current_world_from_bone();
-mat4i forearmT = mom_bone_xform();
-import_vertices(forearm.verts, ot, forearmT, forearm_vert_count);
+import_vertices(forearm, mk_bone_id(Bone_Forearm));
 tvert palm_base_in = ReadSlider(38);
 send_vert(3, thumb_kbot);
 Bez palm_base_line = bez_unit(thumb_kbot, V2(0.f, 0.3416f), V2(0, 0), V3y(-1), palm_base_in);
@@ -393,8 +392,7 @@ function Arm
 render_arm(Pose &pose, Torso torso, tvert elbow_up_out){
 ViewCenterBlock(ReadSlider(48));
 mat4i &ot = current_world_from_bone();
-mat4i &torsoT = mom_bone_xform();
-import_vertices(torso.verts, ot, torsoT, torso_vert_count);
+import_vertices(torso, mk_bone_id(Bone_Torso));
 v1 tarm_bend = pose.tarm_bend;
 send_vert(5, arm_rotation_pivot);
 if(painter->show_grid or get_reference_preset() == Preset_Eco_Skeleton){
@@ -608,8 +606,7 @@ return arm_obj;
 function Forearm
 render_forearm(Arm arm, tvert elbow_up_out){
 mat4i ot = current_world_from_bone();
-mat4i armT = mom_bone_xform();
-import_vertices(arm.verts, ot, armT, arm_vert_count);
+import_vertices(arm, mk_bone_id(Bone_Arm));
 tvert forearm_view_center = ReadSlider(105);
 ViewCenterBlock(forearm_view_center);
 {
@@ -751,11 +748,9 @@ function Torso
 render_torso(Pose &pose, Pelvis pelvis, Head head){
 ViewCenterBlock(V3(0.f, -2.3176f, 0.3862f));
 mat4i ot = current_world_from_bone();
-mat4i pelvisT = get_world_from_bone(mk_bone_id(Bone_Pelvis));
-mat4i headT = get_world_from_bone(mk_bone_id(Bone_Head));
 v1 head_unit = get_column(ot.inv, 1).y * head_unit_world;
-import_vertices(head.verts, ot, headT, head_vert_count);
-import_vertices(pelvis.verts, ot, pelvisT, pelvis_vert_count);
+import_vertices(head, mk_bone_id(Bone_Head));
+import_vertices(pelvis, mk_bone_id(Bone_Pelvis));
 fimage(image_clavicle_vs_arm, ReadSlider(150));
 fimage(image_clavicle, ReadSlider(151));
 tvert shoulder = ReadSlider(152);
@@ -835,7 +830,7 @@ tvert vest_back = rib_back + V3(-0.f, 0.5114f, -0.0067f);
 (set_draw_location_unresolved({2,175}), draw(bez_unit2(vestL, V4(-0.0067f, 0.1427f, 0.f, 0.3102f), V3(0.9212f, -0.3891f, -0.f), vest_back)), clear_draw_location());
 }
 }
-tvert latis_arm = arm_local * ReadSlider(159);
+tvert latis_arm = tag_bone(mk_bone_id(Bone_Arm), arm_local * ReadSlider(159));
 {
 Bez latis_arm_line = bez_unit(rib_back, V2(0.1935f, 0.0429f), V2(0.151f, 0.0235f), V3(1.f, 0.f, -0.f), latis_arm);
 {
