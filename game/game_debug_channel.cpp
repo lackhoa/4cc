@@ -12,6 +12,11 @@
 //   slider_dump       -> every data slider: "<side> <id> <type> <value as code>"
 //   slider_write      -> save both values files from the live slider tables
 //   slider <id> <n>.. -> set a slider (scalars/vectors by component) and save its file
+//   slider_next_id <type> -> first free "<type>_<n>" id across both sides, e.g. v3_227
+//   set_camera <theta> <phi> [distance [pivot_x y z]]
+//   screenshot [x y w h] -> optional crop in png pixels (top-left origin)
+//   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
+//   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
 
@@ -34,6 +39,28 @@ global char debug_channel_out_path[MAX_PATH];
 global i32  debug_channel_pending_diff;
 // NOTE(kv) Transient per-frame: keeps frames flowing while a command needs a render.
 global b32  debug_channel_wants_animate;
+global b32  debug_channel_request_exit;  // `quit` command, consumed by the custom layer
+global u32  debug_channel_ack_counter;   // sequence number on every out.txt
+// NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
+// Every poll runs a full game_update + render (~150 ms at -Od), so 200 ms was ~15% CPU.
+#define DEBUG_CHANNEL_POLL_MS 500
+// NOTE(kv) Fixed window size in agent mode so screenshot crops land on the same pixels
+// across launches (1200x900 outer -> 1174x829 png).
+#define DEBUG_CHANNEL_WINDOW_W 1200
+#define DEBUG_CHANNEL_WINDOW_H 900
+
+function BOOL CALLBACK
+debug_channel_find_own_window(HWND hwnd, LPARAM out_hwnd)
+{
+ DWORD pid = 0;
+ GetWindowThreadProcessId(hwnd, &pid);
+ if(pid == GetCurrentProcessId() && IsWindowVisible(hwnd))
+ {
+  *(HWND *)out_hwnd = hwnd;
+  return FALSE;
+ }
+ return TRUE;
+}
 
 function void
 debug_channel_init()
@@ -51,6 +78,15 @@ debug_channel_init()
  snprintf(debug_channel_cmd_path, sizeof(debug_channel_cmd_path), "%s\\cmd.txt", debug_channel_dir);
  snprintf(debug_channel_out_path, sizeof(debug_channel_out_path), "%s\\out.txt", debug_channel_dir);
  CreateDirectoryA(debug_channel_dir, 0);
+
+ HWND window = 0;
+ EnumWindows(debug_channel_find_own_window, (LPARAM)&window);
+ if(window)
+ {
+  ShowWindow(window, SW_SHOWNORMAL);  // un-minimize if needed, else a no-op
+  SetWindowPos(window, 0, 0, 0, DEBUG_CHANNEL_WINDOW_W, DEBUG_CHANNEL_WINDOW_H,
+               SWP_NOMOVE | SWP_NOZORDER);
+ }
 }
 
 function FILE *
@@ -91,7 +127,7 @@ debug_channel_write_diff_result(FILE *out, Replay_Diff_Result &diff)
 // (ogl_debug_maybe_screenshot in 4ed_opengl_render.cpp) and writes
 // debug/screenshot_result.txt with the png path.
 function void
-debug_channel_screenshot(FILE *out)
+debug_channel_screenshot(FILE *out, const char *crop_args)
 {
  char request_path[MAX_PATH];
  snprintf(request_path, sizeof(request_path), "%s\\screenshot_request.txt",
@@ -102,6 +138,9 @@ debug_channel_screenshot(FILE *out)
   fprintf(out, "error: cannot write %s\n", request_path);
   return;
  }
+ // NOTE(kv) Optional "x y w h" crop in png pixels (top-left origin); the render side
+ // parses it, empty file = full frame.
+ fputs(crop_args, request);
  fclose(request);
  // NOTE(kv) Delete the previous result so the reader can't mistake it for this one.
  char result_path[MAX_PATH];
@@ -149,6 +188,34 @@ debug_channel_slider_dump(FILE *out)
    }
   }
  }
+}
+
+// NOTE(kv) Data slider ids are "<type>_<n>" (fv(v3_225)); the next free id is max+1
+// over both sides, so a new fv() in the driver never collides with a game-side one.
+function void
+debug_channel_slider_next_id(FILE *out, char *type_name)
+{
+ Scratch_Scope tmp;
+ String prefix = push_stringf(tmp, "%s_", type_name);
+ i32 max_n = -1;
+ for_i32(is_driver, 0, 2)
+ {
+  sarray(FUI_File_Data) files = get_file_array({i16(is_driver), 0});
+  for_i32(file_index, 1, files.count)
+  {
+   for_each(slider, files[file_index].sliders)
+   {
+    if(not starts_with(slider->id, prefix)){ continue; }
+    i32 n = 0;  // NOTE(kv) ids aren't null-terminated, so no atoi
+    for(u64 i = prefix.size; i < slider->id.size && isdigit((u8)slider->id.data[i]); i++)
+    {
+     n = n*10 + (slider->id.data[i] - '0');
+    }
+    max_n = Max(max_n, n);
+   }
+  }
+ }
+ fprintf(out, "slider_next_id: %.*s%d\n", string_expand(prefix), max_n+1);
 }
 
 function void
@@ -212,7 +279,7 @@ debug_channel_slider_set(FILE *out, Game_State *state, char *args)
 
 // NOTE(kv) Called at the top of game_update, every frame.
 function void
-debug_channel_update(Game_State *state)
+debug_channel_update(Game_State *state, App *app)
 {
  if(!debug_channel_initialized){ debug_channel_init(); }
  if(!debug_channel_enabled){ return; }
@@ -253,11 +320,33 @@ debug_channel_update(Game_State *state)
 
  FILE *out = debug_channel_open_out();
  if(!out){ return; }
- fprintf(out, "ack: %s\n", cmd);
+ debug_channel_ack_counter += 1;
+ fprintf(out, "ack #%u: %s\n", debug_channel_ack_counter, cmd);
 
- if(strcmp(cmd, "screenshot") == 0)
+ if(strncmp(cmd, "screenshot", 10) == 0)
  {
-  debug_channel_screenshot(out);
+  debug_channel_screenshot(out, cmd+10);
+ }
+ else if(strcmp(cmd, "quit") == 0)
+ {
+  debug_channel_request_exit = true;
+  fprintf(out, "quit: exiting\n");
+ }
+ else if(strcmp(cmd, "reload_autosave") == 0)
+ {// NOTE(kv) See what the user sees: reload data/autosave.ad (the live instance's
+  // periodic save), camera included. Same as the revert command; overwrites this
+  // instance's edit history, which an agent instance does not care about.
+  b32 ok = game_load(state, app, state->autosave_path);
+  for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+  {
+   Viewport *viewport = &state->viewports[viewport_index];
+   viewport->camera = viewport->target_camera;  // no animation tail
+  }
+  Camera_Data camera = state->viewports[0].camera;
+  fprintf(out, "reload_autosave: %s; camera theta=%f phi=%f distance=%f pivot=(%f %f %f)\n",
+          ok ? "ok" : "FAILED", camera.theta, camera.phi, camera.distance,
+          camera.pivot.x, camera.pivot.y, camera.pivot.z);
+  debug_channel_wants_animate = true;
  }
  else if(strcmp(cmd, "diff") == 0)
  {
@@ -300,6 +389,10 @@ debug_channel_update(Game_State *state)
  else if(strcmp(cmd, "slider_dump") == 0)
  {
   debug_channel_slider_dump(out);
+ }
+ else if(strncmp(cmd, "slider_next_id ", 15) == 0)
+ {
+  debug_channel_slider_next_id(out, cmd+15);
  }
  else if(strcmp(cmd, "slider_write") == 0)
  {
@@ -372,22 +465,25 @@ debug_channel_update(Game_State *state)
   }
  }
  else if(strncmp(cmd, "set_camera", 10) == 0)
- {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport). Sets both
-  // target AND current camera so the effect is immediate, no animation tail.
-  float theta = 0, phi = 0;
-  if(sscanf(cmd+10, "%f %f", &theta, &phi) == 2)
+ {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport), optionally
+  // distance and pivot too. Sets both target AND current camera so the effect is
+  // immediate, no animation tail.
+  Viewport *viewport = &state->viewports[0];
+  Camera_Data camera = viewport->target_camera;
+  i32 parsed = sscanf(cmd+10, "%f %f %f %f %f %f", &camera.theta, &camera.phi,
+                      &camera.distance, &camera.pivot.x, &camera.pivot.y, &camera.pivot.z);
+  if(parsed == 2 || parsed == 3 || parsed == 6)
   {
-   Viewport *viewport = &state->viewports[0];
-   viewport->target_camera.theta = theta;
-   viewport->target_camera.phi   = phi;
-   viewport->camera.theta = theta;
-   viewport->camera.phi   = phi;
-   fprintf(out, "set_camera: theta=%f phi=%f\n", theta, phi);
+   viewport->target_camera = camera;
+   viewport->camera        = camera;
+   fprintf(out, "set_camera: theta=%f phi=%f distance=%f pivot=(%f %f %f)\n",
+           camera.theta, camera.phi, camera.distance,
+           camera.pivot.x, camera.pivot.y, camera.pivot.z);
    debug_channel_wants_animate = true;
   }
   else
   {
-   fprintf(out, "error: usage: set_camera <theta> <phi>\n");
+   fprintf(out, "error: usage: set_camera <theta> <phi> [distance [pivot_x pivot_y pivot_z]]\n");
   }
  }
  else

@@ -167,6 +167,9 @@ startup_panels_and_files(App_Cmd *app)
   dev_single_panel = true;
  }
 #endif
+ // NOTE(kv) Agent mode (-debug-cmd, see game_debug_channel.cpp): one big game
+ // viewport, nothing else to look at.
+ if(strstr(GetCommandLineA(), "-debug-cmd")){ dev_single_panel = true; }
  
  if ( dev_single_panel )
  {

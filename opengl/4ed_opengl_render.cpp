@@ -1127,7 +1127,12 @@ ogl_debug_maybe_screenshot(void)
   }
  }
  if(!enabled){ return; }
- if(GetFileAttributesA(request_path) == INVALID_FILE_ATTRIBUTES){ return; }
+ FILE *request = fopen(request_path, "rb");
+ if(!request){ return; }
+ // NOTE(kv) Optional crop "x y w h" in png pixels, top-left origin; empty = full frame.
+ int crop_x = 0, crop_y = 0, crop_w = 0, crop_h = 0;
+ int crop_parsed = fscanf(request, "%d %d %d %d", &crop_x, &crop_y, &crop_w, &crop_h);
+ fclose(request);
  DeleteFileA(request_path);
 
  FILE *result = fopen(result_path, "wb");
@@ -1157,14 +1162,25 @@ ogl_debug_maybe_screenshot(void)
  {
   fprintf(result, "error: glReadPixels failed (0x%x)\n", gl_error);
  }
+ else if(crop_parsed == 4 &&
+         (crop_x < 0 || crop_y < 0 || crop_w <= 0 || crop_h <= 0 ||
+          crop_x + crop_w > width || crop_y + crop_h > height))
+ {
+  fprintf(result, "error: crop %d %d %d %d outside frame %dx%d\n",
+          crop_x, crop_y, crop_w, crop_h, width, height);
+ }
  else
  {
+  if(crop_parsed != 4){ crop_x = 0; crop_y = 0; crop_w = width; crop_h = height; }
   counter += 1;
   char png_path[MAX_PATH];
   snprintf(png_path, sizeof(png_path), "%s\\screenshot_%d.png", debug_dir, counter);
   stbi_flip_vertically_on_write(1);  // GL rows are bottom-up
-  int write_ok = stbi_write_png(png_path, width, height, 4, pixels, width*4);
-  if(write_ok){ fprintf(result, "screenshot: %s (%dx%d)\n", png_path, width, height); }
+  // NOTE(kv) GL row 0 is the bottom of the frame, so the crop's first GL row is
+  // counted from the bottom; stride stays the full width.
+  u8 *crop_pixels = pixels + ((size_t)(height - crop_y - crop_h) * width + crop_x) * 4;
+  int write_ok = stbi_write_png(png_path, crop_w, crop_h, 4, crop_pixels, width*4);
+  if(write_ok){ fprintf(result, "screenshot: %s (%dx%d)\n", png_path, crop_w, crop_h); }
   else        { fprintf(result, "error: png write failed: %s\n", png_path); }
  }
  free(pixels);

@@ -1590,7 +1590,8 @@ game_update(Game_Update_Params params)
  update_game_config();
  Game_State *state = params.state;
  App *app = params.app;
- debug_channel_update(state);
+ debug_channel_update(state, app);
+ maybe_reload_slider_values_files(state);
  b32 should_animate_next_frame = false;
  arena_clear(&state->frame_arena);
  //-
@@ -1661,7 +1662,9 @@ game_update(Game_Update_Params params)
   b32 cursor_on = state->kb_cursor.on;
   i32 active_viewport_id = get_active_game_viewport_id(app);
   b32 viewport_focused = driver_on and active_viewport_id != 0;
-  if(viewport_focused or fui_is_active())
+  // NOTE(kv) Agent mode (-debug-cmd): the lone viewport is always "focused", which
+  // would redraw every frame forever; it polls on a timer instead (poll_again_in_ms).
+  if((viewport_focused and not debug_channel_enabled) or fui_is_active())
   {
    should_animate_next_frame = true;
   }
@@ -1695,7 +1698,9 @@ game_update(Game_Update_Params params)
    {
     seconds_since_last_autosave = 0;
    }
-   b32 should_autosave = seconds_since_last_autosave == 0;
+   // NOTE(kv) The agent instance (-debug-cmd) shares autosave.ad with the live
+   // editor; set_camera etc. must not clobber the user's saved view.
+   b32 should_autosave = seconds_since_last_autosave == 0 and not debug_channel_enabled;
    if(should_autosave)
    {
     game_save(state, app, false);
@@ -2316,6 +2321,9 @@ game_update(Game_Update_Params params)
    im_end();
   }
 
+  // NOTE(kv) Agent mode has no mouse user; the debug channel sets these knobs and
+  // the panels would only clutter screenshots.
+  if(not debug_channel_enabled)
   {//-Replay panel (draw-as-data step 3, Q23)
    Replay_State &replay = state->replay;
    im_begin("Replay", 0, ImGuiWindowFlags_NoFocusOnAppearing);
@@ -2354,6 +2362,7 @@ game_update(Game_Update_Params params)
    im_end();
   }
 
+  if(not debug_channel_enabled)
   {//-Preset settings panel (preset-rethink step 6): edits the ACTIVE preset's row.
    Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
    im_begin("Preset settings", 0, ImGuiWindowFlags_NoFocusOnAppearing);
@@ -2475,6 +2484,8 @@ game_update(Game_Update_Params params)
  return{
   .should_animate_next_frame = should_animate_next_frame or state->replay.force_animate
                                or debug_channel_wants_animate,
+  .poll_again_in_ms          = debug_channel_enabled ? DEBUG_CHANNEL_POLL_MS : 0u,
+  .request_exit              = debug_channel_request_exit,
   .game_commands             = game_commands,
  };
 }

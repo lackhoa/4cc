@@ -111,6 +111,10 @@ struct Game_State;
 struct Game_Update_Return
 {
  b32 should_animate_next_frame;
+ // NOTE(kv) Agent mode: instead of animating every frame, ask the editor to wake us
+ // up in N ms so the debug channel still gets polled. 0 = no request.
+ u32 poll_again_in_ms;
+ b32 request_exit;  // NOTE(kv) debug channel `quit`
  sarray(String) game_commands;
 };
 

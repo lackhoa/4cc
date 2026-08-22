@@ -60,6 +60,7 @@ struct Game_State
  String save_dir;
  String backup_dir;
  darray(Slider_Value_Row) orphan_slider_rows[2];  // NOTE(kv) [is_driver]
+ u64 slider_values_mtime[2];  // NOTE(kv) [is_driver] mtime of the values file last loaded
  Stringz autosave_path;
  Stringz manual_save_path;
  

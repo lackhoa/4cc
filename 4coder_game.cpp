@@ -296,6 +296,12 @@ maybe_update_game(App *app, Frame_Info frame)
     Game_Update_Return update = game->game_update(params);
     
     if(update.should_animate_next_frame){ animate_next_frame(app); }
+    if(update.poll_again_in_ms){ animate_in_n_milliseconds(app, update.poll_again_in_ms); }
+    if(update.request_exit)
+    {// NOTE(kv) Skip the "unsaved buffers, quit?" prompt: nobody is there to answer it.
+     allow_immediate_close_without_checking_for_changes = true;
+     send_exit_signal(app);
+    }
     received_game_commands = update.game_commands;
     
     block_zero_array(global_game_key_state_changes);

@@ -129,6 +129,7 @@ load_slider_values_file(Game_State *state, b32 is_driver)
 {
  Scratch_Scope tmp;
  Stringz path = slider_values_file_path(tmp, state, is_driver);
+ state->slider_values_mtime[is_driver] = file_mtime(path);
  // NOTE(kv) Driver orphans live in driver_arena (cleared per driver load, same as
  // the location maps); game-side ones load once into the permanent arena.
  Arena *arena = is_driver ? &state->driver_arena : &state->permanent_arena;
@@ -205,5 +206,25 @@ load_slider_values_file(Game_State *state, b32 is_driver)
  log_string("slider values loaded from %S: applied %d, orphans %d, mismatched %d",
             path, applied, orphans.count, mismatched);
  return true;
+}
+
+// NOTE(kv) Values written by another instance (the agent's `slider` command) or an
+// external editor show up without a driver reload. Skipped mid-drag so a reload can't
+// clobber the slider being edited. Our own Enter-save bumps the mtime too; re-reading
+// what we just wrote is harmless.
+function void
+maybe_reload_slider_values_files(Game_State *state)
+{
+ if(fui_is_active()){ return; }
+ Scratch_Scope tmp;
+ for_i32(is_driver, 0, 2)
+ {
+  Stringz path = slider_values_file_path(tmp, state, is_driver);
+  if(file_mtime(path) > state->slider_values_mtime[is_driver])
+  {
+   log_string("slider values: %S changed on disk, reloading", path);
+   load_slider_values_file(state, is_driver);
+  }
+ }
 }
 //-EOF
