@@ -102,7 +102,7 @@ global tnormal normal_z = {V3z(1.f)};
 #define TypeInfoPointerList(X) \
 X(v1)  X(v2)  X(v3)  X(v4) \
 X(i1)  X(i2)  X(i3)  X(i4) \
-X(FUI_Line_Params) X(tdim) X(tvert) X(tnormal) \
+X(FUI_Line_Params) X(Curve) X(tdim) X(tvert) X(tnormal) \
 
 struct Type_Info_Pointers
 {
@@ -708,6 +708,10 @@ struct Painter
  sarray(Location) hot_locations;
  Location current_draw_location;
  b32 current_location_is_hot;
+ // NOTE(kv) Slider whose shape (Curve d0/d3) is being edited this frame, else invalid.
+ // Set by the game per frame, read by @draw_curve to show the control handles.
+ Location active_shape_location;
+ b32 current_location_is_active_shape;
  
  Camera camera;
  mat4  clip_from_world;

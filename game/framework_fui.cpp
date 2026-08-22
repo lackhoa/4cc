@@ -95,33 +95,63 @@ active_slider_is_discrete(v1 *out_float_increment)
  *out_float_increment = 0.f;
  Active_Slider slider = fui_active_slider;
  Type_Info *type = get_slider_type_info(*slider.data);
- if(type_info_equals(type, FUI_Line_Params))
- {
-  i32 member_index = slider.active_member_index;
-  if(member_index == get_member_index_by_name(type, strcode(radii)))
+ if(is_struct(type))
+ {// NOTE(kv) Line-params members (FUI_Line_Params, Curve): radii step in sixths of
+  // the radius unit, lightness in halves. Other members (Curve offsets) are continuous.
+  String member_name = type->members[slider.active_member_index].name;
+  if(member_name == strcode(radii))
   {
    *out_float_increment = 1.f / 6.f;
    return true;
   }
-  else if(member_index == get_member_index_by_name(type, strcode(lightness)))
+  else if(member_name == strcode(lightness_additions))
   {
    *out_float_increment = 1.f / 2.f;
    return true;
   }
  }
- else
+ Type_Info *memtype = active_slider_member_type_info();
+ switch(strip_to_basic_type(memtype)->Basic_Type)
  {
-  Type_Info *memtype = active_slider_member_type_info();
-  switch(strip_to_basic_type(memtype)->Basic_Type)
-  {
-   case Basic_Type_i1:
-   case Basic_Type_i2:
-   case Basic_Type_i3:
-   case Basic_Type_i4:
-   return true;
-  }
+  case Basic_Type_i1:
+  case Basic_Type_i2:
+  case Basic_Type_i3:
+  case Basic_Type_i4:
+  return true;
  }
  return false;
+}
+function b32
+struct_member_is_editable(I_Struct_Member &member)
+{// NOTE(kv) Flags members (Line_Flags, FLP_Flags) are set from code, not by keys.
+ switch(strip_to_basic_type(member.type)->Basic_Type)
+ {
+  case Basic_Type_v1:
+  case Basic_Type_v2:
+  case Basic_Type_v3:
+  case Basic_Type_v4:
+  return true;
+ }
+ return false;
+}
+function void
+fui_cycle_active_member()
+{// NOTE(kv) Tab on a struct slider: next editable member, wrapping around.
+ Type_Info *type = get_slider_type_info(*fui_active_slider.data);
+ if(is_struct(type))
+ {
+  i32 count = type->members.count;
+  i32 index = fui_active_slider.active_member_index;
+  for_i32(step, 1, count+1)
+  {
+   i32 candidate = (index + step) % count;
+   if(struct_member_is_editable(type->members[candidate]))
+   {
+    fui_active_slider.active_member_index = candidate;
+    break;
+   }
+  }
+ }
 }
 function b32
 active_slider_is_continuous()
@@ -513,24 +543,25 @@ fui_set_active_slider(Slider *slider)
  }
 }
 //-
-#define MAX_SLIDER_VALUE_SIZE sizeof(FUI_Line_Params)
-global u8 global_fui_saved_value[MAX_SLIDER_VALUE_SIZE];  // TODO(kv) why is this a global?
-
-#undef MAX_SLIDER_VALUE_SIZE
+union Slider_Value_Storage
+{// NOTE(kv) Big enough for every slider type (TypeInfoPointerList)
+ v4 v; i4 i; tvert vert; FUI_Line_Params line_params; Curve curve;
+};
+global Slider_Value_Storage global_fui_saved_value;  // TODO(kv) why is this a global?
 
 function void
 fui_save_value(Slider *slider)
 {
  void *src = slider->value;
  usize size = get_slider_type_info(*slider)->size;
- block_copy(global_fui_saved_value, src, size);
+ block_copy(&global_fui_saved_value, src, size);
 }
 function void
 fui_restore_value(Slider *slider)
 {
  void *dst = slider->value;
  usize size = get_slider_type_info(*slider)->size;
- block_copy(dst, global_fui_saved_value, size);
+ block_copy(dst, &global_fui_saved_value, size);
 }
 //-
 function void
@@ -669,6 +700,11 @@ fui_print_slider(Arena *arena, Slider &slider)
  else if(is_line_params)
  {
   op = strcode(flp);
+  wrapped = false;
+ }
+ else if(type_info_equals(type, Curve))
+ {
+  op = strcode(fcurve);
   wrapped = false;
  }
  else if(type_info_equals(type, i1) and

@@ -26,6 +26,8 @@ set_draw_location(Location location)
    break;
   }
  }
+ painter->current_location_is_active_shape = (is_valid(painter->active_shape_location) and
+                                              location == painter->active_shape_location);
 }
 myinline void
 set_draw_location_unresolved(Unresolved_Location location0)
@@ -37,12 +39,18 @@ clear_draw_location()
 {
  painter->current_draw_location = {};
  painter->current_location_is_hot = false;
+ painter->current_location_is_active_shape = false;
 }
 myinline b32
 current_location_is_hot()
 {
  b32 result = painter->current_location_is_hot;
  return result;
+}
+myinline b32
+current_location_is_active_shape()
+{
+ return painter->current_location_is_active_shape;
 }
 //-
 myinline b32

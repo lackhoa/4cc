@@ -220,16 +220,26 @@ debug_channel_slider_next_id(FILE *out, char *type_name)
 
 function void
 debug_channel_slider_set(FILE *out, Game_State *state, char *args)
-{// NOTE(kv) `slider <id> <c0> [c1 c2 c3]`: components are floats (ints for i1);
- // wrapper types (tvert/tnormal/tdim) set their wrapped value and keep the rest.
+{// NOTE(kv) `slider <id>[.<member>] <c0> [c1 c2 c3]`: components are floats (ints
+ // for i1); wrapper types (tvert/tnormal/tdim) set their wrapped value and keep the
+ // rest; struct sliders (Curve, FUI_Line_Params) take one member at a time.
  char id_buffer[64] = {};
  int consumed = 0;
  if(sscanf(args, "%63s%n", id_buffer, &consumed) != 1)
  {
-  fprintf(out, "slider: usage: slider <id> <c0> [c1 c2 c3]\n");
+  fprintf(out, "slider: usage: slider <id>[.<member>] <c0> [c1 c2 c3]\n");
   return;
  }
  String id = SCu8(id_buffer);
+ String member_name = {};
+ {
+  i64 dot = string_find_last(id, '.');
+  if(dot > 0)
+  {
+   member_name = string_skip(id, u64(dot+1));
+   id = string_prefix(id, u64(dot));
+  }
+ }
  Slider *slider = 0;
  b32 is_driver = 0;
  for_i32(side, 0, 2)
@@ -242,14 +252,27 @@ debug_channel_slider_set(FILE *out, Game_State *state, char *args)
   fprintf(out, "slider: no slider with id %s\n", id_buffer);
   return;
  }
- Type_Info *basic = strip_to_basic_type(slider->type);
- if(is_struct(basic) and not type_info_equals(basic, v2) and
-    not type_info_equals(basic, v3) and not type_info_equals(basic, v4))
+ void *value = slider->value;
+ Type_Info *type = slider->type;
+ if(is_struct(type))
  {
-  fprintf(out, "slider: %s has type %.*s, which this command can't set\n",
-          id_buffer, string_expand(slider->type->name));
-  return;
+  I_Struct_Member *member = 0;
+  for_each(candidate, type->members)
+  {
+   if(candidate->name == member_name){ member = candidate; break; }
+  }
+  if(member == 0)
+  {
+   fprintf(out, "slider: %.*s has type %.*s; usage: slider %.*s.<member> ..., members:",
+           string_expand(id), string_expand(type->name), string_expand(id));
+   for_each(candidate, type->members){ fprintf(out, " %.*s", string_expand(candidate->name)); }
+   fprintf(out, "\n");
+   return;
+  }
+  value = (u8 *)value + member->offset;
+  type  = member->type;
  }
+ Type_Info *basic = strip_to_basic_type(type);
  b32 is_int = type_info_equals(basic, i1);
  i32 component_count = basic->size / 4;
  char *cursor = args + consumed;
@@ -259,15 +282,15 @@ debug_channel_slider_set(FILE *out, Game_State *state, char *args)
   char *end = 0;
   if(is_int)
   {
-   long value = strtol(cursor, &end, 10);
+   long parsed_value = strtol(cursor, &end, 10);
    if(end == cursor){ break; }
-   ((i32 *)slider->value)[i] = (i32)value;
+   ((i32 *)value)[i] = (i32)parsed_value;
   }
   else
   {
-   float value = strtof(cursor, &end);
+   float parsed_value = strtof(cursor, &end);
    if(end == cursor){ break; }
-   ((v1 *)slider->value)[i] = value;
+   ((v1 *)value)[i] = parsed_value;
   }
   cursor = end;
   parsed += 1;

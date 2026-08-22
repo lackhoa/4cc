@@ -10,6 +10,7 @@ Type_Info_tnormal = get_type_info_tnormal();
 Type_Info_Line_Flags = get_type_info_Line_Flags();
 Type_Info_FLP_Flags = get_type_info_FLP_Flags();
 Type_Info_FUI_Line_Params = get_type_info_FUI_Line_Params();
+Type_Info_Curve = get_type_info_Curve();
 Type_Info_Reference_Preset = get_type_info_Reference_Preset();
 Type_Info_Saved_Viewport = get_type_info_Saved_Viewport();
 Type_Info_Keyboard_Cursor = get_type_info_Keyboard_Cursor();

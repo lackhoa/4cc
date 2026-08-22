@@ -540,8 +540,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
    tvert b = fv(tvert_56);
    draw(bez_unit2(a, V4(0.f, 1.0357f, 0.f, 0.f),
                   V3(-0.1623f, -0.9867f, 0.f), external_condyle));
-   draw(bez_v3v2(b, fv(v3_57), fv(v2_58), a),
-        flp(FUI_Line_Params_59));
+   fcurve(Curve_0, b, a);
   }
   tvert v98 = sock+V3(0.0947f, 0.1683f, 0.2105f);
   tvert v99 = v98+V3(-0.f, -0.6114f, -0.0063f);
@@ -1210,10 +1209,8 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
                   V4(0.f, 0.118f, 0.f, 0.f),
                   V3(-0.f, 0.f, -1.f),
                   scap_sock_bot));
-   draw(bez_parabola(scap_sock_top, fv(v3_163), scap_sock_bot),
-        flp(FUI_Line_Params_164));
-   draw(bez_v3v2(scap_sock_top, fv(v3_165), fv(v2_166), scap_sock_bot),
-        flp(FUI_Line_Params_167));
+   fcurve(Curve_1, scap_sock_top, scap_sock_bot);
+   fcurve(Curve_2, scap_sock_top, scap_sock_bot);
   }
   
   tvert lower_back = fv(tvert_168);
@@ -1771,7 +1768,7 @@ render_head(Pose &pose)
   // NOTE(kv) The midline sits behind the nose-side fills (x=+-nose_sideX) from any
   // non-frontal view, so pull the line toward the camera (same jank as the skeleton).
   painter->params.line_depth_offset -= fv(v1_236) * centimeter;
-  draw(bez_offset(setx(nose_rootL, 0.f), fv(v3_225), fv(v3_226), nose_tip));
+  fcurve(Curve_5, setx(nose_rootL, 0.f), nose_tip);
  }
 
  {//NOTE: Draw that tasty nose wing :>
@@ -1782,11 +1779,7 @@ render_head(Pose &pose)
  {// NOTE: Some nose tip drawing (very fudgy)
   // TODO: We can merge this with the "nose under" lines, maybe? 
   // Problem is we kinda need to separate out what the nose side is, in order to do triangles fills
-  draw(bez_offset(nose_tipL,
-                  nose_tip_control,
-                  negateX(nose_tip_control),
-                  negateX(nose_tipL)),
-       0.7097f*painter->params.line.radii);
+  fcurve(Curve_3, nose_tipL, negateX(nose_tipL));
  }
  
  //~NOTE: Cheek situation pretty complex!
@@ -1839,10 +1832,7 @@ render_head(Pose &pose)
  {
   tvert cj = (lerp(chinL, 0.5f, jaw));
   {// TODO: This line (and "cj") is here because it happens to look good
-   v4 radii = painter->params.line.radii;
-   radii[0] = 0.f;
-   radii[1] = 0.f;
-   draw(bez_raw(ear_center, jaw, jaw, cj), radii);
+   fcurve(Curve_4, ear_center, cj);
   }
  }
  

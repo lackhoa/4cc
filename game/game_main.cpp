@@ -636,6 +636,20 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   painter->sending_data = state->sending_data;
   painter->references_full_alpha = state->references_full_alpha;
   painter->hot_locations = state->transient->hot_locations;
+  painter->active_shape_location = {};
+  if(fui_is_active())
+  {// NOTE(kv) Curve handles show only while d0/d3 is the active member (@draw_curve).
+   Slider &slider = *fui_active_slider.data;
+   Type_Info *type = get_slider_type_info(slider);
+   if(is_struct(type))
+   {
+    String member_name = type->members[fui_active_slider.active_member_index].name;
+    if(member_name == strcode(d0) or member_name == strcode(d3))
+    {
+     painter->active_shape_location = slider.location;
+    }
+   }
+  }
   painter->viewport = viewport;
   {
    v4 background_v4;
@@ -2060,20 +2074,7 @@ game_update(Game_Update_Params params)
      {
       case Key_Code_Tab:
       {
-       Type_Info *type = get_slider_type_info(*fui_active_slider.data);
-       if(equal(type, type_info_of(FUI_Line_Params)))
-       {
-        i32 radii_index = member_index_of(FUI_Line_Params, radii);
-        i32 lightness_index = member_index_of(FUI_Line_Params, lightness_additions);
-        i32 active_index = fui_active_slider.active_member_index;
-        i32 new_index;
-        if(active_index == radii_index){
-         new_index = lightness_index;
-        }else{
-         new_index = radii_index;
-        }
-        fui_active_slider.active_member_index = new_index;
-       }
+       fui_cycle_active_member();
       }break;
       
       case Key_Code_Return:
@@ -2295,23 +2296,21 @@ game_update(Game_Update_Params params)
    
    Slider &slider = *fui_active_slider.data;
    Type_Info *type = get_slider_type_info(slider);
-   if(equal(type, type_info_of(FUI_Line_Params)))
-   {//-line params
-    const char* items[] = { "radii", "lightness" };
-    
-    if(0)
-    {//-Select attribute
-     static int current_item = 0;
-     ImGui::Combo("line attribute", &current_item, items, IM_ARRAYSIZE(items));
-     i32 member_index = get_member_index_by_name(type, SCu8(items[current_item]));
-     fui_active_slider.active_member_index = member_index;
+   if(is_struct(type))
+   {//-Struct sliders (FUI_Line_Params, Curve): pick a member, show its value
+    i32 member_count = type->members.count;
+    const char **items = push_array(tmp, const char *, member_count);
+    for_i32(index, 0, member_count)
+    {
+     items[index] = (const char *)push_stringf(tmp, "%S", type->members[index].name).str;
     }
-    
-    {//-General info
-     I_Struct_Member &active_member =
-     type->members[fui_active_slider.active_member_index];
-     im_text("Editing: %S", active_member.name);
-    }
+    i32 &active_index = fui_active_slider.active_member_index;
+    ImGui::Combo("member", &active_index, items, member_count);
+
+    I_Struct_Member &active_member = type->members[active_index];
+    Printer printer = make_printer_buffer(tmp, 128);
+    print_code(printer, active_member.type, (u8 *)slider.value + active_member.offset, true);
+    im_text("%s = %S", items[active_index], printer_get_string(printer));
    }
    else
    {//-Other types

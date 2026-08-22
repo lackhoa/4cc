@@ -326,6 +326,26 @@ line_params_from_fui(FUI_Line_Params src)
  return result;
 }
 function void
+draw_curve(Curve c, v3 p0, v3 p3)
+{// NOTE(kv) `fcurve(Curve_n, p0, p3)` expands to this (see @Curve).
+ FUI_Line_Params line = {};
+ line.fui_flags           = c.fui_flags;
+ line.radii               = c.radii;
+ line.lightness_additions = c.lightness_additions;
+ line.line_flags          = c.line_flags;
+ draw(bez_offset(p0, c.d0, c.d3, p3), line_params_from_fui(line));
+
+ if(current_location_is_active_shape())
+ {// NOTE(kv) Editing aid: show the control handles only while d0/d3 is being edited
+  // (the painter's active_shape_location). These get recorded like any line.
+  Line_Params handle = get_line_params();
+  handle.flags |= Line_Overlay;
+  handle.radii = V4(0.25f, 0.25f, 0.25f, 0.25f);
+  draw_line(p0, p0+c.d0, handle);
+  draw_line(p3, p3+c.d3, handle);
+ }
+}
+function void
 draw_reference_image_from_data(Reference_Image ref)
 {
  v1 alpha = ref.alpha;

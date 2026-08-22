@@ -48,7 +48,7 @@ parse_preprocessor(Ed_Parser *p)
 global String slider_type_names[] = {
  strcode(v1), strcode(v2), strcode(v3), strcode(v4),
  strcode(i1), strcode(i2), strcode(i3), strcode(i4),
- strcode(FUI_Line_Params), strcode(tdim), strcode(tvert), strcode(tnormal),
+ strcode(FUI_Line_Params), strcode(Curve), strcode(tdim), strcode(tvert), strcode(tnormal),
 };
 struct Slider_Id
 {
@@ -292,6 +292,10 @@ modify_expression_once(Expression_Modifier *m, Meta_Expression *result)
    else if(Match(flp, 1))
    {//;flp(macro)
     BODY(strcode(line_params_from_fui(fv(%S))), Arg(0));
+   }
+   else if(Match(fcurve, 3))
+   {//;fcurve(macro): one stroke from one Curve slider; anchors p0, p3 come from code
+    BODY(strcode(draw_curve(fv(%S), %S, %S)), Arg(0), Arg(1), Arg(2));
    }
    
 #undef MatchName
