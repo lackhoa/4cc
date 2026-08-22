@@ -1728,8 +1728,13 @@ game_update(Game_Update_Params params)
    }
   }
   
-  hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
-  
+  // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
+  // hover-highlighting would just paint random red fills into every screenshot.
+  if(not debug_channel_enabled)
+  {
+   hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
+  }
+
   if(params.mouse.press_left)
   {// NOTE(kv) Jump to code location
    if(is_valid(hot_location))
