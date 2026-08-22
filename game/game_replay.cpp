@@ -3,10 +3,9 @@
 // so culling / hot-highlight / tessellation logic is shared by construction (Q22).
 // Plan + decisions: ~/notes/tasks/autodraw_draw_as_data/plan-replay-path.md
 
-// NOTE(kv) Q52: gates the per-frame store_recording below. Default on = today's
-// behavior; debug-channel `recapture 0` freezes the recording so a loaded one
-// survives frames (frozen document mode, for testing cross-frame behavior).
-global b32 global_debug_recapture = true;
+// NOTE(kv) Q52: `Replay_State.recapture` gates the per-frame store_recording below.
+// Default on = today's behavior; debug-channel `recapture 0` freezes the recording so
+// a loaded one survives frames (frozen recording, for testing cross-frame behavior).
 
 function void
 seed_preset_settings(Preset_Settings settings[Game_Preset_Count])
@@ -99,7 +98,10 @@ replay_recording(Recording &rec)
 
  for_i32(iprim, 0, rec.primitives.count)
  {
-  Recorded_Primitive &prim = rec.primitives.items[iprim];
+  // NOTE(kv) Copy, not reference: apply_shape_key blends in place and the recording
+  // must keep rest + delta.
+  Recorded_Primitive prim = rec.primitives.items[iprim];
+  apply_shape_key(prim);
   Recorded_Group &group = rec.groups.items[prim.group_index];
 
   if(cur_bone == 0 or not (group.bone_id == cur_bone->id))

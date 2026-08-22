@@ -36,6 +36,10 @@ struct Replay_State
  b32 display_replay;  // rendering mode B: the replay draws the recorded scope
  b32 diff_requested;  // one-shot, consumed by call_driver_render (main viewport)
  Replay_Diff_Result last_diff;
+ // NOTE(kv) Debug-channel knobs live here, not in globals, so a DLL hot reload
+ // mid-test doesn't silently reset them.
+ b32 recapture;      // Q52: per-frame store_recording gate (default on)
+ b32 force_animate;  // keep frames flowing while idle/unfocused
 };
 struct Game_State
 {// NOTE The state that is saved between reloads.

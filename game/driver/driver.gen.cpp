@@ -954,7 +954,6 @@ return pelvis_obj;
 }
 function void
 render_eyes(Pose &pose){
-v1 tblink = pose.tblink;
 tvert eyeO = ReadSlider(177);
 v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
 mat4i eyeT = mat4i_translate(eyeO) * mat4i_scales(eye_scale);
@@ -982,19 +981,20 @@ PaintBlock;
 painter->params.fill.color = eye_in_shade;
 (set_draw_location_unresolved({2,215}), fill3(nose_rootL, eye_in, es_up_in), clear_draw_location());
 }
-v4 eye_up_line_radii;
-v4 eye_low_line_radii;
+v4 eye_up_line_radii_open;
+v4 eye_up_line_radii_closed;
+v4 eye_low_line_radii_open;
+v4 eye_low_line_radii_closed;
 {
-v1 eye_in_radius = lerp(V2(0.0137f, -0.0006f), tblink);
-v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
-v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
-v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
-eye_up_line_radii = V4(eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
-eye_low_line_radii = eye_up_line_radii;
-eye_low_line_radii[1] = 0.0555f;
+eye_up_line_radii_open = V4(0.0137f, 0.6426f, 0.f, 0.4791f);
+eye_up_line_radii_closed = V4(-0.0006f, 0.499f, 0.6154f, 0.17f);
+eye_low_line_radii_open = eye_up_line_radii_open;
+eye_low_line_radii_closed = eye_up_line_radii_closed;
+eye_low_line_radii_open[1] = 0.0555f;
+eye_low_line_radii_closed[1] = 0.0555f;
 }
 Bez eye_low_line = bez_bezd_old(eye_in, V3(0.1735f, -0.2094f, 0.1663f), V2(0.117f, 0.2053f), eye_out);
-(set_draw_location_unresolved({2,216}), draw(eye_low_line, eye_low_line_radii), clear_draw_location());
+(set_draw_location_unresolved({2,216}), draw_keyed(Weight_Blink, eye_low_line, eye_low_line, eye_low_line_radii_open, eye_low_line_radii_closed), clear_draw_location());
 {
 tvert eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
 (set_draw_location_unresolved({2,217}), fill_point_bez(eye_low_patch, eye_low_line), clear_draw_location());
@@ -1002,12 +1002,11 @@ tvert eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
 (set_draw_location_unresolved({2,219}), fill3(eye_out, brow_out, es_up_in), clear_draw_location());
 }
 {
-Bez eye_up_line_now = bez_raw(eye_in, lerp(eye_up_line[1], tblink, eye_low_line[1]), lerp(eye_up_line[2], tblink, eye_low_line[2]), eye_out);
-(set_draw_location_unresolved({2,220}), draw(eye_up_line_now, eye_up_line_radii), clear_draw_location());
+(set_draw_location_unresolved({2,220}), draw_keyed(Weight_Blink, eye_up_line, eye_low_line, eye_up_line_radii_open, eye_up_line_radii_closed), clear_draw_location());
 {
 PaintBlock;
 painter->params.fill.color = eye_in_shade;
-(set_draw_location_unresolved({2,221}), fill_dual_bez(eye_up_line, eye_up_line_now), clear_draw_location());
+(set_draw_location_unresolved({2,221}), fill_dual_bez_keyed(Weight_Blink, eye_up_line, eye_up_line, eye_up_line, eye_low_line), clear_draw_location());
 }
 }
 {
@@ -1691,6 +1690,7 @@ driver_render(Arena *tmp, Painter *painter0){
 painter = painter0;
 Pose pose = driver_animate(painter->anim_time);
 compute_bones_from_pose(pose);
+publish_weight(Weight_Blink, pose.tblink);
 Preset_Settings &preset_settings = active_preset_settings();
 i32 viz_level = preset_settings.viz_level;
 u64 start_cycle = __rdtsc();

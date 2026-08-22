@@ -7,7 +7,7 @@
 // v1 commands (one per file):
 //   screenshot        -> request exe-side capture -> debug/screenshot_<n>.png
 //   diff              -> trigger Diff-now, result written on the NEXT update
-//   force_animate 0|1 -> set global_debug_force_animate
+//   force_animate 0|1 -> set Replay_State.force_animate
 //   dump_state        -> key counts + replay/diff state as text
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -119,7 +119,9 @@ debug_channel_dump_state(FILE *out, Game_State *state)
  Replay_State &replay = state->replay;
  fprintf(out, "display_replay: %d\n", replay.display_replay);
  fprintf(out, "diff_requested: %d\n", replay.diff_requested);
- fprintf(out, "force_animate: %d\n",  global_debug_force_animate);
+ fprintf(out, "force_animate: %d\n",  replay.force_animate);
+ fprintf(out, "recapture: %d\n",      replay.recapture);
+ fprintf(out, "weight_blink: %f\n",   m->weight_live[Weight_Blink]);
  debug_channel_write_diff_result(out, replay.last_diff);
 }
 
@@ -181,8 +183,8 @@ debug_channel_update(Game_State *state)
  }
  else if(strncmp(cmd, "force_animate", 13) == 0)
  {
-  global_debug_force_animate = (atoi(cmd+13) != 0);
-  fprintf(out, "force_animate: %d\n", global_debug_force_animate);
+  state->replay.force_animate = (atoi(cmd+13) != 0);
+  fprintf(out, "force_animate: %d\n", state->replay.force_animate);
  }
  else if(strcmp(cmd, "dump_state") == 0)
  {
@@ -201,8 +203,8 @@ debug_channel_update(Game_State *state)
  }
  else if(strncmp(cmd, "recapture", 9) == 0)
  {
-  global_debug_recapture = (atoi(cmd+9) != 0);
-  fprintf(out, "recapture: %d\n", global_debug_recapture);
+  state->replay.recapture = (atoi(cmd+9) != 0);
+  fprintf(out, "recapture: %d\n", state->replay.recapture);
  }
  else if(strncmp(cmd, "display_replay", 14) == 0)
  {

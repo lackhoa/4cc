@@ -560,6 +560,7 @@ convert_primitives_to_camera_space(Camera &camera)
   for_i32(iprim, 0, m->primitives.count)
   {
    Recorded_Primitive primitive = m->primitives[iprim];
+   apply_shape_key(primitive);  // NOTE(kv) picking/hot-test against what's on screen
    update_current_bone(m->groups[primitive.group_index].bone_id);
    switch(primitive.type)
    {
@@ -679,7 +680,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    global_replay_display = false;
    global_vertex_tee = 0;
 
-   if(viewport_id == 1 and global_debug_recapture)
+   if(viewport_id == 1 and replay.recapture)
    {// NOTE(kv) Q36: snapshot this frame's capture into the one recording.
     // Mode B doesn't stop the capture (mute suppresses rendering, not recording),
     // so it stays fresh either way (unless the Q52 recapture gate is off).
@@ -814,6 +815,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
  Game_State *state = push_struct0(bootstrap_arena, Game_State);
  state->is_dev_editor   = is_dev_editor;
  state->permanent_arena = *bootstrap_arena;
+ state->replay.recapture = true;
  thread_permanent_arena = make_arena(MB(1));
  
  {// NOTE: Save/Load business load_game
@@ -1573,10 +1575,6 @@ get_live_viewport_by_id(sarray(Live_Viewport) viewports, Viewport_ID id)
  }
  return 0;
 }
-
-// NOTE(kv) Debug: keep frames flowing while the app is idle/unfocused, so a debugger
-// can drive the app without UI input (cdb: `ed gameN!global_debug_force_animate 1`).
-global b32 global_debug_force_animate;
 
 #include "game_debug_channel.cpp"
 
@@ -2468,7 +2466,7 @@ game_update(Game_Update_Params params)
 #endif
  
  return{
-  .should_animate_next_frame = should_animate_next_frame or global_debug_force_animate
+  .should_animate_next_frame = should_animate_next_frame or state->replay.force_animate
                                or debug_channel_wants_animate,
   .game_commands             = game_commands,
  };

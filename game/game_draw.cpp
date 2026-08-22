@@ -371,6 +371,48 @@ publish_group_visibility(Group_Vis vis, b32 value)
  // Guard: the driver TU's the_model is null until driver_update sets it.
  if(the_model){ the_model->vis_live[vis] = value; }
 }
+function void
+publish_weight(Weight_Key key, v1 value)
+{// NOTE(kv) Same deal as publish_group_visibility, for shape-key weights.
+ if(the_model){ the_model->weight_live[key] = value; }
+}
+function void
+apply_shape_key(Recorded_Primitive &primitive)
+{// NOTE(kv) Turn a keyed primitive into its blended shape: `rest + w*delta` on points
+ // and radii, w from the live weight table. Operates on a COPY of the recorded
+ // primitive (the recording keeps rest + delta). Identical arithmetic to the live
+ // keyed draw funnels, so live and replay produce the same bits.
+ switch(primitive.type)
+ {
+  case Primitive_Type_Curve:
+  {
+   Recorded_Curve &curve = primitive.curve;
+   if(curve.key != Weight_None)
+   {
+    v1 w = the_model->weight_live[curve.key];
+    for_i32(i,0,4){ curve.bezier[i] = curve.bezier[i] + w*curve.dbezier[i]; }
+    curve.radii = curve.radii + w*curve.dradii;
+    curve.key = Weight_None;
+   }
+  }break;
+  
+  case Primitive_Type_Dual_Bezier:
+  {
+   Dual_Bezier &dual = primitive.dual_bezier;
+   if(dual.key != Weight_None)
+   {
+    v1 w = the_model->weight_live[dual.key];
+    for_i32(i,0,4)
+    {
+     dual.P[i] = dual.P[i] + w*dual.dP[i];
+     dual.Q[i] = dual.Q[i] + w*dual.dQ[i];
+    }
+    dual.key = Weight_None;
+   }
+  }break;
+  default: break;
+ }
+}
 //-
 
 struct Paint_Params_Block
@@ -602,29 +644,12 @@ radii_c2(v4 ref, v2 d_p3)
  return V4(p0,p1,p2,p3);
 }
 function void
-draw_bezier(tvert P[4], Line_Params params)
-{
- // NOTE Local copies: never mutate the caller's points (same Bezier is reused for
- // draw + fill).
- tvert P_rec[4];   // owning-bone coords — what the recording stores
+draw_bezier_rec(tvert P_rec[4], Line_Params params)
+{// NOTE(kv) Render half of draw_bezier: owning-bone-space points in, resolved through
+ // the live transforms, nothing recorded. Shared by the plain, keyed and replay paths.
  tvert P_draw[4];  // current-bone coords via live transforms — what we render
- for_i32(i,0,4)
- {
-  P_rec[i]  = canonicalize_point_bone(P[i]);
-  P_draw[i] = resolve_point_bone(P_rec[i]);
- }
- {//-send data
-  Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
-  for_i32(i,0,4)
-  {
-   primitive.curve.bezier[i] = P_rec[i];
-  }
-  primitive.curve.radii = params.radii;
-  primitive.curve.lightness_additions = params.lightness_additions;
-  primitive.curve.straight = (params.flags & Line_Straight);
-  send_primitive(primitive);
- }
- 
+ for_i32(i,0,4){ P_draw[i] = resolve_point_bone(P_rec[i]); }
+
  if(is_line_enabled())
  {
   b32 do_draw = true;
@@ -678,6 +703,59 @@ draw_bezier(tvert P[4], Line_Params params)
   // NOTE(kv) We want "draw" to be like a command, so don't return anything.
   painter->previous_draw_result = do_draw;
  }
+}
+function void
+draw_bezier(tvert P[4], Line_Params params)
+{
+ // NOTE Local copies: never mutate the caller's points (same Bezier is reused for
+ // draw + fill).
+ tvert P_rec[4];   // owning-bone coords — what the recording stores
+ for_i32(i,0,4){ P_rec[i] = canonicalize_point_bone(P[i]); }
+ {//-send data
+  Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
+  for_i32(i,0,4)
+  {
+   primitive.curve.bezier[i] = P_rec[i];
+  }
+  primitive.curve.radii = params.radii;
+  primitive.curve.lightness_additions = params.lightness_additions;
+  primitive.curve.straight = (params.flags & Line_Straight);
+  send_primitive(primitive);
+ }
+ draw_bezier_rec(P_rec, params);
+}
+function void
+draw_keyed(Weight_Key key, Bezier rest, Bezier target,
+           v4 radii_rest, v4 radii_target, Line_Params params=get_line_params())
+{// NOTE(kv) Shape-keyed curve: records {rest, target-rest, key}, renders
+ // `rest + w*delta` (points and radii) through the same render half replay uses.
+ tvert rest_rec[4];
+ tvec delta[4];
+ for_i32(i,0,4)
+ {
+  rest_rec[i] = canonicalize_point_bone(rest[i]);
+  delta[i] = canonicalize_point_bone(target[i]) - rest_rec[i];
+ }
+ v4 dradii = radii_target - radii_rest;
+ {//-send data
+  Recorded_Primitive primitive = {.type = Primitive_Type_Curve};
+  for_i32(i,0,4)
+  {
+   primitive.curve.bezier[i] = rest_rec[i];
+   primitive.curve.dbezier[i] = delta[i];
+  }
+  primitive.curve.radii = radii_rest;
+  primitive.curve.dradii = dradii;
+  primitive.curve.key = key;
+  primitive.curve.lightness_additions = params.lightness_additions;
+  primitive.curve.straight = (params.flags & Line_Straight);
+  send_primitive(primitive);
+ }
+ v1 w = the_model->weight_live[key];
+ tvert P_rec[4];
+ for_i32(i,0,4){ P_rec[i] = rest_rec[i] + w*delta[i]; }
+ params.radii = radii_rest + w*dradii;
+ draw_bezier_rec(P_rec, params);
 }
 myinline void
 draw(Bezier P, Line_Params params=get_line_params())
@@ -756,22 +834,13 @@ get_triangle_normal(v3 a, v3 b, v3 c)
 }
 
 function void
-fill_dual_bez(tvert P_in[4], tvert Q_in[4], Fill_Params params=get_fill_params())
-{
- tvert P_rec[4], Q_rec[4];    // owning-bone coords — recorded
+fill_dual_bez_rec(tvert P_rec[4], tvert Q_rec[4], Fill_Params params)
+{// NOTE(kv) Render half of fill_dual_bez (see draw_bezier_rec).
  tvert P[4], Q[4];            // current-bone coords via live transforms — rendered
  for_i32(i,0,4)
  {
-  P_rec[i] = canonicalize_point_bone(P_in[i]);
-  Q_rec[i] = canonicalize_point_bone(Q_in[i]);
   P[i] = resolve_point_bone(P_rec[i]);
   Q[i] = resolve_point_bone(Q_rec[i]);
- }
- {//-Sending data
-  Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
-  block_copy(primitive.dual_bezier.P, P_rec, 4*sizeof(tvert));
-  block_copy(primitive.dual_bezier.Q, Q_rec, 4*sizeof(tvert));
-  send_primitive(primitive);
  }
 
  if(is_fill_enabled())
@@ -810,6 +879,57 @@ fill_dual_bez(tvert P_in[4], tvert Q_in[4], Fill_Params params=get_fill_params()
    }
   }
  }
+}
+function void
+fill_dual_bez(tvert P_in[4], tvert Q_in[4], Fill_Params params=get_fill_params())
+{
+ tvert P_rec[4], Q_rec[4];    // owning-bone coords — recorded
+ for_i32(i,0,4)
+ {
+  P_rec[i] = canonicalize_point_bone(P_in[i]);
+  Q_rec[i] = canonicalize_point_bone(Q_in[i]);
+ }
+ {//-Sending data
+  Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
+  block_copy(primitive.dual_bezier.P, P_rec, 4*sizeof(tvert));
+  block_copy(primitive.dual_bezier.Q, Q_rec, 4*sizeof(tvert));
+  send_primitive(primitive);
+ }
+ fill_dual_bez_rec(P_rec, Q_rec, params);
+}
+function void
+fill_dual_bez_keyed(Weight_Key key,
+                    Bezier P_rest, Bezier P_target,
+                    Bezier Q_rest, Bezier Q_target,
+                    Fill_Params params=get_fill_params())
+{// NOTE(kv) Shape-keyed dual bezier (see draw_keyed); pass rest==target on a side
+ // that doesn't move.
+ tvert P_rec[4], Q_rec[4];
+ tvec dP[4], dQ[4];
+ for_i32(i,0,4)
+ {
+  P_rec[i] = canonicalize_point_bone(P_rest[i]);
+  Q_rec[i] = canonicalize_point_bone(Q_rest[i]);
+  dP[i] = canonicalize_point_bone(P_target[i]) - P_rec[i];
+  dQ[i] = canonicalize_point_bone(Q_target[i]) - Q_rec[i];
+ }
+ {//-Sending data
+  Recorded_Primitive primitive = {.type=Primitive_Type_Dual_Bezier};
+  block_copy(primitive.dual_bezier.P, P_rec, 4*sizeof(tvert));
+  block_copy(primitive.dual_bezier.Q, Q_rec, 4*sizeof(tvert));
+  block_copy(primitive.dual_bezier.dP, dP, 4*sizeof(tvec));
+  block_copy(primitive.dual_bezier.dQ, dQ, 4*sizeof(tvec));
+  primitive.dual_bezier.key = key;
+  send_primitive(primitive);
+ }
+ v1 w = the_model->weight_live[key];
+ tvert P_blend[4], Q_blend[4];
+ for_i32(i,0,4)
+ {
+  P_blend[i] = P_rec[i] + w*dP[i];
+  Q_blend[i] = Q_rec[i] + w*dQ[i];
+ }
+ fill_dual_bez_rec(P_blend, Q_blend, params);
 }
 function void
 fill_point_bez(tvert O, Bezier const&bezier, Fill_Params params=get_fill_params())

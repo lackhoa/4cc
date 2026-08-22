@@ -1338,7 +1338,6 @@ render_eyes(Pose &pose)
 {
  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
- v1 tblink = pose.tblink;
  tvert eyeO = fvert(0.1953f, -0.2348f, 0.8954f);
  v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
  mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
@@ -1369,39 +1368,41 @@ render_eyes(Pose &pose)
   fill3(nose_rootL, eye_in, es_up_in);
  }
  //-
- v4 eye_up_line_radii;
- v4 eye_low_line_radii;
- {//TODO(kv) Depends on t -> Cannot be captured by static data!
-  v1 eye_in_radius  = lerp(V2(0.0137f, -0.0006f), tblink);
-  v1 eye_out_radius = lerp(V2(0.4791f, 0.17f), tblink);
-  v1 eye0_radius = lerp(V2(0.6426f, 0.499f), tblink);
-  v1 eye1_radius = lerp(V2(0.f, 0.6154f), tblink);
-  eye_up_line_radii= V4(eye_in_radius, eye0_radius, eye1_radius, eye_out_radius);
-  eye_low_line_radii= eye_up_line_radii;
-  eye_low_line_radii[1] = 0.0555f;
+ v4 eye_up_line_radii_open;
+ v4 eye_up_line_radii_closed;
+ v4 eye_low_line_radii_open;
+ v4 eye_low_line_radii_closed;
+ {// NOTE: Lid radii at eyes open vs closed; the blink shape key blends between them
+  // (stroke width changes with the blink, not just the lid shape).
+  eye_up_line_radii_open   = V4(0.0137f,  0.6426f, 0.f,     0.4791f);
+  eye_up_line_radii_closed = V4(-0.0006f, 0.499f,  0.6154f, 0.17f);
+  eye_low_line_radii_open   = eye_up_line_radii_open;
+  eye_low_line_radii_closed = eye_up_line_radii_closed;
+  eye_low_line_radii_open[1]   = 0.0555f;
+  eye_low_line_radii_closed[1] = 0.0555f;
  }
  //-
  Bez eye_low_line = bez_bezd_old(eye_in,
                                  V3(0.1735f, -0.2094f, 0.1663f), 
                                  V2(0.117f, 0.2053f), 
                                  eye_out);
- draw(eye_low_line, eye_low_line_radii);
+ draw_keyed(Weight_Blink, eye_low_line, eye_low_line,
+            eye_low_line_radii_open, eye_low_line_radii_closed);
  {
   tvert eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
   fill_point_bez(eye_low_patch, eye_low_line);
   fill3(eye_low_patch, eye_out, cheek_low);
   fill3(eye_out, brow_out, es_up_in);
  }
- {// NOTE: Blinking animation control
-  Bez eye_up_line_now = bez_raw(eye_in, 
-                                lerp(eye_up_line[1], tblink, eye_low_line[1]),
-                                lerp(eye_up_line[2], tblink, eye_low_line[2]),
-                                eye_out);
-  draw(eye_up_line_now, eye_up_line_radii);
+ {// NOTE: Blinking animation control: the closed upper lid IS the lower line, so the
+  // blink shape key blends eye_up_line toward eye_low_line (shared endpoints -> the
+  // deltas at eye_in/eye_out are zero).
+  draw_keyed(Weight_Blink, eye_up_line, eye_low_line,
+             eye_up_line_radii_open, eye_up_line_radii_closed);
   {// NOTE: The eyelid
    PaintBlock;
    painter->params.fill.color = eye_in_shade;
-   fill_dual_bez(eye_up_line, eye_up_line_now);
+   fill_dual_bez_keyed(Weight_Blink, eye_up_line, eye_up_line, eye_up_line, eye_low_line);
   }
  }
  {//~NOTE: Eyeball
@@ -2336,6 +2337,7 @@ driver_render(Arena *tmp, Painter *painter0)
  //-Animate once per viewport
  Pose pose = driver_animate(painter->anim_time);
  compute_bones_from_pose(pose);
+ publish_weight(Weight_Blink, pose.tblink);
  
  Preset_Settings &preset_settings = active_preset_settings();
  i32 viz_level = preset_settings.viz_level;

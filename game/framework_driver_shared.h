@@ -446,10 +446,24 @@ mk_poly3(v3 points[3])
 {
  return Poly3{expand3(points)};
 }
+enum Weight_Key
+{// NOTE(kv) Shape-key weights (plan-pose-scalar-curves Q15/Q17): a keyed primitive
+ // stores its rest shape plus a delta, and is drawn as `rest + w*delta` where
+ // w = Model.weight_live[key], published by the driver each frame (like vis_live).
+ // Weight_None slot stays 0, so an unkeyed primitive is unaffected.
+ Weight_None,
+ Weight_Blink,
+ //
+ Weight_Count,
+};
 struct Dual_Bezier
 {
  Bezier P;
  Bezier Q;
+ // NOTE(kv) Shape key (see Weight_Key): both sides may carry a delta.
+ Weight_Key key;
+ tvec dP[4];
+ tvec dQ[4];
 };
 struct Disk
 {// NOTE(kv) fill_disk arguments (the tessellation is camera-dependent, re-run at replay)
@@ -481,6 +495,10 @@ struct Recorded_Curve
  v4 radii;
  v4 lightness_additions;
  b32 straight;  // Line_Straight, set by the straight-line helper
+ // NOTE(kv) Shape key: points AND radii blend (the blink changes stroke width too).
+ Weight_Key key;
+ tvec dbezier[4];
+ v4 dradii;
 };
 struct Recorded_Primitive
 {
@@ -641,6 +659,9 @@ struct Model
  // NOTE(kv) Live visibility per Group_Vis tag, published by the driver each frame
  // (before replay runs). vis_live[Vis_None] is always true.
  b32 vis_live[Group_Vis_Count];
+ // NOTE(kv) Live shape-key weights per Weight_Key, published by the driver each frame
+ // (before replay runs). weight_live[Weight_None] is always 0.
+ v1 weight_live[Weight_Count];
  // NOTE(kv) Camera-space copy of `primitives` (frame_arena), rebuilt per frame on
  // demand -- consumers needing camera space read this, never transform the recording.
  darray(Recorded_Primitive) camera_primitives;
