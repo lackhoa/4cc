@@ -1732,7 +1732,13 @@ render_head(Pose &pose)
  }
  
  //-NOTE: Nose
- tvert v1219 = (addx(nose_tip, nose_sideX));
+ // NOTE: nose_tip is the apex of the tip curve below (t=0.5 of a cubic whose controls
+ // are p0+c / p3+negateX(c) = base + 0.75*c.yz); everything else (side line, fills,
+ // under-line, tip curve endpoints) hangs off nose_tip_base, 0.75*c.yz behind it.
+ tvec nose_tip_control = V3(-0.0533f, 0.0283f, 0.0438f);
+ tvert nose_tip_base = nose_tip - 0.75f*V3(0.f, nose_tip_control.y, nose_tip_control.z);
+ tvert nose_tipL = (nose_tip_base+V3x(nose_sideX));
+ tvert v1219 = nose_tipL;
  Bez nose_line_side = bez_unit2(nose_rootL,
                                 V4(),
                                 V3(0.f, 0.f, 1.f),
@@ -1742,7 +1748,6 @@ render_head(Pose &pose)
   painter->params.line.flags |= Line_Invisible;
   draw(nose_line_side);
  }
- tvert nose_tipL = (nose_tip+V3x(nose_sideX));
  draw(bez_offset(nose_tipL,
                  V3(0.0121f, -0.0404f, -0.1108f),
                  V3(),
@@ -1759,6 +1764,16 @@ render_head(Pose &pose)
   fill_dual_bez(nose_line_side, nose_line_sideR);
  }
  
+ if(is_left())
+ {// NOTE: Nose bridge: the profile silhouette, root -> tip along the midline.
+  // Hidden near-frontal like the chin midline bits (no bridge line on a front view).
+  ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.73f));
+  // NOTE(kv) The midline sits behind the nose-side fills (x=+-nose_sideX) from any
+  // non-frontal view, so pull the line toward the camera (same jank as the skeleton).
+  painter->params.line_depth_offset -= fv(v1_236) * centimeter;
+  draw(bez_offset(setx(nose_rootL, 0.f), fv(v3_225), fv(v3_226), nose_tip));
+ }
+
  {//NOTE: Draw that tasty nose wing :>
   ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.70f));
   draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up));
@@ -1767,10 +1782,9 @@ render_head(Pose &pose)
  {// NOTE: Some nose tip drawing (very fudgy)
   // TODO: We can merge this with the "nose under" lines, maybe? 
   // Problem is we kinda need to separate out what the nose side is, in order to do triangles fills
-  tvec control = V3(-0.0533f, 0.0283f, 0.0438f);
   draw(bez_offset(nose_tipL,
-                  control,
-                  negateX(control),
+                  nose_tip_control,
+                  negateX(nose_tip_control),
                   negateX(nose_tipL)),
        0.7097f*painter->params.line.radii);
  }

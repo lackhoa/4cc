@@ -1263,14 +1263,16 @@ tvert philtrum_offset_point = nose_wing + V3(-0.0499f, -0.0725f, -0.0489f);
 (set_draw_location_unresolved({2,245}), fill3(philtrum_offset_point, mouth_corner, nose_wing), clear_draw_location());
 (set_draw_location_unresolved({2,246}), fill3(philtrum_lowL, philtrum_low, philtrum_offset_point), clear_draw_location());
 }
-tvert v1219 = addx(nose_tip, nose_sideX);
+tvec nose_tip_control = V3(-0.0533f, 0.0283f, 0.0438f);
+tvert nose_tip_base = nose_tip - 0.75f * V3(0.f, nose_tip_control.y, nose_tip_control.z);
+tvert nose_tipL = nose_tip_base + V3x(nose_sideX);
+tvert v1219 = nose_tipL;
 Bez nose_line_side = bez_unit2(nose_rootL, V4(), V3(0.f, 0.f, 1.f), v1219);
 {
 PaintBlock;
 painter->params.line.flags |= Line_Invisible;
 (set_draw_location_unresolved({2,247}), draw(nose_line_side), clear_draw_location());
 }
-tvert nose_tipL = nose_tip + V3x(nose_sideX);
 (set_draw_location_unresolved({2,248}), draw(bez_offset(nose_tipL, V3(0.0121f, -0.0404f, -0.1108f), V3(), nose_wing), V4(0.151758f, 0.699609f, 1.149659f, -0.148325f)), clear_draw_location());
 if(is_left()){
 Bez nose_line_sideR = bez_negateX(nose_line_side);
@@ -1281,27 +1283,31 @@ painter->params.line.flags |= Line_Invisible;
 }
 (set_draw_location_unresolved({2,250}), fill_dual_bez(nose_line_side, nose_line_sideR), clear_draw_location());
 }
+if(is_left()){
+ShowAlignedSymIf(V3x(1.f), cosine(0.25f * 0.73f));
+painter->params.line_depth_offset -= ReadSlider(193) * centimeter;
+(set_draw_location_unresolved({2,251}), draw(bez_offset(setx(nose_rootL, 0.f), ReadSlider(194), ReadSlider(195), nose_tip)), clear_draw_location());
+}
 {
 ShowAlignedSymIf(V3x(1.f), cosine(0.25f * 0.70f));
-(set_draw_location_unresolved({2,251}), draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up)), clear_draw_location());
+(set_draw_location_unresolved({2,252}), draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up)), clear_draw_location());
 }
 if(is_left()){
-tvec control = V3(-0.0533f, 0.0283f, 0.0438f);
-(set_draw_location_unresolved({2,252}), draw(bez_offset(nose_tipL, control, negateX(control), negateX(nose_tipL)), 0.7097f * painter->params.line.radii), clear_draw_location());
+(set_draw_location_unresolved({2,253}), draw(bez_offset(nose_tipL, nose_tip_control, negateX(nose_tip_control), negateX(nose_tipL)), 0.7097f * painter->params.line.radii), clear_draw_location());
 }
 cheek_low = mkvert(0, noseY, faceZ) + V3(0.6062f, 0.f, -0.4289f);
-(set_draw_location_unresolved({2,253}), fill4(jaw, chinL, mouth_corner, cheek_low), clear_draw_location());
-nose_root_backL = ReadSlider(193) + V3x(nose_sideX);
-brow_out = ReadSlider(194);
+(set_draw_location_unresolved({2,254}), fill4(jaw, chinL, mouth_corner, cheek_low), clear_draw_location());
+nose_root_backL = ReadSlider(196) + V3x(nose_sideX);
+brow_out = ReadSlider(197);
 cheek_up = brow_out + V3(0.f, -0.2935f, 0.f);
 if(level1){
 hl_block;
-(set_draw_location_unresolved({2,254}), draw_line(brow_out, cheek_up), clear_draw_location());
+(set_draw_location_unresolved({2,255}), draw_line(brow_out, cheek_up), clear_draw_location());
 }
 brow_ridge = bez_unit2(nose_rootL, V4(0.f, 0.3208f, 0.f, 0.6236f), V3(0.f, 0.6019f, 0.7986f), brow_out);
 if(level1){
 hl_block;
-(set_draw_location_unresolved({2,255}), draw(brow_ridge), clear_draw_location());
+(set_draw_location_unresolved({2,256}), draw(brow_ridge), clear_draw_location());
 }
 {
 PaintBlock;
@@ -1313,13 +1319,13 @@ v1 brow_joint_radius;
 {
 v4 radii = V4(0.3344f, 0.6654f, 0.61f, 1.f);
 brow_joint_radius = radii.v[3];
-(set_draw_location_unresolved({2,256}), draw(brow_in_line, radii), clear_draw_location());
+(set_draw_location_unresolved({2,257}), draw(brow_in_line, radii), clear_draw_location());
 }
 {
 Bezier brow_out_line = bez_unit(brow_mid, V2(0.f, 0.5549f), V2(0.f, 0.4409f), V3(0.f, 1.f, 0.f), brow_out);
 v4 radii = V4(0.25f, 0.8f, 0.8f, 0.25f);
 radii.v[0] = brow_joint_radius;
-(set_draw_location_unresolved({2,257}), draw(brow_out_line, radii), clear_draw_location());
+(set_draw_location_unresolved({2,258}), draw(brow_out_line, radii), clear_draw_location());
 }
 }
 {
@@ -1328,85 +1334,85 @@ tvert cj = lerp(chinL, 0.5f, jaw);
 v4 radii = painter->params.line.radii;
 radii[0] = 0.f;
 radii[1] = 0.f;
-(set_draw_location_unresolved({2,258}), draw(bez_raw(ear_center, jaw, jaw, cj), radii), clear_draw_location());
+(set_draw_location_unresolved({2,259}), draw(bez_raw(ear_center, jaw, jaw, cj), radii), clear_draw_location());
 }
 }
-(set_draw_location_unresolved({2,259}), fill3(nose_wing, mouth_corner, cheek_low), clear_draw_location());
+(set_draw_location_unresolved({2,260}), fill3(nose_wing, mouth_corner, cheek_low), clear_draw_location());
 {
 Bezier line = bez_line(nose_root_backL, nose_wing);
-(set_draw_location_unresolved({2,260}), fill_dual_bez(nose_line_side, line), clear_draw_location());
+(set_draw_location_unresolved({2,261}), fill_dual_bez(nose_line_side, line), clear_draw_location());
 }
 tvert foreheadL = brow_out + V3(0.0477f, 0.7772f, -0.0232f);
 v1 foreheadY = foreheadL.y;
 {
 tvert verts[] = {jaw, cheek_up, brow_out, foreheadL};
-(set_draw_location_unresolved({2,261}), fill_fan(ear_center, verts, alen(verts)), clear_draw_location());
+(set_draw_location_unresolved({2,262}), fill_fan(ear_center, verts, alen(verts)), clear_draw_location());
 }
-(set_draw_location_unresolved({2,262}), fill3(cheek_up, jaw, cheek_low), clear_draw_location());
+(set_draw_location_unresolved({2,263}), fill3(cheek_up, jaw, cheek_low), clear_draw_location());
 if(level1){
 hl_block;
-(set_draw_location_unresolved({2,263}), draw(bez_line(brow_out, cheek_up)), clear_draw_location());
+(set_draw_location_unresolved({2,264}), draw(bez_line(brow_out, cheek_up)), clear_draw_location());
 }
 {
 PaintBlock;
-set_line_color_lightness(ReadSlider(195));
+set_line_color_lightness(ReadSlider(198));
 scale_line_radius(0.5f);
-tvert ear_back = ear_center + ReadSlider(196);
-tvert ear_low = ear_center + ReadSlider(197);
-v4 radii1 = ReadSlider(198);
+tvert ear_back = ear_center + ReadSlider(199);
+tvert ear_low = ear_center + ReadSlider(200);
+v4 radii1 = ReadSlider(201);
 v4 radii2 = radii_c2(radii1, V2(-0.9383f, 0.f));
 Bez ear1 = bez_unit(ear_center, V2(0.2792f, 3.5588f), V2(0.1526f, 0.3068f), V3(0.3587f, 0.692f, -0.6264f), ear_back);
-(set_draw_location_unresolved({2,264}), draw(ear1, lp(radii1)), clear_draw_location());
+(set_draw_location_unresolved({2,265}), draw(ear1, lp(radii1)), clear_draw_location());
 Bez ear2 = bez_c2(ear1, V3(), ear_low);
-(set_draw_location_unresolved({2,265}), draw(ear2, lp(radii2)), clear_draw_location());
+(set_draw_location_unresolved({2,266}), draw(ear2, lp(radii2)), clear_draw_location());
 }
-tvert head_back_out = ReadSlider(199);
+tvert head_back_out = ReadSlider(202);
 Bezier head_top_out_line = bez_offset(foreheadL, V3(0.1239f, 0.1894f, -0.2995f), V3(-0.0634f, 0.3622f, 0.1935f), head_back_out);
 if(level1){
-(set_draw_location_unresolved({2,266}), draw(head_top_out_line), clear_draw_location());
+(set_draw_location_unresolved({2,267}), draw(head_top_out_line), clear_draw_location());
 }
 tvert forehead_in = mkverty(foreheadY) + V3(0.1445f, 0.072f, 0.8969f);
 Bezier hair_hline = bez_raw(foreheadL, forehead_in, negateX(forehead_in), negateX(foreheadL));
 if(is_left()){
 if(level1){
-(set_draw_location_unresolved({2,267}), draw(hair_hline), clear_draw_location());
+(set_draw_location_unresolved({2,268}), draw(hair_hline), clear_draw_location());
 }
 }
-tvert head_back_in = ReadSlider(200);
+tvert head_back_in = ReadSlider(203);
 Bezier head_top_in_line = bez_bezd_old(forehead_in, V3(0.f, 0.4276f, -0.1837f), V2(0.3589f, 0.1402f), head_back_in);
 if(level2){
-(set_draw_location_unresolved({2,268}), draw(head_top_in_line), clear_draw_location());
+(set_draw_location_unresolved({2,269}), draw(head_top_in_line), clear_draw_location());
 }
-(set_draw_location_unresolved({2,269}), fill_patch(patch_symx(head_top_out_line, head_top_in_line)), clear_draw_location());
+(set_draw_location_unresolved({2,270}), fill_patch(patch_symx(head_top_out_line, head_top_in_line)), clear_draw_location());
 tvert behind_ear = ear_center + V3(-0.183f, -0.3342f, -0.1239f);
 Bezier head_back_out_line;
 {
 head_back_out_line = bez_offset(head_back_out, V3(0.f, 0.001f, -0.0779f), V3(-0.0535f, 0.197f, -0.6398f), behind_ear);
 if(level2){
-(set_draw_location_unresolved({2,270}), draw(head_back_out_line), clear_draw_location());
+(set_draw_location_unresolved({2,271}), draw(head_back_out_line), clear_draw_location());
 }
-tvert head_back_in2 = ReadSlider(201);
+tvert head_back_in2 = ReadSlider(204);
 Bezier head_back_in_line = bez_offset(head_back_in, V3(-0.f, -0.3664f, -0.3108f), V3(0.f, -0.4228f, -1.1179f), head_back_in2);
 Patch head_back = patch_symx(head_back_out_line, head_back_in_line);
 if(level2){
-(set_draw_location_unresolved({2,271}), draw(head_back_in_line), clear_draw_location());
+(set_draw_location_unresolved({2,272}), draw(head_back_in_line), clear_draw_location());
 }
-(set_draw_location_unresolved({2,272}), fill_patch(head_back), clear_draw_location());
+(set_draw_location_unresolved({2,273}), fill_patch(head_back), clear_draw_location());
 {
 PaintBlock;
 painter->params.line.alignment_min = 0.9797f;
-(set_draw_location_unresolved({2,273}), draw(get_uline(head_back, 0.5f), lp(I4(1, 3, 3, 0))), clear_draw_location());
+(set_draw_location_unresolved({2,274}), draw(get_uline(head_back, 0.5f), lp(I4(1, 3, 3, 0))), clear_draw_location());
 }
 }
-(set_draw_location_unresolved({2,274}), fill_point_bez(ear_center, head_top_out_line), clear_draw_location());
-(set_draw_location_unresolved({2,275}), fill_line_bez(ear_center, head_back_out, head_back_out_line), clear_draw_location());
-if(ReadSlider(202)){
+(set_draw_location_unresolved({2,275}), fill_point_bez(ear_center, head_top_out_line), clear_draw_location());
+(set_draw_location_unresolved({2,276}), fill_line_bez(ear_center, head_back_out, head_back_out_line), clear_draw_location());
+if(ReadSlider(205)){
 tvert hair_hline_center = bezier_sample(hair_hline, 0.5f);
 tvert esuo = brow_out;
-tvert control_point = mkvert(ReadSlider(203), -esuo.y / 3.f, (4.f - esuo.z) / 3.f);
+tvert control_point = mkvert(ReadSlider(206), -esuo.y / 3.f, (4.f - esuo.z) / 3.f);
 Bez brow_hline = bez_raw(esuo, control_point, negateX(control_point), negateX(esuo));
 if(is_left()){
-(set_draw_location_unresolved({2,276}), fill_patch(brow_hline, brow_hline, hair_hline, hair_hline), clear_draw_location());
+(set_draw_location_unresolved({2,277}), fill_patch(brow_hline, brow_hline, hair_hline, hair_hline), clear_draw_location());
 }
 }
 {
@@ -1415,56 +1421,56 @@ tvert chin_upL = chin_up_center + V3x(0.1274f);
 tvert chin_upR = negateX(chin_upL);
 tvert chinR = negateX(chinL);
 if(is_left()){
-if(ReadSlider(204)){
+if(ReadSlider(207)){
 Bezier chin_line = bez_raw(chinL, chin_middle, chin_middle, negateX(chinL));
-(set_draw_location_unresolved({2,277}), draw(chin_line), clear_draw_location());
+(set_draw_location_unresolved({2,278}), draw(chin_line), clear_draw_location());
 }
 }
 {
 PaintBlock;
 scale_line_radius(0.25f);
-tvert mouth_low_valley = lip_low_center + ReadSlider(205);
+tvert mouth_low_valley = lip_low_center + ReadSlider(208);
 {
 ShowIf(is_left());
 ShowAlignedSymIf(V3x(1.f), cosine(0.25f * 0.73f));
 {
 Line_Params params = lp();
-params.lightness_additions = ReadSlider(206);
-(set_draw_location_unresolved({2,278}), draw(bez_line(lip_low_center, mouth_low_valley), params), clear_draw_location());
+params.lightness_additions = ReadSlider(209);
+(set_draw_location_unresolved({2,279}), draw(bez_line(lip_low_center, mouth_low_valley), params), clear_draw_location());
 }
 {
-(set_draw_location_unresolved({2,279}), draw(bez_line(chin_middle, setx(chin_upL, 0.f))), clear_draw_location());
+(set_draw_location_unresolved({2,280}), draw(bez_line(chin_middle, setx(chin_upL, 0.f))), clear_draw_location());
 }
 if(level1){
-(set_draw_location_unresolved({2,280}), draw(bez_line(mouth_low_valley, chin_middle)), clear_draw_location());
+(set_draw_location_unresolved({2,281}), draw(bez_line(mouth_low_valley, chin_middle)), clear_draw_location());
 }
 }
 tvert chin_point0 = mouth_corner;
 tvert control_point = mkvert(0.f, (-chin_point0.y + 4 * mouth_low_valley.y) / 3.f, (-chin_point0.z + 4 * mouth_low_valley.z) / 3.f);
 Bez mouth_low_valley_line = bez_raw(chin_point0, control_point, negateX(control_point), negateX(chin_point0));
 if(level1){
-(set_draw_location_unresolved({2,281}), draw(mouth_low_valley_line), clear_draw_location());
+(set_draw_location_unresolved({2,282}), draw(mouth_low_valley_line), clear_draw_location());
 }
-(set_draw_location_unresolved({2,282}), fill3(lip_low_center, mouth_corner, mouth_low_valley), clear_draw_location());
-(set_draw_location_unresolved({2,283}), fill4(chin_middle, chinL, mouth_corner, mouth_low_valley), clear_draw_location());
+(set_draw_location_unresolved({2,283}), fill3(lip_low_center, mouth_corner, mouth_low_valley), clear_draw_location());
+(set_draw_location_unresolved({2,284}), fill4(chin_middle, chinL, mouth_corner, mouth_low_valley), clear_draw_location());
 }
 }
-tvert head_neck_junction = ReadSlider(207);
+tvert head_neck_junction = ReadSlider(210);
 if(is_left()){
 {
-ShowAlignedSymIf(V3x(1.f), ReadSlider(208));
-(set_draw_location_unresolved({2,284}), draw(bez_line(chin_middle, head_neck_junction)), clear_draw_location());
+ShowAlignedSymIf(V3x(1.f), ReadSlider(211));
+(set_draw_location_unresolved({2,285}), draw(bez_line(chin_middle, head_neck_junction)), clear_draw_location());
 }
-(set_draw_location_unresolved({2,285}), fill3(head_neck_junction, chinL, jaw), clear_draw_location());
-(set_draw_location_unresolved({2,286}), fill3(head_neck_junction, chinL, negateX(chinL)), clear_draw_location());
+(set_draw_location_unresolved({2,286}), fill3(head_neck_junction, chinL, jaw), clear_draw_location());
+(set_draw_location_unresolved({2,287}), fill3(head_neck_junction, chinL, negateX(chinL)), clear_draw_location());
 }
 {
 PaintBlock;
 scale_line_radius(0.3826f);
 set_line_color_lightness(1.5096f);
-tvert a1626 = ReadSlider(209);
-tvert b1627 = ReadSlider(210);
-tvert c1633 = ReadSlider(211);
+tvert a1626 = ReadSlider(212);
+tvert b1627 = ReadSlider(213);
+tvert c1633 = ReadSlider(214);
 }
 {
 PaintBlock;
@@ -1472,7 +1478,7 @@ painter->params.nslice_per_meter = 1.5162f * 128.f;
 scale_line_radius(0.5489f);
 painter->params.line.radii = V4(0.5f, 1.f, 1.f, 0.25f);
 v1 hairY = loomis_unit;
-tvert hair_root = ReadSlider(212);
+tvert hair_root = ReadSlider(215);
 tvert bang_root = bezier_sample(hair_hline, 0.5f);
 v1 flutter_period = 2.75f;
 b32 should_flutter;
@@ -1507,17 +1513,17 @@ thair = get_animation_value(ani, time + 0.06f);
 thair = get_animation_value(ani, time);
 }
 }
-tvert bang_midpoint = ReadSlider(213);
+tvert bang_midpoint = ReadSlider(216);
 if(is_left()){
 Bezier bang_vline = bez_unit2(bang_root, V4(0.f, 0.2629f, 0.1602f, 0.3068f), V3(0.f, 0.f, 1.f), bang_midpoint);
 PaintBlock;
 painter->params.line.alignment_min = cosine(0.25f * 0.4036f);
-(set_draw_location_unresolved({2,287}), draw(bang_vline), clear_draw_location());
+(set_draw_location_unresolved({2,288}), draw(bang_vline), clear_draw_location());
 }
 tvert bang_tip;
 {
-tvec c = ReadSlider(214);
-bang_tip = ReadSlider(215) + thair * c;
+tvec c = ReadSlider(217);
+bang_tip = ReadSlider(218) + thair * c;
 }
 Bez bang_vline2 = bez_bezd_old(bang_root, V3(0.3419f, 0.0757f, 0.129f), V2(0.1345f, 0.1639f), bang_tip);
 {
@@ -1526,38 +1532,38 @@ tvec b = V3(-0.0664f, 0.0812f, 0.0059f);
 bang_vline2[1] += thair * a;
 bang_vline2[2] += thair * b;
 }
-Bez bang_hline = bez_offset(bang_midpoint, ReadSlider(216), ReadSlider(217), bang_tip);
+Bez bang_hline = bez_offset(bang_midpoint, ReadSlider(219), ReadSlider(220), bang_tip);
 {
 tvec a = V3(0.0000f, -0.1217f, 0.0000f);
 tvec b = V3(0.0467f, 0.0385f, 0.0000f);
 bang_hline[1] += thair * b;
 bang_hline[2] += thair * a;
 }
-(set_draw_location_unresolved({2,288}), draw(bang_vline2), clear_draw_location());
-(set_draw_location_unresolved({2,289}), draw(bang_hline, 0.5176f * painter->params.line.radii), clear_draw_location());
-tvert hair_main_tip = ReadSlider(218);
+(set_draw_location_unresolved({2,289}), draw(bang_vline2), clear_draw_location());
+(set_draw_location_unresolved({2,290}), draw(bang_hline, 0.5176f * painter->params.line.radii), clear_draw_location());
+tvert hair_main_tip = ReadSlider(221);
 Bez vline = bez_bezd_old(hair_root, V3(0.1414f, 0.2764f, -0.471f), V2(0.3956f, 0.3102f), hair_main_tip);
-(set_draw_location_unresolved({2,290}), draw(vline, ReadSlider(219)), clear_draw_location());
+(set_draw_location_unresolved({2,291}), draw(vline, ReadSlider(222)), clear_draw_location());
 if(is_left()){
 tvec hcontrol = V3(0.1291f, -0.0058f, -0.2506f);
 Bez connecting = bez_offset(hair_main_tip, hcontrol, negateX(hcontrol), negateX(hair_main_tip));
-(set_draw_location_unresolved({2,291}), draw(connecting, I4_sym(ReadSlider(220))), clear_draw_location());
+(set_draw_location_unresolved({2,292}), draw(connecting, I4_sym(ReadSlider(223))), clear_draw_location());
 }
 Bezier hairline_side = bez_offset(bang_root, V3(0.5271f, -0.0051f, 0.0478f), V3(0.0671f, 0.1143f, 0.3924f), ear_center);
-(set_draw_location_unresolved({2,292}), draw(hairline_side), clear_draw_location());
+(set_draw_location_unresolved({2,293}), draw(hairline_side), clear_draw_location());
 {
 Bez over1 = bez_bezd_old(hair_root, V3(0.5313f, 0.0177f, 0.1293f), V2(0.1839f, 0.232f), bezier_sample(hairline_side, 0.3991f));
 Bez over2 = bez_bezd_old(hair_root, V3(0.3694f, 0.2549f, -0.0512f), V2(0.0175f, 0.2904f), ear_center);
-(set_draw_location_unresolved({2,293}), draw(over1), clear_draw_location());
+(set_draw_location_unresolved({2,294}), draw(over1), clear_draw_location());
 {
 PaintBlock;
 painter->params.line.alignment_min = 0.4764f;
-(set_draw_location_unresolved({2,294}), draw(over2), clear_draw_location());
+(set_draw_location_unresolved({2,295}), draw(over2), clear_draw_location());
 }
 }
 if(is_left()){
 Bez line = bez_unit2(hair_root, V4(0.f, 0.2255f, 0.3279f, 0.2047f), V3(0.f, 1.f, 0.f), bang_root);
-(set_draw_location_unresolved({2,295}), draw(line), clear_draw_location());
+(set_draw_location_unresolved({2,296}), draw(line), clear_draw_location());
 }
 }
 if(painter->show_grid and is_left()){
@@ -1571,12 +1577,12 @@ if(painter->show_grid){
 painter->params.line_color = linear_argb_silver;
 }
 {
-(set_draw_location_unresolved({2,296}), draw_circle(loomis_side_center, normal_x, loomis_side_radius), clear_draw_location());
+(set_draw_location_unresolved({2,297}), draw_circle(loomis_side_center, normal_x, loomis_side_radius), clear_draw_location());
 }
 {
-(set_draw_location_unresolved({2,297}), draw_circle(V3(), normal_z, {1}), clear_draw_location());
-(set_draw_location_unresolved({2,298}), draw_circle(V3(), normal_y, {1}), clear_draw_location());
-(set_draw_location_unresolved({2,299}), draw_circle(V3(), normal_x, {1}), clear_draw_location());
+(set_draw_location_unresolved({2,298}), draw_circle(V3(), normal_z, {1}), clear_draw_location());
+(set_draw_location_unresolved({2,299}), draw_circle(V3(), normal_y, {1}), clear_draw_location());
+(set_draw_location_unresolved({2,300}), draw_circle(V3(), normal_x, {1}), clear_draw_location());
 }
 }
 Head head_obj;
@@ -1593,12 +1599,12 @@ return head_obj;
 function void
 render_character(Pose &pose){
 painter->shade_color = compute_fill_color(0.094014f);
-if(ReadSlider(221)){
+if(ReadSlider(224)){
 painter->shade_color = painter->params.fill.color;
 }
 v1 arm_ry = head_unit_world * 0.5302f;
 macro_torso(macro_world_declare);
-b32 right_only = ReadSlider(222);
+b32 right_only = ReadSlider(225);
 for_i32(lr_index,0,2)
  {
 if(right_only and lr_index == 0){
@@ -1618,7 +1624,7 @@ pelvis_obj = render_pelvis();
 }
 BoneBlock(mk_bone_id(Bone_Torso));
 Torso torso_obj = render_torso(pose, pelvis_obj, head);
-tvert elbow_up_out = forearm_rotation_pivot + ReadSlider(223);
+tvert elbow_up_out = forearm_rotation_pivot + ReadSlider(226);
 {
 BoneBlock(mk_bone_id(Bone_Arm));
 Arm arm_obj = render_arm(pose, torso_obj, elbow_up_out);
@@ -1640,38 +1646,38 @@ BoneBlock(Bone_References);
 Reference_Preset reference_preset = get_reference_preset();
 if(reference_preset != 0){
 Reference_Preset_Data data = driver_get_reference_preset_data(reference_preset);
-(set_draw_location_unresolved({2,300}), draw_reference_image_from_data(data.image), clear_draw_location());
+(set_draw_location_unresolved({2,301}), draw_reference_image_from_data(data.image), clear_draw_location());
 }else {
 Preset_Settings &settings = active_preset_settings();
 {
 if(camera_is_right()){
 ShowGroup(Vis_Ref_Arm_Medial_Right);
-tvert center = ReadSlider(224);
+tvert center = ReadSlider(227);
 v1 width = 0.7966f;
 Stringz filename = fimage(strlit("G:/My Drive/Art/arm medial.jpg"));
-(set_draw_location_unresolved({2,302}), draw_image(filename, center, V3z(width), V3y(1.f), 0.5f), clear_draw_location());
+(set_draw_location_unresolved({2,303}), draw_image(filename, center, V3z(width), V3y(1.f), 0.5f), clear_draw_location());
 }
 if(camera_is_front()){
-Reference_Image references[] = {{.filename = fimage(image_skeletal_meat_outline), .center = ReadSlider(225), .x_axis = V3x(1.8194f), .alpha = 0.3033f}, {.filename = fimage(image_mm_full_body_muslce_front), .center = ReadSlider(226), .x_axis = V3x(1.8695f), .alpha = 0.3033f}, {.filename = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")), .center = ReadSlider(227), .x_axis = V3x(-1.3938f), .alpha = 0.1421f}, {.filename = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")), .center = ReadSlider(228), .x_axis = V3x(-1.0668f), .alpha = 0.1421f}, {.filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")), .center = ReadSlider(229), .x_axis = V3x(2.6661f), .alpha = 0.4221f}};
+Reference_Image references[] = {{.filename = fimage(image_skeletal_meat_outline), .center = ReadSlider(228), .x_axis = V3x(1.8194f), .alpha = 0.3033f}, {.filename = fimage(image_mm_full_body_muslce_front), .center = ReadSlider(229), .x_axis = V3x(1.8695f), .alpha = 0.3033f}, {.filename = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")), .center = ReadSlider(230), .x_axis = V3x(-1.3938f), .alpha = 0.1421f}, {.filename = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")), .center = ReadSlider(231), .x_axis = V3x(-1.0668f), .alpha = 0.1421f}, {.filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")), .center = ReadSlider(232), .x_axis = V3x(2.6661f), .alpha = 0.4221f}};
 for_i32(ref_index, 0, alen(references))
     {
 ShowGroup(cast(Group_Vis)(Vis_Ref_Front_0 + ref_index));
-(set_draw_location_unresolved({2,308}), draw_reference_image_from_data(references[ref_index]), clear_draw_location());
+(set_draw_location_unresolved({2,309}), draw_reference_image_from_data(references[ref_index]), clear_draw_location());
 }
 }
 if(camera_is_back()){
 ShowGroup(Vis_Ref_Arm_Back_Bone);
 {
-tvert center = ReadSlider(230);
+tvert center = ReadSlider(233);
 v1 width = 2.4645f;
 Stringz filename = file_arm_back_bone;
-(set_draw_location_unresolved({2,309}), draw_image(filename, center, V3x(-width), V3y(1.f), 0.3033f), clear_draw_location());
+(set_draw_location_unresolved({2,310}), draw_image(filename, center, V3x(-width), V3y(1.f), 0.3033f), clear_draw_location());
 }
 }
 if(camera_is_left()){
 ShowGroup(Vis_Ref_Arm_Profile_Left);
 {
-tvert center = ReadSlider(231);
+tvert center = ReadSlider(234);
 v1 width = 1.1454f;
 Stringz filename = fimage(image_arm_profile_full);
 v3 x = V3z(1);
@@ -1679,7 +1685,7 @@ v1 alpha = 0.299f;
 if(full_alpha){
 alpha = 1.f;
 }
-(set_draw_location_unresolved({2,311}), draw_image(filename, center, -width * x, V3y(1.f), alpha), clear_draw_location());
+(set_draw_location_unresolved({2,312}), draw_image(filename, center, -width * x, V3y(1.f), alpha), clear_draw_location());
 }
 }
 }
@@ -1698,7 +1704,7 @@ bs_cycle_counter = 0;
 argb default_fill = painter->background_color;
 v1 default_line_radius_min = 0.5089f;
 v1 default_line_end_radius = default_line_radius_min;
-if(ReadSlider(232)){
+if(ReadSlider(235)){
 default_line_end_radius = i2f6(2);
 }
 {
@@ -1708,10 +1714,10 @@ p->params.painting = true;
 Paint_Params &pp = painter->params;
 pp.fill_depth_offset = millimeter * 1.f;
 pp.radius_mult = 1.f;
-pp.nslice_per_meter = ReadSlider(233) * 100.f;
+pp.nslice_per_meter = ReadSlider(236) * 100.f;
 pp.fill.color = default_fill;
 pp.line.radii = V4(default_line_radius_min, 1.f, i2f6(5), default_line_end_radius);
-argb default_line_color = argb_gray(ReadSlider(234));
+argb default_line_color = argb_gray(ReadSlider(237));
 pp.line_color = default_line_color;
 }
 p->viz_level = viz_level;
@@ -1724,22 +1730,22 @@ u64 end_cycle = __rdtsc();
 painter->render_cycles = u32(end_cycle - start_cycle);
 }
 show_reference_images();
-if(ReadSlider(235)){
+if(ReadSlider(238)){
 BoneBlock(mk_bone_id(Bone_References));
 hl_block_color(linear_argb_blue);
 tvert a = mkvert(0, 0, 0);
 tvert b = mkvert(1, 0, 0);
 tvert c = mkvert(0, .5f, 0);
 {
-(set_draw_location_unresolved({2,312}), draw(bez_line(a, b)), clear_draw_location());
-(set_draw_location_unresolved({2,313}), draw(bez_line(a, c)), clear_draw_location());
+(set_draw_location_unresolved({2,313}), draw(bez_line(a, b)), clear_draw_location());
+(set_draw_location_unresolved({2,314}), draw(bez_line(a, c)), clear_draw_location());
 }
 tvert pivot;
 {
 tvert translate = mkvert(1, 1, 0);
 mat4i rotate = mat4i_rotate_tpr(0, 0, painter->looping_time);
 v1 scale = 2.f;
-pivot = ReadSlider(236);
+pivot = ReadSlider(239);
 send_vert(8, pivot);
 mat4i translate_scale = mat4i_translate(translate) * mat4i_scale(scale);
 mat4i mom_from_kid = mat4i_translate(pivot) * rotate * translate_scale * mat4i_translate(-pivot);
@@ -1749,8 +1755,8 @@ make_bone(mk_bone_id(Bone_Test), mom_from_kid);
 hl_block_color(argb_black);
 BoneBlock(Bone_Test);
 send_vert(9, pivot);
-(set_draw_location_unresolved({2,314}), draw(bez_line(a, b)), clear_draw_location());
-(set_draw_location_unresolved({2,315}), draw(bez_line(a, c)), clear_draw_location());
+(set_draw_location_unresolved({2,315}), draw(bez_line(a, b)), clear_draw_location());
+(set_draw_location_unresolved({2,316}), draw(bez_line(a, c)), clear_draw_location());
 }
 }
 painter = 0;
