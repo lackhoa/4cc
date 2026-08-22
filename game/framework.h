@@ -56,8 +56,10 @@ struct Game_State
  Arena driver_arena;
  
  b32 has_done_backup;
+ String code_dir;
  String save_dir;
  String backup_dir;
+ darray(Slider_Value_Row) orphan_slider_rows[2];  // NOTE(kv) [is_driver]
  Stringz autosave_path;
  Stringz manual_save_path;
  

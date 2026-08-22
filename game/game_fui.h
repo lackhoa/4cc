@@ -40,7 +40,13 @@ struct Slider
   Fui_Options options;
   struct { FUI_OPTIONS(X); };
  };
+ String id;    // NOTE(kv) `<type>_<n>` from the source
  void *value;
+};
+struct Slider_Value_Row
+{// NOTE(kv) A values-file row no current slider claims (see ad_serialize_slider_values.cpp)
+ String id;
+ String bytes;
 };
 //-
 myinline Fui_Options
@@ -84,9 +90,5 @@ global Fui_Options f10s  = Fui_Options{0, 10.f};
 #define ReadSlider(INDEX) \
 slider_values.v_##INDEX
 
-// NOTE(kv) Pretty clever use of the assignment operator
-// NOTE(kv) You can put a static slider within a static slider, pretty great! ;>
-#define ReadSliderRuntime(INDEX, VALUE) \
-(ReadSlider(INDEX) = VALUE)
 //-
 //~EOF

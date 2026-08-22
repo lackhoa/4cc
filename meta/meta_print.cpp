@@ -964,15 +964,8 @@ print_all_sliders_header(Printer &p, FUI_Collector &c)
   {
    PrintBracesNewlineSm(p);
    for_each(slider, sliders)
-   {
-    if(slider->is_runtime)
-    {
-     print(p, strcode({},\n));
-    }
-    else
-    {
-     printf(p, strcode(%S,\n), slider->value);
-    }
+   {// NOTE(kv) Sliders start at zero; the values file fills them in.
+    print(p, strcode({},\n));
    }
   }
  }
@@ -998,12 +991,13 @@ print_all_sliders_header(Printer &p, FUI_Collector &c)
                       .type=%S,
                       .location={{%d, %d}, {%d, %d}},
                       .options=%S,
+                      .id=strlit("%S"),
                       .value=&ReadSlider(%d)
                      };\n),
           slider_index,
           type,
           c.is_driver, slider.file, range.min, range.max,
-          options, slider_index);
+          options, slider.id, slider_index);
   }
  }
  

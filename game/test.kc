@@ -2,7 +2,7 @@
 function void
 test_link()
 {
- fv2(1,1) + fv2(2,2);
- flp({});
+ fv(v2_0) + fv(v2_1);
+ flp(FUI_Line_Params_2);
 }
 //-

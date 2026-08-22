@@ -44,72 +44,52 @@ parse_preprocessor(Ed_Parser *p)
  String result = {start.str, u64(end.str - start.str)};
  return result;
 }
-function String
-guess_expression_type(Meta_Expression &e)
-{// NOTE(kv) Pure hacking, not even trying...
- String result = {};
- if(e.kind == Expression_Kind_Unary)
+// NOTE(kv) Slider value types (mirrors TypeInfoPointerList in framework_driver_shared.h).
+global String slider_type_names[] = {
+ strcode(v1), strcode(v2), strcode(v3), strcode(v4),
+ strcode(i1), strcode(i2), strcode(i3), strcode(i4),
+ strcode(FUI_Line_Params), strcode(tdim), strcode(tvert), strcode(tnormal),
+};
+struct Slider_Id
+{
+ b32 ok;
+ String type;   // NOTE(kv) text before the last '_'
+ i64 number;    // NOTE(kv) digits after it
+};
+function Slider_Id
+parse_slider_id(String id)
+{// NOTE(kv) `<type>_<n>`, e.g. "v3_12", "FUI_Line_Params_5".
+ Slider_Id result = {};
+ i64 underscore = string_find_last(id, '_');
+ if(underscore > 0 and underscore+1 < i64(id.size))
  {
-  result = guess_expression_type(*e.unary.argument);
- }
- else if(e.kind == Expression_Kind_Binary)
- {
-  if(e.binary.op == '*')
-  {// NOTE(kv) Might be matrix transform or scalar multiplicatoin?
-   result = guess_expression_type(*e.binary.rhs);
-  }
-  else
+  String type   = string_prefix(id, u64(underscore));
+  String digits = string_skip(id, u64(underscore+1));
+  b32 all_digits = true;
+  for_u64(i, 0, digits.size){ all_digits = all_digits and gb_char_is_digit(digits.str[i]); }
+  for_u32(i, 0, alen(slider_type_names))
   {
-   result = guess_expression_type(*e.binary.lhs);
-  }
- }
- else if(e.kind == Expression_Kind_Int)
- {
-  result = strcode(i1);
- }
- else if(e.kind == Expression_Kind_Float)
- {
-  result = strcode(v1);
- }
- else if(e.kind == Expression_Kind_Compound)
- {
-  result = e.compound_type_name;
- }
- else if(e.kind == Expression_Kind_Call)
- {// NOTE(kv) Using constructor functions to describe data is bad,
-  // but C++ doesn't allow you to put braces in macro, so idk dude...
-  // we can always change it later.
-  
-  Expression_Call &call = e.call;
-  String keys[] = {
-   strcode(v1), strcode(V2), strcode(V3), strcode(V4),
-   strcode(I2), strcode(I3), strcode(I4),
-   strcode(mkdim), strcode(mkvert), strcode(mk_normal),
-   strcode(FUI_Line_Params),
-  };
-  String type_names[] = {
-   strcode(v1), strcode(v2), strcode(v3), strcode(v4),
-   strcode(i2), strcode(i3), strcode(i4),
-   strcode(tdim), strcode(tvert), strcode(tnormal),
-   strcode(FUI_Line_Params),
-  };
-  static_assert(alen(keys) == alen(type_names));
-  
-  for_u32(i, 0, alen(keys))
-  {
-   if(call.func->kind == Expression_Kind_Identifier and
-      (call.func->as_string == keys[i] or
-       call.func->as_string == type_names[i]  // NOTE(kv) Might be C++-style cast
-       ))
+   if(type == slider_type_names[i])
    {
-    result = type_names[i];
-    break;
+    result.ok     = all_digits;
+    result.type   = type;
+    result.number = str_to_i64(digits, 0, 10);
    }
   }
  }
  return result;
 }
-
+function String
+next_free_slider_id(Arena *arena, sarray(Meta_Slider) sliders, String type)
+{
+ i64 max_number = -1;
+ for_each(slider, sliders)
+ {
+  Slider_Id id = parse_slider_id(slider->id);
+  if(id.ok and id.type == type){ max_number = maximum(max_number, id.number); }
+ }
+ return push_stringf(arena, "%S_%d", type, i32(max_number+1));
+}
 function i32
 push_file_position(FUI_Collector *driver, i64 byte_pos)
 {// NOTE(kv) The index returned is not final, which is sad.
@@ -270,11 +250,7 @@ modify_expression_once(Expression_Modifier *m, Meta_Expression *result)
   Scratch_Scope tmp(arena);
   Stringz expansion = empty_string;
   
-  if(result->kind == Expression_Kind_Dot_Placeholder)
-  {// todo(kv) Mega #Hack by assuming we know what the dot is.
-   expansion = strcode(flp({}));
-  }
-  else if(result->kind == Expression_Kind_Call)
+  if(result->kind == Expression_Kind_Call)
   {//-NOTE(kv) Poor man's macro
 #define MatchName(id) \
 (func_name == strcode(id)) 
@@ -315,60 +291,7 @@ modify_expression_once(Expression_Modifier *m, Meta_Expression *result)
    }
    else if(Match(flp, 1))
    {//;flp(macro)
-    BODY(strcode(line_params_from_fui(fv(FUI_Line_Params%S))), Arg(0));
-   }
-   else if(Match(fv2, 2))
-   {//;fv2(macro)
-    BODY(strcode(fv(V2(%S, %S))), Arg(0), Arg(1));
-   }
-   else if(MatchName(fv3))
-   {//;fv3(macro)
-    if(arg_count == 3)
-    {
-     BODY(strcode(fv(V3(%S, %S, %S))), Arg(0), Arg(1), Arg(2));
-    }
-    else if(arg_count == 1)
-    {
-     BODY(strcode(runtime_fv(v3(%S))), Arg(0));
-    }
-    else ok = 0;
-   }
-   else if(MatchName(fvert))
-   {//;fvert(macro)
-    if(arg_count == 3)
-    {
-     BODY(strcode(fv(mkvert(%S, %S, %S))), Arg(0), Arg(1), Arg(2));
-    }
-    else if(arg_count == 1)
-    {
-     BODY(strcode(runtime_fv(mkvert(%S))), Arg(0));
-    }
-    else ok = 0;
-   }
-   else if(Match(fnormal, 3))
-   {//;fnormal(macro)
-    BODY(strcode(fv(mk_normal(V3(%S, %S, %S)))),
-                             Arg(0), Arg(1), Arg(2));
-   }
-   else if(Match(fv3x, 1))
-   {//;fv3x(macro)
-    BODY(strcode(fv3(%S, 0, 0)), Arg(0));
-   }
-   else if(Match(fv3y, 1))
-   {//;fv3y(macro)
-    BODY(strcode(fv3(0, %S, 0)), Arg(0));
-   }
-   else if(Match(fv3z, 1))
-   {//;fv3z(macro)
-    BODY(strcode(fv3(0, 0, %S)), Arg(0));
-   }
-   else if(Match(fv4, 4))
-   {//;fv4(macro)
-    BODY(strcode(fv(V4(%S, %S, %S, %S))), Arg(0), Arg(1), Arg(2), Arg(3));
-   }
-   else if(Match(fdim, 1))
-   {//;fdim(macro)
-    BODY(strcode(fv(mkdim(%S))), Arg(0));
+    BODY(strcode(line_params_from_fui(fv(%S))), Arg(0));
    }
    
 #undef MatchName
@@ -444,11 +367,10 @@ to_cpp_expression_shallow(Arena *arena, FUI_Collector *driver,
   // Well, things like "fvert" have to be parenthesized anyway,
   // and adding another operator is confusing, so whatevs, not gonna do it now.
 #  define fv  
-#  define runtime_fv
 #endif
   
 #define keyword_xlist(X) \
-X(fv) X(runtime_fv) X(vv) X(vv0) X(vv0_overlay) \
+X(fv) X(vv) X(vv0) X(vv0_overlay) \
 X(fimage) X(fpreset) \
   
   String keywords[] = {
@@ -484,38 +406,41 @@ X(fimage) X(fpreset) \
   
   b32 is_draw = starts_with(func_name, strlit("draw"));
   
-  b32 is_slider = MATCH(fv) or MATCH(runtime_fv);
-  if(is_slider)
-  {//-Slider
+  if(MATCH(fv))
+  {//-Slider: `fv(<type>_<n>[, options])` -- the id carries the type,
+   // the value lives in the values file (see slider_values_file_path).
    Meta_Slider *slider = push_zero(&driver->sliders);
    slider->file = get_file_index(driver);
    i32 slider_index = driver->sliders.count - 1;
-   
-   // NOTE(kv) Runtime slider is kinda ad-hoc,
-   // because technically all sliders can potentially be runtime.
-   // Even if you pass in a "V2(x,y)", how would the parser know if it's constant?
-   //
-   // One example of an ad-hoc rule is: we know a "fvert" slider is
-   // runtime when there's only one argument.
-   ok = ok and (arg_count == 1) or (arg_count == 2);
-   
-   String value_string = empty_string;
-   
+
+   ok = ok and ((arg_count == 1) or (arg_count == 2));
+
    if(arg_count > 0)
    {
     Meta_Expression &value_expr = call->args[0];
-    if(is_empty(slider->type))
+    Slider_Id id = {};
+    if(value_expr.kind == Expression_Kind_Identifier)
     {
-     slider->type = guess_expression_type(value_expr);
+     id = parse_slider_id(value_expr.as_string);
     }
-    value_string = print_expression(arena, value_expr);
+    if(id.ok)
+    {
+     slider->id   = value_expr.as_string;
+     slider->type = id.type;
+    }
+    else
+    {
+     // @kv_jump_syntax
+     myprintf("[kv][%S][%d] slider id \"%S\": expected <type>_<n> with type in {",
+              driver->file.path, result->range.min, print_expression(arena, value_expr));
+     for_u32(i, 0, alen(slider_type_names)){ myprintf("%s%S", i ? " " : "", slider_type_names[i]); }
+     myprintf("}\n");
+     ok = false;
+    }
    }
-   
-   slider->value = value_string;
-   
+
    ok = ok and not_empty(slider->type);
-   ok = ok and not_empty(slider->value);
-   
+
    slider->range = push_text_range(driver, result->range);
    
    if(arg_count > 1)
@@ -525,17 +450,7 @@ X(fimage) X(fpreset) \
    }
    
    init_keep_range(result, Expression_Kind_Unknown);
-   slider->is_runtime = MATCH(runtime_fv);
-   if(slider->is_runtime)
-   {// NOTE Runtime slider
-    result->as_string = push_stringf(arena, strcode(ReadSliderRuntime(%d, %S)),
-                                     slider_index, value_string);
-   }
-   else
-   {// NOTE Data slider
-    result->as_string = push_stringf(arena, cstrcode(ReadSlider(%d)),
-                                     slider_index);
-   }
+   result->as_string = push_stringf(arena, cstrcode(ReadSlider(%d)), slider_index);
   }
   else
   {
@@ -849,10 +764,6 @@ parse_expression(Klang_Parser *p, Precedence max_precedence,
  {//-Parenthesized expression (todo or a cast...)
   parse_expression(p, Precedence_Max, result);
   ep_char(p, ')');
- }
- else if(ep_maybe_char(p, '.'))
- {//-Hacked dot placeholder
-  result->kind = Expression_Kind_Dot_Placeholder;
  }
  else{ p->fail(); }
  
@@ -1820,235 +1731,12 @@ k_process_file(Arena *arena, Lexed_File source,
  return ok;
 }
 //-
-struct K_Edit
-{
- b32 skip_approval;
- Range_i32 old_range;
- String new_string;
-};
-function void
-check_parser_ok(Ed_Parser *parser, String source)
-{
- if(not parser->ok_)
- {
-  // @kv_jump_syntax
-  i64 fail_pos = ep_get_fail_pos(parser);
-  myprintf("[kv][%S][%d] parser error\n", source, fail_pos);
-  
-  kv_fail;
- }
-}
-function b32
-k_preprocess_file(Lexed_File source)
-{// TODO(kv) This way of processing won't live long, I don't think.
- // Because keyword reaction just doesn't cut the bill against macros!
- // Also we need structure for things.
- String edit_marker = strcode(EDITED);
- Scratch_Block tmp;
- darray(K_Edit) edit_list;
- init_dynamic(edit_list, tmp);
- b32 edits_are_sorted = 0;
- 
- darray(i64) unapproved_edits;
- init_dynamic(unapproved_edits, tmp);
- auto need_approval = [&]() -> b32
- {
-  return unapproved_edits.count > 0;
- };
- 
- b32 ok = 1;
- {
-  Ed_Parser parser_value = ed_parser_from_lexed_file(source);
-  Ed_Parser *p = &parser_value;
-  // NOTE(kv) Probably we don't care about whitespaces.
-  ep_skip_comments_and_spaces(p);
-  
-  Scratch_Block tmp_top;
-  b32 parsing = 1;
-  // NOTE(kv) We use the "stateful" approach here,
-  // because we need to keep track of "unapproved_edits".
-  String applying_bone = {};
-  i32 nesting = 0;
-  b32 applying_bone_nesting = 0;
-  b32 we_can_edit_this_file = 1;
-  while(parsing)
-  {//-Parsing
-   arena_clear(tmp_top);
-   Token *token0 = ep_get_token(p);
-   String token0_string = ep_print_token(p);
-   if(token0->kind == TokenBaseKind_EOF)
-   {
-    parsing = 0;
-   }
-   else if(token0_string == '{')
-   {
-    nesting++;
-   }
-   else if(token0_string == '}')
-   {
-    nesting--;
-    if(nesting < applying_bone_nesting)
-    {
-     applying_bone = {};
-    }
-   }
-   else if(token0_string == edit_marker)
-   {
-    we_can_edit_this_file = 0;
-    push(&unapproved_edits, token0->pos);
-   }
-   else if(we_can_edit_this_file)
-   {//-Applying edits, if requested
-    if(not_empty(applying_bone))
-    {
-     if(token0_string == strcode(fvert))
-     {// fvert(x,y,z)
-      ep_eat(p);
-      Token *arg_start = ep_get_token(p);
-      ep_char(p, '(');
-      ep_eat_until_char(p, ')');
-      ep_eat(p);
-      String arg_string = string_from_token_to_here(p, arg_start);
-      
-      K_Edit edit = {};
-      edit.old_range = range_from_token_to_here(p, token0);
-      Stringz format = strcode(runtime_fv(TMP_XFORM * mkvert%S));
-      edit.new_string = push_stringf(tmp, format, arg_string);
-      push(&edit_list, edit);
-     }
-     else if(token0_string == strcode(fdim))
-     {// fdim(x)
-      ep_eat(p);
-      ep_char(p, '(');
-      Token *arg_start = ep_get_token(p);
-      ep_eat_until_char(p, ')');
-      String arg_string = string_from_token_to_here(p, arg_start);
-      ep_eat(p);
-      
-      K_Edit edit = {};
-      edit.old_range = range_from_token_to_here(p, token0);
-      // NOTE(kv) Ok so suppose there's a vector "[dim, 0, 0]T"
-      // transformed by the matrix "TMP_XFORM * [dim, 0, 0]T"
-      // result would be column(TMP_XFORM, 0)*dim
-      // then its length would be the new dimension.
-      Stringz format = strcode(runtime_fv(mkdim(lengthof(get_column(TMP_XFORM, 0).xyz * %S))));
-      edit.new_string = push_stringf(tmp, format, arg_string);
-      push(&edit_list, edit);
-     }
-    }
-    else if(token0_string == strcode(BoneBlockApplied))
-    {
-     ep_eat(p);
-     ep_char(p, '(');
-     applying_bone = ep_id(p);
-     applying_bone_nesting = nesting;
-     ep_char(p, ')');
-     ep_char(p, ';');
-     
-     // NOTE Delete the bone block macro
-     K_Edit edit = {};
-     edit.old_range = range_from_token_to_here(p, token0);
-     Stringz format = strcode(mat4 TMP_XFORM = current_world_from_bone().inv*get_world_from_bone(%S););
-     edit.new_string = push_stringf(tmp, format, applying_bone);
-     push(&edit_list, edit);
-    }
-   }
-   
-   parsing = parsing and p->ok_;
-   if(parsing and ep_get_token(p) == token0)
-   {
-    ep_eat(p);
-   }
-  }
-  
-  check_parser_ok(p, source.path);
- }
- 
- edits_are_sorted = 1;  // TODO Check this, for real.
- 
- if(ok
-    and not need_approval()
-    and edit_list.count > 0)
- {//-Editing
-  b32 backup_ok = 0;
-  {//-Backup
-   String source_filename = path_filename(source.path);
-   String time_string = time_format(tmp, "%d_%m_%Y_%H_%M_%S");
-   Stringz backup_filename = push_stringf(tmp, "%S.%S.bkp",
-                                          source_filename, time_string);
-   Stringz backup_path = pjoin(tmp, meta.dirs.backup, backup_filename);
-   backup_ok = copy_file(source.path, backup_path);
-   kv_assert(backup_ok);
-  }
-  
-  if(backup_ok)
-  {//-Edit the file!
-   kv_assert(edits_are_sorted);
-   Printer printer = make_printer_buffer(&thread_permanent_arena, source.data.size*2);
-   
-   i64 prev_edit_max = 0;
-   for_i32(edit_index, 0, edit_list.count)
-   {
-    K_Edit edit = edit_list[edit_index];
-    
-    {//-Copy everything before the edit
-     i64 copy_size = edit.old_range.min - prev_edit_max;
-     kv_assert(copy_size >= 0);
-     print(printer, String{source.data.str + prev_edit_max, u64(copy_size)});
-    }
-    
-    {//-Save the edit position for later
-     push(&unapproved_edits, i64(printer.byte_pos));
-    }
-    
-    {//-The actual edit content
-     String old = {
-      source.data.str + edit.old_range.min,
-      u64(range_size(edit.old_range)),
-     };
-     // ;edit_marker_syntax
-     printf(printer, "%S[old=%S][%S]",
-            edit_marker, old, edit.new_string);
-    }
-    
-    prev_edit_max = edit.old_range.max;
-   }// note loop over edits
-   
-   i64 leftover_size = source.data.count - prev_edit_max;
-   if(leftover_size > 0)
-   {// NOTE Leftover copy
-    print(printer, String{source.data.str + prev_edit_max, u64(leftover_size)});
-   }
-   
-   {//-Write it out to disk
-    String output_string = printer_get_string(printer);
-    FILE *output_file = open_file(source.path, "wb");
-    Writer writer = make_writer(output_file);
-    write_size(&writer, strexpand2(output_string));
-    kv_assert(writer.ok);
-    close_file(output_file);
-   }
-  }
- }
- 
- //-Printing unapproved edits
- for_i32(edit_index, 0, unapproved_edits.count)
- {// @kv_jump_syntax
-  i64 edit = unapproved_edits[edit_index];
-  myprintf("[kv][%S][%d] unapproved edit\n", source.path, edit);
- }
- 
- return ok and not(need_approval());
-}
-//-
 function b32
 klang_main_one_file(Arena *arena, Lexed_File source,
                     FUI_Collector *driver,
                     darray(String) *type_info_list)
 {
  b32 ok = 1;
- 
- ok = ok and k_preprocess_file(source);
  
  Statement_Root root;
  ok = ok and k_process_file(arena, source, driver, type_info_list, &root);
@@ -2095,6 +1783,32 @@ finish_fui_file(FUI_Collector *c)
 }
 
 function b32
+check_slider_ids_unique(FUI_Collector &c)
+{
+ b32 ok = true;
+ sarray(Meta_Slider) sliders = c.sliders;
+ for_i32(i, 0, sliders.count)
+ {
+  Meta_Slider &a = sliders[i];
+  if(is_empty(a.id)){ continue; }
+  for_i32(j, i+1, sliders.count)
+  {
+   Meta_Slider &b = sliders[j];
+   if(a.id == b.id)
+   {
+    Scratch_Scope tmp;
+    String free_id = next_free_slider_id(tmp, sliders, a.type);
+    // @kv_jump_syntax
+    myprintf("[kv][%S][%d] duplicate slider id \"%S\" (also at [%S][%d]); next free: %S\n",
+             c.files[b.file].path, b.range.range.min, b.id,
+             c.files[a.file].path, a.range.range.min, free_id);
+    ok = false;
+   }
+  }
+ }
+ return ok;
+}
+function b32
 klang_main(sarray(Lexed_File) all_files)
 {
  b32 ok = true;
@@ -2137,6 +1851,7 @@ klang_main(sarray(Lexed_File) all_files)
    FUI_Collector *c = is_driver ? driver_collector : game_collector;
    
    c->file.name = path_filename(file.path);
+   c->file.path = file.path;
    c->file.is_driver = is_driver; // NOTE(kv) Redundant
    
    ok = ok and klang_main_one_file(tmp, file, c, &type_info_list);
@@ -2144,7 +1859,15 @@ klang_main(sarray(Lexed_File) all_files)
    finish_fui_file(c);
   }
  }
- 
+
+ if(ok)
+ {//-Slider ids must be unique per collector (they key the values file)
+  for_each(c, collectors)
+  {
+   ok = ok and check_slider_ids_unique(*c);
+  }
+ }
+
  if(ok)
  {
   print_all_type_info(type_info_list);

@@ -2,7 +2,7 @@
 function void
 test_slider_multiple_files()
 {
- DEBUG_VALUE(fv(3));
+ DEBUG_VALUE(fv(i1_0));
 }
 function Reference_Preset_Data
 driver_get_reference_preset_data(Reference_Preset preset);
@@ -104,7 +104,7 @@ driver_animate(v1 anim_time)
  }
  else
  {// ;set_movie_shot
-  i32 sel = fv(1);
+  i32 sel = fv(i1_1);
   if(0);
   else if(sel == 0)
   {

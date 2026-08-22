@@ -1060,7 +1060,6 @@ pop_bone_painter()
  set_bone_transform(parent);
 }
 #define BoneBlock(id)  push_bone_painter(id); defer(pop_bone_painter();)
-#define BoneBlockApplied(from)    BoneBlock(from)
 //-
 
 #include "4coder_debug_value.h"

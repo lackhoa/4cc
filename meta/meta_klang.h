@@ -75,7 +75,6 @@ enum Expression_Kind
  Expression_Kind_Float,  //NOTE(kv) Support double too, why not?
  Expression_Kind_Int,
  Expression_Kind_Compound,
- Expression_Kind_Dot_Placeholder,
 };
 //-
 enum Unary_Operator{
@@ -333,9 +332,9 @@ struct Meta_Slider
 {
  i32 file;
  M_Text_Range range;
- b32 is_runtime;
  String type;
- String value;
+ String id;  // NOTE(kv) `<type>_<n>`, stamped in the source; keys the values file
+
  String options;
 };
 struct M_Text_Object
@@ -363,6 +362,7 @@ struct Meta_Vertex
 struct FUI_Collector_File
 {// NOTE @finish_fui_file
  String name;
+ String path;  // NOTE(kv) For error messages (@kv_jump_syntax)
  b32 is_driver;
  
  darray(i32) positions;

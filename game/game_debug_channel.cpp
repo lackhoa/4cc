@@ -9,6 +9,9 @@
 //   diff              -> trigger Diff-now, result written on the NEXT update
 //   force_animate 0|1 -> set Replay_State.force_animate
 //   dump_state        -> key counts + replay/diff state as text
+//   slider_dump       -> every data slider: "<side> <id> <type> <value as code>"
+//   slider_write      -> save both values files from the live slider tables
+//   slider <id> <n>.. -> set a slider (scalars/vectors by component) and save its file
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
 
@@ -125,6 +128,88 @@ debug_channel_dump_state(FILE *out, Game_State *state)
  debug_channel_write_diff_result(out, replay.last_diff);
 }
 
+function void
+debug_channel_slider_dump(FILE *out)
+{
+ Scratch_Scope tmp;
+ for_i32(is_driver, 0, 2)
+ {
+  sarray(FUI_File_Data) files = get_file_array({i16(is_driver), 0});
+  for_i32(file_index, 1, files.count)
+  {
+   for_each(slider, files[file_index].sliders)
+   {
+    if(slider->id.size == 0){ continue; }
+    Printer printer = make_printer_buffer(tmp, 256);
+    print_code(printer, slider->type, slider->value, /*wrapped*/false);
+    String value = printer_get_string(printer);
+    fprintf(out, "%s %.*s %.*s %.*s\n", is_driver ? "driver" : "game",
+            string_expand(slider->id), string_expand(slider->type->name),
+            string_expand(value));
+   }
+  }
+ }
+}
+
+function void
+debug_channel_slider_set(FILE *out, Game_State *state, char *args)
+{// NOTE(kv) `slider <id> <c0> [c1 c2 c3]`: components are floats (ints for i1);
+ // wrapper types (tvert/tnormal/tdim) set their wrapped value and keep the rest.
+ char id_buffer[64] = {};
+ int consumed = 0;
+ if(sscanf(args, "%63s%n", id_buffer, &consumed) != 1)
+ {
+  fprintf(out, "slider: usage: slider <id> <c0> [c1 c2 c3]\n");
+  return;
+ }
+ String id = SCu8(id_buffer);
+ Slider *slider = 0;
+ b32 is_driver = 0;
+ for_i32(side, 0, 2)
+ {
+  slider = find_slider_by_id(side, id);
+  if(slider){ is_driver = side; break; }
+ }
+ if(slider == 0)
+ {
+  fprintf(out, "slider: no slider with id %s\n", id_buffer);
+  return;
+ }
+ Type_Info *basic = strip_to_basic_type(slider->type);
+ if(is_struct(basic) and not type_info_equals(basic, v2) and
+    not type_info_equals(basic, v3) and not type_info_equals(basic, v4))
+ {
+  fprintf(out, "slider: %s has type %.*s, which this command can't set\n",
+          id_buffer, string_expand(slider->type->name));
+  return;
+ }
+ b32 is_int = type_info_equals(basic, i1);
+ i32 component_count = basic->size / 4;
+ char *cursor = args + consumed;
+ i32 parsed = 0;
+ for_i32(i, 0, component_count)
+ {
+  char *end = 0;
+  if(is_int)
+  {
+   long value = strtol(cursor, &end, 10);
+   if(end == cursor){ break; }
+   ((i32 *)slider->value)[i] = (i32)value;
+  }
+  else
+  {
+   float value = strtof(cursor, &end);
+   if(end == cursor){ break; }
+   ((v1 *)slider->value)[i] = value;
+  }
+  cursor = end;
+  parsed += 1;
+ }
+ b32 saved = save_slider_values_file(state, is_driver);
+ fprintf(out, "slider: %s set %d of %d components, save %s\n",
+         id_buffer, parsed, component_count, saved ? "ok" : "FAILED");
+}
+
 // NOTE(kv) Called at the top of game_update, every frame.
 function void
 debug_channel_update(Game_State *state)
@@ -210,6 +295,22 @@ debug_channel_update(Game_State *state)
  {
   state->replay.display_replay = (atoi(cmd+14) != 0);
   fprintf(out, "display_replay: %d\n", state->replay.display_replay);
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "slider_dump") == 0)
+ {
+  debug_channel_slider_dump(out);
+ }
+ else if(strcmp(cmd, "slider_write") == 0)
+ {
+  b32 ok_game   = save_slider_values_file(state, 0);
+  b32 ok_driver = save_slider_values_file(state, 1);
+  fprintf(out, "slider_write: game %s, driver %s\n",
+          ok_game ? "ok" : "FAILED", ok_driver ? "ok" : "FAILED");
+ }
+ else if(strncmp(cmd, "slider ", 7) == 0)
+ {
+  debug_channel_slider_set(out, state, cmd+7);
   debug_channel_wants_animate = true;
  }
  else if(strncmp(cmd, "toggle ", 7) == 0)

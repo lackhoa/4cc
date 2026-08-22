@@ -378,6 +378,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
  }
 }
 #include "ad_serialize_recording.cpp"
+#include "ad_serialize_slider_values.cpp"
 
 function b32
 game_load(Game_State *state, App *app, Stringz filename)
@@ -821,6 +822,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
  {// NOTE: Save/Load business load_game
   Arena *arena = &state->permanent_arena;
   String code_dir = get_code_directory(app);
+  state->code_dir         = push_string(arena, code_dir);
   state->save_dir         = pjoin(arena, code_dir, strlit("data"));
   state->backup_dir       = pjoin(arena, state->save_dir, strlit("backups"));
   state->autosave_path    = pjoin(arena, state->save_dir, strlit("autosave.ad"));
@@ -891,6 +893,7 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
  
  init_sliders(type_info_pointers);
  build_location_maps(dll_arena, 0);
+ load_slider_values_file(state, /*is_driver*/0);
 }
 function void
 game_shutdown(Game_State *state)
@@ -1135,6 +1138,8 @@ do_work_after_loading_driver(Game_State *state, Driver_API *driver)
  
  arena_clear(&state->driver_arena);
  build_location_maps(&state->driver_arena, 1);
+ // NOTE(kv) The driver DLL's slider table is freshly zeroed: bring the values back.
+ load_slider_values_file(state, /*is_driver*/1);
  fui_set_active_slider(0);
 }
 function b32
@@ -2062,12 +2067,9 @@ game_update(Game_Update_Params params)
       }break;
       
       case Key_Code_Return:
-      {// NOTE Save the results
-       String slider_string = fui_print_slider(tmp, *fui_active_slider.data);
-       Range_i64 slider_range = get_slider_range(*fui_active_slider.data);
-       Buffer_ID buffer = get_active_buffer(app);
-       App_Cmd app_cmd = app_cmd_automated(app);
-       buffer_replace_range(&app_cmd, buffer, slider_range, slider_string);
+      {// NOTE Commit: the value is already live in the slider table; persist the
+       // table to the values file (the source text only holds the id).
+       save_slider_values_file(state, fui_active_slider.data->location.file.is_driver);
        fui_set_active_slider(0);
       }break;
       

@@ -36,12 +36,6 @@ fui_is_active()
  return fui_active_slider.data != 0;
 }
 
-myinline Range_i64
-get_slider_range(Slider &slider)
-{
- return resolve_location(slider.location);
-}
-//-
 myinline Type_Info *
 get_slider_type_info(Slider &slider)
 {

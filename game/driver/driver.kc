@@ -59,28 +59,28 @@ driver_update_tweaks()
  {// See @Tweak_Variables
   // NOTE(kv) This shouldn't be folded into "driver_update"
   // because it's stateless and we wanna call it first-thing in the frame!
-  tweaks->focal_length = fv(6) * 0.25f;  // NOTE(kv) The realistic focal length is "0.6f"
-  tweaks->background_rgb = fv(0.12f) * V3(1,1,1);
-  tweaks->force_stamp_rendering = fv(0);
-  tweaks->ignore_lightness_additions = fv(0);
-  tweaks->stamp_density_mult   = v1(fv(1));
-  tweaks->stamp_rotation_speed = v1(fv(12));
-  tweaks->cull_curve = fbool(1);
+  tweaks->focal_length = fv(i1_2) * 0.25f;  // NOTE(kv) The realistic focal length is "0.6f"
+  tweaks->background_rgb = fv(v1_3) * V3(1,1,1);
+  tweaks->force_stamp_rendering = fv(i1_4);
+  tweaks->ignore_lightness_additions = fv(i1_5);
+  tweaks->stamp_density_mult   = v1(fv(i1_6));
+  tweaks->stamp_rotation_speed = v1(fv(i1_7));
+  tweaks->cull_curve = fbool(i1_8);
  }
  
  {//-driver
   fpreset(Preset_None);
-  show_skeleton = fbool(1);
+  show_skeleton = fbool(i1_9);
  }
 }
 function void
 crappy_tests(v1 anim_time)
 {
- if(fbool(0))
+ if(fbool(i1_10))
  {
   v1 x = 96.f;
-  tvert a = fvert(88.5015f, 0.2256f, 0.4041f);
-  tvert runtime = fvert(V3(x, 0.4072f, 0.f));
+  tvert a = fv(tvert_11);
+  tvert runtime = mkvert(V3(x, 0.4072f, 0.f));
   DEBUG_VALUE(a + runtime);
   
  }
@@ -101,11 +101,11 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = image_left_arm_back;
-    image.center    = fvert(2.8062f, -4.0188f, -0.2689f);
-    image.x_axis    = fv3x(-2.4645f);
+    image.center    = fv(tvert_13);
+    image.x_axis    = fv(v3_14);
     image.alpha     = 0.3033f;
    }
-   result.pose.tarm_abduct = fv(0.0804f);
+   result.pose.tarm_abduct = fv(v1_15);
   }break;
   
   case Preset_Arm_Profile:
@@ -114,8 +114,8 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(strlit("G:/My Drive/Art/AM arm profile 2.JPG"));
-    image.center    = fvert(0, -4.983f, 0.0321f);
-    image.x_axis    = fv3z(0.7916f);
+    image.center    = fv(tvert_16);
+    image.x_axis    = fv(v3_17);
     image.alpha     = 0.299f;
    }
   }break;
@@ -126,11 +126,11 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(image_eco_skeleton);
-    image.center    = fvert(1.627f, -4.8007f, 0.f);
-    image.x_axis    = fv3x(1.6584f);
-    image.alpha     = fv(0.2254f);
+    image.center    = fv(tvert_18);
+    image.x_axis    = fv(v3_19);
+    image.alpha     = fv(v1_20);
    }
-   result.pose.tarm_abduct = fv(0.0367f);
+   result.pose.tarm_abduct = fv(v1_21);
   }break;
  }
  return result;
@@ -155,19 +155,19 @@ defer(pop(&model->bone_stack);)
    v1 head_phi2 = pose.thead_phi2 * head_phi2_max;
    v1 head_theta2   = pose.thead_theta2   * head_theta2_max;
    v1 head_roll  = pose.thead_roll  * head_roll_max;
-   tvert head_rotation_pivot = fvert(0.f, -1.1466f, 0.3598f);  // TODO: This is totally wrong place now!
+   tvert head_rotation_pivot = fv(tvert_22);  // TODO: This is totally wrong place now!
    mat4i headT = (mat4i_scale(head_radius_world) *
                   mat4i_rotate_tpr(head_phi2, head_theta2, head_roll, head_rotation_pivot));
    if(lr_index){ headT = negateX(headT); }
    MakeBoneBlock(mk_bone_id(Bone_Head), headT);
    
    {//-Eyeball
-    tvert eyeO = fvert(0.1953f, -0.2348f, 0.8954f);
+    tvert eyeO = fv(tvert_23);
     v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
     mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
-    tvert eye_in = eyeT*fvert(-0.0282f, 0.f, -0.1236f);
+    tvert eye_in = eyeT*fv(tvert_24);
     tvert eye_out = eye_in + mkvec(2.f * eye_in.x+(-0.03f), 0, -0.154f);
-    eyeball_center = eyeT*fvert(0.1531f, 0.0101f, -0.3179f);
+    eyeball_center = eyeT*fv(tvert_25);
     mat4i to_eyeball = mat4i_translate(eyeball_center);
     eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
     mat4i eyeball_scale = mat4i_scale(eyeball_radius);
@@ -202,13 +202,13 @@ defer(pop(&model->bone_stack);)
     // ;armT Calculate upper arm transform, so we can draw attachments to it
     v1 scale = arm_ry / torso_scale; // NOTE Because it's multiplied by torsoT
     fpreset(Preset_Arm_Profile);
-    fimage(image_scapula_profile, fv2(0.3712f, 0.678f));
-    tvec change = fv3(-0.0974f, 0.f, 0.0867f);
-    scap_sock_top = fvert(1.007f, -1.6393f, -0.0102f) + change;  // ;scap_sock_top
-    v3 translate = scap_sock_top + fv3(0.0764f, -0.9755f, 0.2612f)-change;
+    fimage(image_scapula_profile, fv(v2_26));
+    tvec change = fv(v3_27);
+    scap_sock_top = fv(tvert_28) + change;  // ;scap_sock_top
+    v3 translate = scap_sock_top + fv(v3_29)-change;
     v1 roll = -pose.tarm_abduct;
     mat4i rotateT = mat4i_rotate_tpr(0, 0, roll);
-    arm_rotation_pivot = fvert(-0.109f, 0.8153f, -0.1578f);  // ;arm_rotation_pivot
+    arm_rotation_pivot = fv(tvert_30);  // ;arm_rotation_pivot
     armT = trs_pivot_transform(translate, rotateT, scale, arm_rotation_pivot);
    }
    {// IMPORTANT: The ratio forearm/upper_arm=0.8 is measured on the iPad,
@@ -222,18 +222,18 @@ defer(pop(&model->bone_stack);)
     // which seems a bit short but idk our elbow might be completely wrong
     v1 arm_bend_max = -0.5f;
     v1 forearm_turn = pose.tarm_bend * arm_bend_max;
-    v3 forearm_translate = fv3(0.3231f, -0.0051f, -0.117f);
+    v3 forearm_translate = fv(v3_31);
     mat4i rotate = mat4i_rotateX(forearm_turn);
-    forearm_rotation_pivot = fvert(-0.2068f, -1.0341f, -0.0909f);
+    forearm_rotation_pivot = fv(tvert_32);
     // ;forearmT
     mat4i forearmT = trs_pivot_transform(forearm_translate, rotate, 1.f,
                                          forearm_rotation_pivot);
     {
      MakeBoneBlock(mk_bone_id(Bone_Forearm), forearmT);
      vv0_overlay(forearm_rotation_pivot);
-     palm_in = fvert(0.0623f, -2.6757f, 0.0176f);
+     palm_in = fv(tvert_33);
      vv0(palm_in);
-     mat4i handT = mat4i_translate(palm_in + fv3(0.0112f, 2.5863f, 0.2802f));
+     mat4i handT = mat4i_translate(palm_in + fv(v3_34));
      {
       MakeBoneBlock(mk_bone_id(Bone_Hand), handT);
       mat4i thumbT;
@@ -246,7 +246,7 @@ defer(pop(&model->bone_stack);)
        // TODO: Hm, this doesn't line the thumb up all the way, there's some other motion in play
        // TODO: How do we know whether to abduct/adduct or to oppose?
        // Or is this even the right framework?
-       thumb_kbot = fvert(0.2669f, -2.6071f, -0.2208f);
+       thumb_kbot = fv(tvert_35);
        thumbT = mat4i_rotateZ(-tadduct, thumb_kbot);
       }
       make_bone(mk_bone_id(Bone_Thumb), thumbT);
@@ -259,8 +259,8 @@ defer(pop(&model->bone_stack);)
        0.6424f,
        0.8955f,
       };
-      kline_in  = fvert(-0.1346f, -2.987f, -0.3612f);
-      kline_out = fvert(0.3755f, -3.0799f, -0.3612f);
+      kline_in  = fv(tvert_36);
+      kline_out = fv(tvert_37);
       knuckle_line = bez_unit(kline_out, V2(-0.0263f, 0.259f),
                               V2(0,0),
                               V3y(-1), kline_in);
@@ -327,7 +327,7 @@ render_hand(Forearm forearm)
  import_vertices(forearm, mk_bone_id(Bone_Forearm));
  
  // NOTE: The "palm_base" moves along with the hand
- tvert palm_base_in = fvert(-0.0476f, -2.6071f, -0.2208f);
+ tvert palm_base_in = fv(tvert_38);
  vv0(thumb_kbot);
  Bez palm_base_line = bez_unit(thumb_kbot, V2(0.f, 0.3416f),
                                V2(0,0),
@@ -341,30 +341,30 @@ render_hand(Forearm forearm)
                V3(-0.8552f, 0.f, -0.5183f),
                kline_in),
       lp(I4(8,0,3,1)));
- tvert thumb_palm_conn = fvert(0.3704f, -3.0096f, -0.3481f);
+ tvert thumb_palm_conn = fv(tvert_39);
  draw(bez_v3v2(thumb_kbot, V3(), V2(), thumb_palm_conn));
  {// NOTE: Thumb
   BoneBlock(mk_bone_id(Bone_Thumb));
   
   //NOTE: "thumb_triangle_tip" is a prominent bump on your palm
-  tvert thumb_triangle_tip = fvert(0.3693f, -2.6673f, -0.2208f);
+  tvert thumb_triangle_tip = fv(tvert_40);
   draw(bez_line(thumb_kbot, thumb_triangle_tip),
        lp(I4(2,4,0,3)));
   
-  tvert thumb_kmid_in = fvert(0.4589f, -2.9094f, -0.2208f);
+  tvert thumb_kmid_in = fv(tvert_41);
   draw(bez_unit(thumb_kmid_in, V2(0.f, 2.9015f),
                 V2(0,0), V3y(1), from_parent()*thumb_palm_conn));
-  tvert thumb_ktop_in = fvert(0.565f, -3.0125f, -0.2208f);
+  tvert thumb_ktop_in = fv(tvert_42);
   draw(bez_line(thumb_kmid_in, thumb_ktop_in),
        lp(I4(8,4,3,1)));
   // NOTE: I really don't know where these should be?
-  tvert thumb_tip = fvert(0.671f, -3.0515f, -0.2208f);
-  tvert thumb_kmid_out = fvert(0.5068f, -2.8209f, -0.2208f);
+  tvert thumb_tip = fv(tvert_43);
+  tvert thumb_kmid_out = fv(tvert_44);
   draw(bez_unit(thumb_triangle_tip, V2(-0.2102f, 0.1944f),
                 V2(0.4217f, 0.2078f), V3x(-1),
                 thumb_kmid_out),
        lp(I4(2,4,4,6)));
-  tvert thumb_ktop_out = (fvert(0.6128f, -2.9593f, -0.2208f));
+  tvert thumb_ktop_out = fv(tvert_45);
   draw(bez_unit(thumb_kmid_out, V2(0, 0.3706f),
                 V2(0,0), V3x(-1),
                 thumb_ktop_out));
@@ -398,7 +398,7 @@ render_hand(Forearm forearm)
   
   {// NOTE Trying to define the profile view here
    tvert middle_knuckle_bot = knuckle_bots[1];
-   tvert middle_palm_bot = knuckle_bots[1] + fv3(-0.f, 0.2527f, -0.022f);
+   tvert middle_palm_bot = knuckle_bots[1] + fv(v3_46);
    draw_line(middle_knuckle_bot, middle_palm_bot, lp(I4((3))));
    draw(bez_unit(forearm.middle_finger_meeter, V2(-0.1285f, 0.1793f),
                  V2(0.f, -0.5674f), V3z(-1), middle_palm_bot));
@@ -497,14 +497,14 @@ set_skeleton_params()
  // because it can be near clipped. What we *really* want is layers.
  // NOTE(kv) But funnily, our fov is very short,
  // which makes the near clip not activate, almost ever.
- v1 offset = fv(20.f) * centimeter;
+ v1 offset = fv(v1_47) * centimeter;
  params.line_depth_offset -= offset;
  params.fill_depth_offset -= offset;
 }
 function Arm
 render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
 {
- ViewCenterBlock(fvert(-0.0802f, 0.f, -0.1673f));
+ ViewCenterBlock(fv(tvert_48));
  mat4i &ot = current_world_from_bone();
  import_vertices(torso, mk_bone_id(Bone_Torso));
  
@@ -514,10 +514,10 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  if(painter->show_grid or get_reference_preset() == Preset_Eco_Skeleton)
  {//-Diagramming
   hl_block_color(linear_argb_dark_blue);
-  draw(bez_line(arm_rotation_pivot, arm_rotation_pivot + fv3(0.f, -3.4844f, 0.f)));
+  draw(bez_line(arm_rotation_pivot, arm_rotation_pivot + fv(v3_49)));
  }
  
- tvert internal_condyle = fvert(-0.0449f, -1.0756f, -0.1775f);  // ;internal_condyle
+ tvert internal_condyle = fv(tvert_50);  // ;internal_condyle
  tvert external_condyle = internal_condyle+V3(0.4031f, 0.1064f, 0.0402f);
  {//NOTE: The skeleton (humerus and ulna)
   PaintBlock;
@@ -525,31 +525,31 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
   fimage(image_skeletal_meat_outline);
   set_skeleton_params();
   
-  tvert sock = fvert(-0.0675f, 0.733f, -0.2688f);
+  tvert sock = fv(tvert_51);
   {//NOTE: Internal condyle
-   tvert v89 = internal_condyle+fv3(0.0669f, 0.1897f, 0.f);
-   draw(bez_parabola(sock, fv3(0.0669f, -0.0149f, 0.0235f), v89),
+   tvert v89 = internal_condyle+fv(v3_52);
+   draw(bez_parabola(sock, fv(v3_53), v89),
         lp(V4(0.5f)));
    draw(bez_unit2(v89, V4(0.f, 0.4207f, 0.f, 0.f),
                   V3(0.5647f, -0.8253f, 0.f), internal_condyle),
         lp(0.5f*big_to_small()));
   }
   {//NOTE: External condyle
-   ShowAlignedSymIf(V3z(1.f), fv(.7f));
-   tvert a = external_condyle+fv3(-0.1216f, 0.1472f, -0.0402f);
-   tvert b = fvert(0.13f, 0.7829f, -0.2688f);
+   ShowAlignedSymIf(V3z(1.f), fv(v1_54));
+   tvert a = external_condyle+fv(v3_55);
+   tvert b = fv(tvert_56);
    draw(bez_unit2(a, V4(0.f, 1.0357f, 0.f, 0.f),
                   V3(-0.1623f, -0.9867f, 0.f), external_condyle));
-   draw(bez_v3v2(b, fv3(-0.0797f, 0.296f, 0.f), fv2(0.4004f, 0.0564f), a),
-        flp({.radii = V4(0.5f, 0.3333f, -0.f, 0.5f)}));
+   draw(bez_v3v2(b, fv(v3_57), fv(v2_58), a),
+        flp(FUI_Line_Params_59));
   }
   tvert v98 = sock+V3(0.0947f, 0.1683f, 0.2105f);
   tvert v99 = v98+V3(-0.f, -0.6114f, -0.0063f);
   {
    fpreset(Preset_Arm_Profile);
-   ShowAlignedSymIf(V3x(1.f), fv(.7f));
-   draw(bez_parabola(v98, fv3(-0.f, -0.1087f, 0.0612f), v99));
-   tvert v01 = v99 + fv3(0.f, -1.2272f, 0.03f);
+   ShowAlignedSymIf(V3x(1.f), fv(v1_60));
+   draw(bez_parabola(v98, fv(v3_61), v99));
+   tvert v01 = v99 + fv(v3_62);
    draw(bez_v3v2(v99, V3(-0.f, 0.f, -0.0834f),
                  V2(0.2691f, 0.0874f), v01));
    tvert v20 = v01+V3(-0.0184f, -0.1643f, -0.0453f);
@@ -559,24 +559,24 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
   {// ;test_BoneBlockApplied
    fimage(image_socket_and_ball);
    mat4 TMP_XFORM = current_world_from_bone().inv*get_world_from_bone(Bone_Torso);
-   tvert center = fv(mkvert(V3(-0.0188f, 0.8291f, -0.1741f)));
-   tdim radius = fv(mkdim(0.1116f));
-   draw_circle(center, fnormal(0.8662f, -0.4998f, 0.f), radius);
+   tvert center = fv(tvert_63);
+   tdim radius = fv(tdim_64);
+   draw_circle(center, fv(tnormal_65), radius);
    draw_circle(center, normal_z, radius);
    fill_sphere(center, radius);
   }
  }
  
- tvert delt_bot  = fvert(0.2142f, 0.0729f, -0.2028f);
- tvert delt_back = fvert(-0.0076f, 0.2268f, -0.4244f);
+ tvert delt_bot  = fv(tvert_66);
+ tvert delt_back = fv(tvert_67);
  Bez delt_cross;
  Bez delt_back_line;
  Bez delt_bot_line;
  Bez delt_vfront;
  tvert delt_back_point = torso.scap_delt;
  {//-Deltoid
-  tvert delt_top      = torso.shoulder + fv3(0.0328f, 0.f, 0.f);
-  tvert delt_top_back = delt_top + fv3(-0.0109f, -0.0068f, -0.2147f);
+  tvert delt_top      = torso.shoulder + fv(v3_68);
+  tvert delt_top_back = delt_top + fv(v3_69);
   Bez delt_hline = bez_unit2(delt_top,
                              V4(-0.059f, 0.584f, 0.f, 0.f),
                              V3(0.f, 1.f, 0.f),
@@ -642,7 +642,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
    fill_point_bez( bezier_sample(delt_cross, (0.5f)), delt_vfront);
   }
  }
- tvert pectoral_arm = fvert(-0.2013f, 0.475f, 0.1047f);
+ tvert pectoral_arm = fv(tvert_70);
  {
   Bez line = bez_unit2(pectoral_arm,
                        V4(0.f, 0.3866f, 0.f, 0.f),
@@ -653,25 +653,25 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  }
  
  tvert bicep_out_top = bezier_sample(delt_cross, 0.8389f);
- tvert bicep_out_bot = (fvert(0.0079f, -0.9224f, -0.027f) +
+ tvert bicep_out_bot = (fv(tvert_71) +
                         lerp(V3(), tarm_bend, V3()));
- tvert bicep_in_top = bicep_out_top+fv3(-0.211f, 0.0922f, 0.0631f);
- fimage(image_mm_full_body_muslce_front, fv2(0.4652f, 0.6524f));
- tvert bicep_in_bot = bicep_out_bot+fv3(-0.0003f, -0.0145f, 0.0005f);
+ tvert bicep_in_top = bicep_out_top+fv(v3_72);
+ fimage(image_mm_full_body_muslce_front, fv(v2_73));
+ tvert bicep_in_bot = bicep_out_bot+fv(v3_74);
  
  fimage(image_tricep_brachii_tendon);
- fimage(image_left_arm_back, fv2(0.6783f, 0.6561f));
- tvert tricep_mid = fvert(0.0644f, -0.1135f, -0.475f);
+ fimage(image_left_arm_back, fv(v2_75));
+ tvert tricep_mid = fv(tvert_76);
  
- fimage(image_left_arm_back, fv2(0.6411f, 0.5634f));
- tvert white_in  = tricep_mid+fv3(-0.0742f, -0.5093f, 0.1103f);
+ fimage(image_left_arm_back, fv(v2_77));
+ tvert white_in  = tricep_mid+fv(v3_78);
  
- tvert white_out = tricep_mid+fv3(0.0446f, -0.1341f, 0.0966f);
- tvert tricep_wedge = delt_bot+fv3(-0.f, -0.1879f, -0.0035f);
+ tvert white_out = tricep_mid+fv(v3_79);
+ tvert tricep_wedge = delt_bot+fv(v3_80);
  
  // todo(kv) @brachio_a might just be misplaced, it should be in the forearm
- fimage(image_brachio_front, fv2(0.5336f, 0.3928f));
- tvert brachio_a = fvert(0.2431f, -1.2305f, -0.0498f);  // ;brachio_a
+ fimage(image_brachio_front, fv(v2_81));
+ tvert brachio_a = fv(tvert_82);  // ;brachio_a
  
  {//NOTE: The 'ceps
   {//NOTE: tricep
@@ -691,13 +691,13 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
    fill3(white_out, tricep_mid, tricep_wedge);
    
    {// todo Adjusting this line
-    fimage(image_left_arm_back, bez_v2_offset(fv2(0.8346f, 0.8079f), fv2(-0.03f, -0.1844f), fv2(0.66f, 0.553f)));
+    fimage(image_left_arm_back, bez_v2_offset(fv(v2_83), fv(v2_84), fv(v2_85)));
     fimage(image_triceps_long_head);
     fimage(image_arm_muscle_connection);
-    ShowAlignedIf(V3z(-1), fv(0.9248f));
+    ShowAlignedIf(V3z(-1), fv(v1_86));
     fpreset(Preset_Back);
-    draw(bez_v3v2(torso.scap_sock_bot, fv3(-0.2236f, 0.048f, 0.f),
-                  fv2(-0.2884f, 0.0577f), white_in),
+    draw(bez_v3v2(torso.scap_sock_bot, fv(v3_87),
+                  fv(v2_88), white_in),
          lp(I4(0,0,8,0)));
    }
   }
@@ -717,9 +717,9 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
                             bicep_in_bot);
    
    fimage(image_upper_body_front_muscle,
-          bez_v2_offset(fv2(0.3494f, 0.5376f), fv2(0.0504f, -0.0868f), fv2(0.4786f, 0.4232f)));
+          bez_v2_offset(fv(v2_89), fv(v2_90), fv(v2_91)));
    {// todo Let's make alignment adjustment better, with this as example
-    ShowAlignedIf(V3z(1), fv(.7f));
+    ShowAlignedIf(V3z(1), fv(v1_92));
     draw(front_in, lp(I4(0,0,0,4)));
    }
    
@@ -778,8 +778,8 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  draw(bez_line(brachio_a, bicep_out_bot), i2f6(I4(3,3,3,1)));
  
  fimage(image_arm_profile_full, brachio_humerus_profile_uv);
- fimage(image_brachio_profile_bone, fv2(0.5981f, 0.4176f));
- tvert brachio_humerus = fvert(0.2008f, -0.5275f, -0.1857f);  //;brachio_humerus
+ fimage(image_brachio_profile_bone, fv(v2_93));
+ tvert brachio_humerus = fv(tvert_94);  //;brachio_humerus
  
  if(0)
  {// NOTE: Patching
@@ -789,20 +789,20 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  
  {// NOTE Hiding planes
   //SetInBlock(painter->painting_disabled, 0);
-  tvert a = fvert(-0.f, 0.2075f, -0.3961f);
-  tvert b = internal_condyle+fv3(0,0,0);
+  tvert a = fv(tvert_95);
+  tvert b = internal_condyle+fv(v3_96);
   
-  Bezier la = bez_v3v2(a, fv3(-0.f, -0.0943f, -0.2772f), fv2(0,0), b);
-  Bezier lb = bez_v3v2(a+fv3(0.f, -0.0972f, 0.4466f),
-                       fv3(0.f, -0.0943f, 0.0532f), fv2(0,0),
-                       b+fv3(0.f, 0.f, 0.1265f));
+  Bezier la = bez_v3v2(a, fv(v3_97), fv(v2_98), b);
+  Bezier lb = bez_v3v2(a+fv(v3_99),
+                       fv(v3_100), fv(v2_101),
+                       b+fv(v3_102));
   PaintBlock;
   painter->params.fill.flags.v |= Fill_Culled;
   fill_dual_bez(la, lb);
  }
  
- fimage(image_brachialis_vs_skeleton, fv2(0.539f, 0.5534f));
- tvert brachialis_begin = fvert(0.2121f, 0.0502f, 0.f);
+ fimage(image_brachialis_vs_skeleton, fv(v2_103));
+ tvert brachialis_begin = fv(tvert_104);
  
  Arm arm_obj;
  {//~NOTE: Exports
@@ -817,7 +817,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
 {// @forearmT
  mat4i ot = current_world_from_bone();
  import_vertices(arm, mk_bone_id(Bone_Arm));
- tvert forearm_view_center = fvert(0.0267f, -1.9129f, 0.f);
+ tvert forearm_view_center = fv(tvert_105);
  ViewCenterBlock(forearm_view_center);
  
  {// NOTE The forearm bones from the front view (as rough guide)
@@ -826,26 +826,26 @@ render_forearm(Arm arm, tvert elbow_up_out)
   set_skeleton_params();
   fimage(image_skeletal_meat_outline);
   tvert down_common;
-  tvert up = fvert(-0.2363f, -1.1833f, -0.1252f);
+  tvert up = fv(tvert_106);
   //NOTE: ulna (inner, main bone)
-  tvert up1 = up+fv3(0.1879f, 0.f, -0.0369f);
-  down_common  = palm_in+fv3(0.1191f, 0.0489f, 0.f);
-  Bez l492 = bez_parabola(down_common, fv3(-0.0036f, -0.2325f, 0.f), up1);
+  tvert up1 = up+fv(v3_107);
+  down_common  = palm_in+fv(v3_108);
+  Bez l492 = bez_parabola(down_common, fv(v3_109), up1);
   {
    ShowAlignedSymIf(V3z(1.f), cos_45_degree);
    draw(l492);
    {
     PaintBlock;
     painter->params.line.alignment_min = 0.5f;
-    draw(bez_parabola(up, (fv3(0.0822f, 0.1457f, 0.f)), palm_in));
+    draw(bez_parabola(up, fv(v3_110), palm_in));
    }
   }
-  tvert v676 = fvert(-0.1753f, -0.854f, -0.0817f);
-  tvert v677 = v676+fv3(0.f, -0.3293f, -0.0435f);
+  tvert v676 = fv(tvert_111);
+  tvert v677 = v676+fv(v3_112);
   {
    PaintBlock;
-   painter->params.line.alignment_min = fv(.7f);
-   draw(bez_v3v2(v676, fv3(-0.f, 0.1052f, -0.0852f),
+   painter->params.line.alignment_min = fv(v1_113);
+   draw(bez_v3v2(v676, fv(v3_114),
                  V2(0.f, 0.0936f), v677));
   }
   
@@ -854,20 +854,20 @@ render_forearm(Arm arm, tvert elbow_up_out)
    PaintBlock;
    painter->params.line.alignment_min = 0.5f;
    tvert up596 = bezier_sample(l492, 0.9006f);
-   draw(bez_parabola(down_common, fv3(0.0871f, 0.0251f, 0.f), up596));
-   tvert down2 = down_common + fv3(0.175f, -0.0472f, 0.f);
-   tvert up2 = up + fv(V3(0.3198f, -0.0241f, -0.019f));
-   draw(bez_parabola(down2, fv3(0.0988f, -0.2945f, 0.f), up2));
+   draw(bez_parabola(down_common, fv(v3_115), up596));
+   tvert down2 = down_common + fv(v3_116);
+   tvert up2 = up + fv(v3_117);
+   draw(bez_parabola(down2, fv(v3_118), up2));
   }
  }
  
  {// todo This line shows the bicep at the front, but it should only show at the front
   ShowAlignedSymIf(V3z(1.f), cos_45_degree);
   fimage(image_brachialis_vs_skeleton,
-         bez_v2_offset(fv2(0.5488f, 0.5653f), fv2(-0.2152f, -0.1208f), fv2(0.2632f, 0.2864f)));
-  Bez line = bez_v3v2(arm.brachialis_begin, fv3(0.145f, 0.0775f, 0.f),
-                      fv2(0,0), arm.brachio_a);
-  draw(line, flp({.radii = V4(-0.f, 1.f, 0.3333f, 0.5f)}));
+         bez_v2_offset(fv(v2_119), fv(v2_120), fv(v2_121)));
+  Bez line = bez_v3v2(arm.brachialis_begin, fv(v3_122),
+                      fv(v2_123), arm.brachio_a);
+  draw(line, flp(FUI_Line_Params_124));
   fill_bez(line);
  }
  
@@ -875,9 +875,9 @@ render_forearm(Arm arm, tvert elbow_up_out)
  Bez l500;
  tvert in_c;
  {// NOTE: Inner side
-  tvert in_a = fvert(-0.2345f, -0.8464f, -0.0226f);
-  tvert in_b = fvert(-0.269f, -1.3024f, 0.1898f);
-  in_c = fvert(-0.1582f, -1.8388f, 0.1688f);
+  tvert in_a = fv(tvert_125);
+  tvert in_b = fv(tvert_126);
+  in_c = fv(tvert_127);
   Bez l493 = bez_v3v2(in_a, V3(-0.0385f, 0.f, 0.f),
                       V2(0,0), in_b);
   draw(l493, lp(I4(0,2,2,5)));
@@ -896,8 +896,8 @@ render_forearm(Arm arm, tvert elbow_up_out)
  {//NOTE: Outer side (the thumb side): Brachio-radialis
   vertex_block("brachio");
   tvert a = arm.brachio_a;
-  brachio_b = a + fv3(0.1483f, -0.2286f, -0.0134f);
-  brachio_c = fvert(0.2034f, -1.85f, 0.1108f);
+  brachio_b = a + fv(v3_128);
+  brachio_c = fv(tvert_129);
   tvert b = brachio_b;
   tvert c = brachio_c;
   draw(bez_v3v2(b, V3(0.0352f, 0.f, -0.f),
@@ -913,13 +913,13 @@ render_forearm(Arm arm, tvert elbow_up_out)
   vertex_block("elbow");
   
   tvert o = forearm_rotation_pivot;
-  tvert up_in  = o + fv3(-0.0612f, 0.1097f, -0.1467f);
-  tvert low_in = o + fv3(-0.0131f, -0.0681f, -0.1431f);
+  tvert up_in  = o + fv(v3_130);
+  tvert low_in = o + fv(v3_131);
   i4 elbow_radii = I4(4,3,3,2);
   draw(bez_line(up_in,low_in), elbow_radii);
   tvert up_out = elbow_up_out;
-  fimage(file_arm_back_bone, fv2(0.4301f, 0.4733f));
-  tvert low_out = o + fv3(0.0913f, -0.0708f, -0.1431f);
+  fimage(file_arm_back_bone, fv(v2_132));
+  tvert low_out = o + fv(v3_133);
   draw(bez_line(up_out,low_out), elbow_radii);
   
   {// NOTE ;tricep_connections
@@ -932,21 +932,21 @@ render_forearm(Arm arm, tvert elbow_up_out)
  {
   ShowAlignedSymIf(V3z(1.f), cos_45_degree);
   fimage(image_brachio_front,
-         bez_v2_offset(fv2(0.383f, 0.5666f), fv2(0.1002f, 0.0001f), fv2(0.5336f, 0.3928f)));
+         bez_v2_offset(fv(v2_134), fv(v2_135), fv(v2_136)));
   draw(bez_v3v2(arm.brachio_humerus,
-                fv3(0.2153f, 0.0705f, 0.f), fv2(0.0904f, -0.1979f),
+                fv(v3_137), fv(v2_138),
                 arm.brachio_a));
   fimage(image_brachio_front,
-         bez_v2_offset(fv2(0.383f, 0.5666f), fv2(0.2413f, -0.0736f), fv2(0.7305f, 0.2891f)));
+         bez_v2_offset(fv(v2_139), fv(v2_140), fv(v2_141)));
   // NOTE(kv) Turn on the MM overlay here.
   // It looks weird but still matches reference so...
   draw(bez_v3v2(arm.brachio_humerus,
-                fv3(0.1982f, 0.0535f, 0.f), fv2(0,0),
-                fvert(0.2437f, -1.8644f, 0.f)));
+                fv(v3_142), fv(v2_143),
+                fv(tvert_144)));
  }
  // todo Draw this line, and fill it!
  fimage(image_arm_profile_full,
-        bez_v2_offset(brachio_humerus_profile_uv, fv2(-0.1626f, -0.033f), fv2(0.4261f, 0.4584f)));
+        bez_v2_offset(brachio_humerus_profile_uv, fv(v2_145), fv(v2_146)));
  fill3(arm.brachio_humerus, arm.brachio_a, elbow_up_out);
  
  tvert radius_bump = (palm_in+V3(0.2725f, 0.1637f, -0.0384f));
@@ -960,7 +960,7 @@ render_forearm(Arm arm, tvert elbow_up_out)
  tvert radius_back = (palm_in+(V3(0.2716f, 0.1061f, -0.1844f)));
  {// NOTE: wrist
   tvert ulnar_ball = (palm_in+V3(-0.0308f, 0.2166f, -0.0893f));
-  tvert v566 = ((fvert(-0.1204f, -1.8951f, -0.0509f)));
+  tvert v566 = fv(tvert_147);
   draw(bez_v3v2(ulnar_ball, (V3(0.0482f, 0.f, -0.f)),
                 V2(0,0), v566),
        lp(I4(0,5,2,0)));
@@ -973,9 +973,9 @@ render_forearm(Arm arm, tvert elbow_up_out)
   fill3(radius_back, v593,
         lerp(radius_bump, 0.1308f, near_palm_in));
  }
- tvert middle_finger_meeter = (fvert(0.0936f, -2.5386f, -0.171f));
+ tvert middle_finger_meeter = fv(tvert_148);
  
- tvert v2189 = fvert(-0.2725f, -0.8924f, -0.251f);
+ tvert v2189 = fv(tvert_149);
  draw(bez_v3v2(v2189,
                V3(0.f, 0.1288f, 0.1481f),
                V2(0,0),
@@ -1009,10 +1009,10 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
  import_vertices(head, mk_bone_id(Bone_Head));
  import_vertices(pelvis, mk_bone_id(Bone_Pelvis));
  
- fimage(image_clavicle_vs_arm, fv2(0.757f, 0.8308f));
- fimage(image_clavicle, fv2(0.6958f, 0.6056f));
+ fimage(image_clavicle_vs_arm, fv(v2_150));
+ fimage(image_clavicle, fv(v2_151));
  // NOTE: Let's decide that shoulder is part of the CLAVICLE
- tvert shoulder = fvert(0.9257f, -1.5541f, 0.0573f);
+ tvert shoulder = fv(tvert_152);
  vv0(scap_sock_top);
  
  mat4i armT = get_world_from_bone(mk_bone_id(Bone_Arm));
@@ -1022,9 +1022,9 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
  mat4 arm_local = ot.inv * armT;
  
  // NOTE Fictitious point, that lines up in x with @scap_delt
- tvert shoulder_in = fvert(0.4819f, -1.3302f, -0.4461f);
+ tvert shoulder_in = fv(tvert_153);
  
- tvert sternum = fvert(0.f, -1.6696f, 0.2691f);
+ tvert sternum = fv(tvert_154);
  tvert delt_collar = (shoulder + V3(-0.3387f, -0.02f, 0.1371f));
  tvert sternumL = (sternum + V3x(0.0919f));
  {// NOTE: Neck
@@ -1096,9 +1096,9 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   }
  }
  
- fimage(image_deltoid_insertions, fv2(0.1558f, 0.4631f));
- fimage(image_skeletal_meat_outline, fv2(0.1719f, 0.8044f));
- tvert scap_delt = fvert(0.4909f, -1.6965f, -0.5072f);  // ;scap_delt
+ fimage(image_deltoid_insertions, fv(v2_155));
+ fimage(image_skeletal_meat_outline, fv(v2_156));
+ tvert scap_delt = fv(tvert_157);  // ;scap_delt
  
  tvert rib_mid;
  tvert rib_back;
@@ -1108,7 +1108,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   rib_mid = mkvert(0.f, rib_midY, 0.8061f);
   {
    ShowIf(is_left());
-   ShowAlignedSymIf(V3x(1.f), fv(0.87f));
+   ShowAlignedSymIf(V3x(1.f), fv(v1_158));
    draw(bez_bezd_old(sternum,
                      V3(0.f, 0.0027f, 0.2265f),
                      V2(0.f, 0.0935f),
@@ -1144,7 +1144,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
  }
  
  //NOTE(kv) "latis_arm" actually attaches to the arm
- tvert latis_arm = tag_bone(mk_bone_id(Bone_Arm), arm_local*fvert(-0.2595f, 0.263f, -0.0002f));
+ tvert latis_arm = tag_bone(mk_bone_id(Bone_Arm), arm_local*fv(tvert_159));
  {// NOTE: connection to the arm
   Bez latis_arm_line = bez_unit(rib_back, V2(0.1935f, 0.0429f), 
                                 V2(0.151f, 0.0235f),
@@ -1158,10 +1158,10 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
  }
  
  fpreset(Preset_Arm_Profile);
- fimage(image_scapula_profile, fv2(0.5258f, 0.4965f));
- tvert scap_sock_bot = scap_sock_top + fv3(0.0098f, -0.2771f, -0.0977f);
+ fimage(image_scapula_profile, fv(v2_160));
+ tvert scap_sock_bot = scap_sock_top + fv(v3_161);
  {// NOTE The back
-  tvert trap_bot = fvert(0.f, -3.1104f, -0.1081f);
+  tvert trap_bot = fv(tvert_162);
   if(level2)
   {
    hl_block;
@@ -1210,13 +1210,13 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
                   V4(0.f, 0.118f, 0.f, 0.f),
                   V3(-0.f, 0.f, -1.f),
                   scap_sock_bot));
-   draw(bez_parabola(scap_sock_top, fv3(0.0074f, 0.0744f, -0.1528f), scap_sock_bot),
-        flp({.radii = V4(0.1667f, 0.6667f, 0.5f, -0.f)}));
-   draw(bez_v3v2(scap_sock_top, fv3(-0.0239f, -0.0363f, 0.1509f), fv2(0.1876f, 0.2575f), scap_sock_bot),
-        flp({.radii = V4(0.f, 0.5f, 0.5f, 0.f)}));
+   draw(bez_parabola(scap_sock_top, fv(v3_163), scap_sock_bot),
+        flp(FUI_Line_Params_164));
+   draw(bez_v3v2(scap_sock_top, fv(v3_165), fv(v2_166), scap_sock_bot),
+        flp(FUI_Line_Params_167));
   }
   
-  tvert lower_back = fvert(0.f, -4.2845f, -0.0495f);
+  tvert lower_back = fv(tvert_168);
   fill3(lower_back, trap_bot, back_archL);
   
   tvert diamond_up = mkvert(V3z(shoulder_in.z) + V3(0.f, -1.2636f, 0.0193f));
@@ -1255,8 +1255,8 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   v1 nippleY = shoulder.y-0.4f*head_unit;  //NOTE: from hpc
   tvert nipple = mkvert(V3y(nippleY) + V3(0.5799f, 0.f, 0.6752f));
   
-  tvert chest_in = (fvert(0.1045f, -2.5438f, 0.8167f));
-  tvert chest_out = (fvert(0.6599f, -2.4822f, 0.6002f));
+  tvert chest_in = fv(tvert_169);
+  tvert chest_out = fv(tvert_170);
   pectoral_torso = chest_out+V3(0.1171f, 0.1455f, -0.1676f);
   fill3(delt_collar,pectoral_torso,chest_out);
   draw(bez_unit2(chest_in,
@@ -1264,7 +1264,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
                  V3(0.0915f, -0.523f, 0.8474f),
                  chest_out),
        I4(6,4,3,1));
-  chest_back = fvert(0.7613f, -2.0817f, 0.039f);
+  chest_back = fv(tvert_171);
  }
  
  {//NOTE: Some latissimus lines that are made-up and probably will have to be redone
@@ -1297,11 +1297,11 @@ render_pelvis()
  tvert navel = mkvert(V3y(navelY) + V3z(0.271f));
  
  tvert crotch = mkvert();  // NOTE(kv) Yes, the crotch is the origin, what about it?
- tvert crotchL = fvert(0.1f,0,0);
+ tvert crotchL = fv(tvert_172);
  draw(bez_line(crotch,crotchL));
  {//-Lower
-  tvert bikiniL = fvert(1.0685f, 0.8105f, -0.6117f);
-  tvec bikini_dir = fv3(-0.1823f, -0.0005f, 0.9832f);
+  tvert bikiniL = fv(tvert_173);
+  tvec bikini_dir = fv(v3_174);
   draw(bez_unit(crotchL, V2(-0.2081f, 0.2062f), V2(0.316f, 0.3309f),
                 bikini_dir, bikiniL));
   draw(bez_unit(crotchL, V2(-0.2767f, 0.2024f), V2(0.213f, 0.2503f),
@@ -1310,9 +1310,9 @@ render_pelvis()
  tvert bikini_up_back;
  {//-Upper
   //NOTE: This is from David Finch's "how to draw female torso", which he took from Loomis
-  tvert bikini_front_mid = (fvert(0.f, 0.951f, 0.1677f));
+  tvert bikini_front_mid = fv(tvert_175);
   tvert girdle_front = (bikini_front_mid + V3(0.8075f, 0.2603f, -0.0717f));
-  bikini_up_back = fvert(0.5102f, 1.3265f, -0.7766f);
+  bikini_up_back = fv(tvert_176);
   Bez girdle_side_line = bez_unit2(girdle_front,
                                    V4(-0.3554f, 0.3781f, 0.2608f, 0.2404f),
                                    V3(0.7543f, 0.6022f, 0.2614f),
@@ -1338,13 +1338,13 @@ render_eyes(Pose &pose)
 {
  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
- tvert eyeO = fvert(0.1953f, -0.2348f, 0.8954f);
+ tvert eyeO = fv(tvert_177);
  v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
  mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
  // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
  // I think we've managed to dig ourselves out of that situation almost?
  // because we can use eye_in - eye_out to establish a coord frame
- tvert eye_in = (eyeT*fvert(-0.0282f, 0.f, -0.1236f));
+ tvert eye_in = (eyeT*fv(tvert_178));
  v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
  WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
  
@@ -1429,10 +1429,10 @@ render_eyes(Pose &pose)
    {// NOTE https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
     // iris radius is [0.5, 0.6] that of eyeball
     mat4 irisRelT;
-    tdim iris_radius = fdim(0.4934f);
+    tdim iris_radius = fv(tdim_179);
     tvert iris_rel_center = mkvert( V3z(square_root(1.f-squared(iris_radius))));
     draw_circle(iris_rel_center, normal_z, iris_radius,
-                flp({.radii = V4(0.1667f, 0.5f, 0.1667f, 0.1667f)}));
+                flp(FUI_Line_Params_180));
    }
   }
   
@@ -1560,7 +1560,7 @@ render_grid()
   }
  }
  
- if(fbool(1))
+ if(fbool(i1_181))
  {//NOTE: Head unit body proportions markers (we've got 6 heads!)
   PaintBlock;
   painter->params.line_color = linear_argb_red;
@@ -1597,7 +1597,7 @@ render_head(Pose &pose)
  
  v1 noseY = -loomis_unit;
  //NOTE: My nose_tip is actually higher than the nose base (the loomis nose y is for the nose base)
- tvert nose_tip = mkvert(0.f, noseY, faceZ) + fv3(0.f, 0.0237f, 0.0916f);
+ tvert nose_tip = mkvert(0.f, noseY, faceZ) + fv(v3_182);
  ViewCenterBlock(nose_tip);
  
  mat4 &to_local = ot.inverse;
@@ -1611,7 +1611,7 @@ render_head(Pose &pose)
  }
  
  v1 chinY = -2.f*loomis_unit;
- tvert chin_middle = mkvert(0,chinY,faceZ) + fv3z(-0.0856f);
+ tvert chin_middle = mkvert(0,chinY,faceZ) + fv(v3_183);
  
  v1 face_sideX = inv_root2;
  tvert loomis_side_center = mkvert(V3x(face_sideX));
@@ -1625,7 +1625,7 @@ render_head(Pose &pose)
  
  tvert jaw = mkvert(face_sideX, chinY, 0) + V3(-0.0844f, 0.4575f, -0.0247f);
  
- tvert mouth_base = mkvert(0, lerp(chinY, fv(0.5871f), noseY), faceZ);
+ tvert mouth_base = mkvert(0, lerp(chinY, fv(v1_184), noseY), faceZ);
  tvert mouth_corner = mouth_base + V3(0.2499f, 0.f, -0.2801f);
  tvert mouth_cornerR = negateX(mouth_corner);
  
@@ -1660,7 +1660,7 @@ render_head(Pose &pose)
   
   tvert philtrum_up = mkvert(0, nose_baseY, faceZ) + V3(0,0,0);
   
-  tvert philtrum_low = mouth_base + fv3(0.f, 0.078f, 0.035f);
+  tvert philtrum_low = mouth_base + fv(v3_185);
   philtrum_line_mid = bez_offset(philtrum_up ,
                                  (V3(0.f, -0.1241f, 0.0076f)),
                                  (V3(0.f, 0.0481f, -0.0345f)),
@@ -1685,20 +1685,20 @@ render_head(Pose &pose)
                      mouth_corner);
   {
    PaintBlock;
-   if(fv(0)){
-    set_line_color_lightness(fv(2.6675f));
+   if(fv(i1_186)){
+    set_line_color_lightness(fv(v1_187));
    }
    tvert lip_in = sety(philtrum_lowL + V3(-0.f, 0.f, -0.0527f),
-                       mouth_corner.y+fv(0.0133f));
+                       mouth_corner.y+fv(v1_188));
    //NOTE: Main mouth line, looks wicked awesome!
    {//;lip_up_bot
     Line_Params params = lp();
-    params.radii = fv4(0.4876f, 0.3631f, 0.5066f, -0.2905f);
-    if(fv(1)){
-     params.lightness_additions = fv4(0.0017f, 2.3506f, 1.2313f, 2.2549f);
+    params.radii = fv(v4_189);
+    if(fv(i1_190)){
+     params.lightness_additions = fv(v4_191);
     }
     Bezier lip_up_bot = bez_unit2(lip_in,
-                                  fv4(-0.0828f, 0.5237f, 0.f, 0.f),
+                                  fv(v4_192),
                                   V3(0.f, 0.2748f, 0.9615f),
                                   mouth_corner);
     draw(lip_up_bot, params);
@@ -1716,7 +1716,7 @@ render_head(Pose &pose)
     // We must keep it centralized
     Line_Params params = lp();
     params.radii = V4(0.7f, -0.2807f, 0.f, 0.f);
-    params.lightness_additions = fv4(0.f, 5.0751f, 0.f, 0.f);
+    params.lightness_additions = fv(v4_193);
     if(level1){params.radii = painter->params.line.radii;}
     draw(lip_low_line,params);
    }
@@ -1781,9 +1781,9 @@ render_head(Pose &pose)
  //TODO(kv) Adjust the jaw value here
  fill4(jaw, chinL, mouth_corner, cheek_low);
  
- nose_root_backL = fvert(0.f, -0.0651f, -0.1755f) + V3x(nose_sideX);
+ nose_root_backL = fv(tvert_194) + V3x(nose_sideX);
  
- brow_out = fvert(0.585f, -0.1342f, 0.5485f);
+ brow_out = fv(tvert_195);
  cheek_up = (brow_out+V3(0.f, -0.2935f, 0.f));
  if(level1){
   hl_block;
@@ -1858,11 +1858,11 @@ render_head(Pose &pose)
  
  {//-;Ear
   PaintBlock;
-  set_line_color_lightness(fv(2.4829f));
+  set_line_color_lightness(fv(v1_196));
   scale_line_radius(0.5f);
-  tvert ear_back = ear_center + fv3(0.1697f, 0.0034f, -0.3328f);
-  tvert ear_low = ear_center + fv3(-0.0639f, -0.5264f, 0.1141f);
-  v4 radii1 = fv4(0.25f, 1.9122f, 0.7259f, 0.9839f);
+  tvert ear_back = ear_center + fv(v3_197);
+  tvert ear_low = ear_center + fv(v3_198);
+  v4 radii1 = fv(v4_199);
   v4 radii2 = radii_c2(radii1, V2(-0.9383f, 0.f));
   Bez ear1 = bez_unit(ear_center,
                       V2(0.2792f, 3.5588f),
@@ -1875,7 +1875,7 @@ render_head(Pose &pose)
  }
  
  //-NOTE: The incredibly non-thrilling story of the head
- tvert head_back_out = fvert(0.6208f, 0.1421f, -0.4585f);
+ tvert head_back_out = fv(tvert_200);
  Bezier head_top_out_line = bez_offset(foreheadL,
                                        V3(0.1239f, 0.1894f, -0.2995f),
                                        V3(-0.0634f, 0.3622f, 0.1935f),
@@ -1893,7 +1893,7 @@ render_head(Pose &pose)
   if(level1){ draw(hair_hline); }
  }
  
- tvert head_back_in = (fvert(0.2242f, 0.6295f, -1.1258f));
+ tvert head_back_in = fv(tvert_201);
  Bezier head_top_in_line = bez_bezd_old(forehead_in,
                                         V3(0.f, 0.4276f, -0.1837f),
                                         V2(0.3589f, 0.1402f),
@@ -1912,7 +1912,7 @@ render_head(Pose &pose)
                                   (V3(-0.0535f, 0.197f, -0.6398f)),
                                   behind_ear);
   if (level2) { draw(head_back_out_line); }
-  tvert head_back_in2 = fvert(0.4676f, -0.7579f, -0.1264f);//note: Notice the loomis side circle
+  tvert head_back_in2 = fv(tvert_202);//note: Notice the loomis side circle
   
   Bezier head_back_in_line = bez_offset(head_back_in,
                                         (V3(-0.f, -0.3664f, -0.3108f)),
@@ -1933,11 +1933,11 @@ render_head(Pose &pose)
  fill_point_bez(ear_center, head_top_out_line);
  fill_line_bez(ear_center, head_back_out, head_back_out_line);
  
- if(fbool(0))
+ if(fbool(i1_203))
  {//NOTE The forehead
   tvert hair_hline_center = bezier_sample(hair_hline, 0.5f);
   tvert esuo = brow_out;
-  tvert control_point = mkvert(fdim(0.2448f), -esuo.y/3.f, (4.f-esuo.z)/3.f);
+  tvert control_point = mkvert(fv(tdim_204), -esuo.y/3.f, (4.f-esuo.z)/3.f);
   // NOTE This line goes through the cross center!
   Bez brow_hline = bez_raw(esuo,
                            control_point,
@@ -1956,7 +1956,7 @@ render_head(Pose &pose)
   tvert chinR = negateX(chinL);
   if(is_left())
   {
-   if(fbool(0))
+   if(fbool(i1_205))
    {
     Bezier chin_line = bez_raw(chinL, chin_middle, chin_middle, negateX(chinL));
     draw(chin_line);
@@ -1966,13 +1966,13 @@ render_head(Pose &pose)
   {//NOTE: chin fixes
    PaintBlock;
    scale_line_radius(0.25f);
-   tvert mouth_low_valley = lip_low_center+fv3(0.f, -0.0704f, -0.0417f);
+   tvert mouth_low_valley = lip_low_center+fv(v3_206);
    {
     ShowIf(is_left());
     ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.73f));
     {
      Line_Params params = lp();
-     params.lightness_additions = fv4(0.1672f, 2.0761f, 1.3853f, 3.0361f);
+     params.lightness_additions = fv(v4_207);
      draw(bez_line(lip_low_center, mouth_low_valley), params);
     }
     {
@@ -2000,11 +2000,11 @@ render_head(Pose &pose)
   }
  }
  
- tvert head_neck_junction = fvert(0.f, -1.1949f, 0.3195f);
+ tvert head_neck_junction = fv(tvert_208);
  if(is_left())
  {
   {
-   ShowAlignedSymIf(V3x(1.f), fv(.8f));
+   ShowAlignedSymIf(V3x(1.f), fv(v1_209));
    draw(bez_line(chin_middle, head_neck_junction));
   }
   fill3(head_neck_junction, chinL, jaw);
@@ -2015,9 +2015,9 @@ render_head(Pose &pose)
   PaintBlock;
   scale_line_radius(0.3826f);
   set_line_color_lightness(1.5096f);
-  tvert a1626 = fvert(0.2651f, -0.5154f, 0.8715f);
-  tvert b1627 = fvert(0.5636f, -0.3601f, 0.5385f);
-  tvert c1633 = fvert(0.5266f, -0.6385f, 0.68f);
+  tvert a1626 = fv(tvert_210);
+  tvert b1627 = fv(tvert_211);
+  tvert c1633 = fv(tvert_212);
  }
  
  {//~NOTE: Hair omg
@@ -2028,7 +2028,7 @@ render_head(Pose &pose)
   painter->params.line.radii = V4(0.5f, 1.f, 1.f, 0.25f);
   
   v1 hairY = loomis_unit;
-  tvert hair_root = fvert(0.f, 1.087f, 0.f);  //NOTE: the point on top of the head, literally the highest point
+  tvert hair_root = fv(tvert_213);  //NOTE: the point on top of the head, literally the highest point
   tvert bang_root = bezier_sample(hair_hline, 0.5f);
   
   v1 flutter_period = 2.75f;
@@ -2061,7 +2061,7 @@ render_head(Pose &pose)
     thair = get_animation_value(ani, time);
    }
   }
-  tvert bang_midpoint = fvert(0.f, -0.0929f, 1.042f);
+  tvert bang_midpoint = fv(tvert_214);
   if(is_left())
   {
    Bezier bang_vline = bez_unit2(bang_root,
@@ -2074,8 +2074,8 @@ render_head(Pose &pose)
   }
   tvert bang_tip;
   {
-   tvec c = fvert(0.0537f, 0.1334f, -0.0695f);
-   bang_tip = fvert(0.7418f, -0.0689f, 0.6115f)+thair*c;
+   tvec c = fv(tvert_215);
+   bang_tip = fv(tvert_216)+thair*c;
   }
   Bez bang_vline2 = bez_bezd_old(bang_root, 
                                  V3(0.3419f, 0.0757f, 0.129f),
@@ -2088,8 +2088,8 @@ render_head(Pose &pose)
    bang_vline2[2] += thair*b;
   }
   Bez bang_hline = bez_offset(bang_midpoint,
-                              fv3(0.1302f, -0.0069f, -0.0297f),
-                              fv3(0.0001f, 0.2158f, 0.056f),
+                              fv(v3_217),
+                              fv(v3_218),
                               bang_tip);
   {
    tvec a = V3(0.0000f, -0.1217f, 0.0000f);
@@ -2102,13 +2102,13 @@ render_head(Pose &pose)
   draw(bang_hline, (0.5176f) * painter->params.line.radii);
   
   //-NOTE: The bang saga is over, let's move onto something else
-  tvert hair_main_tip = fvert(0.7814f, -1.6599f, -0.6047f);
+  tvert hair_main_tip = fv(tvert_219);
   Bez vline = bez_bezd_old(hair_root,
                            V3(0.1414f, 0.2764f, -0.471f),
                            V2(0.3956f, 0.3102f),
                            hair_main_tip);
   
-  draw(vline, fv4(0.5f, 1.f, 1.f, 0.0862f));
+  draw(vline, fv(v4_220));
   
   if(is_left()){
    tvec hcontrol = V3(0.1291f, -0.0058f, -0.2506f);
@@ -2116,7 +2116,7 @@ render_head(Pose &pose)
                                hcontrol,
                                negateX(hcontrol),
                                negateX(hair_main_tip));
-   draw(connecting, I4_sym(fv(I2(0,4))));
+   draw(connecting, I4_sym(fv(i2_221)));
   }
   
   Bezier hairline_side = bez_offset(bang_root,
@@ -2192,10 +2192,10 @@ render_character(Pose &pose)
 {//~ IMPORTANT: Conventions
  // 1: Things are on the left (side of the face) by default. Meaning x>0.
  painter->shade_color = compute_fill_color(0.094014f);
- if(fbool(0)){painter->shade_color = painter->params.fill.color;}
+ if(fbool(i1_222)){painter->shade_color = painter->params.fill.color;}
  v1 arm_ry = head_unit_world*(0.5302f);
  macro_torso(macro_world_declare);
- b32 right_only = fv(0);  // NOTE To spot overdraw
+ b32 right_only = fv(i1_223);  // NOTE To spot overdraw
  for_i32(lr_index,0,2)
  {//~NOTE: Torso
   if(right_only and lr_index == 0){
@@ -2217,7 +2217,7 @@ render_character(Pose &pose)
   
   BoneBlock(mk_bone_id(Bone_Torso));
   Torso torso_obj = render_torso(pose, pelvis_obj, head);
-  tvert elbow_up_out = forearm_rotation_pivot + fv3(0.1427f, 0.1147f, -0.064f);
+  tvert elbow_up_out = forearm_rotation_pivot + fv(v3_224);
   {
    BoneBlock(mk_bone_id(Bone_Arm));
    Arm arm_obj = render_arm(pose, torso_obj, elbow_up_out);
@@ -2250,7 +2250,7 @@ show_reference_images()
    if(camera_is_right())
    {
     ShowGroup(Vis_Ref_Arm_Medial_Right);
-    tvert center = fvert(-0.2112f, -4.5306f, -0.2689f);
+    tvert center = fv(tvert_225);
     v1 width = 0.7966f;
     Stringz filename = fimage(strlit("G:/My Drive/Art/arm medial.jpg"));
     draw_image(filename, center, V3z(width), V3y(1.f),
@@ -2262,31 +2262,31 @@ show_reference_images()
     {
      {// NOTE: full-body MM skeleton
       .filename  = fimage(image_skeletal_meat_outline),
-      .center    = fvert(1.7822f, -6.9027f, -0.2689f),
+      .center    = fv(tvert_226),
       .x_axis     = V3x(1.8194f),
       .alpha     = 0.3033f,
      },
      {// NOTE: full-body MM diagram
       .filename  = fimage(image_mm_full_body_muslce_front),
-      .center    = fvert(1.8527f, -6.8952f, -0.2689f),
+      .center    = fv(tvert_227),
       .x_axis     = V3x(1.8695f),
       .alpha     = 0.3033f,
      },
      {
       .filename  = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")),
-      .center    = fvert(1.2723f, -4.8425f, -0.2689f),
+      .center    = fv(tvert_228),
       .x_axis     = V3x(-1.3938f),
       .alpha     = 0.1421f,
      },
      {
       .filename  = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")),
-      .center    = fvert(1.0471f, -6.2154f, -0.2689f),
+      .center    = fv(tvert_229),
       .x_axis    = V3x(-1.0668f),
       .alpha     = 0.1421f,
      },
      {
       .filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")),
-      .center   = fvert(-0.5712f, -6.2775f, -0.2689f),
+      .center   = fv(tvert_230),
       .x_axis   = V3x(2.6661f),
       .alpha    = 0.4221f,
      },
@@ -2304,7 +2304,7 @@ show_reference_images()
    {// NOTE ;back_reference @armT
     ShowGroup(Vis_Ref_Arm_Back_Bone);
     {
-     tvert center = fvert(2.1904f, -3.8928f, -0.2689f);
+     tvert center = fv(tvert_231);
      v1 width  = 2.4645f;
      Stringz filename = file_arm_back_bone;
      draw_image(filename, center, V3x(-width), V3y(1.f),
@@ -2315,7 +2315,7 @@ show_reference_images()
    {
     ShowGroup(Vis_Ref_Arm_Profile_Left);
     {
-     tvert center = fvert(-0.2112f, -3.9204f, 0.5898f);
+     tvert center = fv(tvert_232);
      v1 width  = 1.1454f;
      Stringz filename = fimage(image_arm_profile_full);
      v3 x = V3z(1);
@@ -2352,7 +2352,7 @@ driver_render(Arena *tmp, Painter *painter0)
 
  v1 default_line_radius_min = 0.5089f;
  v1 default_line_end_radius = default_line_radius_min;
- if(fbool(1)){
+ if(fbool(i1_233)){
   default_line_end_radius = i2f6(2);
  }
  {//~ ;init_painter_2
@@ -2362,7 +2362,7 @@ driver_render(Arena *tmp, Painter *painter0)
    Paint_Params &pp = painter->params;
    pp.fill_depth_offset = millimeter * 1.f;
    pp.radius_mult      = 1.f;
-   pp.nslice_per_meter = fv(3.0044f) * 100.f;
+   pp.nslice_per_meter = fv(v1_234) * 100.f;
    pp.fill.color = default_fill;
    pp.line.radii = V4(default_line_radius_min, 
                       1.f,
@@ -2371,7 +2371,7 @@ driver_render(Arena *tmp, Painter *painter0)
    
    //argb default_line_color = argb_gray(srgb_to_linear1(0.3389f));
    // ;default_line_color
-   argb default_line_color = argb_gray(fv(0.03f));
+   argb default_line_color = argb_gray(fv(v1_235));
    pp.line_color = default_line_color;
   }
   p->viz_level            = viz_level;
@@ -2391,7 +2391,7 @@ driver_render(Arena *tmp, Painter *painter0)
  
  show_reference_images();
  
- if(fbool(0))
+ if(fbool(i1_236))
  {// NOTE Test rotation, again
   BoneBlock(mk_bone_id(Bone_References));
   hl_block_color(linear_argb_blue);
@@ -2410,7 +2410,7 @@ driver_render(Arena *tmp, Painter *painter0)
    tvert translate = mkvert(1,1,0);
    mat4i rotate = mat4i_rotate_tpr(0,0, painter->looping_time);
    v1 scale = 2.f;
-   pivot = fvert(1.019f, 0.5494f, 0.f);
+   pivot = fv(tvert_237);
    vv0_overlay(pivot);
    // trs_pivot_transform
    mat4i translate_scale = mat4i_translate(translate) * mat4i_scale(scale);
