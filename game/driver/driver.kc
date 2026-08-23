@@ -1740,48 +1740,10 @@ render_head(Pose &pose)
                                 V4(),
                                 V3(0.f, 0.f, 1.f),
                                 v1219);
- {
-  PaintBlock;
-  painter->params.line.flags |= Line_Invisible;
-  draw(nose_line_side);
- }
- draw(bez_offset(nose_tipL,
-                 V3(0.0121f, -0.0404f, -0.1108f),
-                 V3(),
-                 nose_wing),
-      V4(0.151758f, 0.699609f, 1.149659f, -0.148325f));
- 
- if(is_left()){
-  Bez nose_line_sideR = bez_negateX(nose_line_side);
-  {
-   PaintBlock;
-   painter->params.line.flags |= Line_Invisible;
-   draw(nose_line_sideR);
-  }
-  fill_dual_bez(nose_line_side, nose_line_sideR);
- }
- 
- if(is_left())
- {// NOTE: Nose bridge: the profile silhouette, root -> tip along the midline.
-  // Hidden near-frontal like the chin midline bits (no bridge line on a front view).
-  ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.73f));
-  // NOTE(kv) The midline sits behind the nose-side fills (x=+-nose_sideX) from any
-  // non-frontal view, so pull the line toward the camera (same jank as the skeleton).
-  painter->params.line_depth_offset -= fv(v1_236) * centimeter;
-  fcurve(Curve_5, setx(nose_rootL, 0.f), nose_tip);
- }
+ // NOTE(kv) The nose lines/fills below this point live in the document
+ // (game/driver/driver.document.ad, tag Vis_Nose) -- replayed, not drawn here.
+ // Re-draw + `export_group Vis_Nose` to change them (plan-data-only-region-poc).
 
- {//NOTE: Draw that tasty nose wing :>
-  ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.70f));
-  draw(bez_parabola(nose_wing, V3(0.0539f, 0.07f, -0.0417f), nose_wing_up));
- }
- if(is_left())
- {// NOTE: Some nose tip drawing (very fudgy)
-  // TODO: We can merge this with the "nose under" lines, maybe? 
-  // Problem is we kinda need to separate out what the nose side is, in order to do triangles fills
-  fcurve(Curve_3, nose_tipL, negateX(nose_tipL));
- }
- 
  //~NOTE: Cheek situation pretty complex!
  cheek_low = mkvert(0,noseY,faceZ) + V3(0.6062f, 0.f, -0.4289f);
  

@@ -26,6 +26,8 @@ enum
  Version_PresetFieldXMacro    = 24,  // bool fields reordered after the i32s
  Version_MultiBonePoints      = 25,  // tvert grows bone_id (per-control-point bone refs)
  Version_ShapeKeys            = 26,  // Recorded_Curve / Dual_Bezier grow {key, deltas}
+ Version_RecordedVertices     = 27,  // Recording.vertices table + Recorded_Primitive.corner_vertex
+ Version_TvertPoly3Disk       = 28,  // Recorded_Poly3 / Disk.center become tvert (per-point bone)
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

@@ -59,20 +59,26 @@ store_recording()
  arena_clear(&rec.arena);
  init_dynamic(rec.primitives, &rec.arena, maximum(1, m->primitives.count));
  init_dynamic(rec.groups,     &rec.arena, maximum(1, m->groups.count));
+ init_dynamic(rec.vertices,   &rec.arena, maximum(1, m->recorded_vertices.count));
  set_count(&rec.primitives, m->primitives.count);
  block_copy(rec.primitives.items, m->primitives.items,
             sizeof(Recorded_Primitive) * m->primitives.count);
  set_count(&rec.groups, m->groups.count);
  block_copy(rec.groups.items, m->groups.items,
             sizeof(Recorded_Group) * m->groups.count);
+ set_count(&rec.vertices, m->recorded_vertices.count);
+ block_copy(rec.vertices.items, m->recorded_vertices.items,
+            sizeof(Recorded_Vertex) * m->recorded_vertices.count);
  rec.captured = true;
 }
 
 function void
-replay_recording(Recording &rec)
+replay_recording(Recording &rec, b32 replay_is_right=false)
 {// NOTE(kv) Second consumer of a captured recording: bones/camera are live, the
  // primitives/groups come from the preset's slot. Correctness bar (same-frame,
  // same-preset): the vertex stream is bit-identical to the code path's (Diff-now).
+ // NOTE(kv) Q94 mirror: the capture is left-only; `replay_is_right` re-issues it on
+ // the right bones (per-point bone refs follow m->is_right), skipping one-sided groups.
  Model *m = the_model;
  Painter *p = painter;
 
@@ -89,7 +95,7 @@ replay_recording(Recording &rec)
  p->live_vis_tag = Vis_None;
  p->live_cam_vis = {};
  b32 saved_is_right = m->is_right;
- m->is_right = false;  // NOTE(kv) the recording is left-side only (should_send_model_data)
+ m->is_right = replay_is_right;
 
  // NOTE(kv) Own bone-stack slot: draw_bezier reads the stack top for its alignment
  // check, so set_bone_transform alone isn't enough.
@@ -101,12 +107,14 @@ replay_recording(Recording &rec)
   // NOTE(kv) Copy, not reference: apply_shape_key blends in place and the recording
   // must keep rest + delta.
   Recorded_Primitive prim = rec.primitives.items[iprim];
-  apply_shape_key(prim);
   Recorded_Group &group = rec.groups.items[prim.group_index];
+  if(replay_is_right and group.one_sided){ continue; }
+  resolve_vertices(rec, prim);  // NOTE(kv) before the blend: table holds rest positions
+  apply_shape_key(prim);
 
   if(cur_bone == 0 or not (group.bone_id == cur_bone->id))
   {// NOTE(kv) Bone is a group property (Q43a): one bone per group by construction.
-   cur_bone = get_bone(group.bone_id, /*is_right*/false);
+   cur_bone = get_bone(group.bone_id, replay_is_right);
    m->bone_stack.items[m->bone_stack.count-1] = cur_bone;
    set_bone_transform(cur_bone->world_from_bone);
   }
@@ -123,7 +131,7 @@ replay_recording(Recording &rec)
   {// NOTE(kv) Q38 camera-bound visibility: re-evaluate the recorded condition against
    // the LIVE view vector (derived from the group's view scope + current camera, Q42)
    // and AND it in -- same decomposition argument as the vis_live re-AND above.
-   v3 live_view = view_vector_from(get_bone(group.view_bone, /*is_right*/false)->world_from_bone,
+   v3 live_view = view_vector_from(get_bone(group.view_bone, replay_is_right)->world_from_bone,
                                    group.view_center);
    v1 alignment = dot(group.cam_vis.normal, live_view);
    if(group.cam_vis.symmetric){ alignment = absolute(alignment); }
@@ -143,7 +151,8 @@ replay_recording(Recording &rec)
 
    case Primitive_Type_Poly3:
    {
-    fill3(prim.poly3[0], prim.poly3[1], prim.poly3[2], get_fill_params());
+    tvert const (&pt)[3] = prim.poly3.points;
+    fill3(pt[0], pt[1], pt[2], get_fill_params());
    }break;
 
    case Primitive_Type_Dual_Bezier:
@@ -152,7 +161,7 @@ replay_recording(Recording &rec)
     View_Scope scope = {};
     scope.center = group.view_center;
     scope.bone   = group.view_bone;
-    scope.vector = view_vector_from(get_bone(group.view_bone, /*is_right*/false)->world_from_bone,
+    scope.vector = view_vector_from(get_bone(group.view_bone, replay_is_right)->world_from_bone,
                                     group.view_center);
     p->view_scope_stack[p->view_scope_count++] = scope;
     fill_dual_bez(prim.dual_bezier.P.e, prim.dual_bezier.Q.e, get_fill_params());

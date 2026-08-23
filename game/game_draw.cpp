@@ -135,11 +135,13 @@ fill_disk_camera_space(v3 center, v1 radius,
  }
 }
 function void
-fill_disk(v3 center, tdim radius_bone_space, Fill_Params params=get_fill_params())
+fill_disk(tvert center_in, tdim radius_bone_space, Fill_Params params=get_fill_params())
 {
+ tvert center_rec = canonicalize_point_bone(center_in);
+ tvert center = resolve_point_bone(center_rec);
  {//-send data
   Recorded_Primitive primitive = {.type = Primitive_Type_Disk};
-  primitive.disk = {center, radius_bone_space.v};
+  primitive.disk = {center_rec, radius_bone_space.v};
   send_primitive(primitive);
  }
 
@@ -157,7 +159,7 @@ fill_disk(v3 center, tdim radius_bone_space, Fill_Params params=get_fill_params(
     mat4 &bone_from_cam = painter->cam_from_bone.inverse;
     v3 vector = mat4vec(bone_from_cam, V3(arm, 0.f));
     vector = radius_bone_space.v * noz(vector);
-    v3 sample = center + vector;  // @Slow
+    v3 sample = center.v + vector;  // @Slow
     if(index!=0)
     {
      poly3_inner({center, last_sample, sample},
@@ -331,10 +333,10 @@ open_group_scope()
  // NOTE(kv) Child scopes inherit the visibility tag: a PaintBlock nested inside a
  // skeleton scope is still skeleton-bound.
  Recorded_Group group = {.parent_index = parent_index, .vis_tag = parent.vis_tag,
-                         .cam_vis = parent.cam_vis};
+                         .cam_vis = parent.cam_vis, .one_sided = parent.one_sided};
  i32 index = m->groups.count;
  push(&m->groups, group);
- Group_Scope_Slot slot = {index, parent.vis_tag, parent.cam_vis};
+ Group_Scope_Slot slot = {index, parent.vis_tag, parent.cam_vis, parent.one_sided};
  push(&stack.slots, slot);
 }
 function void
@@ -355,6 +357,18 @@ tag_group_visibility(Group_Vis vis)
   Group_Scope_Slot &slot = current_group_slot(m->group_stack);
   slot.vis_tag = vis;
   m->groups.items[slot.group_index].vis_tag = vis;
+ }
+}
+function void
+tag_group_one_sided()
+{// NOTE(kv) Q94: mark the current scope's group (and, by inheritance, its children
+ // and siblings) as left-only. Called by LeftOnly.
+ if(should_send_model_data())
+ {
+  Model *m = the_model;
+  Group_Scope_Slot &slot = current_group_slot(m->group_stack);
+  slot.one_sided = true;
+  m->groups.items[slot.group_index].one_sided = true;
  }
 }
 function Group_Cam_Vis
@@ -467,7 +481,7 @@ current_recorded_group_index()
   // parent (keeps the scope's vis_tag)
   Group_Scope_Slot &slot = current_group_slot(stack);
   Recorded_Group sibling = {.parent_index = group.parent_index, .vis_tag = slot.vis_tag,
-                            .cam_vis = slot.cam_vis};
+                            .cam_vis = slot.cam_vis, .one_sided = slot.one_sided};
   result = m->groups.count;
   push(&m->groups, sibling);  // NOTE(kv) `group` reference is dead past this point
   freeze_group_params(m, result);
@@ -475,6 +489,63 @@ current_recorded_group_index()
  }
  return result;
 }
+//~ Vertices (see Recorded_Vertex)
+function i32
+primitive_vertex_count(Primitive_Type type)
+{
+ switch(type)
+ {
+  case Primitive_Type_Curve:       return 2;
+  case Primitive_Type_Poly3:       return 3;
+  case Primitive_Type_Dual_Bezier: return 4;
+  case Primitive_Type_Patch:       return 4;
+  case Primitive_Type_Disk:        return 1;
+  default:                         return 0;
+ }
+}
+function tvert &
+primitive_vertex_ref(Recorded_Primitive &prim, i32 ivertex)
+{// NOTE(kv) The by-value tvert behind Recorded_Primitive.vertex_index[ivertex];
+ // the order here IS the order of vertex_index.
+ switch(prim.type)
+ {
+  case Primitive_Type_Curve:
+  { return prim.curve.bezier.e[ivertex==0 ? 0 : 3]; }
+  case Primitive_Type_Poly3:
+  { return prim.poly3.points[ivertex]; }
+  case Primitive_Type_Dual_Bezier:
+  {
+   Dual_Bezier &dual = prim.dual_bezier;
+   return (ivertex==0 ? dual.P.e[0] : ivertex==1 ? dual.P.e[3] :
+           ivertex==2 ? dual.Q.e[0] : dual.Q.e[3]);
+  }
+  case Primitive_Type_Patch:
+  {
+   tvert (&e)[4][4] = prim.patch.e;
+   return (ivertex==0 ? e[0][0] : ivertex==1 ? e[0][3] :
+           ivertex==2 ? e[3][0] : e[3][3]);
+  }
+  case Primitive_Type_Disk:
+  { return prim.disk.center; }
+  default:
+  {
+   InvalidCodePath;
+   return prim.disk.center;
+  }
+ }
+}
+function void
+resolve_vertices(Recording &rec, Recorded_Primitive &prim)
+{// NOTE(kv) Refresh the by-value cache from the vertex table (the authority).
+ // Runs on the replay COPY before apply_shape_key, so the table holds rest positions.
+ i32 count = primitive_vertex_count(prim.type);
+ for_i32(i,0,count)
+ {
+  Recorded_Vertex vertex = rec.vertices.items[prim.vertex_index[i]];
+  primitive_vertex_ref(prim, i) = {.v = vertex.p, .bone_id = vertex.bone};
+ }
+}
+//-
 function void
 send_primitive(Recorded_Primitive &primitive)
 {
@@ -484,12 +555,22 @@ send_primitive(Recorded_Primitive &primitive)
  {
   primitive.location = location;
   primitive.group_index = current_recorded_group_index();
-  push(&the_model->primitives, primitive);
+  // NOTE(kv) One fresh vertex per slot; welding happens at document export only,
+  // so the live recording's `diff` stays bit-identical to the code path.
+  Model *m = the_model;
+  i32 vertex_count = primitive_vertex_count(primitive.type);
+  for_i32(i,0,vertex_count)
+  {
+   tvert vert = primitive_vertex_ref(primitive, i);
+   primitive.vertex_index[i] = m->recorded_vertices.count;
+   push(&m->recorded_vertices, Recorded_Vertex{.p = vert.v, .bone = vert.bone_id});
+  }
+  push(&m->primitives, primitive);
  }
 }
 
 function void
-send_poly3(Poly3 points, Fill_Params params)
+send_poly3(Recorded_Poly3 points, Fill_Params params)
 {
  Recorded_Primitive fill = {.type = Primitive_Type_Poly3};
  fill.poly3 = points;
@@ -501,12 +582,17 @@ fill3_no_send(Poly3 points, Fill_Params params=get_fill_params())
  // todo Implement
 }
 function void
-fill3(v3 p0, v3 p1, v3 p2,
+fill3(tvert p0, tvert p1, tvert p2,
       Fill_Params params=get_fill_params())
 {
- Poly3 points = {p0,p1,p2};
- send_poly3(points, params);
- 
+ Recorded_Poly3 rec = {canonicalize_point_bone(p0),
+                       canonicalize_point_bone(p1),
+                       canonicalize_point_bone(p2)};
+ send_poly3(rec, params);
+ Poly3 points = {resolve_point_bone(rec.points[0]).v,
+                 resolve_point_bone(rec.points[1]).v,
+                 resolve_point_bone(rec.points[2]).v};
+
  if(is_fill_enabled())
  {
   v1 depth_offset = painter->params.fill_depth_offset;
@@ -829,7 +915,7 @@ compute_fill_color(v1 color_lerp)
 }
 
 myinline void
-fill4(v3 p0, v3 p1, v3 p2, v3 p3,
+fill4(tvert p0, tvert p1, tvert p2, tvert p3,
       Fill_Params params=get_fill_params())
 {
  fill3(p0,p1,p2,params);
@@ -970,7 +1056,7 @@ fill_patch(tvert P0[4], tvert P1[4],
  fill_patch(P, params);
 }
 myinline void
-fill3_symx(v3 a, v3 b)
+fill3_symx(tvert a, tvert b)
 {
  if(is_left())
  {
@@ -978,7 +1064,7 @@ fill3_symx(v3 a, v3 b)
  }
 }
 myinline void
-fill4_symx(v3 a, v3 b)
+fill4_symx(tvert a, tvert b)
 {
  if(is_left())
  {
@@ -996,12 +1082,12 @@ fill_fan(tvert A, tvert verts[], i32 vert_count,
 }
 
 function b32
-fill4_culled(v3 p0, v3 p1, v3 p2, v3 p3,
+fill4_culled(tvert p0, tvert p1, tvert p2, tvert p3,
              Fill_Params params=get_fill_params())
 {
  b32 filled = false;
- v3 p01 = p1-p0;
- v3 p02 = p2-p0;
+ v3 p01 = p1.v-p0.v;
+ v3 p02 = p2.v-p0.v;
  v3 normal = cross(p01, p02);
  if(dot(normal, get_view_vector()) > 0)
  {
@@ -1011,7 +1097,7 @@ fill4_culled(v3 p0, v3 p1, v3 p2, v3 p3,
  return filled;
 }
 function void
-fill_sphere(v3 center, tdim radius, Fill_Params params=get_fill_params())
+fill_sphere(tvert center, tdim radius, Fill_Params params=get_fill_params())
 {// NOTE Wait, is a sphere, or just a disk?
  fill_disk(center, radius, params);
 }

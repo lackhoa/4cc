@@ -378,6 +378,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
  }
 }
 #include "ad_serialize_recording.cpp"
+#include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
 
 function b32
@@ -574,7 +575,7 @@ convert_primitives_to_camera_space(Camera &camera)
     {
      for_i32(i,0,3)
      {
-      mat4vert(camera_from_bone, &primitive.poly3[i]);
+      mat4vert(camera_from_bone, &primitive.poly3.points[i].v);
      }
     }break;
 
@@ -597,7 +598,7 @@ convert_primitives_to_camera_space(Camera &camera)
 
     case Primitive_Type_Disk:
     {
-     mat4vert(camera_from_bone, &primitive.disk.center);
+     mat4vert(camera_from_bone, &primitive.disk.center.v);
     }break;
    }
    push(&m->camera_primitives, primitive);
@@ -725,6 +726,16 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
      replay.diff_requested = false;
     }
    }
+
+   Recording &document = the_model->recordings.document;
+   if(document.captured)
+   {// NOTE(kv) The document is drawing, not debug state: replayed in every viewport,
+    // rendering on regardless of mode, outside the diff tees (the diff compares the
+    // code path against ITS recording only). Drawn after driver_render; the depth
+    // test settles pixel order. Left then right (Q94 mirror).
+    replay_recording(document, /*is_right*/false);
+    replay_recording(document, /*is_right*/true);
+   }
   }
 
   if(viewport_id == 1)
@@ -847,6 +858,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
    seed_preset_settings(state->model.recordings.preset_settings);
    game_load(state, app, state->autosave_path);
    load_recording_file(state);
+   load_document_file(state);
   }
  }
  
@@ -1536,7 +1548,8 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     
     case Primitive_Type_Poly3:
     {//-Projection onto the curve
-     push(&triangles, primitive.poly3);
+     tvert const (&p)[3] = primitive.poly3.points;
+     push(&triangles, Poly3{p[0].v, p[1].v, p[2].v});
     }break;
     
     case Primitive_Type_Dual_Bezier:
@@ -2409,11 +2422,13 @@ game_update(Game_Update_Params params)
     arena_clear(recording_arena);
     init_dynamic(m->primitives, recording_arena, entity_cap);
     init_dynamic(m->groups, recording_arena, 64);
+    init_dynamic(m->recorded_vertices, recording_arena, recorded_vertex_cap*entity_cap);
     init_dynamic(m->group_stack.slots, recording_arena, 16);
     reset_capture();  // pushes the root group + root scope slot
     // NOTE(kv) Untagged groups always pass the live-visibility AND; the driver
     // re-publishes tagged slots (e.g. Vis_Skeleton) during its render below.
     m->vis_live[Vis_None] = true;
+    for_i32(vis, Vis_Region_First, Group_Vis_Count){ m->vis_live[vis] = true; }
     {// NOTE(kv) Preset-toggle live visibility (plan-preset-rethink): published from
      // the main viewport's settings row, consumed by replay's vis_live re-AND.
      Preset_Settings &row = m->recordings.preset_settings[state->viewports[0].preset];

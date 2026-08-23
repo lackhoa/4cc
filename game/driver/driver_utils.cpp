@@ -303,6 +303,15 @@ SetInBlock(painter->live_cam_vis, tag_group_cam_vis(normal, min, symmetric))
 #define ShowAlignedIf(normal, min)    ShowAlignedIfEx(normal, min, false)
 #define ShowAlignedSymIf(normal, min) ShowAlignedIfEx(normal, min, true)
 
+// NOTE(kv) Q94: the data-expressible form of `if(is_left()){...}`. On the code path
+// the right pass runs the block with painting off (same pixels as skipping it); on the
+// recording the group is tagged one-sided so the replay's right pass skips it. Use
+// this instead of `if(is_left())` in any region headed for export.
+#define LeftOnly \
+Paint_Params_Block PP_Concat(left_only_block_, __LINE__); \
+tag_group_one_sided(); \
+ShowIf(is_left())
+
 #define lp get_line_params
 #define fp get_fill_params
 

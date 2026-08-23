@@ -9,7 +9,9 @@
 //   diff              -> trigger Diff-now, result written on the NEXT update
 //   force_animate 0|1 -> set Replay_State.force_animate
 //   dump_state        -> key counts + replay/diff state as text
-//   slider_dump       -> every data slider: "<side> <id> <type> <value as code>"
+//   slider_dump       -> every data slider: "<side> <id> <type> <value as code>", plus orphan rows
+//   slider_prune      -> drop orphan rows (no slider claims them) and rewrite both values files
+//   export_group <tag> -> move a Vis_* tagged region of the live capture into the document
 //   slider_write      -> save both values files from the live slider tables
 //   slider <id> <n>.. -> set a slider (scalars/vectors by component) and save its file
 //   slider_next_id <type> -> first free "<type>_<n>" id across both sides, e.g. v3_227
@@ -157,6 +159,13 @@ debug_channel_dump_state(FILE *out, Game_State *state)
  Model *m = &state->model;
  fprintf(out, "primitives: %d\n", m->primitives.count);
  fprintf(out, "groups: %d\n",     m->groups.count);
+ fprintf(out, "recorded_vertices: %d\n", m->recorded_vertices.count);
+ {
+  Recording &doc = m->recordings.document;
+  fprintf(out, "document: %s, %d primitives, %d groups, %d vertices\n",
+          doc.captured ? "loaded" : "empty",
+          doc.primitives.count, doc.groups.count, doc.vertices.count);
+ }
  fprintf(out, "vertices: %d\n",   m->vertices.count);
  Replay_State &replay = state->replay;
  fprintf(out, "display_replay: %d\n", replay.display_replay);
@@ -168,11 +177,19 @@ debug_channel_dump_state(FILE *out, Game_State *state)
 }
 
 function void
-debug_channel_slider_dump(FILE *out)
+debug_channel_slider_dump(FILE *out, Game_State *state)
 {
  Scratch_Scope tmp;
  for_i32(is_driver, 0, 2)
  {
+  // NOTE(kv) Orphans = rows in the values file no slider claims (call site gone or
+  // migrated to the document). `slider_prune` drops them.
+  darray(Slider_Value_Row) &orphans = state->orphan_slider_rows[is_driver];
+  for_each(row, orphans)
+  {
+   fprintf(out, "%s orphan %.*s (%d bytes)\n", is_driver ? "driver" : "game",
+           string_expand(row->id), cast(i32)row->bytes.size);
+  }
   sarray(FUI_File_Data) files = get_file_array({i16(is_driver), 0});
   for_i32(file_index, 1, files.count)
   {
@@ -187,6 +204,7 @@ debug_channel_slider_dump(FILE *out)
             string_expand(value));
    }
   }
+  fprintf(out, "%s orphans: %d\n", is_driver ? "driver" : "game", orphans.count);
  }
 }
 
@@ -398,6 +416,39 @@ debug_channel_update(Game_State *state, App *app)
   fprintf(out, "load_recording: %s\n", ok ? "ok" : "FAILED");
   debug_channel_wants_animate = true;
  }
+ else if(strcmp(cmd, "save_document") == 0)
+ {
+  b32 ok = save_document_file(state);
+  fprintf(out, "save_document: %s\n", ok ? "ok" : "FAILED");
+ }
+ else if(strcmp(cmd, "load_document") == 0)
+ {
+  b32 ok = load_document_file(state);
+  fprintf(out, "load_document: %s\n", ok ? "ok" : "FAILED");
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "export_group ", 13) == 0)
+ {// NOTE(kv) `export_group Vis_Nose`: move that tagged region from the live capture
+  // into the document (game_document.cpp), weld, save driver.document.ad.
+  char const *name = cmd + 13;
+  Group_Vis tag = Vis_None;
+  for_i32(vis, 1, Group_Vis_Count)
+  {
+   if(strcmp(name, group_vis_names[vis]) == 0){ tag = cast(Group_Vis)vis; break; }
+  }
+  if(tag == Vis_None)
+  {
+   fprintf(out, "export_group: unknown tag '%s'\n", name);
+  }
+  else
+  {
+   Document_Export_Result r = export_group_to_document(state, tag);
+   fprintf(out, "export_group %s: %s, %d groups, %d primitives, %d vertices (%d welded)\n",
+           group_vis_names[tag], r.ok ? "ok" : "FAILED",
+           r.group_count, r.primitive_count, r.vertex_count, r.welded_count);
+   debug_channel_wants_animate = true;
+  }
+ }
  else if(strncmp(cmd, "recapture", 9) == 0)
  {
   state->replay.recapture = (atoi(cmd+9) != 0);
@@ -411,7 +462,22 @@ debug_channel_update(Game_State *state, App *app)
  }
  else if(strcmp(cmd, "slider_dump") == 0)
  {
-  debug_channel_slider_dump(out);
+  debug_channel_slider_dump(out, state);
+ }
+ else if(strcmp(cmd, "slider_prune") == 0)
+ {// NOTE(kv) Drop orphan rows on both sides and rewrite the values files. Orphans are
+  // the safety net for a commented-out slider (ad_serialize_slider_values.cpp) --
+  // run this only once the call sites are gone for good (e.g. after an export).
+  i32 dropped = 0;
+  for_i32(is_driver, 0, 2)
+  {
+   dropped += state->orphan_slider_rows[is_driver].count;
+   state->orphan_slider_rows[is_driver].count = 0;
+  }
+  b32 ok_game   = save_slider_values_file(state, 0);
+  b32 ok_driver = save_slider_values_file(state, 1);
+  fprintf(out, "slider_prune: dropped %d orphans; game %s, driver %s\n", dropped,
+          ok_game ? "ok" : "FAILED", ok_driver ? "ok" : "FAILED");
  }
  else if(strncmp(cmd, "slider_next_id ", 15) == 0)
  {

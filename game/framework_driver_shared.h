@@ -465,9 +465,13 @@ struct Dual_Bezier
  tvec dP[4];
  tvec dQ[4];
 };
+struct Recorded_Poly3
+{// NOTE(kv) fill3 arguments; Poly3 (bare v3) stays the hit-test triangle type.
+ tvert points[3];
+};
 struct Disk
 {// NOTE(kv) fill_disk arguments (the tessellation is camera-dependent, re-run at replay)
- v3 center;
+ tvert center;
  v1 radius;  // bone-space (tdim)
 };
 struct Recorded_Image
@@ -500,16 +504,34 @@ struct Recorded_Curve
  tvec dbezier[4];
  v4 dradii;
 };
+// NOTE(kv) A junction point shared between primitives (plan-data-only-region-poc
+// Q95). `bone` is the owning bone of the point (Bone_None = the group's bone).
+// The vertex table is the authority for every primitive's VERTICES; the by-value
+// tverts inside the geometry union are a cache that resolve_vertices refreshes
+// before each replayed draw. Live capture pushes one fresh vertex per slot;
+// welding (sharing) happens at document export.
+struct Recorded_Vertex
+{
+ v3 p;
+ Bone_ID bone;
+};
+// NOTE(kv) "Vertex" = a point in the table = one that can be a junction: curve
+// endpoints, poly3 points, dual-bezier endpoints, patch corners, disk center.
+// Bezier HANDLES (P1/P2) are tverts too but per-curve shape, never shared, never
+// in the table.
+global i32 const recorded_vertex_cap = 4;
+
 struct Recorded_Primitive
 {
  Primitive_Type type;
  Location location;
  i32 group_index;  // index into Model.groups
+ i32 vertex_index[recorded_vertex_cap];  // indices into Recording.vertices, see primitive_vertex_count
 
  union
  {
   Recorded_Curve curve;
-  Poly3  poly3;
+  Recorded_Poly3 poly3;
   Dual_Bezier dual_bezier;
   Patch  patch;
   Disk   disk;
@@ -531,23 +553,39 @@ enum
  PaintFieldList(X)
 #undef X
 };
+// NOTE(kv) Live visibility binding (Q32): a tagged group's `painting` is re-ANDed at
+// replay with Model.vis_live[tag] (published by the driver each frame) instead of
+// trusting only the capture-time frozen value. Vis_None slot is always true.
+// X-macro so the tag names are greppable from the debug channel (`export_group <tag>`).
+#define GroupVisList(X) \
+X(Vis_None) \
+X(Vis_Skeleton) \
+/* NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published */ \
+/* each frame from the main viewport's Preset_Settings row. */ \
+X(Vis_Eyeball) \
+X(Vis_Loomis_Ball) \
+X(Vis_Ref_Arm_Medial_Right) \
+X(Vis_Ref_Arm_Back_Bone) \
+X(Vis_Ref_Arm_Profile_Left) \
+/* NOTE(kv) 5 consecutive slots, one per front-camera reference image */ \
+X(Vis_Ref_Front_0) X(Vis_Ref_Front_1) X(Vis_Ref_Front_2) X(Vis_Ref_Front_3) X(Vis_Ref_Front_4) \
+/* NOTE(kv) Region tags: always visible; they exist to name an export region */ \
+/* (plan-data-only-region-poc Q97) and survive in the document as the region's identity. */ \
+X(Vis_Nose) \
+
 enum Group_Vis
-{// NOTE(kv) Live visibility binding (Q32): a tagged group's `painting` is re-ANDed at
- // replay with Model.vis_live[tag] (published by the driver each frame) instead of
- // trusting only the capture-time frozen value. Vis_None slot is always true.
- Vis_None,
- Vis_Skeleton,
- // NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published
- // each frame from the main viewport's Preset_Settings row.
- Vis_Eyeball,
- Vis_Loomis_Ball,
- Vis_Ref_Arm_Medial_Right,
- Vis_Ref_Arm_Back_Bone,
- Vis_Ref_Arm_Profile_Left,
- Vis_Ref_Front_0,  // NOTE(kv) 5 consecutive slots, one per front-camera reference image
- Vis_Ref_Front_Last = Vis_Ref_Front_0 + 4,
- //
+{
+#define X(NAME) NAME,
+ GroupVisList(X)
+#undef X
  Group_Vis_Count,
+ Vis_Ref_Front_Last = Vis_Ref_Front_4,
+ Vis_Region_First   = Vis_Nose,  // NOTE(kv) [Vis_Region_First, Group_Vis_Count) = region tags
+};
+global char const *group_vis_names[Group_Vis_Count] = {
+#define X(NAME) #NAME,
+ GroupVisList(X)
+#undef X
 };
 struct Group_Cam_Vis
 {// NOTE(kv) Camera-bound visibility condition (Q38): recorded parameters, not a
@@ -568,6 +606,10 @@ struct Recorded_Group
  u32 changed_mask;    // PaintField_* bits differing from the parent group
  Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
  Group_Cam_Vis cam_vis;  // zero-init = inactive; inherited like vis_tag
+ // NOTE(kv) Q94 mirror: the capture is left-only, replay draws it twice (left bones,
+ // then right bones). A `LeftOnly` scope (the data form of `if(is_left())`) marks its
+ // group one-sided so the right pass skips it. Inherited like vis_tag.
+ b32 one_sided;
  // NOTE(kv) Scoped context folded onto the group (Q43a/Q43b): exactly one bone per
  // group (mid-scope bone switch sibling-splits), and the view scope's center --
  // recorded as {center, the bone it was expressed in} so replay can derive the
@@ -592,6 +634,7 @@ struct Group_Scope_Slot
  // must keep the tag.
  Group_Vis vis_tag;
  Group_Cam_Vis cam_vis;
+ b32 one_sided;
 };
 struct Group_Scope_Stack
 {// NOTE(kv) One slot per open Paint_Params_Block scope, holding that scope's group
@@ -633,11 +676,16 @@ struct Recording
  Arena arena;
  darray(Recorded_Primitive) primitives;
  darray(Recorded_Group) groups;
+ darray(Recorded_Vertex) vertices;  // indexed by Recorded_Primitive.vertex_index
  b32 captured;
 };
 struct Model_Recordings
 {
- Recording recording;
+ Recording recording;  // live capture of the code path, recaptured every frame (debug/diff)
+ // NOTE(kv) The *document*: regions already migrated out of code (plan-data-only-region-poc
+ // Q92). Loaded from game/driver/driver.document.ad at startup, never recaptured,
+ // replayed every frame with rendering on. "Is it data?" == "is it in here".
+ Recording document;
  Preset_Settings preset_settings[Game_Preset_Count];
 };
 struct Model
@@ -655,6 +703,7 @@ struct Model
  // NOTE(kv) The recording: bone-space, immutable after capture (recording_arena).
  darray(Recorded_Primitive) primitives;
  darray(Recorded_Group) groups;
+ darray(Recorded_Vertex) recorded_vertices;  // one per vertex slot pushed by send_primitive
  Group_Scope_Stack group_stack;
  // NOTE(kv) Live visibility per Group_Vis tag, published by the driver each frame
  // (before replay runs). vis_live[Vis_None] is always true.
