@@ -12,6 +12,7 @@
 //   slider_dump       -> every data slider: "<side> <id> <type> <value as code>", plus orphan rows
 //   slider_prune      -> drop orphan rows (no slider claims them) and rewrite both values files
 //   export_group <tag> -> move a Vis_* tagged region of the live capture into the document
+//   document_dump     -> the document recording as text: groups, primitives, vertex table
 //   slider_write      -> save both values files from the live slider tables
 //   slider <id> <n>.. -> set a slider (scalars/vectors by component) and save its file
 //   slider_next_id <type> -> first free "<type>_<n>" id across both sides, e.g. v3_227
@@ -205,6 +206,125 @@ debug_channel_slider_dump(FILE *out, Game_State *state)
    }
   }
   fprintf(out, "%s orphans: %d\n", is_driver ? "driver" : "game", orphans.count);
+ }
+}
+
+// NOTE(kv) Which Paint_Params fields a group overrides, by name (PaintFieldList order).
+global char const *paint_field_names[] = {
+#define X(name, path) #name,
+ PaintFieldList(X)
+#undef X
+};
+
+function void
+debug_channel_print_tvert(FILE *out, tvert const &t)
+{
+ fprintf(out, "(%g %g %g bone %d:%d)", t.x, t.y, t.z, t.bone_id.type, t.bone_id.id);
+}
+
+function void
+debug_channel_document_dump(FILE *out, Game_State *state)
+{// NOTE(kv) Text view of `recordings.document` for reading, not for loading back.
+ // Bones print as Bone_Type:id (see the Bone_Type enum). Locations are the source
+ // char range of the ORIGINAL draw call (the code is gone after an export, so it's
+ // only a breadcrumb). Vertex refs point into the table at the end; the by-value
+ // positions inside each primitive are what the table resolves over at replay.
+ Recording &doc = state->model.recordings.document;
+ fprintf(out, "document: %s, %d groups, %d primitives, %d vertices\n",
+         doc.captured ? "loaded" : "empty",
+         doc.groups.count, doc.primitives.count, doc.vertices.count);
+
+ fprintf(out, "\n[groups]\n");
+ for_i32(igroup, 0, doc.groups.count)
+ {
+  Recorded_Group &g = doc.groups.items[igroup];
+  fprintf(out, "group %d: parent %d, tag %s, bone %d:%d, loc file %d range %d..%d%s\n",
+          igroup, g.parent_index, group_vis_names[g.vis_tag],
+          g.bone_id.type, g.bone_id.id,
+          g.location.file.index, g.location.range.min, g.location.range.max,
+          g.one_sided ? ", one_sided" : "");
+  if(g.cam_vis.active)
+  {
+   fprintf(out, "  cam_vis: normal (%g %g %g) min_alignment %g%s, view_center (%g %g %g) in bone %d:%d\n",
+           g.cam_vis.normal.x, g.cam_vis.normal.y, g.cam_vis.normal.z,
+           g.cam_vis.min_alignment, g.cam_vis.symmetric ? " symmetric" : "",
+           g.view_center.x, g.view_center.y, g.view_center.z,
+           g.view_bone.type, g.view_bone.id);
+  }
+  Paint_Params &pp = g.params;
+  fprintf(out, "  params: painting %d, line_color %08x, fill_color %08x, line_depth_offset %g, fill_depth_offset %g, radius_mult %g\n",
+          pp.painting, pp.line_color, pp.fill.color, pp.line_depth_offset,
+          pp.fill_depth_offset, pp.radius_mult);
+  fprintf(out, "  changed vs parent:");
+  for_i32(ifield, 0, ArrayCount(paint_field_names))
+  {
+   if(g.changed_mask & (1u << ifield)){ fprintf(out, " %s", paint_field_names[ifield]); }
+  }
+  fprintf(out, "\n");
+ }
+
+ fprintf(out, "\n[primitives]\n");
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives.items[iprim];
+  fprintf(out, "prim %d: group %d, loc file %d range %d..%d, vertex refs",
+          iprim, prim.group_index,
+          prim.location.file.index, prim.location.range.min, prim.location.range.max);
+  for_i32(i, 0, primitive_vertex_count(prim.type)){ fprintf(out, " %d", prim.vertex_index[i]); }
+  fprintf(out, "\n  ");
+  switch(prim.type)
+  {
+   case Primitive_Type_Curve:
+   {
+    Recorded_Curve &c = prim.curve;
+    fprintf(out, "curve%s: ", c.straight ? " (straight)" : "");
+    for_i32(i, 0, 4){ debug_channel_print_tvert(out, c.bezier.e[i]); fprintf(out, " "); }
+    fprintf(out, "\n  radii (%g %g %g %g) lightness (%g %g %g %g)",
+            c.radii.x, c.radii.y, c.radii.z, c.radii.w,
+            c.lightness_additions.x, c.lightness_additions.y,
+            c.lightness_additions.z, c.lightness_additions.w);
+   }break;
+   case Primitive_Type_Poly3:
+   {
+    fprintf(out, "poly3: ");
+    for_i32(i, 0, 3){ debug_channel_print_tvert(out, prim.poly3.points[i]); fprintf(out, " "); }
+   }break;
+   case Primitive_Type_Dual_Bezier:
+   {
+    fprintf(out, "dual_bezier P: ");
+    for_i32(i, 0, 4){ debug_channel_print_tvert(out, prim.dual_bezier.P.e[i]); fprintf(out, " "); }
+    fprintf(out, "\n  Q: ");
+    for_i32(i, 0, 4){ debug_channel_print_tvert(out, prim.dual_bezier.Q.e[i]); fprintf(out, " "); }
+   }break;
+   case Primitive_Type_Patch:
+   {
+    fprintf(out, "patch:");
+    for_i32(row, 0, 4)
+    {
+     fprintf(out, "\n   ");
+     for_i32(col, 0, 4){ debug_channel_print_tvert(out, prim.patch.e[row][col]); fprintf(out, " "); }
+    }
+   }break;
+   case Primitive_Type_Disk:
+   {
+    fprintf(out, "disk: center ");
+    debug_channel_print_tvert(out, prim.disk.center);
+    fprintf(out, " radius %g", prim.disk.radius);
+   }break;
+   case Primitive_Type_Image:
+   {
+    fprintf(out, "image: %s", prim.image.filename.str);
+   }break;
+   default: { fprintf(out, "type %d", prim.type); }break;
+  }
+  fprintf(out, "\n");
+ }
+
+ fprintf(out, "\n[vertices]\n");
+ for_i32(ivert, 0, doc.vertices.count)
+ {
+  Recorded_Vertex &v = doc.vertices.items[ivert];
+  fprintf(out, "vertex %d: (%g %g %g) bone %d:%d\n", ivert, v.p.x, v.p.y, v.p.z, v.bone.type, v.bone.id);
  }
 }
 
@@ -448,6 +568,10 @@ debug_channel_update(Game_State *state, App *app)
            r.group_count, r.primitive_count, r.vertex_count, r.welded_count);
    debug_channel_wants_animate = true;
   }
+ }
+ else if(strcmp(cmd, "document_dump") == 0)
+ {
+  debug_channel_document_dump(out, state);
  }
  else if(strncmp(cmd, "recapture", 9) == 0)
  {

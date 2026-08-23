@@ -100,6 +100,7 @@ export_group_to_document(Game_State *state, Group_Vis tag)
    if(new_group != -1)
    {
     prim.group_index = new_group;
+    prim.location = {};
     i32 vertex_count = primitive_vertex_count(prim.type);
     for_i32(ic,0,vertex_count)
     {
@@ -126,6 +127,10 @@ export_group_to_document(Game_State *state, Group_Vis tag)
    {// NOTE(kv) Subtree roots (parent not tagged) re-parent to the document root.
     i32 parent = (group.parent_index == -1 ? -1 : group_remap[group.parent_index]);
     group.parent_index = parent;
+    // NOTE(kv) Source locations die with the export: the range indices point into
+    // driver.kc's marked positions as they were, and the code is about to be deleted,
+    // so keeping them would hot-highlight whatever code lands on those slots later.
+    group.location = {};
     group_remap[ig] = groups.count;
     push(&groups, group);
     result.group_count++;
@@ -140,6 +145,7 @@ export_group_to_document(Game_State *state, Group_Vis tag)
    if(new_group != -1)
    {
     prim.group_index = new_group;
+    prim.location = {};
     i32 vertex_count = primitive_vertex_count(prim.type);
     for_i32(ic,0,vertex_count)
     {

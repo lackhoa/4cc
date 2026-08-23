@@ -18,7 +18,10 @@ function void
 set_draw_location(Location location)
 {
  painter->current_draw_location = location;
- for_i32(i, 0, painter->hot_locations.count)
+ // NOTE(kv) Document draws carry an empty location (stripped at export), and the
+ // cursor-derived hot_location is also empty when the cursor sits outside any marked
+ // range -- so an invalid location must never count as hot.
+ for_i32(i, 0, is_valid(location) ? painter->hot_locations.count : 0)
  {//-Set hot state
   if(painter->current_draw_location == painter->hot_locations[i])
   {
