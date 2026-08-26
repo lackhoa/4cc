@@ -418,7 +418,8 @@ dst->fui_flags = m_fui_flags;
 enum Reference_Preset{Preset_None = 0,
 Preset_Back = 1,
 Preset_Arm_Profile = 2,
-Preset_Eco_Skeleton = 3,};
+Preset_Eco_Skeleton = 3,
+Preset_Head_Profile = 4,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:454:
 function Type_Info
@@ -429,11 +430,12 @@ Type_Info result = {};
 result.name = strlit("Reference_Preset");
 result.size = sizeof(Reference_Preset);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(4);
+result.enum_members.set_count(5);
 result.enum_members[0] = {.name=strlit("Preset_None"), .value=Preset_None};
 result.enum_members[1] = {.name=strlit("Preset_Back"), .value=Preset_Back};
 result.enum_members[2] = {.name=strlit("Preset_Arm_Profile"), .value=Preset_Arm_Profile};
 result.enum_members[3] = {.name=strlit("Preset_Eco_Skeleton"), .value=Preset_Eco_Skeleton};
+result.enum_members[4] = {.name=strlit("Preset_Head_Profile"), .value=Preset_Head_Profile};
 return result;
 }
 #if WANT_TYPE_INFO

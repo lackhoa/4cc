@@ -83,6 +83,7 @@ enum Reference_Preset
  Preset_Back = 1,
  Preset_Arm_Profile = 2,
  Preset_Eco_Skeleton = 3,
+ Preset_Head_Profile = 4,
 };
 //~Framework api
 api_table framework_api_1

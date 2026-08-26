@@ -661,6 +661,12 @@ debug_channel_update(Game_State *state, App *app)
     fprintf(out, "set viz_level: %d\n", row.viz_level);
     debug_channel_wants_animate = true;
    }
+   else if(strcmp(field, "reference_preset") == 0)
+   {
+    state->viewports[0].reference_preset = cast(Reference_Preset)value;
+    fprintf(out, "set reference_preset: %d\n", value);
+    debug_channel_wants_animate = true;
+   }
    else if(strcmp(field, "reference_image") == 0)
    {
     row.reference_image = value;

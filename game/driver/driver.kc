@@ -120,6 +120,18 @@ driver_get_reference_preset_data(Reference_Preset preset)
    }
   }break;
   
+  case Preset_Head_Profile:
+  {
+   result.camera_phi2 = 0.25f;
+   {
+    Reference_Image &image = result.image;
+    image.filename  = fimage(strlit("G:/My Drive/Art/loomis head profile.JPG"));
+    image.center    = fv(tvert_238);
+    image.x_axis    = fv(v3_225);
+    image.alpha     = fv(v1_236);
+   }
+  }break;
+
   case Preset_Eco_Skeleton:
   {
    fpreset(Preset_Eco_Skeleton);
@@ -1584,6 +1596,7 @@ render_grid()
 function Head
 render_head(Pose &pose)
 {// NOTE: The ;head + face
+ fpreset(Preset_Head_Profile);
  PaintBlock;
  painter->params.nslice_per_meter = 4.1128f * 100.f;
  //lp_block(nslice_per_meter, 4.1128f * 100.f);//NOTE: crank up the lod
