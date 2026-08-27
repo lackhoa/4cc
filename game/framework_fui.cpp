@@ -546,6 +546,7 @@ fui_set_active_slider(Slider *slider)
 union Slider_Value_Storage
 {// NOTE(kv) Big enough for every slider type (TypeInfoPointerList)
  v4 v; i4 i; tvert vert; FUI_Line_Params line_params; Curve curve;
+ Reference_Placement reference_placement;
 };
 global Slider_Value_Storage global_fui_saved_value;  // TODO(kv) why is this a global?
 

@@ -41,6 +41,22 @@ struct Replay_State
  b32 recapture;      // Q52: per-frame store_recording gate (default on)
  b32 force_animate;  // keep frames flowing while idle/unfocused
 };
+enum Reference_Drag_Kind
+{
+ Reference_Drag_None   = 0,
+ Reference_Drag_Body   = 1,
+ Reference_Drag_Corner = 2,
+};
+struct Reference_Edit_State
+{// NOTE(kv) Reference edit mode (game_reference_gizmo.cpp): while it's on, the active
+ // preset's reference image is draggable and nothing else is pickable.
+ b32 active;
+ Reference_Drag_Kind drag;
+ // NOTE(kv) Drag anchors, in the image quad's own (u,v) frame -- see @Reference_Plane.
+ v2 grab_offset;   // body: mouse-to-center offset, held constant for the drag
+ v1 grab_u;        // corner: u where the drag started
+ v3 grab_x_axis;   // corner: x_axis at drag start
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -87,6 +103,7 @@ struct Game_State
  b32 load_failed;
  Game_ImGui_State imgui_state;
  Replay_State replay;
+ Reference_Edit_State reference_edit;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

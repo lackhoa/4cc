@@ -605,6 +605,8 @@ convert_primitives_to_camera_space(Camera &camera)
   }
  }
 }
+#include "game_reference_gizmo.cpp"
+
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
                    i32 viewport_id, Mouse_State mouse, v2 clip_radius)
@@ -817,7 +819,12 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    }
    poly3_inner(mk_poly3(points), repeat3(linear_argb_blue), {Poly_Overlay});
   }
-  
+
+  if(viewport_id == 1)
+  {
+   draw_reference_edit_gizmo(state, camera);
+  }
+
   if(state->is_dev_editor)
   {
    im_text("Render cycles: %_$I64u", painter->render_cycles);
@@ -1622,8 +1629,9 @@ game_update(Game_Update_Params params)
  b32 should_animate_next_frame = false;
  arena_clear(&state->frame_arena);
  //-
- darray(String) game_commands = {};
- init_dynamic(game_commands, &state->frame_arena);
+ // NOTE(kv) Never the frame arena: the editor stashes this in received_game_commands
+ // and only walks it when the command lister opens, a frame or more later.
+ sarray(String) game_commands = {};
  
  Game_Input input_value = {};
  (Game_Input_0 &) input_value = params.input;
@@ -1760,13 +1768,16 @@ game_update(Game_Update_Params params)
    }
   }
   
+  update_reference_edit(state, params.mouse, mouse_viewport);
+  
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
-  if(not debug_channel_enabled)
+  // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
+  if(not debug_channel_enabled and not state->reference_edit.active)
   {
    hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
   }
-
+  
   if(params.mouse.press_left)
   {// NOTE(kv) Jump to code location
    if(is_valid(hot_location))
@@ -1783,6 +1794,35 @@ game_update(Game_Update_Params params)
    
    if(ImGui::BeginPopup("right_click_popup"))
    {
+    {// NOTE(kv) Reference edit mode lives here rather than on a key: placing a
+     // reference is rare enough that a binding would never be remembered (plan Q6).
+     Reference_Edit_State &edit = state->reference_edit;
+     Stringz reference_filename = {};
+     Reference_Placement *placement = get_reference_placement(state, &reference_filename);
+     if(placement)
+     {
+      if(ImGui::Selectable(edit.active ? "Stop editing reference" : "Edit reference"))
+      {
+       edit.active = not edit.active;
+       edit.drag = Reference_Drag_None;
+      }
+      if(edit.active)
+      {
+       if(ImGui::Selectable("Mirror reference"))
+       {
+        placement->x_axis = -placement->x_axis;
+        save_slider_values_file(state, /*is_driver*/1);
+       }
+       ImGui::SetNextItemWidth(120.f);
+       if(ImGui::SliderFloat("Alpha", &placement->alpha, 0.f, 1.f))
+       {
+        save_slider_values_file(state, /*is_driver*/1);
+       }
+      }
+      ImGui::Separator();
+     }
+    }
+    
     // NOTE(kv) Drawing the menu
     i32 selected = 0;
     const char *menu_items[] = { "NONE", "Add Vertex" };
@@ -1935,14 +1975,15 @@ game_update(Game_Update_Params params)
    
    if(driver_on)
    {//-Fill command lister
-    darray(String) &cmds = game_commands;
-    cmds.count = 0;
-    push(&cmds, strlit("save_manual"));
-    push(&cmds, strlit("load_manual"));  
-    push(&cmds, strlit("revert"));  
-    push(&cmds, strlit("pin"));  
-    push(&cmds, strlit("clear_pin"));  
-    push(&cmds, strlit("clear_preset"));
+    local_persist String names[] = {
+     strlit("save_manual"),
+     strlit("load_manual"),
+     strlit("revert"),
+     strlit("pin"),
+     strlit("clear_pin"),
+     strlit("clear_preset"),
+    };
+    game_commands = to_sarray(names);
    }
   }
   
@@ -2109,6 +2150,12 @@ game_update(Game_Update_Params params)
    {//-We're somewhere in the editor
     switch(code)
     {
+     case Key_Code_Escape:
+     {
+      state->reference_edit.active = false;
+      state->reference_edit.drag = Reference_Drag_None;
+     }break;
+     
      case Key_Code_Return:
      {
       View_ID view = get_active_view(app, Access_Always);
@@ -2319,7 +2366,7 @@ game_update(Game_Update_Params params)
     }
     i32 &active_index = fui_active_slider.active_member_index;
     ImGui::Combo("member", &active_index, items, member_count);
-
+    
     I_Struct_Member &active_member = type->members[active_index];
     Printer printer = make_printer_buffer(tmp, 128);
     print_code(printer, active_member.type, (u8 *)slider.value + active_member.offset, true);
@@ -2332,22 +2379,22 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
-
+  
   // NOTE(kv) Agent mode has no mouse user; the debug channel sets these knobs and
   // the panels would only clutter screenshots.
   if(not debug_channel_enabled)
   {//-Replay panel (draw-as-data step 3, Q23)
    Replay_State &replay = state->replay;
    im_begin("Replay", 0, ImGuiWindowFlags_NoFocusOnAppearing);
-
+   
    int mode = replay.display_replay ? 1 : 0;
    ImGui::RadioButton("code path", &mode, 0);
    ImGui::SameLine();
    ImGui::RadioButton("replay", &mode, 1);
    replay.display_replay = (mode == 1);
-
+   
    if(ImGui::Button("Diff now")){ replay.diff_requested = true; }
-
+   
    Replay_Diff_Result &diff = replay.last_diff;
    if(diff.valid)
    {
@@ -2373,7 +2420,7 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
-
+  
   if(not debug_channel_enabled)
   {//-Preset settings panel (preset-rethink step 6): edits the ACTIVE preset's row.
    Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
@@ -2382,13 +2429,13 @@ game_update(Game_Update_Params params)
    ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
    ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
 #define X(field) \
-   { bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
+{ bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
    PRESET_BOOL_FIELDS(X)
 #undef X
    im_end();
   }
  }
-
+ 
  if(driver_on)
  {
   {// NOTE(kv) Driver update
@@ -2402,7 +2449,6 @@ game_update(Game_Update_Params params)
     m->recordings = recordings;
     
     Arena *frame_arena = &state->frame_arena;
-    arena_clear(frame_arena);
     //-
     m->frame_arena = frame_arena;
     

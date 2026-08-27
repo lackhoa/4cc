@@ -357,9 +357,10 @@ draw_curve(Curve c, v3 p0, v3 p3)
 function void
 draw_reference_image_from_data(Reference_Image ref)
 {
- v1 alpha = ref.alpha;
+ Reference_Placement &placement = ref.placement;
+ v1 alpha = placement.alpha;
  if(painter->references_full_alpha) { alpha = 1.0f; }
- draw_image(ref.filename, ref.center, ref.x_axis, V3y(1.f), alpha);
+ draw_image(ref.filename, placement.center, placement.x_axis, V3y(1.f), alpha);
 }
 
 //~ EOF

@@ -102,7 +102,7 @@ global tnormal normal_z = {V3z(1.f)};
 #define TypeInfoPointerList(X) \
 X(v1)  X(v2)  X(v3)  X(v4) \
 X(i1)  X(i2)  X(i3)  X(i4) \
-X(FUI_Line_Params) X(Curve) X(tdim) X(tvert) X(tnormal) \
+X(FUI_Line_Params) X(Curve) X(Reference_Placement) X(tdim) X(tvert) X(tnormal) \
 
 struct Type_Info_Pointers
 {

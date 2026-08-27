@@ -48,7 +48,8 @@ parse_preprocessor(Ed_Parser *p)
 global String slider_type_names[] = {
  strcode(v1), strcode(v2), strcode(v3), strcode(v4),
  strcode(i1), strcode(i2), strcode(i3), strcode(i4),
- strcode(FUI_Line_Params), strcode(Curve), strcode(tdim), strcode(tvert), strcode(tnormal),
+ strcode(FUI_Line_Params), strcode(Curve), strcode(Reference_Placement),
+ strcode(tdim), strcode(tvert), strcode(tnormal),
 };
 struct Slider_Id
 {

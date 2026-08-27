@@ -667,6 +667,28 @@ debug_channel_update(Game_State *state, App *app)
     fprintf(out, "set reference_preset: %d\n", value);
     debug_channel_wants_animate = true;
    }
+   else if(strcmp(field, "reference_edit") == 0)
+   {
+    state->reference_edit.active = (value != 0);
+    state->reference_edit.drag = Reference_Drag_None;
+    // NOTE(kv) Report what the gizmo will find: without a mouse, a missing outline is
+    // otherwise indistinguishable from a placement/plane lookup that silently bailed.
+    Stringz reference_filename = {};
+    Reference_Placement *placement = get_reference_placement(state, &reference_filename);
+    Reference_Plane plane = {};
+    b32 has_plane = (placement and
+                     get_reference_plane(*placement, reference_filename, &plane));
+    fprintf(out, "set reference_edit: %d (placement %s, plane %s)\n", value,
+            placement ? "found" : "MISSING", has_plane ? "ok" : "FAILED");
+    if(has_plane)
+    {// NOTE(kv) World-space plane, so these are directly comparable to the drawn quad.
+     fprintf(out, "  center=(%.3f %.3f %.3f) u=(%.3f %.3f %.3f) half=(%.3f %.3f)\n",
+             plane.center.x, plane.center.y, plane.center.z,
+             plane.u_axis.x, plane.u_axis.y, plane.u_axis.z,
+             plane.half_u, plane.half_v);
+    }
+    debug_channel_wants_animate = true;
+   }
    else if(strcmp(field, "reference_image") == 0)
    {
     row.reference_image = value;

@@ -101,9 +101,9 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = image_left_arm_back;
-    image.center    = fv(tvert_13);
-    image.x_axis    = fv(v3_14);
-    image.alpha     = 0.3033f;
+    image.placement.center    = fv(tvert_13);
+    image.placement.x_axis    = fv(v3_14);
+    image.placement.alpha     = 0.3033f;
    }
    result.pose.tarm_abduct = fv(v1_15);
   }break;
@@ -114,9 +114,9 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(strlit("G:/My Drive/Art/AM arm profile 2.JPG"));
-    image.center    = fv(tvert_16);
-    image.x_axis    = fv(v3_17);
-    image.alpha     = 0.299f;
+    image.placement.center    = fv(tvert_16);
+    image.placement.x_axis    = fv(v3_17);
+    image.placement.alpha     = 0.299f;
    }
   }break;
   
@@ -126,9 +126,7 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(strlit("G:/My Drive/Art/loomis head profile.JPG"));
-    image.center    = fv(tvert_238);
-    image.x_axis    = fv(v3_225);
-    image.alpha     = fv(v1_236);
+    image.placement = fv(Reference_Placement_0);
    }
   }break;
 
@@ -138,9 +136,9 @@ driver_get_reference_preset_data(Reference_Preset preset)
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(image_eco_skeleton);
-    image.center    = fv(tvert_18);
-    image.x_axis    = fv(v3_19);
-    image.alpha     = fv(v1_20);
+    image.placement.center    = fv(tvert_18);
+    image.placement.x_axis    = fv(v3_19);
+    image.placement.alpha     = fv(v1_20);
    }
    result.pose.tarm_abduct = fv(v1_21);
   }break;
@@ -1602,7 +1600,7 @@ render_head(Pose &pose)
  //lp_block(nslice_per_meter, 4.1128f * 100.f);//NOTE: crank up the lod
  v1 head_unit = 1.f+square_root(2);
  
-
+ 
  mat4i ot = current_world_from_bone();
  
  v1 noseY = -loomis_unit;
@@ -1756,7 +1754,7 @@ render_head(Pose &pose)
  // NOTE(kv) The nose lines/fills below this point live in the document
  // (game/driver/driver.document.ad, tag Vis_Nose) -- replayed, not drawn here.
  // Re-draw + `export_group Vis_Nose` to change them (plan-data-only-region-poc).
-
+ 
  //~NOTE: Cheek situation pretty complex!
  cheek_low = mkvert(0,noseY,faceZ) + V3(0.6062f, 0.f, -0.4289f);
  
@@ -2241,33 +2239,43 @@ show_reference_images()
     {
      {// NOTE: full-body MM skeleton
       .filename  = fimage(image_skeletal_meat_outline),
-      .center    = fv(tvert_226),
-      .x_axis     = V3x(1.8194f),
-      .alpha     = 0.3033f,
+      .placement = {
+       .center    = fv(tvert_226),
+       .x_axis    = V3x(1.8194f),
+       .alpha     = 0.3033f,
+      },
      },
      {// NOTE: full-body MM diagram
       .filename  = fimage(image_mm_full_body_muslce_front),
-      .center    = fv(tvert_227),
-      .x_axis     = V3x(1.8695f),
-      .alpha     = 0.3033f,
+      .placement = {
+       .center    = fv(tvert_227),
+       .x_axis    = V3x(1.8695f),
+       .alpha     = 0.3033f,
+      },
      },
      {
       .filename  = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")),
-      .center    = fv(tvert_228),
-      .x_axis     = V3x(-1.3938f),
-      .alpha     = 0.1421f,
+      .placement = {
+       .center    = fv(tvert_228),
+       .x_axis    = V3x(-1.3938f),
+       .alpha     = 0.1421f,
+      },
      },
      {
       .filename  = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")),
-      .center    = fv(tvert_229),
-      .x_axis    = V3x(-1.0668f),
-      .alpha     = 0.1421f,
+      .placement = {
+       .center    = fv(tvert_229),
+       .x_axis    = V3x(-1.0668f),
+       .alpha     = 0.1421f,
+      },
      },
      {
       .filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")),
-      .center   = fv(tvert_230),
-      .x_axis   = V3x(2.6661f),
-      .alpha    = 0.4221f,
+      .placement = {
+       .center   = fv(tvert_230),
+       .x_axis   = V3x(2.6661f),
+       .alpha    = 0.4221f,
+      },
      },
     };
     
