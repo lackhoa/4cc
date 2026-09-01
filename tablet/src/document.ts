@@ -44,6 +44,54 @@ export function empty_document(): TabletDocument {
   return { vertices: [], strokes: [], lofts: [], revolves: [], inflates: [], coons: [] };
 }
 
+// Delete one stroke. Surfaces built on it are deleted with it (an inflate
+// merely using it as its profile survives, profile reset to null); stroke
+// indices above it shift down; vertices no longer referenced by any stroke are
+// garbage-collected (so they stop acting as invisible snap targets), with the
+// surviving strokes' endpoint indices remapped.
+export function delete_stroke(tablet_document: TabletDocument, stroke_index: number): void {
+  const remap_stroke = (index: number) => (index > stroke_index ? index - 1 : index);
+  tablet_document.strokes.splice(stroke_index, 1);
+  tablet_document.lofts = tablet_document.lofts
+    .filter((loft) => loft.stroke_a !== stroke_index && loft.stroke_b !== stroke_index)
+    .map((loft) => ({ stroke_a: remap_stroke(loft.stroke_a), stroke_b: remap_stroke(loft.stroke_b) }));
+  tablet_document.revolves = tablet_document.revolves
+    .filter((revolve) => revolve.stroke !== stroke_index)
+    .map((revolve) => ({ stroke: remap_stroke(revolve.stroke) }));
+  tablet_document.inflates = tablet_document.inflates
+    .filter((inflate) => inflate.stroke !== stroke_index)
+    .map((inflate) => ({
+      stroke: remap_stroke(inflate.stroke),
+      profile: inflate.profile === null || inflate.profile === stroke_index ? null : remap_stroke(inflate.profile),
+    }));
+  tablet_document.coons = tablet_document.coons
+    .filter((coons) => !coons.strokes.includes(stroke_index))
+    .map((coons): Coons => ({
+      strokes: [
+        remap_stroke(coons.strokes[0]), remap_stroke(coons.strokes[1]),
+        remap_stroke(coons.strokes[2]), remap_stroke(coons.strokes[3]),
+      ],
+    }));
+
+  const used_vertices = new Set<number>();
+  for (const stroke of tablet_document.strokes) {
+    used_vertices.add(stroke.p0_vertex);
+    used_vertices.add(stroke.p3_vertex);
+  }
+  const vertex_remap = new Map<number, number>();
+  const kept_vertices: V3[] = [];
+  for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
+    if (!used_vertices.has(vertex_index)) continue;
+    vertex_remap.set(vertex_index, kept_vertices.length);
+    kept_vertices.push(tablet_document.vertices[vertex_index]);
+  }
+  tablet_document.vertices = kept_vertices;
+  for (const stroke of tablet_document.strokes) {
+    stroke.p0_vertex = vertex_remap.get(stroke.p0_vertex)!;
+    stroke.p3_vertex = vertex_remap.get(stroke.p3_vertex)!;
+  }
+}
+
 // The four world-space bezier control points of a stroke.
 export type StrokeControlPoints = { p0: V3; p1: V3; p2: V3; p3: V3 };
 
@@ -66,13 +114,17 @@ function stroke_plane_normal(p0: V3, d0: V3, p3: V3): V3 {
   return v3_normalize(v3_cross(u, v3(1, 0, 0)));
 }
 
+export function stroke_frame_from_points(p0: V3, d0: V3, p3: V3): StrokeFrame {
+  const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), d0);
+  const w = stroke_plane_normal(p0, d0, p3);
+  const u2 = v3_sub(p3, p1);
+  return { w, u2, v: v3_cross(w, u2) };
+}
+
 export function stroke_frame(stroke: Stroke, tablet_document: TabletDocument): StrokeFrame {
   const p0 = tablet_document.vertices[stroke.p0_vertex];
   const p3 = tablet_document.vertices[stroke.p3_vertex];
-  const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), stroke.d0);
-  const w = stroke_plane_normal(p0, stroke.d0, p3);
-  const u2 = v3_sub(p3, p1);
-  return { w, u2, v: v3_cross(w, u2) };
+  return stroke_frame_from_points(p0, stroke.d0, p3);
 }
 
 // bez_v3v2 (desktop game/game_draw.cpp): with d0 = 0 and d3 = (0, 0) the

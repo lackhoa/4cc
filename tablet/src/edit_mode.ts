@@ -2,7 +2,8 @@
 // points reshapes it — vertices (p0/p3) move in the camera plane and carry
 // every attached stroke with them; the p1 handle sets d0 freely in 3D
 // (camera-plane drag); the p2 handle solves d3 inside the stroke's plane, so
-// the curve stays planar (Q34). A drag starting ON the stroke body translates
+// the curve stays planar (Q34). Releasing a vertex drag near another vertex
+// merges the two into one shared junction. A drag starting ON the stroke body translates
 // the whole stroke (both vertices) in the camera plane; a drag starting on
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
@@ -17,6 +18,7 @@ export const TAP_MAX_MOVEMENT_PIXELS = 12;
 
 const STROKE_PICK_RADIUS_PIXELS = 24;
 const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
+const VERTEX_MERGE_RADIUS_PIXELS = 20;
 const PICK_SAMPLES_PER_STROKE = 16;
 
 export type StrokePointKey = "p0" | "p1" | "p2" | "p3";
@@ -145,7 +147,56 @@ export function edit_pen_move(
   }
 }
 
-export function edit_pen_up(state: EditState): void {
+// Merge the dragged vertex into another vertex within screen-space snap range
+// (same feel as draw-time endpoint snapping): every stroke referencing it is
+// rewired to the target, welding the junction, and the vertex is removed.
+// Skipped when the merge would leave any stroke with both endpoints on the
+// same vertex.
+function merge_vertex_if_near_another(
+  tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement, dragged_vertex: number,
+): void {
+  const dragged_screen = camera_world_to_screen(
+    camera, tablet_document.vertices[dragged_vertex], canvas.clientWidth, canvas.clientHeight,
+  );
+  if (dragged_screen === null) return;
+  let target_vertex: number | null = null;
+  let best_distance = VERTEX_MERGE_RADIUS_PIXELS;
+  for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
+    if (vertex_index === dragged_vertex) continue;
+    const projected = camera_world_to_screen(
+      camera, tablet_document.vertices[vertex_index], canvas.clientWidth, canvas.clientHeight,
+    );
+    if (projected === null) continue;
+    const distance = Math.hypot(projected.x - dragged_screen.x, projected.y - dragged_screen.y);
+    if (distance < best_distance) {
+      best_distance = distance;
+      target_vertex = vertex_index;
+    }
+  }
+  if (target_vertex === null) return;
+  const remap = (vertex: number) => (vertex === dragged_vertex ? target_vertex! : vertex);
+  for (const stroke of tablet_document.strokes) {
+    if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return;
+  }
+  for (const stroke of tablet_document.strokes) {
+    stroke.p0_vertex = remap(stroke.p0_vertex);
+    stroke.p3_vertex = remap(stroke.p3_vertex);
+  }
+  tablet_document.vertices.splice(dragged_vertex, 1);
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.p0_vertex > dragged_vertex) stroke.p0_vertex--;
+    if (stroke.p3_vertex > dragged_vertex) stroke.p3_vertex--;
+  }
+}
+
+export function edit_pen_up(
+  state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement,
+): void {
+  if (state.dragging === "p0" || state.dragging === "p3") {
+    const stroke = tablet_document.strokes[state.stroke_index];
+    const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+    merge_vertex_if_near_another(tablet_document, camera, canvas, dragged_vertex);
+  }
   state.dragging = null;
   state.moving_whole_stroke = false;
   state.last_screen = null;

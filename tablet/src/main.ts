@@ -6,7 +6,7 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { camera_basis, camera_orbit, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
-import { empty_document, stroke_control_points } from "./document";
+import { delete_stroke, empty_document, stroke_control_points } from "./document";
 import { EditState, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, pick_stroke } from "./edit_mode";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -173,24 +173,24 @@ function update_preview_line(): void {
     set_preview_line(renderer, new Float32Array(0));
     return;
   }
+  // The freehand path, plus the snapped end point so snapping is visible.
   const vertices: number[] = [];
-  for (const point of [line_state.start_world, line_state.end_world]) {
+  for (const point of [line_state.start_world, ...line_state.path_world, line_state.end_world]) {
     vertices.push(point.x, point.y, point.z, PREVIEW_COLOR.r, PREVIEW_COLOR.g, PREVIEW_COLOR.b);
   }
   set_preview_line(renderer, new Float32Array(vertices));
 }
 
-// Line-tool pen-up: a drag commits a stroke and auto-selects it (Q29, tool
-// stays armed so the next drag keeps creating); a tap exits the tool (Q27).
+// Line-tool pen-up: a drag commits a stroke fitted to the pen path and
+// auto-selects it; a tap exits the tool (Q27). Either way the tool disarms, so
+// the very next drag adjusts the fresh stroke instead of creating another.
 function line_mode_pen_up(): void {
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
-  if (was_tap || line_state === null) {
-    set_armed_tool(null);
-  } else {
+  if (!was_tap && line_state !== null) {
     const stroke_index = line_pen_up(line_state, tablet_document);
     if (stroke_index !== null) edit_state = begin_edit_state(stroke_index);
   }
-  line_state = null;
+  set_armed_tool(null); // also clears line_state
   update_preview_line();
 }
 
@@ -200,7 +200,7 @@ function line_mode_pen_up(): void {
 function edit_mode_pen_up(position: V2): void {
   if (edit_state === null) return;
   const was_control_drag = edit_state.dragging !== null || edit_state.moving_whole_stroke;
-  edit_pen_up(edit_state);
+  edit_pen_up(edit_state, tablet_document, camera, canvas);
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
   if (!was_tap || was_control_drag) return;
   const picked = pick_stroke(tablet_document, camera, position, canvas);
@@ -361,6 +361,16 @@ attach_gestures(canvas, camera, {
     request_render();
   },
 }, () => {
+  request_render();
+});
+
+// Delete the selected stroke (surfaces built on it go with it).
+const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
+delete_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  delete_stroke(tablet_document, edit_state.stroke_index);
+  edit_state = null;
+  set_armed_tool(null);
   request_render();
 });
 
