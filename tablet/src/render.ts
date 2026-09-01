@@ -26,6 +26,8 @@ export type LineRenderer = {
   u_view_projection: WebGLUniformLocation;
   grid_buffer: WebGLBuffer;
   grid_vertex_count: number;
+  reference_buffer: WebGLBuffer; // reference model, triangle list, drawn first (depth writes on)
+  reference_vertex_count: number;
   stroke_buffer: WebGLBuffer; // committed stroke ribbons, triangle list
   stroke_vertex_count: number;
   surface_buffer: WebGLBuffer; // loft surfaces, triangle list, shading baked into color
@@ -84,6 +86,8 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     u_view_projection: gl.getUniformLocation(program, "u_view_projection")!,
     grid_buffer,
     grid_vertex_count: grid_vertices.length / 6,
+    reference_buffer: gl.createBuffer()!,
+    reference_vertex_count: 0,
     stroke_buffer: gl.createBuffer()!,
     stroke_vertex_count: 0,
     surface_buffer: gl.createBuffer()!,
@@ -95,6 +99,15 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     overlay_triangle_buffer: gl.createBuffer()!,
     overlay_triangle_vertex_count: 0,
   };
+}
+
+// vertices: interleaved [x,y,z, r,g,b] triangle list of the reference model;
+// empty array hides it.
+export function set_reference_mesh(renderer: LineRenderer, vertices: Float32Array): void {
+  const gl = renderer.gl;
+  gl.bindBuffer(gl.ARRAY_BUFFER, renderer.reference_buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+  renderer.reference_vertex_count = vertices.length / 6;
 }
 
 // vertices: interleaved [x,y,z, r,g,b] triangle list of all stroke ribbons.
@@ -160,6 +173,11 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4): voi
 
   bind_interleaved_buffer(renderer, renderer.grid_buffer);
   gl.drawArrays(gl.LINES, 0, renderer.grid_vertex_count);
+
+  if (renderer.reference_vertex_count > 0) {
+    bind_interleaved_buffer(renderer, renderer.reference_buffer);
+    gl.drawArrays(gl.TRIANGLES, 0, renderer.reference_vertex_count);
+  }
 
   if (renderer.surface_vertex_count > 0) {
     bind_interleaved_buffer(renderer, renderer.surface_buffer);

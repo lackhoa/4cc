@@ -16,7 +16,9 @@ import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_inflate_mesh } from "./inflate";
 import { append_revolve_mesh } from "./revolve";
 import { append_stroke_ribbon } from "./ribbon";
-import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_stroke_mesh, set_surface_mesh } from "./render";
+import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
+import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, schedule_autosave, switch_document } from "./persistence";
+import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
 
 const STROKE_COLOR = { r: 0.85, g: 0.85, b: 0.9 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
@@ -38,6 +40,9 @@ if (!gl) {
 const camera = default_camera();
 const tablet_document = empty_document();
 const renderer = create_line_renderer(gl);
+const persistence = create_persistence_state();
+let reference_mesh: ReferenceMesh | null = null;
+let reference_visible = true;
 let edit_state: EditState | null = null; // non-null = a stroke is selected
 // Armed tools: "line" creates strokes; the pick tools make the next tapped
 // stroke the loft's second rail ("loft"), the selected inflate's cross-section
@@ -55,6 +60,11 @@ let pen_down_screen: V2 | null = null;
 let pen_max_displacement_pixels = 0;
 
 function request_render(): void {
+  // Anything that changes what's on screen (strokes, surfaces, camera) goes
+  // through here — piggyback the debounced autosave on it; identical
+  // serializations are skipped inside. Before the early return: a pending
+  // frame must not swallow the save (rAF pauses entirely in hidden tabs).
+  schedule_autosave(persistence, tablet_document, camera);
   if (frame_requested) return;
   frame_requested = true;
   requestAnimationFrame(() => {
@@ -62,6 +72,7 @@ function request_render(): void {
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
     rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_index);
     rebuild_surface_mesh();
+    rebuild_reference_mesh();
     rebuild_edit_overlay();
     render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
   });
@@ -116,6 +127,17 @@ function append_billboard_square(
   for (const corner of [corner_a, corner_b, corner_c, corner_a, corner_c, corner_d]) {
     out.push(corner.x, corner.y, corner.z, color.r, color.g, color.b);
   }
+}
+
+// Headlight shading is camera-dependent — rebuilt per frame like the surfaces.
+function rebuild_reference_mesh(): void {
+  if (reference_mesh === null || !reference_visible) {
+    set_reference_mesh(renderer, new Float32Array(0));
+    return;
+  }
+  const vertices: number[] = [];
+  append_reference_mesh(reference_mesh, camera, vertices);
+  set_reference_mesh(renderer, new Float32Array(vertices));
 }
 
 function rebuild_edit_overlay(): void {
@@ -346,19 +368,86 @@ const clear_button = document.getElementById("clear_button") as HTMLButtonElemen
 clear_button.addEventListener("click", () => {
   if (tablet_document.strokes.length === 0) return;
   if (!window.confirm("Erase all strokes?")) return;
-  tablet_document.vertices.length = 0;
-  tablet_document.strokes.length = 0;
-  tablet_document.lofts.length = 0;
-  tablet_document.revolves.length = 0;
-  tablet_document.inflates.length = 0;
-  tablet_document.coons.length = 0;
+  clear_document_in_place(tablet_document);
   edit_state = null;
   set_armed_tool(null);
   request_render();
 });
 
+const reference_button = document.getElementById("reference_button") as HTMLButtonElement;
+reference_button.addEventListener("click", () => {
+  reference_visible = !reference_visible;
+  reference_button.classList.toggle("armed", reference_visible);
+  request_render();
+});
+reference_button.classList.toggle("armed", reference_visible);
+
+// Docs panel: lists server documents to switch between, plus "new…" (prompt
+// for a name; unknown names start empty). Autosave keeps targeting whichever
+// document is current.
+const docs_button = document.getElementById("docs_button") as HTMLButtonElement;
+const docs_panel = document.getElementById("docs_panel") as HTMLDivElement;
+
+async function switch_to_document_and_rerender(name: string): Promise<void> {
+  docs_panel.classList.remove("open");
+  edit_state = null;
+  set_armed_tool(null);
+  await switch_document(persistence, tablet_document, camera, name);
+  request_render();
+}
+
+async function open_docs_panel(): Promise<void> {
+  const entries = await list_documents_from_server();
+  docs_panel.replaceChildren();
+  if (entries === null) {
+    const note = document.createElement("button");
+    note.textContent = "server unreachable";
+    note.disabled = true;
+    docs_panel.appendChild(note);
+  } else {
+    const names = entries.map((entry) => entry.name);
+    if (!names.includes(persistence.current_document_name)) names.push(persistence.current_document_name);
+    for (const name of names.sort()) {
+      const entry_button = document.createElement("button");
+      entry_button.textContent = name;
+      entry_button.classList.toggle("current", name === persistence.current_document_name);
+      entry_button.addEventListener("click", () => void switch_to_document_and_rerender(name));
+      docs_panel.appendChild(entry_button);
+    }
+    const new_button = document.createElement("button");
+    new_button.textContent = "new…";
+    new_button.addEventListener("click", () => {
+      const name = window.prompt("Document name (letters, digits, - and _):");
+      if (name === null) return;
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) {
+        window.alert("Bad name — letters, digits, - and _ only.");
+        return;
+      }
+      void switch_to_document_and_rerender(name);
+    });
+    docs_panel.appendChild(new_button);
+  }
+  docs_panel.classList.add("open");
+}
+
+docs_button.addEventListener("click", () => {
+  if (docs_panel.classList.contains("open")) {
+    docs_panel.classList.remove("open");
+  } else {
+    void open_docs_panel();
+  }
+});
+
 resize_canvas_to_display();
+void load_current_document_on_startup(persistence, tablet_document, camera).then(() => {
+  request_render();
+});
+void fetch_reference_mesh("/reference/skull.obj").then((mesh) => {
+  reference_mesh = mesh;
+  request_render();
+});
 // Debug hook: inspect the document from the browser console / automated tests.
 (window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
 (window as unknown as { debug_camera: unknown }).debug_camera = camera;
+(window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
 console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");
