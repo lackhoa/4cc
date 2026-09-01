@@ -147,18 +147,17 @@ export function edit_pen_move(
   }
 }
 
-// Merge the dragged vertex into another vertex within screen-space snap range
-// (same feel as draw-time endpoint snapping): every stroke referencing it is
-// rewired to the target, welding the junction, and the vertex is removed.
-// Skipped when the merge would leave any stroke with both endpoints on the
-// same vertex.
-function merge_vertex_if_near_another(
+// The vertex the dragged vertex would weld into on release: nearest other
+// vertex within screen-space snap range — null when none is in range, or when
+// the merge would leave any stroke with both endpoints on the same vertex.
+// Also drives the drag-time highlight, so it must match the merge exactly.
+export function find_merge_target_vertex(
   tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement, dragged_vertex: number,
-): void {
+): number | null {
   const dragged_screen = camera_world_to_screen(
     camera, tablet_document.vertices[dragged_vertex], canvas.clientWidth, canvas.clientHeight,
   );
-  if (dragged_screen === null) return;
+  if (dragged_screen === null) return null;
   let target_vertex: number | null = null;
   let best_distance = VERTEX_MERGE_RADIUS_PIXELS;
   for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
@@ -173,11 +172,23 @@ function merge_vertex_if_near_another(
       target_vertex = vertex_index;
     }
   }
-  if (target_vertex === null) return;
+  if (target_vertex === null) return null;
   const remap = (vertex: number) => (vertex === dragged_vertex ? target_vertex! : vertex);
   for (const stroke of tablet_document.strokes) {
-    if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return;
+    if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return null;
   }
+  return target_vertex;
+}
+
+// Merge the dragged vertex into another vertex within screen-space snap range
+// (same feel as draw-time endpoint snapping): every stroke referencing it is
+// rewired to the target, welding the junction, and the vertex is removed.
+function merge_vertex_if_near_another(
+  tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement, dragged_vertex: number,
+): void {
+  const target_vertex = find_merge_target_vertex(tablet_document, camera, canvas, dragged_vertex);
+  if (target_vertex === null) return;
+  const remap = (vertex: number) => (vertex === dragged_vertex ? target_vertex : vertex);
   for (const stroke of tablet_document.strokes) {
     stroke.p0_vertex = remap(stroke.p0_vertex);
     stroke.p3_vertex = remap(stroke.p3_vertex);

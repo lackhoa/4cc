@@ -5,11 +5,13 @@
 // drag starting on the selected stroke translates it; vertex/handle drags
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
-import { camera_basis, camera_orbit, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
+import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
 import { delete_stroke, empty_document, stroke_control_points } from "./document";
-import { EditState, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, pick_stroke } from "./edit_mode";
+import { EditState, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, pick_stroke } from "./edit_mode";
+import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
+import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_coons_mesh } from "./coons";
 import { append_loft_mesh } from "./loft";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
@@ -41,14 +43,16 @@ const camera = default_camera();
 const tablet_document = empty_document();
 const renderer = create_line_renderer(gl);
 const persistence = create_persistence_state();
+const history = create_history_state();
 let reference_mesh: ReferenceMesh | null = null;
 let reference_visible = true;
 let edit_state: EditState | null = null; // non-null = a stroke is selected
 // Armed tools: "line" creates strokes; the pick tools make the next tapped
 // stroke the loft's second rail ("loft"), the selected inflate's cross-section
-// curve ("profile"), or one of the Coons patch's remaining boundary sides
-// ("patch", collects until 4).
-type ArmedTool = "line" | "loft" | "profile" | "patch";
+// curve ("profile"), one of the Coons patch's remaining boundary sides
+// ("patch", collects until 4), or the adjacent stroke to merge the selection
+// with ("join").
+type ArmedTool = "line" | "loft" | "profile" | "patch" | "join";
 let armed_tool: ArmedTool | null = null;
 const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
@@ -164,6 +168,19 @@ function rebuild_edit_overlay(): void {
   append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   append_billboard_square(points.p0, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
   append_billboard_square(points.p3, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
+  // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
+  // vertex it would weld into on release so the merge is never a surprise.
+  if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
+    const stroke = tablet_document.strokes[edit_state.stroke_index];
+    const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+    const target_vertex = find_merge_target_vertex(tablet_document, camera, canvas, dragged_vertex);
+    if (target_vertex !== null) {
+      append_billboard_square(
+        tablet_document.vertices[target_vertex], anchor_half * 2, basis.right, basis.up,
+        HIGHLIGHT_COLOR, triangle_vertices,
+      );
+    }
+  }
   set_overlay_lines(renderer, new Float32Array(line_vertices));
   set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
 }
@@ -222,6 +239,10 @@ function edit_mode_pen_up(position: V2): void {
       if (armed_tool === "loft") {
         tablet_document.lofts.push({ stroke_a: edit_state.stroke_index, stroke_b: picked });
         edit_state = null;
+      } else if (armed_tool === "join") {
+        const merged_index = merge_adjacent_strokes(tablet_document, edit_state.stroke_index, picked);
+        // Not adjacent (or a closed loop): keep the selection, just disarm.
+        if (merged_index !== null) edit_state = begin_edit_state(merged_index);
       } else {
         assign_inflate_profile(edit_state.stroke_index, picked);
       }
@@ -249,6 +270,7 @@ const line_button = document.getElementById("line_button") as HTMLButtonElement;
 const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
 const profile_button = document.getElementById("profile_button") as HTMLButtonElement;
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
+const join_button = document.getElementById("join_button") as HTMLButtonElement;
 function set_armed_tool(tool: ArmedTool | null): void {
   armed_tool = tool;
   if (tool !== "patch") patch_picks.length = 0;
@@ -257,6 +279,7 @@ function set_armed_tool(tool: ArmedTool | null): void {
   surface_button.classList.toggle("armed", tool === "loft");
   profile_button.classList.toggle("armed", tool === "loft" ? false : tool === "profile");
   patch_button.classList.toggle("armed", tool === "patch");
+  join_button.classList.toggle("armed", tool === "join");
 }
 line_button.addEventListener("click", () => {
   set_armed_tool(armed_tool === "line" ? null : "line");
@@ -281,12 +304,21 @@ patch_button.addEventListener("click", () => {
   patch_picks.push(edit_state.stroke_index);
 });
 
+// Join: the next tapped stroke merges with the selection into one cubic
+// (they must share a vertex).
+join_button.addEventListener("click", () => {
+  if (edit_state === null) return; // needs a selected first stroke
+  set_armed_tool(armed_tool === "join" ? null : "join");
+});
+
 // Revolve acts immediately on the selected stroke (the axis is the line through
 // its own endpoints) — selection is kept so the profile can be tweaked live.
 const revolve_button = document.getElementById("revolve_button") as HTMLButtonElement;
 revolve_button.addEventListener("click", () => {
   if (edit_state === null) return;
+  begin_history_step(history, tablet_document);
   tablet_document.revolves.push({ stroke: edit_state.stroke_index });
+  end_history_step(history, tablet_document);
   request_render();
 });
 
@@ -295,7 +327,9 @@ revolve_button.addEventListener("click", () => {
 const inflate_button = document.getElementById("inflate_button") as HTMLButtonElement;
 inflate_button.addEventListener("click", () => {
   if (edit_state === null) return;
+  begin_history_step(history, tablet_document);
   tablet_document.inflates.push({ stroke: edit_state.stroke_index, profile: null });
+  end_history_step(history, tablet_document);
   request_render();
 });
 
@@ -309,8 +343,24 @@ function pen_orbit(position: V2): void {
   pen_orbit_last_screen = position;
 }
 
+// Undo/redo (plan-tablet-undo-redo.md): restore drops the selection — the
+// selected stroke index may not survive the snapshot.
+function perform_undo(): void {
+  if (!undo(history, tablet_document)) return;
+  edit_state = null;
+  set_armed_tool(null);
+  request_render();
+}
+function perform_redo(): void {
+  if (!redo(history, tablet_document)) return;
+  edit_state = null;
+  set_armed_tool(null);
+  request_render();
+}
+
 attach_gestures(canvas, camera, {
   on_pen_down: (position) => {
+    begin_history_step(history, tablet_document);
     pen_down_screen = position;
     pen_max_displacement_pixels = 0;
     pen_orbit_last_screen = null;
@@ -358,8 +408,11 @@ attach_gestures(canvas, camera, {
     }
     pen_down_screen = null;
     pen_orbit_last_screen = null;
+    end_history_step(history, tablet_document);
     request_render();
   },
+  on_undo_tap: perform_undo,
+  on_redo_tap: perform_redo,
 }, () => {
   request_render();
 });
@@ -368,7 +421,9 @@ attach_gestures(canvas, camera, {
 const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
 delete_button.addEventListener("click", () => {
   if (edit_state === null) return;
+  begin_history_step(history, tablet_document);
   delete_stroke(tablet_document, edit_state.stroke_index);
+  end_history_step(history, tablet_document);
   edit_state = null;
   set_armed_tool(null);
   request_render();
@@ -378,10 +433,42 @@ const clear_button = document.getElementById("clear_button") as HTMLButtonElemen
 clear_button.addEventListener("click", () => {
   if (tablet_document.strokes.length === 0) return;
   if (!window.confirm("Erase all strokes?")) return;
+  begin_history_step(history, tablet_document);
   clear_document_in_place(tablet_document);
+  end_history_step(history, tablet_document);
   edit_state = null;
   set_armed_tool(null);
   request_render();
+});
+
+// Snap the camera to the nearest frontal/profile/back view (desktop key A);
+// snapping again toggles back to the previous view. previous starts at
+// profile so the very first snap from frontal has somewhere to toggle to.
+const camera_snap_state: CameraSnapState = { previous_snap_yaw: Math.PI / 2, current_snap_yaw: 0 };
+const view_button = document.getElementById("view_button") as HTMLButtonElement;
+view_button.addEventListener("click", () => {
+  camera_snap_to_axis_view(camera, camera_snap_state);
+  request_render();
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "a" && !event.repeat && !event.ctrlKey && !event.metaKey) {
+    camera_snap_to_axis_view(camera, camera_snap_state);
+    request_render();
+  }
+});
+
+// Undo/redo buttons + desktop shortcuts (the iPad path is the two/three-finger
+// tap in gestures.ts).
+const undo_button = document.getElementById("undo_button") as HTMLButtonElement;
+const redo_button = document.getElementById("redo_button") as HTMLButtonElement;
+undo_button.addEventListener("click", perform_undo);
+redo_button.addEventListener("click", perform_redo);
+window.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    if (event.shiftKey) perform_redo();
+    else perform_undo();
+  }
 });
 
 const reference_button = document.getElementById("reference_button") as HTMLButtonElement;
@@ -402,6 +489,7 @@ async function switch_to_document_and_rerender(name: string): Promise<void> {
   docs_panel.classList.remove("open");
   edit_state = null;
   set_armed_tool(null);
+  clear_history(history); // history is per-document (Q5)
   await switch_document(persistence, tablet_document, camera, name);
   request_render();
 }

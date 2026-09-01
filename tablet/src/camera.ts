@@ -58,6 +58,35 @@ export function camera_basis(camera: OrbitCamera): { right: V3; up: V3; forward:
   return { right, up: v3_cross(right, forward), forward };
 }
 
+// Snap-to-axis-view state (desktop `snap_camera`, key A): the last two snap
+// yaws, so snapping while already snapped toggles back to the previous view.
+export type CameraSnapState = { previous_snap_yaw: number; current_snap_yaw: number };
+
+const QUARTER_TURN = Math.PI / 2;
+
+function wrap_yaw_to_full_turn(yaw: number): number {
+  const full_turn = 2 * Math.PI;
+  return ((yaw % full_turn) + full_turn) % full_turn;
+}
+
+// Snap yaw to the nearest quarter turn (frontal/profile/back) and level the
+// pitch. Already at a snap point -> jump to the previous snap; nearest snap is
+// the one we're on (drifted but still rounds home) -> step one quarter turn in
+// the drift direction. Ported from the desktop app's `snap_camera`.
+export function camera_snap_to_axis_view(camera: OrbitCamera, snap_state: CameraSnapState): void {
+  const yaw = wrap_yaw_to_full_turn(camera.yaw);
+  let new_yaw = wrap_yaw_to_full_turn(Math.round(yaw / QUARTER_TURN) * QUARTER_TURN);
+  if (yaw === snap_state.current_snap_yaw && camera.pitch === 0) {
+    new_yaw = snap_state.previous_snap_yaw;
+  } else if (new_yaw === snap_state.current_snap_yaw) {
+    new_yaw = wrap_yaw_to_full_turn(new_yaw + QUARTER_TURN * Math.sign(yaw - new_yaw));
+  }
+  snap_state.previous_snap_yaw = snap_state.current_snap_yaw;
+  snap_state.current_snap_yaw = new_yaw;
+  camera.yaw = new_yaw;
+  camera.pitch = 0;
+}
+
 export type Ray = { origin: V3; direction: V3 };
 
 // Ray through a screen point given in CSS pixels.

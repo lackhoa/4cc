@@ -98,7 +98,7 @@ export function line_pen_move(
 // (endpoints fixed, chord-length parameterization), converted to the bez_v3v2
 // handle representation. Falls back to a straight stroke's handles when the
 // path is too short or the normal equations are degenerate.
-function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { d0: V3; d3: V2 } {
+export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { d0: V3; d3: V2 } {
   const straight = { d0: v3(0, 0, 0), d3: { x: 0, y: 0 } };
   if (path.length < 3) return straight;
 

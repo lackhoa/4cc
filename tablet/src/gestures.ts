@@ -1,16 +1,27 @@
 // Finger gestures → camera (Q9: stylus draws, finger navigates).
-// 1-finger drag = orbit, 2-finger drag = pan, pinch = zoom. Pen events are
-// forwarded to the caller (drawing modes handle them in later steps).
+// 1-finger drag = orbit, 2-finger drag = pan, pinch = zoom. A multi-finger
+// *tap* (all fingers barely move and lift quickly) is undo (2 fingers) / redo
+// (3 fingers), Procreate-style. Pen events are forwarded to the caller
+// (drawing modes handle them in later steps).
 
 import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
 import { V2 } from "./math";
 
 export const ORBIT_RADIANS_PER_PIXEL = 0.006; // shared with pen-drag orbiting in main.ts
 
+// Tap thresholds (Q7, tune by feel): every finger stays within this
+// displacement of where it landed, and the last finger lifts within this time
+// of the first touch. The finger count is the gesture's PEAK concurrent
+// touches, read at release, so a late third finger still counts as 3.
+const FINGER_TAP_MAX_MOVEMENT_PIXELS = 12;
+const FINGER_TAP_MAX_DURATION_MS = 250;
+
 export type PenHandlers = {
   on_pen_down: (position: V2, event: PointerEvent) => void;
   on_pen_move: (position: V2, event: PointerEvent) => void;
   on_pen_up: (position: V2, event: PointerEvent) => void;
+  on_undo_tap: () => void; // two-finger tap
+  on_redo_tap: () => void; // three-finger tap
 };
 
 export function attach_gestures(
@@ -20,6 +31,11 @@ export function attach_gestures(
   on_camera_change: () => void,
 ): void {
   const touch_positions = new Map<number, V2>(); // pointerId -> last position, CSS pixels
+  // Tap tracking for the whole touch gesture (first finger down -> last up).
+  const touch_down_positions = new Map<number, V2>(); // pointerId -> where the finger landed
+  let touch_gesture_start_ms = 0;
+  let touch_gesture_peak_fingers = 0;
+  let touch_gesture_is_tap = true; // falsified as soon as any finger moves too far
 
   function touch_centroid_and_spread(): { centroid: V2; spread: number } {
     const points = [...touch_positions.values()];
@@ -40,7 +56,15 @@ export function attach_gestures(
     if (e.pointerType === "pen") {
       pen.on_pen_down(position, e);
     } else {
+      if (touch_positions.size === 0) {
+        touch_gesture_start_ms = performance.now();
+        touch_gesture_peak_fingers = 0;
+        touch_gesture_is_tap = true;
+        touch_down_positions.clear();
+      }
       touch_positions.set(e.pointerId, position);
+      touch_down_positions.set(e.pointerId, position);
+      touch_gesture_peak_fingers = Math.max(touch_gesture_peak_fingers, touch_positions.size);
     }
   });
 
@@ -52,6 +76,10 @@ export function attach_gestures(
       return;
     }
     if (!touch_positions.has(e.pointerId)) return;
+    const down = touch_down_positions.get(e.pointerId)!;
+    if (Math.hypot(position.x - down.x, position.y - down.y) > FINGER_TAP_MAX_MOVEMENT_PIXELS) {
+      touch_gesture_is_tap = false;
+    }
 
     if (touch_positions.size === 1) {
       const previous = touch_positions.get(e.pointerId)!;
@@ -87,6 +115,13 @@ export function attach_gestures(
         pen.on_pen_up(position, e);
       } else {
         touch_positions.delete(e.pointerId);
+        if (touch_positions.size === 0 && touch_gesture_is_tap && type === "pointerup") {
+          const duration = performance.now() - touch_gesture_start_ms;
+          if (duration <= FINGER_TAP_MAX_DURATION_MS) {
+            if (touch_gesture_peak_fingers === 2) pen.on_undo_tap();
+            if (touch_gesture_peak_fingers === 3) pen.on_redo_tap();
+          }
+        }
       }
     });
   }
