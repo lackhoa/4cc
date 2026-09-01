@@ -1,0 +1,364 @@
+// autodraw tablet — iPad drawing companion prototype.
+// Sketchpad rework (plan step 7): strokes are single cubics put down with the
+// armed line tool and shaped afterwards; endpoints live in a shared vertex
+// table so joined strokes can never tear. Bare pen drags orbit (Q27/Q35); a
+// drag starting on the selected stroke translates it; vertex/handle drags
+// reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
+
+import { camera_basis, camera_orbit, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
+import { empty_document, stroke_control_points } from "./document";
+import { EditState, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, pick_stroke } from "./edit_mode";
+import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
+import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
+import { append_coons_mesh } from "./coons";
+import { append_loft_mesh } from "./loft";
+import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
+import { append_inflate_mesh } from "./inflate";
+import { append_revolve_mesh } from "./revolve";
+import { append_stroke_ribbon } from "./ribbon";
+import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_stroke_mesh, set_surface_mesh } from "./render";
+
+const STROKE_COLOR = { r: 0.85, g: 0.85, b: 0.9 };
+const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
+const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
+const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
+const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
+const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
+const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
+const ANCHOR_SIZE_PIXELS = 12;
+const HANDLE_SIZE_PIXELS = 9;
+
+const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const gl = canvas.getContext("webgl");
+if (!gl) {
+  document.body.textContent = "WebGL not available";
+  throw new Error("WebGL not available");
+}
+
+const camera = default_camera();
+const tablet_document = empty_document();
+const renderer = create_line_renderer(gl);
+let edit_state: EditState | null = null; // non-null = a stroke is selected
+// Armed tools: "line" creates strokes; the pick tools make the next tapped
+// stroke the loft's second rail ("loft"), the selected inflate's cross-section
+// curve ("profile"), or one of the Coons patch's remaining boundary sides
+// ("patch", collects until 4).
+type ArmedTool = "line" | "loft" | "profile" | "patch";
+let armed_tool: ArmedTool | null = null;
+const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
+let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
+let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
+let frame_requested = false;
+// Pen tap detection (tap = select/deselect instead of moving anything).
+// Displacement from the down point, not path length — pencil taps jitter.
+let pen_down_screen: V2 | null = null;
+let pen_max_displacement_pixels = 0;
+
+function request_render(): void {
+  if (frame_requested) return;
+  frame_requested = true;
+  requestAnimationFrame(() => {
+    frame_requested = false;
+    // Ribbons are camera-facing (desktop parity) — retessellate every frame.
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_index);
+    rebuild_surface_mesh();
+    rebuild_edit_overlay();
+    render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
+  });
+}
+
+function resize_canvas_to_display(): void {
+  const dpr = window.devicePixelRatio;
+  canvas.width = Math.round(canvas.clientWidth * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
+  gl!.viewport(0, 0, canvas.width, canvas.height);
+  request_render();
+}
+window.addEventListener("resize", resize_canvas_to_display);
+
+function rebuild_stroke_mesh(highlighted_index: number | null): void {
+  const vertices: number[] = [];
+  for (let i = 0; i < tablet_document.strokes.length; i++) {
+    const color = i === highlighted_index ? HIGHLIGHT_COLOR : STROKE_COLOR;
+    append_stroke_ribbon(tablet_document.strokes[i], tablet_document, camera, color, vertices);
+  }
+  set_stroke_mesh(renderer, new Float32Array(vertices));
+}
+
+function rebuild_surface_mesh(): void {
+  const vertices: number[] = [];
+  for (const loft of tablet_document.lofts) {
+    append_loft_mesh(loft, tablet_document, camera, SURFACE_COLOR, vertices);
+  }
+  for (const revolve of tablet_document.revolves) {
+    append_revolve_mesh(revolve, tablet_document, camera, SURFACE_COLOR, vertices);
+  }
+  for (const inflate of tablet_document.inflates) {
+    append_inflate_mesh(inflate, tablet_document, camera, SURFACE_COLOR, vertices);
+  }
+  for (const coons of tablet_document.coons) {
+    append_coons_mesh(coons, tablet_document, camera, SURFACE_COLOR, vertices);
+  }
+  set_surface_mesh(renderer, new Float32Array(vertices));
+}
+
+// Camera-facing square marker, two triangles.
+function append_billboard_square(
+  center: V3, half_size: number, right: V3, up: V3,
+  color: { r: number; g: number; b: number }, out: number[],
+): void {
+  const right_half = v3_scale(right, half_size);
+  const up_half = v3_scale(up, half_size);
+  const corner_a = v3_sub(v3_sub(center, right_half), up_half);
+  const corner_b = v3_sub(v3_add(center, right_half), up_half);
+  const corner_c = v3_add(v3_add(center, right_half), up_half);
+  const corner_d = v3_add(v3_sub(center, right_half), up_half);
+  for (const corner of [corner_a, corner_b, corner_c, corner_a, corner_c, corner_d]) {
+    out.push(corner.x, corner.y, corner.z, color.r, color.g, color.b);
+  }
+}
+
+function rebuild_edit_overlay(): void {
+  if (edit_state === null) {
+    set_overlay_lines(renderer, new Float32Array(0));
+    set_overlay_triangles(renderer, new Float32Array(0));
+    return;
+  }
+  const points = stroke_control_points(tablet_document.strokes[edit_state.stroke_index], tablet_document);
+  const basis = camera_basis(camera);
+  const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
+  const anchor_half = (ANCHOR_SIZE_PIXELS / 2) * units_per_pixel;
+  const handle_half = (HANDLE_SIZE_PIXELS / 2) * units_per_pixel;
+
+  const line_vertices: number[] = [];
+  const triangle_vertices: number[] = [];
+  const push_line = (a: V3, b: V3) => {
+    line_vertices.push(a.x, a.y, a.z, HANDLE_LINE_COLOR.r, HANDLE_LINE_COLOR.g, HANDLE_LINE_COLOR.b);
+    line_vertices.push(b.x, b.y, b.z, HANDLE_LINE_COLOR.r, HANDLE_LINE_COLOR.g, HANDLE_LINE_COLOR.b);
+  };
+  push_line(points.p0, points.p1);
+  push_line(points.p3, points.p2);
+  append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
+  append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
+  append_billboard_square(points.p0, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
+  append_billboard_square(points.p3, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
+  set_overlay_lines(renderer, new Float32Array(line_vertices));
+  set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
+}
+
+function update_preview_line(): void {
+  if (line_state === null) {
+    set_preview_line(renderer, new Float32Array(0));
+    return;
+  }
+  const vertices: number[] = [];
+  for (const point of [line_state.start_world, line_state.end_world]) {
+    vertices.push(point.x, point.y, point.z, PREVIEW_COLOR.r, PREVIEW_COLOR.g, PREVIEW_COLOR.b);
+  }
+  set_preview_line(renderer, new Float32Array(vertices));
+}
+
+// Line-tool pen-up: a drag commits a stroke and auto-selects it (Q29, tool
+// stays armed so the next drag keeps creating); a tap exits the tool (Q27).
+function line_mode_pen_up(): void {
+  const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+  if (was_tap || line_state === null) {
+    set_armed_tool(null);
+  } else {
+    const stroke_index = line_pen_up(line_state, tablet_document);
+    if (stroke_index !== null) edit_state = begin_edit_state(stroke_index);
+  }
+  line_state = null;
+  update_preview_line();
+}
+
+// Selected-stroke pen-up: a tap on another stroke switches the selection (or,
+// with a pick tool armed, feeds it); a tap on empty space deselects. Drags
+// (control point, whole-stroke move, or orbit) just end.
+function edit_mode_pen_up(position: V2): void {
+  if (edit_state === null) return;
+  const was_control_drag = edit_state.dragging !== null || edit_state.moving_whole_stroke;
+  edit_pen_up(edit_state);
+  const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+  if (!was_tap || was_control_drag) return;
+  const picked = pick_stroke(tablet_document, camera, position, canvas);
+  if (armed_tool === "patch") {
+    if (picked === null) {
+      set_armed_tool(null); // tap empty = cancel, selection kept
+      return;
+    }
+    if (!patch_picks.includes(picked)) patch_picks.push(picked);
+    if (patch_picks.length === 4) {
+      tablet_document.coons.push({ strokes: [patch_picks[0], patch_picks[1], patch_picks[2], patch_picks[3]] });
+      set_armed_tool(null);
+      edit_state = null;
+    }
+    return;
+  }
+  if (armed_tool !== null) {
+    if (picked !== null && picked !== edit_state.stroke_index) {
+      if (armed_tool === "loft") {
+        tablet_document.lofts.push({ stroke_a: edit_state.stroke_index, stroke_b: picked });
+        edit_state = null;
+      } else {
+        assign_inflate_profile(edit_state.stroke_index, picked);
+      }
+    }
+    set_armed_tool(null); // tap empty (or the same stroke) = cancel, selection kept
+    return;
+  }
+  edit_state = picked === null ? null : begin_edit_state(picked);
+}
+
+// Attach a cross-section profile curve to the silhouette's inflate, creating
+// the inflate on the spot if the silhouette doesn't have one yet (so circle A
+// + curve B needs no separate inflate tap). Selection stays on the silhouette.
+function assign_inflate_profile(silhouette_index: number, profile_index: number): void {
+  for (let i = tablet_document.inflates.length - 1; i >= 0; i--) {
+    if (tablet_document.inflates[i].stroke === silhouette_index) {
+      tablet_document.inflates[i].profile = profile_index;
+      return;
+    }
+  }
+  tablet_document.inflates.push({ stroke: silhouette_index, profile: profile_index });
+}
+
+const line_button = document.getElementById("line_button") as HTMLButtonElement;
+const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
+const profile_button = document.getElementById("profile_button") as HTMLButtonElement;
+const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
+function set_armed_tool(tool: ArmedTool | null): void {
+  armed_tool = tool;
+  if (tool !== "patch") patch_picks.length = 0;
+  if (tool !== "line") line_state = null;
+  line_button.classList.toggle("armed", tool === "line");
+  surface_button.classList.toggle("armed", tool === "loft");
+  profile_button.classList.toggle("armed", tool === "loft" ? false : tool === "profile");
+  patch_button.classList.toggle("armed", tool === "patch");
+}
+line_button.addEventListener("click", () => {
+  set_armed_tool(armed_tool === "line" ? null : "line");
+});
+surface_button.addEventListener("click", () => {
+  if (edit_state === null) return; // needs a selected first rail
+  set_armed_tool(armed_tool === "loft" ? null : "loft");
+});
+profile_button.addEventListener("click", () => {
+  if (edit_state === null) return; // needs a selected silhouette
+  set_armed_tool(armed_tool === "profile" ? null : "profile");
+});
+// Patch: the selected stroke is the first boundary side; the next three taps
+// pick the rest (any order — sides are chained by endpoint proximity).
+patch_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  if (armed_tool === "patch") {
+    set_armed_tool(null);
+    return;
+  }
+  set_armed_tool("patch");
+  patch_picks.push(edit_state.stroke_index);
+});
+
+// Revolve acts immediately on the selected stroke (the axis is the line through
+// its own endpoints) — selection is kept so the profile can be tweaked live.
+const revolve_button = document.getElementById("revolve_button") as HTMLButtonElement;
+revolve_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  tablet_document.revolves.push({ stroke: edit_state.stroke_index });
+  request_render();
+});
+
+// Inflate acts immediately on the selected stroke (its silhouette becomes a
+// pillow); selection kept so the outline can be tweaked live.
+const inflate_button = document.getElementById("inflate_button") as HTMLButtonElement;
+inflate_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  tablet_document.inflates.push({ stroke: edit_state.stroke_index, profile: null });
+  request_render();
+});
+
+function pen_orbit(position: V2): void {
+  if (pen_orbit_last_screen === null) return;
+  camera_orbit(
+    camera,
+    -(position.x - pen_orbit_last_screen.x) * ORBIT_RADIANS_PER_PIXEL,
+    (position.y - pen_orbit_last_screen.y) * ORBIT_RADIANS_PER_PIXEL,
+  );
+  pen_orbit_last_screen = position;
+}
+
+attach_gestures(canvas, camera, {
+  on_pen_down: (position) => {
+    pen_down_screen = position;
+    pen_max_displacement_pixels = 0;
+    pen_orbit_last_screen = null;
+    if (armed_tool === "line") {
+      line_state = line_pen_down(tablet_document, camera, position, canvas);
+      update_preview_line();
+    } else if (edit_state !== null && armed_tool === null) {
+      // Consumed only when the pen lands on the selection; otherwise orbit.
+      if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
+        pen_orbit_last_screen = position;
+      }
+    } else {
+      // No selection, or a pick tool armed (pure tap tool): bare drags orbit.
+      pen_orbit_last_screen = position;
+    }
+    request_render();
+  },
+  on_pen_move: (position) => {
+    if (pen_down_screen !== null) {
+      pen_max_displacement_pixels = Math.max(
+        pen_max_displacement_pixels,
+        Math.hypot(position.x - pen_down_screen.x, position.y - pen_down_screen.y),
+      );
+    }
+    if (armed_tool === "line") {
+      if (line_state !== null) {
+        line_pen_move(line_state, tablet_document, camera, position, canvas);
+        update_preview_line();
+      }
+    } else if (pen_orbit_last_screen !== null) {
+      pen_orbit(position);
+    } else if (edit_state !== null) {
+      edit_pen_move(edit_state, tablet_document, camera, position, canvas);
+    }
+    request_render();
+  },
+  on_pen_up: (position) => {
+    if (armed_tool === "line") {
+      line_mode_pen_up();
+    } else if (edit_state !== null) {
+      edit_mode_pen_up(position);
+    } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
+      const picked = pick_stroke(tablet_document, camera, position, canvas);
+      if (picked !== null) edit_state = begin_edit_state(picked);
+    }
+    pen_down_screen = null;
+    pen_orbit_last_screen = null;
+    request_render();
+  },
+}, () => {
+  request_render();
+});
+
+const clear_button = document.getElementById("clear_button") as HTMLButtonElement;
+clear_button.addEventListener("click", () => {
+  if (tablet_document.strokes.length === 0) return;
+  if (!window.confirm("Erase all strokes?")) return;
+  tablet_document.vertices.length = 0;
+  tablet_document.strokes.length = 0;
+  tablet_document.lofts.length = 0;
+  tablet_document.revolves.length = 0;
+  tablet_document.inflates.length = 0;
+  tablet_document.coons.length = 0;
+  edit_state = null;
+  set_armed_tool(null);
+  request_render();
+});
+
+resize_canvas_to_display();
+// Debug hook: inspect the document from the browser console / automated tests.
+(window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
+(window as unknown as { debug_camera: unknown }).debug_camera = camera;
+console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");

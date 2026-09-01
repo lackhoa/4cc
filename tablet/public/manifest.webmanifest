@@ -1,0 +1,10 @@
+{
+  "name": "autodraw tablet",
+  "short_name": "autodraw",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#19191e",
+  "theme_color": "#19191e",
+  "start_url": "/",
+  "icons": []
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>pointer probe</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #ddd;
+               font: 14px/1.4 monospace; touch-action: none;
+               overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+  #log { padding: 8px; white-space: pre-wrap; }
+</style>
+<div id="log">touch or draw anywhere — events appear here (newest on top)</div>
+<script>
+  // Probe: verify the stylus reports pointerType "pen" and fingers "touch" on iPad Safari.
+  const log = document.getElementById("log");
+  const lines = [];
+  function show(e) {
+    const l = `${e.type.padEnd(13)} type=${e.pointerType.padEnd(5)} id=${e.pointerId} ` +
+              `x=${e.clientX.toFixed(0)} y=${e.clientY.toFixed(0)} ` +
+              `pressure=${e.pressure.toFixed(2)} tilt=${e.tiltX},${e.tiltY}`;
+    lines.unshift(l);
+    if (lines.length > 40) lines.pop();
+    log.textContent = lines.join("\n");
+  }
+  for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel"]) {
+    window.addEventListener(type, (e) => { e.preventDefault(); if (e.type !== "pointermove" || e.buttons || e.pressure > 0) show(e); });
+  }
+</script>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>autodraw tablet</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #111;
+                 touch-action: none; overscroll-behavior: none;
+                 -webkit-user-select: none; user-select: none; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #toolbar { position: fixed; top: max(12px, env(safe-area-inset-top));
+               right: max(12px, env(safe-area-inset-right)); display: flex; gap: 8px; }
+    #toolbar button { padding: 10px 16px; font-size: 15px; color: #ccc;
+                      background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
+    #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="toolbar">
+    <button id="line_button">line</button>
+    <button id="surface_button">surface</button>
+    <button id="revolve_button">revolve</button>
+    <button id="inflate_button">inflate</button>
+    <button id="profile_button">profile</button>
+    <button id="patch_button">patch</button>
+    <button id="clear_button">clear</button>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

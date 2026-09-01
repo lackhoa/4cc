@@ -1,0 +1,132 @@
+// Sketchpad-style document model (2026-08-31 pivot, plan step 7). A stroke is
+// ONE cubic bezier put down deliberately; its endpoints are indices into a
+// shared vertex table, so strokes connected at a vertex can never tear apart.
+// The interior control points are stored as bez_v3v2 handles (desktop parity,
+// game/game_draw.cpp bez_v3v2): d0 is a free v3, d3 is a v2 confined to the
+// plane spanned by the endpoints and d0 — moving any endpoint keeps the curve
+// planar and coherent.
+
+import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+
+export type Stroke = {
+  p0_vertex: number; // index into TabletDocument.vertices
+  d0: V3; // p1 = (2*p0 + p3)/3 + d0; also defines the stroke's plane
+  d3: V2; // p2 = mid(p1, p3) + d3.x*u2 + d3.y*v, in the stroke's plane frame
+  p3_vertex: number;
+};
+
+// Ruled surface between two strokes.
+export type Loft = { stroke_a: number; stroke_b: number }; // indices into TabletDocument.strokes
+
+// Surface of revolution: the profile stroke spun around the line through its
+// own endpoints (a half-circle arc becomes a sphere).
+export type Revolve = { stroke: number }; // index into TabletDocument.strokes
+
+// Teddy-style pillow: a closed-ish stroke silhouette inflated front and back.
+// profile (optional) is a second stroke cutting through the silhouette — its
+// height above/below the silhouette plane replaces the default dome shape.
+export type Inflate = { stroke: number; profile: number | null }; // indices into TabletDocument.strokes
+
+// Coons patch: four boundary strokes (tap order, chained into a loop at
+// tessellation time) filled with a bilinearly blended surface.
+export type Coons = { strokes: [number, number, number, number] }; // indices into TabletDocument.strokes
+
+export type TabletDocument = {
+  vertices: V3[]; // shared junctions; stroke endpoints reference these
+  strokes: Stroke[];
+  lofts: Loft[];
+  revolves: Revolve[];
+  inflates: Inflate[];
+  coons: Coons[];
+};
+
+export function empty_document(): TabletDocument {
+  return { vertices: [], strokes: [], lofts: [], revolves: [], inflates: [], coons: [] };
+}
+
+// The four world-space bezier control points of a stroke.
+export type StrokeControlPoints = { p0: V3; p1: V3; p2: V3; p3: V3 };
+
+// The stroke's plane frame: w is the unit normal; u2 = p3 - p1 and
+// v = cross(w, u2) span the plane (same magnitude, per bez_v3v2) — d3 is
+// expressed in (u2, v). w falls back to a deterministic normal when d0 is
+// zero/collinear (straight line has no plane of its own), so d3 stays
+// meaningful and tessellation never depends on the camera.
+export type StrokeFrame = { w: V3; u2: V3; v: V3 };
+
+const COLLINEAR_EPSILON = 1e-9;
+
+function stroke_plane_normal(p0: V3, d0: V3, p3: V3): V3 {
+  const u = v3_sub(p3, p0);
+  const cross = v3_cross(u, d0);
+  if (v3_length(cross) > COLLINEAR_EPSILON) return v3_normalize(cross);
+  // Degenerate (straight stroke): any normal to the line, picked deterministically.
+  const fallback = v3_cross(u, v3(0, 1, 0));
+  if (v3_length(fallback) > COLLINEAR_EPSILON) return v3_normalize(fallback);
+  return v3_normalize(v3_cross(u, v3(1, 0, 0)));
+}
+
+export function stroke_frame(stroke: Stroke, tablet_document: TabletDocument): StrokeFrame {
+  const p0 = tablet_document.vertices[stroke.p0_vertex];
+  const p3 = tablet_document.vertices[stroke.p3_vertex];
+  const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), stroke.d0);
+  const w = stroke_plane_normal(p0, stroke.d0, p3);
+  const u2 = v3_sub(p3, p1);
+  return { w, u2, v: v3_cross(w, u2) };
+}
+
+// bez_v3v2 (desktop game/game_draw.cpp): with d0 = 0 and d3 = (0, 0) the
+// control points land at the 1/3 and 2/3 points of a straight line.
+export function stroke_control_points(stroke: Stroke, tablet_document: TabletDocument): StrokeControlPoints {
+  const p0 = tablet_document.vertices[stroke.p0_vertex];
+  const p3 = tablet_document.vertices[stroke.p3_vertex];
+  const frame = stroke_frame(stroke, tablet_document);
+  const p1 = v3_sub(p3, frame.u2);
+  const p2 = v3_add(
+    v3_scale(v3_add(p1, p3), 0.5),
+    v3_add(v3_scale(frame.u2, stroke.d3.x), v3_scale(frame.v, stroke.d3.y)),
+  );
+  return { p0, p1, p2, p3 };
+}
+
+export function bezier_point(points: StrokeControlPoints, t: number): V3 {
+  const s = 1 - t;
+  const b0 = s * s * s, b1 = 3 * s * s * t, b2 = 3 * s * t * t, b3 = t * t * t;
+  return v3_add(
+    v3_add(v3_scale(points.p0, b0), v3_scale(points.p1, b1)),
+    v3_add(v3_scale(points.p2, b2), v3_scale(points.p3, b3)),
+  );
+}
+
+export function bezier_tangent(points: StrokeControlPoints, t: number): V3 {
+  const s = 1 - t;
+  return v3_add(
+    v3_add(
+      v3_scale(v3_sub(points.p1, points.p0), 3 * s * s),
+      v3_scale(v3_sub(points.p2, points.p1), 6 * s * t),
+    ),
+    v3_scale(v3_sub(points.p3, points.p2), 3 * t * t),
+  );
+}
+
+// Orthonormal 2D frame on the stroke's plane (for inflate, which reasons in
+// plane coordinates). x_axis runs p0 -> p3; degenerate strokes (coincident
+// endpoints) return a null-ish frame the caller should treat as unusable.
+export type StrokePlane2D = { origin: V3; x_axis: V3; y_axis: V3; normal: V3 };
+
+export function stroke_plane_2d(stroke: Stroke, tablet_document: TabletDocument): StrokePlane2D {
+  const p0 = tablet_document.vertices[stroke.p0_vertex];
+  const p3 = tablet_document.vertices[stroke.p3_vertex];
+  const normal = stroke_plane_normal(p0, stroke.d0, p3);
+  const x_axis = v3_normalize(v3_sub(p3, p0));
+  return { origin: p0, x_axis, y_axis: v3_cross(normal, x_axis), normal };
+}
+
+export function world_point_to_plane_2d(plane: StrokePlane2D, world: V3): V2 {
+  const offset = v3_sub(world, plane.origin);
+  return { x: v3_dot(offset, plane.x_axis), y: v3_dot(offset, plane.y_axis) };
+}
+
+export function plane_2d_point_to_world(plane: StrokePlane2D, point: V2): V3 {
+  return v3_add(plane.origin, v3_add(v3_scale(plane.x_axis, point.x), v3_scale(plane.y_axis, point.y)));
+}
