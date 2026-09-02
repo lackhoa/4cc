@@ -15,8 +15,6 @@ import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_coons_mesh } from "./coons";
 import { append_loft_mesh } from "./loft";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
-import { append_inflate_mesh } from "./inflate";
-import { append_revolve_mesh } from "./revolve";
 import { append_stroke_ribbon } from "./ribbon";
 import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
 import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, schedule_autosave, switch_document } from "./persistence";
@@ -49,12 +47,11 @@ let reference_mesh: ReferenceMesh | null = null;
 let reference_visible = true;
 let edit_state: EditState | null = null; // non-null = a stroke is selected
 // Armed tools: "line" creates strokes; the pick tools make the next tapped
-// stroke the loft's second rail ("loft"), the selected inflate's cross-section
-// curve ("profile"), one of the Coons patch's remaining boundary sides
-// ("patch", collects until 4), or the adjacent stroke to merge the selection
-// with ("join"). "pin" waits for a tap on the selected stroke's curve and
-// creates a vertex pinned there.
-type ArmedTool = "line" | "loft" | "profile" | "patch" | "join" | "pin";
+// stroke the loft's second rail ("loft"), one of the Coons patch's remaining
+// boundary sides ("patch", collects until 4), or the adjacent stroke to merge
+// the selection with ("join"). "pin" waits for a tap on the selected stroke's
+// curve and creates a vertex pinned there.
+type ArmedTool = "line" | "loft" | "patch" | "join" | "pin";
 let armed_tool: ArmedTool | null = null;
 const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
@@ -111,12 +108,6 @@ function rebuild_surface_mesh(): void {
   const vertices: number[] = [];
   for (const loft of tablet_document.lofts) {
     append_loft_mesh(loft, tablet_document, camera, SURFACE_COLOR, vertices);
-  }
-  for (const revolve of tablet_document.revolves) {
-    append_revolve_mesh(revolve, tablet_document, camera, SURFACE_COLOR, vertices);
-  }
-  for (const inflate of tablet_document.inflates) {
-    append_inflate_mesh(inflate, tablet_document, camera, SURFACE_COLOR, vertices);
   }
   for (const coons of tablet_document.coons) {
     append_coons_mesh(coons, tablet_document, camera, SURFACE_COLOR, vertices);
@@ -283,8 +274,6 @@ function edit_mode_pen_up(position: V2): void {
         const merged_index = merge_adjacent_strokes(tablet_document, edit_state.stroke_index, picked);
         // Not adjacent (or a closed loop): keep the selection, just disarm.
         if (merged_index !== null) edit_state = begin_edit_state(merged_index);
-      } else {
-        assign_inflate_profile(edit_state.stroke_index, picked);
       }
     }
     set_armed_tool(null); // tap empty (or the same stroke) = cancel, selection kept
@@ -293,22 +282,8 @@ function edit_mode_pen_up(position: V2): void {
   edit_state = picked === null ? null : begin_edit_state(picked);
 }
 
-// Attach a cross-section profile curve to the silhouette's inflate, creating
-// the inflate on the spot if the silhouette doesn't have one yet (so circle A
-// + curve B needs no separate inflate tap). Selection stays on the silhouette.
-function assign_inflate_profile(silhouette_index: number, profile_index: number): void {
-  for (let i = tablet_document.inflates.length - 1; i >= 0; i--) {
-    if (tablet_document.inflates[i].stroke === silhouette_index) {
-      tablet_document.inflates[i].profile = profile_index;
-      return;
-    }
-  }
-  tablet_document.inflates.push({ stroke: silhouette_index, profile: profile_index });
-}
-
 const line_button = document.getElementById("line_button") as HTMLButtonElement;
 const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
-const profile_button = document.getElementById("profile_button") as HTMLButtonElement;
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
 const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
@@ -326,7 +301,6 @@ function set_armed_tool(tool: ArmedTool | null): void {
   if (tool !== "line") line_state = null;
   line_button.classList.toggle("armed", tool === "line");
   surface_button.classList.toggle("armed", tool === "loft");
-  profile_button.classList.toggle("armed", tool === "loft" ? false : tool === "profile");
   patch_button.classList.toggle("armed", tool === "patch");
   join_button.classList.toggle("armed", tool === "join");
   refresh_pin_button_armed();
@@ -337,10 +311,6 @@ line_button.addEventListener("click", () => {
 surface_button.addEventListener("click", () => {
   if (edit_state === null) return; // needs a selected first rail
   set_armed_tool(armed_tool === "loft" ? null : "loft");
-});
-profile_button.addEventListener("click", () => {
-  if (edit_state === null) return; // needs a selected silhouette
-  set_armed_tool(armed_tool === "profile" ? null : "profile");
 });
 // Patch: the selected stroke is the first boundary side; the next three taps
 // pick the rest (any order — sides are chained by endpoint proximity).
@@ -375,28 +345,6 @@ pin_button.addEventListener("click", () => {
     return;
   }
   set_armed_tool(armed_tool === "pin" ? null : "pin");
-});
-
-// Revolve acts immediately on the selected stroke (the axis is the line through
-// its own endpoints) — selection is kept so the profile can be tweaked live.
-const revolve_button = document.getElementById("revolve_button") as HTMLButtonElement;
-revolve_button.addEventListener("click", () => {
-  if (edit_state === null) return;
-  begin_history_step(history, tablet_document);
-  tablet_document.revolves.push({ stroke: edit_state.stroke_index });
-  end_history_step(history, tablet_document);
-  request_render();
-});
-
-// Inflate acts immediately on the selected stroke (its silhouette becomes a
-// pillow); selection kept so the outline can be tweaked live.
-const inflate_button = document.getElementById("inflate_button") as HTMLButtonElement;
-inflate_button.addEventListener("click", () => {
-  if (edit_state === null) return;
-  begin_history_step(history, tablet_document);
-  tablet_document.inflates.push({ stroke: edit_state.stroke_index, profile: null });
-  end_history_step(history, tablet_document);
-  request_render();
 });
 
 function pen_orbit(position: V2): void {

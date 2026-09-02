@@ -53,8 +53,6 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.vertex_pins.length = 0;
   tablet_document.strokes.length = 0;
   tablet_document.lofts.length = 0;
-  tablet_document.revolves.length = 0;
-  tablet_document.inflates.length = 0;
   tablet_document.coons.length = 0;
 }
 
@@ -125,8 +123,8 @@ function apply_document_state(json: string, tablet_document: TabletDocument, cam
   // vertex_pins arrived after the v2 bump — absent in v1 docs and early v2 saves.
   tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
   tablet_document.lofts.push(...parsed.document.lofts);
-  tablet_document.revolves.push(...parsed.document.revolves);
-  tablet_document.inflates.push(...parsed.document.inflates);
+  // Files saved before revolve/inflate were removed still carry `revolves` /
+  // `inflates` arrays — ignored, dropped on the next save.
   tablet_document.coons.push(...parsed.document.coons);
   camera.pivot = parsed.camera.pivot;
   camera.yaw = parsed.camera.yaw;

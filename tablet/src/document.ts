@@ -7,7 +7,7 @@
 // swing_offset_into_plane (a handle drag swings the other handle into the new
 // plane) and move_vertex (a chord change rotates both offsets with it).
 
-import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
+import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
 
 export type Stroke = {
   p0_vertex: number; // index into TabletDocument.vertices
@@ -18,15 +18,6 @@ export type Stroke = {
 
 // Ruled surface between two strokes.
 export type Loft = { stroke_a: number; stroke_b: number }; // indices into TabletDocument.strokes
-
-// Surface of revolution: the profile stroke spun around the line through its
-// own endpoints (a half-circle arc becomes a sphere).
-export type Revolve = { stroke: number }; // index into TabletDocument.strokes
-
-// Teddy-style pillow: a closed-ish stroke silhouette inflated front and back.
-// profile (optional) is a second stroke cutting through the silhouette — its
-// height above/below the silhouette plane replaces the default dome shape.
-export type Inflate = { stroke: number; profile: number | null }; // indices into TabletDocument.strokes
 
 // Coons patch: four boundary strokes (tap order, chained into a loop at
 // tessellation time) filled with a bilinearly blended surface.
@@ -45,17 +36,14 @@ export type TabletDocument = {
   vertex_pins: VertexPin[];
   strokes: Stroke[];
   lofts: Loft[];
-  revolves: Revolve[];
-  inflates: Inflate[];
   coons: Coons[];
 };
 
 export function empty_document(): TabletDocument {
-  return { vertices: [], vertex_pins: [], strokes: [], lofts: [], revolves: [], inflates: [], coons: [] };
+  return { vertices: [], vertex_pins: [], strokes: [], lofts: [], coons: [] };
 }
 
-// Delete one stroke. Surfaces built on it are deleted with it (an inflate
-// merely using it as its profile survives, profile reset to null); stroke
+// Delete one stroke. Surfaces built on it are deleted with it; stroke
 // indices above it shift down; vertices no longer referenced by any stroke are
 // garbage-collected (so they stop acting as invisible snap targets), with the
 // surviving strokes' endpoint indices remapped.
@@ -71,15 +59,6 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_index: num
   tablet_document.lofts = tablet_document.lofts
     .filter((loft) => loft.stroke_a !== stroke_index && loft.stroke_b !== stroke_index)
     .map((loft) => ({ stroke_a: remap_stroke(loft.stroke_a), stroke_b: remap_stroke(loft.stroke_b) }));
-  tablet_document.revolves = tablet_document.revolves
-    .filter((revolve) => revolve.stroke !== stroke_index)
-    .map((revolve) => ({ stroke: remap_stroke(revolve.stroke) }));
-  tablet_document.inflates = tablet_document.inflates
-    .filter((inflate) => inflate.stroke !== stroke_index)
-    .map((inflate) => ({
-      stroke: remap_stroke(inflate.stroke),
-      profile: inflate.profile === null || inflate.profile === stroke_index ? null : remap_stroke(inflate.profile),
-    }));
   tablet_document.coons = tablet_document.coons
     .filter((coons) => !coons.strokes.includes(stroke_index))
     .map((coons): Coons => ({
@@ -152,13 +131,6 @@ export function move_vertex(tablet_document: TabletDocument, vertex_index: numbe
 // The four world-space bezier control points of a stroke.
 export type StrokeControlPoints = { p0: V3; p1: V3; p2: V3; p3: V3 };
 
-// The stroke's plane frame, orthonormal: u runs along the chord p0 -> p3,
-// v is the in-plane perpendicular on d0's side (d3's when d0 lies on the
-// chord), w = cross(u, v) is the unit normal. Degenerate cases (zero chord,
-// both offsets on the chord) fall back deterministically so tessellation never
-// depends on the camera.
-export type StrokeFrame = { u: V3; v: V3; w: V3 };
-
 const COLLINEAR_EPSILON = 1e-9;
 
 // Deterministic unit vector perpendicular to u (for degenerate strokes that
@@ -178,20 +150,6 @@ function chord_direction(p0: V3, p3: V3): V3 {
 // Component of an offset perpendicular to the unit chord direction.
 function perpendicular_to_chord(u: V3, offset: V3): V3 {
   return v3_sub(offset, v3_scale(u, v3_dot(offset, u)));
-}
-
-export function stroke_frame_from_offsets(p0: V3, p3: V3, d0: V3, d3: V3): StrokeFrame {
-  const u = chord_direction(p0, p3);
-  let v_raw = perpendicular_to_chord(u, d0);
-  if (v3_length(v_raw) < COLLINEAR_EPSILON) v_raw = perpendicular_to_chord(u, d3);
-  const v = v3_length(v_raw) > COLLINEAR_EPSILON ? v3_normalize(v_raw) : fallback_perpendicular(u);
-  return { u, v, w: v3_cross(u, v) };
-}
-
-export function stroke_frame(stroke: Stroke, tablet_document: TabletDocument): StrokeFrame {
-  const p0 = tablet_document.vertices[stroke.p0_vertex];
-  const p3 = tablet_document.vertices[stroke.p3_vertex];
-  return stroke_frame_from_offsets(p0, p3, stroke.d0, stroke.d3);
 }
 
 // With d0 = d3 = 0 the control points land at the 1/3 and 2/3 points of a
@@ -247,24 +205,4 @@ export function bezier_tangent(points: StrokeControlPoints, t: number): V3 {
     ),
     v3_scale(v3_sub(points.p3, points.p2), 3 * t * t),
   );
-}
-
-// Orthonormal 2D frame on the stroke's plane (for inflate, which reasons in
-// plane coordinates). x_axis runs p0 -> p3; degenerate strokes (coincident
-// endpoints) return a null-ish frame the caller should treat as unusable.
-export type StrokePlane2D = { origin: V3; x_axis: V3; y_axis: V3; normal: V3 };
-
-export function stroke_plane_2d(stroke: Stroke, tablet_document: TabletDocument): StrokePlane2D {
-  const p0 = tablet_document.vertices[stroke.p0_vertex];
-  const frame = stroke_frame(stroke, tablet_document);
-  return { origin: p0, x_axis: frame.u, y_axis: frame.v, normal: frame.w };
-}
-
-export function world_point_to_plane_2d(plane: StrokePlane2D, world: V3): V2 {
-  const offset = v3_sub(world, plane.origin);
-  return { x: v3_dot(offset, plane.x_axis), y: v3_dot(offset, plane.y_axis) };
-}
-
-export function plane_2d_point_to_world(plane: StrokePlane2D, point: V2): V3 {
-  return v3_add(plane.origin, v3_add(v3_scale(plane.x_axis, point.x), v3_scale(plane.y_axis, point.y)));
 }

@@ -37,8 +37,6 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   tablet_document.vertex_pins.push(...parsed.vertex_pins);
   tablet_document.strokes.push(...parsed.strokes);
   tablet_document.lofts.push(...parsed.lofts);
-  tablet_document.revolves.push(...parsed.revolves);
-  tablet_document.inflates.push(...parsed.inflates);
   tablet_document.coons.push(...parsed.coons);
 }
 

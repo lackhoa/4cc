@@ -81,37 +81,45 @@ function handle_document_save(name: string, request: IncomingMessage, response: 
   });
 }
 
+function tablet_api_middleware(request: IncomingMessage, response: ServerResponse, next: () => void): void {
+  const url = request.url ?? "";
+  if (url.startsWith("/reference/") && request.method === "GET") {
+    handle_reference_request(request, response);
+    return;
+  }
+  if (url === "/api/documents" && request.method === "GET") {
+    handle_document_list(response);
+    return;
+  }
+  if (url.startsWith("/api/documents/")) {
+    const name = decodeURIComponent(url.slice("/api/documents/".length));
+    if (!is_safe_document_name(name)) {
+      send_json(response, 400, { error: "bad document name" });
+      return;
+    }
+    if (request.method === "GET") {
+      handle_document_load(name, response);
+      return;
+    }
+    if (request.method === "POST") {
+      handle_document_save(name, request, response);
+      return;
+    }
+  }
+  next();
+}
+
+// The same API on both servers: `vite` (dev, hot-reloading — the agent's
+// sandbox) and `vite preview` (serves the built dist/ to the iPad; only a
+// rebuild — "deploy" — changes what it serves).
 function tablet_server_plugin(): Plugin {
   return {
     name: "tablet-server",
     configureServer(server) {
-      server.middlewares.use((request, response, next) => {
-        const url = request.url ?? "";
-        if (url.startsWith("/reference/") && request.method === "GET") {
-          handle_reference_request(request, response);
-          return;
-        }
-        if (url === "/api/documents" && request.method === "GET") {
-          handle_document_list(response);
-          return;
-        }
-        if (url.startsWith("/api/documents/")) {
-          const name = decodeURIComponent(url.slice("/api/documents/".length));
-          if (!is_safe_document_name(name)) {
-            send_json(response, 400, { error: "bad document name" });
-            return;
-          }
-          if (request.method === "GET") {
-            handle_document_load(name, response);
-            return;
-          }
-          if (request.method === "POST") {
-            handle_document_save(name, request, response);
-            return;
-          }
-        }
-        next();
-      });
+      server.middlewares.use(tablet_api_middleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(tablet_api_middleware);
     },
   };
 }
