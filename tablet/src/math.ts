@@ -19,6 +19,26 @@ export function v3_normalize(a: V3): V3 {
   return len === 0 ? v3(0, 0, 0) : v3_scale(a, 1 / len);
 }
 
+// Rotate x by the minimal rotation that takes unit direction `from` to unit
+// direction `to` (Rodrigues). Parallel directions return x unchanged (exactly —
+// no float drift for the no-op case); antiparallel ones rotate 180° about
+// `flip_axis`, which the caller picks perpendicular to `from`.
+export function v3_rotate_between_directions(x: V3, from: V3, to: V3, flip_axis: V3): V3 {
+  const axis_raw = v3_cross(from, to);
+  const sine = v3_length(axis_raw);
+  const cosine = v3_dot(from, to);
+  if (sine < 1e-12) {
+    if (cosine > 0) return x;
+    // 180°: x -> 2 (k·x) k - x
+    return v3_sub(v3_scale(flip_axis, 2 * v3_dot(flip_axis, x)), x);
+  }
+  const axis = v3_scale(axis_raw, 1 / sine);
+  return v3_add(
+    v3_add(v3_scale(x, cosine), v3_scale(v3_cross(axis, x), sine)),
+    v3_scale(axis, v3_dot(axis, x) * (1 - cosine)),
+  );
+}
+
 export function mat4_multiply(a: Mat4, b: Mat4): Mat4 {
   const out = new Float32Array(16);
   for (let col = 0; col < 4; col++) {

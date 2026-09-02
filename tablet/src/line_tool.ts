@@ -95,10 +95,10 @@ export function line_pen_move(
 }
 
 // Least-squares fit of the two interior control points to the pen path
-// (endpoints fixed, chord-length parameterization), converted to the
-// explicit-normal handle representation. Falls back to a straight stroke's
-// handles when the path is too short or the normal equations are degenerate.
-export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { normal: V3; d0: V2; d3: V2 } {
+// (endpoints fixed, chord-length parameterization), converted to the offset
+// handle representation. Falls back to a straight stroke's handles when the
+// path is too short or the normal equations are degenerate.
+export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { d0: V3; d3: V3 } {
   const one_third = v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3);
   const two_thirds = v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
   const straight = stroke_handles_from_control_points(p0, one_third, two_thirds, p3);
@@ -135,8 +135,7 @@ export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { normal: V3; d0
   const p2 = v3_scale(v3_sub(v3_scale(c2, a11), v3_scale(c1, a12)), 1 / determinant);
 
   // The fitted p1/p2 are near-coplanar with the chord (the pen path lives on
-  // one camera plane); the handle conversion picks the plane and drops any
-  // residual out-of-plane component of p2.
+  // one camera plane); the handle conversion swings p2 into p1's plane.
   return stroke_handles_from_control_points(p0, p1, p2, p3);
 }
 
@@ -153,7 +152,7 @@ export function line_pen_up(state: LineToolState, tablet_document: TabletDocumen
   const p0_vertex = claim_vertex(state.start_world, state.start_snap_vertex);
   const p3_vertex = claim_vertex(state.end_world, state.end_snap_vertex);
   const handles = fit_stroke_handles(state.path_world, state.start_world, state.end_world);
-  const stroke: Stroke = { p0_vertex, p3_vertex, normal: handles.normal, d0: handles.d0, d3: handles.d3 };
+  const stroke: Stroke = { p0_vertex, p3_vertex, d0: handles.d0, d3: handles.d3 };
   tablet_document.strokes.push(stroke);
   return tablet_document.strokes.length - 1;
 }

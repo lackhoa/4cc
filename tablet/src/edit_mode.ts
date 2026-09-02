@@ -1,18 +1,17 @@
 // Edit mode: pen-tap a stroke to select it. Dragging one of its four control
 // points reshapes it — vertices (p0/p3) move in the camera plane and carry
-// every attached stroke with them; the p1/p2 handles slide in the stroke's
-// plane (the out-of-plane part of the pen motion is dropped, so shape drags
-// never rotate the plane); the lever tip rotates the plane about the chord
-// (plan Q4). Releasing a vertex drag near another vertex
+// every attached stroke with them; the p1/p2 handles also move in the camera
+// plane, and the other handle swings into the dragged one's new plane
+// (plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
 // merges the two into one shared junction. Pinned vertices (vertex_pins) only
 // ever slide along their host curve, whichever way they're grabbed.
 // A drag starting ON the stroke body translates
 // the whole stroke (both vertices) in the camera plane; a drag starting on
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
-import { OrbitCamera, camera_basis, camera_screen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, TabletDocument, bezier_point, stroke_control_points, stroke_frame, stroke_lever_tip } from "./document";
-import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { OrbitCamera, camera_basis, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
+import { Stroke, TabletDocument, bezier_point, move_vertex, stroke_control_points, swing_offset_into_plane } from "./document";
+import { V2, V3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
@@ -25,7 +24,7 @@ const VERTEX_MERGE_RADIUS_PIXELS = 20;
 const PICK_SAMPLES_PER_STROKE = 16;
 const PIN_SLIDE_SAMPLES = 128; // t resolution when sliding a pinned vertex
 
-export type StrokePointKey = "p0" | "p1" | "p2" | "p3" | "lever";
+export type StrokePointKey = "p0" | "p1" | "p2" | "p3";
 
 export type EditState = {
   stroke_index: number;
@@ -75,7 +74,6 @@ export function pick_stroke_point(
     { key: "p1", world: points.p1 },
     { key: "p2", world: points.p2 },
     { key: "p3", world: points.p3 },
-    { key: "lever", world: stroke_lever_tip(stroke, tablet_document) },
   ];
   let best: StrokePointKey | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
@@ -194,8 +192,10 @@ export function edit_pen_move(
   if (state.moving_whole_stroke) {
     // d0/d3 are translation-invariant; moving both vertices moves the stroke
     // (and drags any strokes sharing those vertices — vertices connect).
+    // Through move_vertex so those other strokes' offsets rotate with their
+    // chords; this stroke's own chord is unchanged once both ends have moved.
     for (const vertex_index of [stroke.p0_vertex, stroke.p3_vertex]) {
-      tablet_document.vertices[vertex_index] = v3_add(tablet_document.vertices[vertex_index], world_delta);
+      move_vertex(tablet_document, vertex_index, v3_add(tablet_document.vertices[vertex_index], world_delta));
     }
     return;
   }
@@ -205,43 +205,23 @@ export function edit_pen_move(
     const pin = tablet_document.vertex_pins[state.dragging_pin];
     pin.t = nearest_t_on_stroke_screen(tablet_document, pin.host_stroke, camera, screen, canvas).t;
     const points = stroke_control_points(tablet_document.strokes[pin.host_stroke], tablet_document);
-    tablet_document.vertices[pin.vertex] = bezier_point(points, pin.t);
+    move_vertex(tablet_document, pin.vertex, bezier_point(points, pin.t));
     return;
   }
   if (state.dragging === "p0" || state.dragging === "p3") {
     const vertex_index = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    tablet_document.vertices[vertex_index] = v3_add(tablet_document.vertices[vertex_index], world_delta);
-    return;
-  }
-  if (state.dragging === "lever") {
-    // Rotate the plane about the chord: intersect the pen ray with the plane
-    // perpendicular to the chord through its midpoint (the circle the lever
-    // tip sweeps lives there), and point in-plane v at the hit.
-    const p0 = tablet_document.vertices[stroke.p0_vertex];
-    const p3 = tablet_document.vertices[stroke.p3_vertex];
-    const chord = v3_sub(p3, p0);
-    const chord_length = v3_length(chord);
-    if (chord_length < 1e-9) return; // no chord axis to rotate about
-    const chord_direction = v3_scale(chord, 1 / chord_length);
-    const midpoint = v3_scale(v3_add(p0, p3), 0.5);
-    const ray = camera_screen_ray(camera, screen, canvas.clientWidth, canvas.clientHeight);
-    const denominator = v3_dot(ray.direction, chord_direction);
-    if (Math.abs(denominator) < 1e-6) return; // plane edge-on to the ray — orbit first
-    const ray_t = v3_dot(v3_sub(midpoint, ray.origin), chord_direction) / denominator;
-    if (ray_t <= 0) return;
-    const hit = v3_add(ray.origin, v3_scale(ray.direction, ray_t));
-    const v_target = v3_sub(hit, midpoint); // already perpendicular to the chord
-    if (v3_length(v_target) < 1e-9) return;
-    stroke.normal = v3_cross(chord_direction, v3_normalize(v_target));
+    move_vertex(tablet_document, vertex_index, v3_add(tablet_document.vertices[vertex_index], world_delta));
     return;
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
-    // Handles are plane-confined: project the pen delta onto the stroke's
-    // in-plane axes, discarding the out-of-plane component.
-    const frame = stroke_frame(stroke, tablet_document);
-    const handle = state.dragging === "p1" ? stroke.d0 : stroke.d3;
-    handle.x += v3_dot(world_delta, frame.u);
-    handle.y += v3_dot(world_delta, frame.v);
+    // The dragged handle moves freely with the pen; the other one swings into
+    // the plane the dragged handle now spans with the chord (Q2).
+    const dragged_key = state.dragging === "p1" ? "d0" : "d3";
+    const other_key = state.dragging === "p1" ? "d3" : "d0";
+    stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
+    const chord = v3_sub(tablet_document.vertices[stroke.p3_vertex], tablet_document.vertices[stroke.p0_vertex]);
+    if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
+    stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
   }
 }
 
@@ -293,6 +273,9 @@ function merge_vertex_if_near_another(
 ): void {
   const target_vertex = find_merge_target_vertex(tablet_document, camera, canvas, dragged_vertex);
   if (target_vertex === null) return;
+  // Snap first so the strokes ending on the dragged vertex rotate their
+  // offsets with the chord change (Q4), then rewire them to the target.
+  move_vertex(tablet_document, dragged_vertex, tablet_document.vertices[target_vertex]);
   const remap = (vertex: number) => (vertex === dragged_vertex ? target_vertex : vertex);
   for (const stroke of tablet_document.strokes) {
     stroke.p0_vertex = remap(stroke.p0_vertex);

@@ -6,7 +6,7 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
-import { bezier_point, delete_stroke, empty_document, stroke_control_points, stroke_lever_tip, update_pinned_vertex_positions } from "./document";
+import { bezier_point, delete_stroke, empty_document, stroke_control_points, update_pinned_vertex_positions } from "./document";
 import { EditState, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -28,7 +28,6 @@ const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
 const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
-const LEVER_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // plane-normal lever, distinct from p1/p2
 const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 const ANCHOR_SIZE_PIXELS = 12;
@@ -174,13 +173,7 @@ function rebuild_edit_overlay(): void {
   push_line(points.p3, points.p2);
   append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
-  // Plane-normal lever (plan Q4): chord midpoint out along in-plane v; drag
-  // the tip to rotate the stroke's plane about the chord.
   const selected_stroke = tablet_document.strokes[edit_state.stroke_index];
-  const lever_tip = stroke_lever_tip(selected_stroke, tablet_document);
-  const chord_midpoint = v3_scale(v3_add(points.p0, points.p3), 0.5);
-  push_line(chord_midpoint, lever_tip, LEVER_COLOR);
-  append_billboard_square(lever_tip, handle_half, basis.right, basis.up, LEVER_COLOR, triangle_vertices);
   // Endpoints that are pinned vertices (riding some other stroke) show in the
   // pin color so it's clear they'll slide, not translate, when grabbed.
   const anchor_color = (vertex: number) =>

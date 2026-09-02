@@ -4,14 +4,16 @@
 // server is unreachable. Debounced autosave, no save button.
 
 import { OrbitCamera } from "./camera";
-import { Stroke, TabletDocument, stroke_handles_from_control_points } from "./document";
+import { Stroke, TabletDocument, fallback_perpendicular, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 export const DEFAULT_DOCUMENT_NAME = "untitled";
-// Version 2 (2026-09-01): explicit-normal strokes — {normal: V3, d0: V2, d3: V2}
-// replaced v1's bez_v3v2 {d0: V3, d3: V2}. v1 files convert on load; saves are
-// always v2.
-const DOCUMENT_FORMAT_VERSION = 2;
+// Version 3 (2026-09-02): free-handle strokes {d0: V3, d3: V3}, coplanar with
+// the chord by invariant. Version 2 (2026-09-01) was explicit-normal
+// {normal: V3, d0: V2, d3: V2}; version 1 bez_v3v2 {d0: V3, d3: V2}. Older
+// files convert on load; saves are always the current version.
+const DOCUMENT_FORMAT_VERSION = 3;
+const LOADABLE_VERSIONS = [1, 2, DOCUMENT_FORMAT_VERSION];
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 const CURRENT_NAME_STORAGE_KEY = "autodraw_tablet_current_document";
 const BUFFER_STORAGE_KEY = "autodraw_tablet_crash_buffer";
@@ -58,9 +60,25 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
 
 // v1 stroke: d0 a free V3 defining the plane, d3 in the (u2 = p3 - p1, v)
 // frame. Reconstruct the four world control points with the v1 math, then
-// re-express them in the v2 explicit-normal form — exact, since v1 curves are
-// planar by construction.
+// re-express them in offset form — exact, since v1 curves are planar by
+// construction.
 type StrokeV1 = { p0_vertex: number; d0: V3; d3: V2; p3_vertex: number };
+
+// v2 stroke: stored unit normal, handles as 2D offsets in the plane frame
+// (u along the chord, v = cross(normal, u)). The world offsets are those same
+// frame combinations — exact.
+type StrokeV2 = { p0_vertex: number; p3_vertex: number; normal: V3; d0: V2; d3: V2 };
+
+function stroke_from_v2(old: StrokeV2, vertices: V3[]): Stroke {
+  const p0 = vertices[old.p0_vertex];
+  const p3 = vertices[old.p3_vertex];
+  const chord = v3_sub(p3, p0);
+  const u = v3_length(chord) > 1e-9 ? v3_normalize(chord) : v3(1, 0, 0);
+  const v_raw = v3_cross(old.normal, u);
+  const v = v3_length(v_raw) > 1e-9 ? v3_normalize(v_raw) : fallback_perpendicular(u);
+  const in_plane = (offset: V2) => v3_add(v3_scale(u, offset.x), v3_scale(v, offset.y));
+  return { p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, d0: in_plane(old.d0), d3: in_plane(old.d3) };
+}
 
 function stroke_from_v1(old: StrokeV1, vertices: V3[]): Stroke {
   const p0 = vertices[old.p0_vertex];
@@ -91,15 +109,18 @@ function apply_document_state(json: string, tablet_document: TabletDocument, cam
     console.error("stored document is not valid JSON", error);
     return false;
   }
-  if (parsed.version !== 1 && parsed.version !== DOCUMENT_FORMAT_VERSION) {
-    console.error(`stored document has version ${parsed.version}, expected ${DOCUMENT_FORMAT_VERSION}`);
+  if (!LOADABLE_VERSIONS.includes(parsed.version)) {
+    console.error(`stored document has version ${parsed.version}, expected one of ${LOADABLE_VERSIONS}`);
     return false;
   }
   clear_document_in_place(tablet_document);
   tablet_document.vertices.push(...parsed.document.vertices);
+  const stored_vertices: V3[] = parsed.document.vertices;
   const strokes: Stroke[] = parsed.version === 1
-    ? parsed.document.strokes.map((stroke: StrokeV1) => stroke_from_v1(stroke, parsed.document.vertices))
-    : parsed.document.strokes;
+    ? parsed.document.strokes.map((stroke: StrokeV1) => stroke_from_v1(stroke, stored_vertices))
+    : parsed.version === 2
+      ? parsed.document.strokes.map((stroke: StrokeV2) => stroke_from_v2(stroke, stored_vertices))
+      : parsed.document.strokes;
   tablet_document.strokes.push(...strokes);
   // vertex_pins arrived after the v2 bump — absent in v1 docs and early v2 saves.
   tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
