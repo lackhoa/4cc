@@ -4,10 +4,14 @@
 // server is unreachable. Debounced autosave, no save button.
 
 import { OrbitCamera } from "./camera";
-import { TabletDocument } from "./document";
+import { Stroke, TabletDocument, stroke_handles_from_control_points } from "./document";
+import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 export const DEFAULT_DOCUMENT_NAME = "untitled";
-const DOCUMENT_FORMAT_VERSION = 1;
+// Version 2 (2026-09-01): explicit-normal strokes — {normal: V3, d0: V2, d3: V2}
+// replaced v1's bez_v3v2 {d0: V3, d3: V2}. v1 files convert on load; saves are
+// always v2.
+const DOCUMENT_FORMAT_VERSION = 2;
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 const CURRENT_NAME_STORAGE_KEY = "autodraw_tablet_current_document";
 const BUFFER_STORAGE_KEY = "autodraw_tablet_crash_buffer";
@@ -44,11 +48,37 @@ function serialize_document_state(tablet_document: TabletDocument, camera: Orbit
 
 export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.vertices.length = 0;
+  tablet_document.vertex_pins.length = 0;
   tablet_document.strokes.length = 0;
   tablet_document.lofts.length = 0;
   tablet_document.revolves.length = 0;
   tablet_document.inflates.length = 0;
   tablet_document.coons.length = 0;
+}
+
+// v1 stroke: d0 a free V3 defining the plane, d3 in the (u2 = p3 - p1, v)
+// frame. Reconstruct the four world control points with the v1 math, then
+// re-express them in the v2 explicit-normal form — exact, since v1 curves are
+// planar by construction.
+type StrokeV1 = { p0_vertex: number; d0: V3; d3: V2; p3_vertex: number };
+
+function stroke_from_v1(old: StrokeV1, vertices: V3[]): Stroke {
+  const p0 = vertices[old.p0_vertex];
+  const p3 = vertices[old.p3_vertex];
+  const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), old.d0);
+  const chord = v3_sub(p3, p0);
+  let w_raw = v3_cross(chord, old.d0);
+  if (v3_length(w_raw) < 1e-9) w_raw = v3_cross(chord, v3(0, 1, 0));
+  if (v3_length(w_raw) < 1e-9) w_raw = v3_cross(chord, v3(1, 0, 0));
+  const w = v3_length(w_raw) < 1e-9 ? v3(0, 0, 1) : v3_normalize(w_raw);
+  const u2 = v3_sub(p3, p1);
+  const v_axis = v3_cross(w, u2);
+  const p2 = v3_add(
+    v3_scale(v3_add(p1, p3), 0.5),
+    v3_add(v3_scale(u2, old.d3.x), v3_scale(v_axis, old.d3.y)),
+  );
+  const handles = stroke_handles_from_control_points(p0, p1, p2, p3);
+  return { p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, ...handles };
 }
 
 // Parse + apply a stored snapshot into the live document/camera (in place —
@@ -61,13 +91,18 @@ function apply_document_state(json: string, tablet_document: TabletDocument, cam
     console.error("stored document is not valid JSON", error);
     return false;
   }
-  if (parsed.version !== DOCUMENT_FORMAT_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== DOCUMENT_FORMAT_VERSION) {
     console.error(`stored document has version ${parsed.version}, expected ${DOCUMENT_FORMAT_VERSION}`);
     return false;
   }
   clear_document_in_place(tablet_document);
   tablet_document.vertices.push(...parsed.document.vertices);
-  tablet_document.strokes.push(...parsed.document.strokes);
+  const strokes: Stroke[] = parsed.version === 1
+    ? parsed.document.strokes.map((stroke: StrokeV1) => stroke_from_v1(stroke, parsed.document.vertices))
+    : parsed.document.strokes;
+  tablet_document.strokes.push(...strokes);
+  // vertex_pins arrived after the v2 bump — absent in v1 docs and early v2 saves.
+  tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
   tablet_document.lofts.push(...parsed.document.lofts);
   tablet_document.revolves.push(...parsed.document.revolves);
   tablet_document.inflates.push(...parsed.document.inflates);

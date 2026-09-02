@@ -1,18 +1,19 @@
 // Sketchpad-style document model (2026-08-31 pivot, plan step 7). A stroke is
 // ONE cubic bezier put down deliberately; its endpoints are indices into a
 // shared vertex table, so strokes connected at a vertex can never tear apart.
-// The interior control points are stored as bez_v3v2 handles (desktop parity,
-// game/game_draw.cpp bez_v3v2): d0 is a free v3, d3 is a v2 confined to the
-// plane spanned by the endpoints and d0 — moving any endpoint keeps the curve
-// planar and coherent.
+// Explicit-normal representation (plan-tablet-vertex-insert-and-normal.md Q3):
+// the stroke's plane is a stored unit normal, and BOTH interior handles are 2D
+// in-plane offsets from the straight line's 1/3 and 2/3 points — the plane is
+// manipulated on its own (lever handle) and never shifts under handle drags.
 
 import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 export type Stroke = {
   p0_vertex: number; // index into TabletDocument.vertices
-  d0: V3; // p1 = (2*p0 + p3)/3 + d0; also defines the stroke's plane
-  d3: V2; // p2 = mid(p1, p3) + d3.x*u2 + d3.y*v, in the stroke's plane frame
   p3_vertex: number;
+  normal: V3; // unit plane normal, ⊥ chord (re-orthogonalized against the chord on eval)
+  d0: V2; // p1 = (2*p0 + p3)/3 + d0.x*u + d0.y*v (world units, in the (u, v) plane frame)
+  d3: V2; // p2 = (p0 + 2*p3)/3 + d3.x*u + d3.y*v
 };
 
 // Ruled surface between two strokes.
@@ -31,8 +32,17 @@ export type Inflate = { stroke: number; profile: number | null }; // indices int
 // tessellation time) filled with a bilinearly blended surface.
 export type Coons = { strokes: [number, number, number, number] }; // indices into TabletDocument.strokes
 
+// A vertex permanently constrained to ride a host stroke's curve
+// (plan-tablet-vertex-insert-and-normal.md Q7/Q10): its position is always
+// bezier_point(host, t), re-derived after any host reshape via
+// update_pinned_vertex_positions. Dragging it slides t only (clamped [0,1]);
+// unpinning — or host deletion — freezes it in place as a free vertex. Stored
+// as a parallel table so vertices stay plain V3 for every existing reader.
+export type VertexPin = { vertex: number; host_stroke: number; t: number };
+
 export type TabletDocument = {
   vertices: V3[]; // shared junctions; stroke endpoints reference these
+  vertex_pins: VertexPin[];
   strokes: Stroke[];
   lofts: Loft[];
   revolves: Revolve[];
@@ -41,7 +51,7 @@ export type TabletDocument = {
 };
 
 export function empty_document(): TabletDocument {
-  return { vertices: [], strokes: [], lofts: [], revolves: [], inflates: [], coons: [] };
+  return { vertices: [], vertex_pins: [], strokes: [], lofts: [], revolves: [], inflates: [], coons: [] };
 }
 
 // Delete one stroke. Surfaces built on it are deleted with it (an inflate
@@ -52,6 +62,12 @@ export function empty_document(): TabletDocument {
 export function delete_stroke(tablet_document: TabletDocument, stroke_index: number): void {
   const remap_stroke = (index: number) => (index > stroke_index ? index - 1 : index);
   tablet_document.strokes.splice(stroke_index, 1);
+  // Pins hosted on the deleted stroke go with it — the rider vertex freezes at
+  // its last position as a free vertex (Q9), kept only while something still
+  // references it (the vertex GC below treats surviving pins as references).
+  tablet_document.vertex_pins = tablet_document.vertex_pins
+    .filter((pin) => pin.host_stroke !== stroke_index)
+    .map((pin) => ({ ...pin, host_stroke: remap_stroke(pin.host_stroke) }));
   tablet_document.lofts = tablet_document.lofts
     .filter((loft) => loft.stroke_a !== stroke_index && loft.stroke_b !== stroke_index)
     .map((loft) => ({ stroke_a: remap_stroke(loft.stroke_a), stroke_b: remap_stroke(loft.stroke_b) }));
@@ -78,6 +94,9 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_index: num
     used_vertices.add(stroke.p0_vertex);
     used_vertices.add(stroke.p3_vertex);
   }
+  for (const pin of tablet_document.vertex_pins) {
+    used_vertices.add(pin.vertex);
+  }
   const vertex_remap = new Map<number, number>();
   const kept_vertices: V3[] = [];
   for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
@@ -90,55 +109,108 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_index: num
     stroke.p0_vertex = vertex_remap.get(stroke.p0_vertex)!;
     stroke.p3_vertex = vertex_remap.get(stroke.p3_vertex)!;
   }
+  for (const pin of tablet_document.vertex_pins) {
+    pin.vertex = vertex_remap.get(pin.vertex)!;
+  }
+}
+
+// Re-derive every pinned vertex's position from its host curve. Called once
+// per frame before tessellation, so any host reshape (handle/vertex drags,
+// undo/redo, merges) carries its riders along.
+export function update_pinned_vertex_positions(tablet_document: TabletDocument): void {
+  for (const pin of tablet_document.vertex_pins) {
+    const host = tablet_document.strokes[pin.host_stroke];
+    const points = stroke_control_points(host, tablet_document);
+    tablet_document.vertices[pin.vertex] = bezier_point(points, pin.t);
+  }
 }
 
 // The four world-space bezier control points of a stroke.
 export type StrokeControlPoints = { p0: V3; p1: V3; p2: V3; p3: V3 };
 
-// The stroke's plane frame: w is the unit normal; u2 = p3 - p1 and
-// v = cross(w, u2) span the plane (same magnitude, per bez_v3v2) — d3 is
-// expressed in (u2, v). w falls back to a deterministic normal when d0 is
-// zero/collinear (straight line has no plane of its own), so d3 stays
-// meaningful and tessellation never depends on the camera.
-export type StrokeFrame = { w: V3; u2: V3; v: V3 };
+// The stroke's plane frame, orthonormal: u runs along the chord p0 -> p3,
+// v = cross(normal, u) is the in-plane perpendicular, w = cross(u, v) is the
+// effective unit normal. Vertex drags can leave the stored normal slightly
+// off-perpendicular to the new chord; the cross products here re-orthogonalize
+// on evaluation without mutating the stroke. Degenerate cases (zero chord,
+// normal ∥ chord) fall back deterministically so tessellation never depends on
+// the camera.
+export type StrokeFrame = { u: V3; v: V3; w: V3 };
 
 const COLLINEAR_EPSILON = 1e-9;
 
-function stroke_plane_normal(p0: V3, d0: V3, p3: V3): V3 {
-  const u = v3_sub(p3, p0);
-  const cross = v3_cross(u, d0);
-  if (v3_length(cross) > COLLINEAR_EPSILON) return v3_normalize(cross);
-  // Degenerate (straight stroke): any normal to the line, picked deterministically.
-  const fallback = v3_cross(u, v3(0, 1, 0));
-  if (v3_length(fallback) > COLLINEAR_EPSILON) return v3_normalize(fallback);
+// Deterministic unit vector perpendicular to u (for degenerate strokes that
+// have no plane of their own).
+function fallback_perpendicular(u: V3): V3 {
+  const with_y = v3_cross(u, v3(0, 1, 0));
+  if (v3_length(with_y) > COLLINEAR_EPSILON) return v3_normalize(with_y);
   return v3_normalize(v3_cross(u, v3(1, 0, 0)));
 }
 
-export function stroke_frame_from_points(p0: V3, d0: V3, p3: V3): StrokeFrame {
-  const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), d0);
-  const w = stroke_plane_normal(p0, d0, p3);
-  const u2 = v3_sub(p3, p1);
-  return { w, u2, v: v3_cross(w, u2) };
+export function stroke_frame_from_points(p0: V3, p3: V3, normal: V3): StrokeFrame {
+  const chord = v3_sub(p3, p0);
+  const u = v3_length(chord) > COLLINEAR_EPSILON ? v3_normalize(chord) : v3(1, 0, 0);
+  const v_raw = v3_cross(normal, u);
+  const v = v3_length(v_raw) > COLLINEAR_EPSILON ? v3_normalize(v_raw) : fallback_perpendicular(u);
+  return { u, v, w: v3_cross(u, v) };
 }
 
 export function stroke_frame(stroke: Stroke, tablet_document: TabletDocument): StrokeFrame {
   const p0 = tablet_document.vertices[stroke.p0_vertex];
   const p3 = tablet_document.vertices[stroke.p3_vertex];
-  return stroke_frame_from_points(p0, stroke.d0, p3);
+  return stroke_frame_from_points(p0, p3, stroke.normal);
 }
 
-// bez_v3v2 (desktop game/game_draw.cpp): with d0 = 0 and d3 = (0, 0) the
-// control points land at the 1/3 and 2/3 points of a straight line.
+// With d0 = d3 = (0, 0) the control points land at the 1/3 and 2/3 points of a
+// straight line.
 export function stroke_control_points(stroke: Stroke, tablet_document: TabletDocument): StrokeControlPoints {
   const p0 = tablet_document.vertices[stroke.p0_vertex];
   const p3 = tablet_document.vertices[stroke.p3_vertex];
   const frame = stroke_frame(stroke, tablet_document);
-  const p1 = v3_sub(p3, frame.u2);
+  const p1 = v3_add(
+    v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3),
+    v3_add(v3_scale(frame.u, stroke.d0.x), v3_scale(frame.v, stroke.d0.y)),
+  );
   const p2 = v3_add(
-    v3_scale(v3_add(p1, p3), 0.5),
-    v3_add(v3_scale(frame.u2, stroke.d3.x), v3_scale(frame.v, stroke.d3.y)),
+    v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3),
+    v3_add(v3_scale(frame.u, stroke.d3.x), v3_scale(frame.v, stroke.d3.y)),
   );
   return { p0, p1, p2, p3 };
+}
+
+// Re-express four explicit world control points in handle form. The plane
+// normal comes from the first non-degenerate interior offset; any out-of-plane
+// component of the other offset is dropped (the representation is planar by
+// contract). Exact for planar inputs.
+export function stroke_handles_from_control_points(
+  p0: V3, p1: V3, p2: V3, p3: V3,
+): { normal: V3; d0: V2; d3: V2 } {
+  const chord = v3_sub(p3, p0);
+  const u = v3_length(chord) > COLLINEAR_EPSILON ? v3_normalize(chord) : v3(1, 0, 0);
+  const o1 = v3_sub(p1, v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3));
+  const o2 = v3_sub(p2, v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3));
+  let normal_raw = v3_cross(u, o1);
+  if (v3_length(normal_raw) < COLLINEAR_EPSILON) normal_raw = v3_cross(u, o2);
+  const normal = v3_length(normal_raw) > COLLINEAR_EPSILON ? v3_normalize(normal_raw) : fallback_perpendicular(u);
+  const frame = stroke_frame_from_points(p0, p3, normal);
+  return {
+    normal,
+    d0: { x: v3_dot(o1, frame.u), y: v3_dot(o1, frame.v) },
+    d3: { x: v3_dot(o2, frame.u), y: v3_dot(o2, frame.v) },
+  };
+}
+
+// Normal-lever handle (plan Q4): a tip off the chord midpoint along in-plane v;
+// dragging it rotates the stroke's plane about the chord.
+export const LEVER_LENGTH_FRACTION_OF_CHORD = 0.35;
+
+export function stroke_lever_tip(stroke: Stroke, tablet_document: TabletDocument): V3 {
+  const p0 = tablet_document.vertices[stroke.p0_vertex];
+  const p3 = tablet_document.vertices[stroke.p3_vertex];
+  const frame = stroke_frame(stroke, tablet_document);
+  const midpoint = v3_scale(v3_add(p0, p3), 0.5);
+  const lever_length = v3_length(v3_sub(p3, p0)) * LEVER_LENGTH_FRACTION_OF_CHORD;
+  return v3_add(midpoint, v3_scale(frame.v, lever_length));
 }
 
 export function bezier_point(points: StrokeControlPoints, t: number): V3 {
@@ -168,10 +240,8 @@ export type StrokePlane2D = { origin: V3; x_axis: V3; y_axis: V3; normal: V3 };
 
 export function stroke_plane_2d(stroke: Stroke, tablet_document: TabletDocument): StrokePlane2D {
   const p0 = tablet_document.vertices[stroke.p0_vertex];
-  const p3 = tablet_document.vertices[stroke.p3_vertex];
-  const normal = stroke_plane_normal(p0, stroke.d0, p3);
-  const x_axis = v3_normalize(v3_sub(p3, p0));
-  return { origin: p0, x_axis, y_axis: v3_cross(normal, x_axis), normal };
+  const frame = stroke_frame(stroke, tablet_document);
+  return { origin: p0, x_axis: frame.u, y_axis: frame.v, normal: frame.w };
 }
 
 export function world_point_to_plane_2d(plane: StrokePlane2D, world: V3): V2 {

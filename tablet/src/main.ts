@@ -6,8 +6,8 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
-import { delete_stroke, empty_document, stroke_control_points } from "./document";
-import { EditState, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, pick_stroke } from "./edit_mode";
+import { bezier_point, delete_stroke, empty_document, stroke_control_points, stroke_lever_tip, update_pinned_vertex_positions } from "./document";
+import { EditState, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -28,6 +28,8 @@ const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
 const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
+const LEVER_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // plane-normal lever, distinct from p1/p2
+const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 const ANCHOR_SIZE_PIXELS = 12;
 const HANDLE_SIZE_PIXELS = 9;
@@ -51,8 +53,9 @@ let edit_state: EditState | null = null; // non-null = a stroke is selected
 // stroke the loft's second rail ("loft"), the selected inflate's cross-section
 // curve ("profile"), one of the Coons patch's remaining boundary sides
 // ("patch", collects until 4), or the adjacent stroke to merge the selection
-// with ("join").
-type ArmedTool = "line" | "loft" | "profile" | "patch" | "join";
+// with ("join"). "pin" waits for a tap on the selected stroke's curve and
+// creates a vertex pinned there.
+type ArmedTool = "line" | "loft" | "profile" | "patch" | "join" | "pin";
 let armed_tool: ArmedTool | null = null;
 const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
@@ -68,6 +71,11 @@ function request_render(): void {
   // through here — piggyback the debounced autosave on it; identical
   // serializations are skipped inside. Before the early return: a pending
   // frame must not swallow the save (rAF pauses entirely in hidden tabs).
+  // Pinned vertices are derived data — re-derive synchronously (NOT in the
+  // rAF, which pauses in hidden tabs) so any host reshape carries its riders
+  // before history snapshots and autosave see the document.
+  update_pinned_vertex_positions(tablet_document);
+  refresh_pin_button_armed();
   schedule_autosave(persistence, tablet_document, camera);
   if (frame_requested) return;
   frame_requested = true;
@@ -158,16 +166,37 @@ function rebuild_edit_overlay(): void {
 
   const line_vertices: number[] = [];
   const triangle_vertices: number[] = [];
-  const push_line = (a: V3, b: V3) => {
-    line_vertices.push(a.x, a.y, a.z, HANDLE_LINE_COLOR.r, HANDLE_LINE_COLOR.g, HANDLE_LINE_COLOR.b);
-    line_vertices.push(b.x, b.y, b.z, HANDLE_LINE_COLOR.r, HANDLE_LINE_COLOR.g, HANDLE_LINE_COLOR.b);
+  const push_line = (a: V3, b: V3, color: { r: number; g: number; b: number } = HANDLE_LINE_COLOR) => {
+    line_vertices.push(a.x, a.y, a.z, color.r, color.g, color.b);
+    line_vertices.push(b.x, b.y, b.z, color.r, color.g, color.b);
   };
   push_line(points.p0, points.p1);
   push_line(points.p3, points.p2);
   append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
-  append_billboard_square(points.p0, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
-  append_billboard_square(points.p3, anchor_half, basis.right, basis.up, ANCHOR_COLOR, triangle_vertices);
+  // Plane-normal lever (plan Q4): chord midpoint out along in-plane v; drag
+  // the tip to rotate the stroke's plane about the chord.
+  const selected_stroke = tablet_document.strokes[edit_state.stroke_index];
+  const lever_tip = stroke_lever_tip(selected_stroke, tablet_document);
+  const chord_midpoint = v3_scale(v3_add(points.p0, points.p3), 0.5);
+  push_line(chord_midpoint, lever_tip, LEVER_COLOR);
+  append_billboard_square(lever_tip, handle_half, basis.right, basis.up, LEVER_COLOR, triangle_vertices);
+  // Endpoints that are pinned vertices (riding some other stroke) show in the
+  // pin color so it's clear they'll slide, not translate, when grabbed.
+  const anchor_color = (vertex: number) =>
+    tablet_document.vertex_pins.some((pin) => pin.vertex === vertex) ? PIN_COLOR : ANCHOR_COLOR;
+  append_billboard_square(points.p0, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p0_vertex), triangle_vertices);
+  append_billboard_square(points.p3, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p3_vertex), triangle_vertices);
+  // Pinned vertices riding the selected stroke; the selected pin (the unpin
+  // button's target) draws larger.
+  for (let pin_index = 0; pin_index < tablet_document.vertex_pins.length; pin_index++) {
+    const pin = tablet_document.vertex_pins[pin_index];
+    if (pin.host_stroke !== edit_state.stroke_index) continue;
+    const half_size = pin_index === edit_state.selected_pin ? anchor_half : handle_half;
+    append_billboard_square(
+      tablet_document.vertices[pin.vertex], half_size, basis.right, basis.up, PIN_COLOR, triangle_vertices,
+    );
+  }
   // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
   // vertex it would weld into on release so the merge is never a surprise.
   if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
@@ -216,10 +245,28 @@ function line_mode_pen_up(): void {
 // (control point, whole-stroke move, or orbit) just end.
 function edit_mode_pen_up(position: V2): void {
   if (edit_state === null) return;
-  const was_control_drag = edit_state.dragging !== null || edit_state.moving_whole_stroke;
+  const was_control_drag =
+    edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke;
   edit_pen_up(edit_state, tablet_document, camera, canvas);
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
   if (!was_tap || was_control_drag) return;
+  if (armed_tool === "pin") {
+    // Pin creation (Q2): a tap on the selected stroke's curve drops a new
+    // vertex at the nearest curve point, constrained there permanently.
+    const nearest = nearest_t_on_stroke_screen(tablet_document, edit_state.stroke_index, camera, position, canvas);
+    if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) {
+      const points = stroke_control_points(tablet_document.strokes[edit_state.stroke_index], tablet_document);
+      tablet_document.vertices.push(bezier_point(points, nearest.t));
+      tablet_document.vertex_pins.push({
+        vertex: tablet_document.vertices.length - 1,
+        host_stroke: edit_state.stroke_index,
+        t: nearest.t,
+      });
+      edit_state.selected_pin = tablet_document.vertex_pins.length - 1;
+    }
+    set_armed_tool(null); // tap off the curve = cancel, selection kept
+    return;
+  }
   const picked = pick_stroke(tablet_document, camera, position, canvas);
   if (armed_tool === "patch") {
     if (picked === null) {
@@ -271,6 +318,15 @@ const surface_button = document.getElementById("surface_button") as HTMLButtonEl
 const profile_button = document.getElementById("profile_button") as HTMLButtonElement;
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
+const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
+// The pin button also lights up while a pinned vertex is selected — in that
+// state tapping it unpins (Q11). Re-checked every frame since pin selection
+// changes on pen gestures, not just button presses.
+function refresh_pin_button_armed(): void {
+  pin_button.classList.toggle(
+    "armed", armed_tool === "pin" || (edit_state !== null && edit_state.selected_pin !== null),
+  );
+}
 function set_armed_tool(tool: ArmedTool | null): void {
   armed_tool = tool;
   if (tool !== "patch") patch_picks.length = 0;
@@ -280,6 +336,7 @@ function set_armed_tool(tool: ArmedTool | null): void {
   profile_button.classList.toggle("armed", tool === "loft" ? false : tool === "profile");
   patch_button.classList.toggle("armed", tool === "patch");
   join_button.classList.toggle("armed", tool === "join");
+  refresh_pin_button_armed();
 }
 line_button.addEventListener("click", () => {
   set_armed_tool(armed_tool === "line" ? null : "line");
@@ -309,6 +366,22 @@ patch_button.addEventListener("click", () => {
 join_button.addEventListener("click", () => {
   if (edit_state === null) return; // needs a selected first stroke
   set_armed_tool(armed_tool === "join" ? null : "join");
+});
+
+// Pin: with a pinned vertex selected, unpin it (frozen in place as a free
+// vertex); otherwise arm pin creation — the next tap on the selected stroke's
+// curve drops a vertex constrained there.
+pin_button.addEventListener("click", () => {
+  if (edit_state === null) return; // needs a selected host stroke
+  if (edit_state.selected_pin !== null) {
+    begin_history_step(history, tablet_document);
+    tablet_document.vertex_pins.splice(edit_state.selected_pin, 1);
+    end_history_step(history, tablet_document);
+    edit_state.selected_pin = null;
+    request_render();
+    return;
+  }
+  set_armed_tool(armed_tool === "pin" ? null : "pin");
 });
 
 // Revolve acts immediately on the selected stroke (the axis is the line through

@@ -57,6 +57,7 @@ export function merge_adjacent_strokes(
   // remaps A's fresh endpoint indices).
   stroke_a.p0_vertex = a_far_vertex;
   stroke_a.p3_vertex = b_far_vertex;
+  stroke_a.normal = handles.normal;
   stroke_a.d0 = handles.d0;
   stroke_a.d3 = handles.d3;
   delete_stroke(tablet_document, stroke_b_index);

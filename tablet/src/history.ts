@@ -34,6 +34,7 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   const parsed = JSON.parse(snapshot);
   clear_document_in_place(tablet_document);
   tablet_document.vertices.push(...parsed.vertices);
+  tablet_document.vertex_pins.push(...parsed.vertex_pins);
   tablet_document.strokes.push(...parsed.strokes);
   tablet_document.lofts.push(...parsed.lofts);
   tablet_document.revolves.push(...parsed.revolves);
