@@ -49,6 +49,7 @@ const persistence = create_persistence_state();
 const history = create_history_state();
 let reference_mesh: ReferenceMesh | null = null;
 let reference_visible = true;
+let surface_visible = true; // "surf" button: hide loft surfaces (contour ribbons stay)
 let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
 // Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
 // Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
@@ -195,7 +196,7 @@ function append_contour_ribbons(vertices: VertexSink): void {
 function rebuild_surface_mesh(): void {
   const vertices = surface_sink;
   reset_vertex_sink(vertices);
-  for (const patch of tablet_document.patches) {
+  if (surface_visible) for (const patch of tablet_document.patches) {
     append_patch_mesh(patch, tablet_document, camera, SURFACE_COLOR, vertices);
   }
   set_surface_mesh(renderer, vertex_sink_view(vertices));
@@ -677,6 +678,14 @@ reference_button.addEventListener("click", () => {
   request_render();
 });
 reference_button.classList.toggle("armed", reference_visible);
+
+const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
+surface_button.addEventListener("click", () => {
+  surface_visible = !surface_visible;
+  surface_button.classList.toggle("armed", surface_visible);
+  request_render();
+});
+surface_button.classList.toggle("armed", surface_visible);
 
 // Docs panel: lists server documents to switch between, plus "new…" (prompt
 // for a name; unknown names start empty) and "rename…" for the current one.
