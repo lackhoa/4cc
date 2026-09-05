@@ -1,0 +1,469 @@
+<title>Bezier Chain Playground</title>
+<style>
+  :root {
+    --bg: #14161c;
+    --panel: #1d2029;
+    --ink: #e6e6ef;
+    --muted: #9aa0b4;
+    --accent: #7ab8ff;
+    --net: #3a3f52;
+    --corner: #ffd166;
+    --interior: #ef6b9a;
+    --seg-a: #ff6b6b;
+    --seg-b: #ffa94d;
+    --seg-c: #4dd4c0;
+    --uniform: #7ab8ff;
+    --arclen: #ffa94d;
+    --good: #7bd45c;
+    --bad: #ff6b6b;
+  }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; margin: 0; }
+  main { max-width: 1060px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 26px; }
+  section { background: var(--panel); border-radius: 12px; padding: 18px 20px; margin: 26px 0; }
+  h2 { font-size: 17px; margin: 0 0 8px; color: var(--accent); }
+  p, li { color: var(--muted); }
+  p strong, li strong { color: var(--ink); }
+  code, .formula { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .formula { background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 8px 0; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+  canvas { display: block; width: 100%; border-radius: 8px; background: var(--bg); touch-action: none; cursor: grab; margin: 10px 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; margin: 6px 0; }
+  .controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--ink); white-space: nowrap; }
+  input[type=range] { width: 220px; accent-color: var(--accent); }
+  button { background: var(--net); color: var(--ink); border: 0; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+  button:hover { background: #4a5069; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .quiz { border-left: 3px solid var(--interior); padding: 2px 0 2px 12px; margin: 12px 0; }
+  .quiz p { margin: 4px 0; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .todo { color: var(--corner); font-weight: 600; }
+  #readout { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--ink); margin: 4px 0; }
+  details { background: var(--bg); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  details[open] summary { margin-bottom: 8px; }
+  .resolved h3 { font-size: 14px; margin: 14px 0 4px; color: var(--ink); }
+</style>
+
+<main>
+  <h1>Patches over bezier chains</h1>
+  <p class="sub">Spun off from <code>interactive-bezier-patch.html</code>. Q10 converts a
+    Coons patch with <em>single-cubic</em> sides into one bicubic patch — but real sides are
+    chains (<code>tablet/src/document.ts</code>: <code>beziers: CubicBezier2[]</code>). This
+    page is about making the conversion work anyway: what <code>s ∈ [0,1]</code> means across
+    a chain, and how a fill over chains becomes a grid of bicubic patches. Question numbers
+    continue the patch file's numbering (Q13/Q14 moved here).</p>
+
+  <!-- ============================ APPARATUS ============================ -->
+  <section>
+    <h2>1 · Two chains and their rulings</h2>
+    <p>A <strong>bottom</strong> and a <strong>top</strong> chain, 3 cubic segments each
+      (<span class="dot" style="background:var(--seg-a)"></span><span class="dot" style="background:var(--seg-b)"></span><span class="dot" style="background:var(--seg-c)"></span>,
+      squares are the joints, everything draggable). Rendering the two <em>curves</em> never
+      needs a global parameter — each segment draws itself. The <em>patch</em> does need one:
+      the Coons blend pairs <code>bottom(s)</code> with <code>top(s)</code> at the same
+      <code>s</code> — every ruling is such a pair. So a rule for spreading
+      <code>s ∈ [0,1]</code> across the chain decides <strong>which point marries which</strong>.
+      Two candidate rules shown at once:
+      <span class="dot" style="background:var(--uniform)"></span><strong>uniform</strong>
+      (each segment gets an equal ⅓ of s — exactly what <code>sample_side</code> in
+      <code>coons.ts</code> does) and
+      <span class="dot" style="background:var(--arclen)"></span><strong>arc-length</strong>
+      (equal s steps travel equal distances).</p>
+    <canvas id="cv" height="420"></canvas>
+    <div class="controls">
+      <label>s <input type="range" id="s" min="0" max="1" step="0.002" value="0.3"></label>
+      <label><input type="checkbox" id="rulU" checked> rulings, uniform pairing</label>
+      <label><input type="checkbox" id="rulA"> rulings, arc-length pairing</label>
+      <label><input type="checkbox" id="ticks"> tick spacing (41 even s values)</label>
+    </div>
+    <div class="controls">
+      <button id="smoothG1">make joints G1 (align handle directions)</button>
+      <button id="smoothC1">make joints C1 (mirror handles exactly)</button>
+      <button id="reset">reset</button>
+    </div>
+    <div id="readout"></div>
+    <p class="hint">The bottom chain's segments run short→long; the top's run long→short —
+      on purpose. Toggle the two ruling families: identical four edges, yet the two families
+      sweep different surfaces. Drag joints around to exaggerate or kill the difference.</p>
+  </section>
+
+  <!-- ============================ KNOT UNION ============================ -->
+  <section>
+    <h2>2 · "Split at the union of break-values", illustrated</h2>
+    <p>Concrete example: <strong>bottom</strong> is a chain of 2 cubics — its break sits at
+      s = ½. <strong>Top</strong> is a chain of 3 — breaks at s = ⅓ and ⅔. (Break positions
+      are <em>parameter</em> values under the chosen rule from Q14. Under the uniform rule
+      they're these exact fractions <em>by definition</em> — joint k of an N-chain is at
+      s = k/N, geometry never consulted. Under the arc-length rule the same joints would land
+      at data-dependent fractions of total length — the construction still works, the numbers
+      are just uglier.) Squares
+      are breaks a side already has; circles are the <em>new</em> cuts we make with the
+      Q13 split operation, so that afterwards <strong>both</strong> sides break at the same
+      set {⅓, ½, ⅔}:</p>
+    <svg viewBox="0 0 900 400" style="width:100%; max-width:900px; display:block; margin:10px 0;">
+      <!-- left: the two sides in space -->
+      <text x="60" y="35" fill="var(--muted)" font-size="13">the two opposite sides (in space)</text>
+      <!-- top chain: 3 segments -->
+      <path d="M 60 90 C 100 40, 150 40, 190 70" stroke="var(--seg-a)" stroke-width="3" fill="none"/>
+      <path d="M 190 70 C 230 100, 280 100, 320 80" stroke="var(--seg-b)" stroke-width="3" fill="none"/>
+      <path d="M 320 80 C 350 65, 380 55, 410 60" stroke="var(--seg-c)" stroke-width="3" fill="none"/>
+      <rect x="184" y="64" width="12" height="12" fill="var(--corner)"/>
+      <rect x="314" y="74" width="12" height="12" fill="var(--corner)"/>
+      <circle cx="253" cy="92" r="7" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <text x="60" y="120" fill="var(--muted)" font-size="12">top: chain of 3 — breaks at ⅓, ⅔; ONE new cut at ½</text>
+      <!-- bottom chain: 2 segments -->
+      <path d="M 60 230 C 140 275, 220 285, 260 262" stroke="var(--seg-a)" stroke-width="3" fill="none"/>
+      <path d="M 260 262 C 320 230, 380 240, 410 220" stroke="var(--seg-b)" stroke-width="3" fill="none"/>
+      <rect x="254" y="256" width="12" height="12" fill="var(--corner)"/>
+      <circle cx="172" cy="262" r="7" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <circle cx="322" cy="234" r="7" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <text x="60" y="315" fill="var(--muted)" font-size="12">bottom: chain of 2 — break at ½; TWO new cuts at ⅓, ⅔</text>
+      <!-- legend -->
+      <rect x="60" y="345" width="11" height="11" fill="var(--corner)"/>
+      <text x="78" y="355" fill="var(--muted)" font-size="12">existing joint</text>
+      <circle cx="185" cy="350" r="6" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <text x="198" y="355" fill="var(--muted)" font-size="12">new cut (exact split, Q13)</text>
+      <!-- right: the parameter rectangle -->
+      <text x="500" y="35" fill="var(--muted)" font-size="13">the same thing in the (s,t) parameter rectangle</text>
+      <rect x="500" y="60" width="360" height="250" fill="none" stroke="var(--net)" stroke-width="2"/>
+      <line x1="620" y1="60" x2="620" y2="310" stroke="var(--uniform)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <line x1="680" y1="60" x2="680" y2="310" stroke="var(--uniform)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <line x1="740" y1="60" x2="740" y2="310" stroke="var(--uniform)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <!-- top edge marks: existing at 1/3, 2/3; new at 1/2 -->
+      <rect x="614" y="54" width="12" height="12" fill="var(--corner)"/>
+      <rect x="734" y="54" width="12" height="12" fill="var(--corner)"/>
+      <circle cx="680" cy="60" r="7" fill="var(--bg)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <!-- bottom edge marks: existing at 1/2; new at 1/3, 2/3 -->
+      <rect x="674" y="304" width="12" height="12" fill="var(--corner)"/>
+      <circle cx="620" cy="310" r="7" fill="var(--bg)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <circle cx="740" cy="310" r="7" fill="var(--bg)" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 2"/>
+      <text x="608" y="335" fill="var(--muted)" font-size="12">⅓</text>
+      <text x="672" y="335" fill="var(--muted)" font-size="12">½</text>
+      <text x="732" y="335" fill="var(--muted)" font-size="12">⅔</text>
+      <text x="500" y="360" fill="var(--muted)" font-size="12">union {⅓, ½, ⅔} → 4 columns; every column's top and bottom piece</text>
+      <text x="500" y="378" fill="var(--muted)" font-size="12">is now a single cubic</text>
+    </svg>
+    <p><strong>Why cut at exactly these values?</strong> They're where the surface changes
+      formula. The Coons blend reads <code>bottom(s)</code> and <code>top(s)</code>; when s
+      crosses a joint of <em>either</em> chain, one of those switches to a different cubic —
+      so the surface is piecewise-polynomial and its seams are the vertical lines at
+      (bottom's breaks ∪ top's breaks). A bicubic patch is one polynomial, so it can only
+      match the surface on a cell that straddles no seam. The union is the minimal cut set
+      achieving that; the strip s ∈ [⅓, ½] above is seam-free, while e.g. [0.25, 0.6] would
+      contain two seams — no single bicubic can follow a kink in the formula.</p>
+    <p>Then play the same game in the other direction: union the break-values of
+      <strong>left</strong> and <strong>right</strong> to cut horizontal <em>rows</em>.
+      Columns × rows = the grid of cells. Each cell's bottom/top pieces come from the cuts
+      above; each cell's left/right pieces are iso-curves of the surface (which turn out to
+      be single cubics in t already). Q13's remaining question is whether running Q10's
+      conversion on each cell reproduces the big surface exactly.</p>
+  </section>
+
+  <!-- ============================ QUIZ ============================ -->
+  <section>
+    <h2>3 · Questions</h2>
+    <div class="quiz">
+      <p><em>No open questions — Q13 was parked by decision (see Resolved). If the grid
+        construction ever becomes needed (fixed bicubic interchange, PDF export), reopen it:
+        the remaining unproven claim is that the per-cell bicubic (Q10 on a seam-free cell's
+        four single-cubic sides) equals the plain restriction of S to that cell. Hint on
+        file: the residual identity <code>S − R1 − R2 + B = 0</code> from Q2, and what an
+        affine change of s and t does to each term.</em></p>
+    </div>
+
+    <details>
+      <summary>Fact (relevant to Q14): our joints are G1, not C1 — the parameter speed jumps</summary>
+      <p>When the fitter (tablet/src/fit.ts, Schneider's "FitCurve") splits a stroke, both
+        halves share the split point and one tangent <em>direction</em> (fit.ts:103 computes a
+        single <code>tangent_center</code>, negated for the second half) — but each half's
+        least-squares solve picks its own handle <em>length</em>. So joints are G1: the curve
+        looks smooth, yet the parametric "speed" |dC/dt| jumps across the joint. Invisible to
+        the eye, very visible to anything that consumes the parameter — the kink/G1/C1 badges
+        and the two smoothing buttons in the playground demonstrate it.</p>
+    </details>
+  </section>
+
+  <!-- ============================ RESOLVED ============================ -->
+  <section class="resolved">
+    <h2>4 · Resolved</h2>
+    <ul>
+      <li><strong>Q13 (first half) the split operation → blossoming / de Casteljau
+        subdivision</strong> (2026-08-31). Khoa recalled blossoming — correct, and it is the
+        Stage-1 scaffolding in disguise: the de Casteljau triangle at s IS a blossom
+        evaluation, and its two flanks (first point of each row, last point of each row) are
+        the control points of the two halves. In polar-form notation the left half's controls
+        are b(0,0,0), b(0,0,s), b(0,s,s), b(s,s,s). The split is <em>exact</em> — the two
+        cubics jointly trace the original curve. (Sourcing: blossoming is Ramshaw 1987 /
+        de Boor's polar forms — textbook, not invented here.) Remaining half of Q13 above.</li>
+      <li><strong>Q13 (second half) grid exactness → parked; decision: no re-encoding</strong>
+        (2026-08-31). "Why do we care about the reencoding?" — the tablet never needs it (it
+        samples S = R1 + R2 − B directly); it would matter only for a consumer whose primitive
+        is the bicubic net (desktop <code>Primitive_Type_Patch</code>, PDF Type 6/7). Khoa's
+        call: <em>"we'll just add the functionality to the desktop"</em> — port
+        Coons-over-chains evaluation (chain_sides + sample_side + the blend) natively instead
+        of converting. That gives exact tablet/desktop agreement by construction, at the cost
+        of a new variable-length primitive there rather than reusing the existing patch
+        machinery. The Q14 lesson is the one carry-over: the ported code must share the
+        <em>identical</em> uniform s-rule (copy the code, don't re-derive). The grid-exactness
+        proof stays parked in section 3 in case a fixed-format export ever becomes real.</li>
+      <li><strong>Q14 the chain parameter → resolved</strong> (2026-08-31). First objection:
+        "you just render the curves as separate curves" — true for drawing the boundary, but
+        the patch's rulings pair <code>bottom(s)</code> with <code>top(s)</code>, so a global
+        s-rule decides which point marries which. Khoa's read of the code:
+        <code>sample_side</code> is <strong>"the simple version that doesn't care about
+        length"</strong> — uniform (equal s share per segment, geometry never consulted).
+        Consequence: anything else that re-evaluates the same strokes must use the same rule,
+        or the surfaces silently differ in the interior despite identical edges. (The rules
+        coincide when segments have equal arc length — drag the playground into that state to
+        see the two families merge.)</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+"use strict";
+(() => {
+  const canvas = document.getElementById("cv");
+  const ctx = canvas.getContext("2d");
+  const slider = document.getElementById("s");
+  const ticksBox = document.getElementById("ticks");
+  const rulUBox = document.getElementById("rulU");
+  const rulABox = document.getElementById("rulA");
+  const readout = document.getElementById("readout");
+
+  // Two chains of 3 cubic segments = 10 points each, normalized coords.
+  // Segment lengths deliberately mismatched: bottom short->long, top long->short.
+  const initialBottom = [
+    {x:0.05,y:0.80},{x:0.09,y:0.68},{x:0.13,y:0.62},{x:0.17,y:0.61},
+    {x:0.28,y:0.59},{x:0.50,y:0.93},{x:0.70,y:0.80},
+    {x:0.78,y:0.75},{x:0.86,y:0.70},{x:0.95,y:0.63},
+  ];
+  const initialTop = [
+    {x:0.05,y:0.30},{x:0.20,y:0.06},{x:0.45,y:0.10},{x:0.60,y:0.22},
+    {x:0.70,y:0.28},{x:0.78,y:0.30},{x:0.84,y:0.28},
+    {x:0.88,y:0.26},{x:0.92,y:0.22},{x:0.95,y:0.14},
+  ];
+  let chains = [initialBottom.map(p => ({...p})), initialTop.map(p => ({...p}))];
+
+  const SEG_COLORS = ["--seg-a", "--seg-b", "--seg-c"];
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const segPoints = (pts, i) => [pts[3*i], pts[3*i+1], pts[3*i+2], pts[3*i+3]];
+
+  function bez(p, t) {
+    const s = 1 - t;
+    return {
+      x: s*s*s*p[0].x + 3*s*s*t*p[1].x + 3*s*t*t*p[2].x + t*t*t*p[3].x,
+      y: s*s*s*p[0].y + 3*s*s*t*p[1].y + 3*s*t*t*p[2].y + t*t*t*p[3].y,
+    };
+  }
+
+  // --- the two mapping rules -------------------------------------------------
+  // uniform: same as sample_side in coons.ts — s*3, floor = segment, frac = local t
+  function mapUniform(s) {
+    const scaled = Math.min(s * 3, 3 - 1e-6);
+    const seg = Math.floor(scaled);
+    return { seg, t: scaled - seg };
+  }
+
+  function arcTable(pts) { // cumulative arc length, 64 samples per segment
+    const N = 64, entries = [];
+    let total = 0;
+    for (let seg = 0; seg < 3; seg++) {
+      const p = segPoints(pts, seg);
+      let prev = bez(p, 0);
+      for (let i = 1; i <= N; i++) {
+        const cur = bez(p, i / N);
+        total += Math.hypot(cur.x - prev.x, cur.y - prev.y);
+        entries.push({ len: total, seg, t: i / N });
+        prev = cur;
+      }
+    }
+    return { entries, total };
+  }
+
+  function mapArcLength(s, table) {
+    const target = s * table.total;
+    for (const e of table.entries) if (e.len >= target) return { seg: e.seg, t: e.t };
+    return { seg: 2, t: 1 };
+  }
+
+  function chainPoint(pts, mapped) {
+    return bez(segPoints(pts, mapped.seg), mapped.t);
+  }
+
+  // --- joint continuity ------------------------------------------------------
+  function jointInfo(pts, j) { // j = 1 or 2 (interior joints at pts[3j])
+    const inn = { x: pts[3*j].x - pts[3*j-1].x, y: pts[3*j].y - pts[3*j-1].y };
+    const out = { x: pts[3*j+1].x - pts[3*j].x, y: pts[3*j+1].y - pts[3*j].y };
+    const li = Math.hypot(inn.x, inn.y), lo = Math.hypot(out.x, out.y);
+    const cos = (inn.x*out.x + inn.y*out.y) / (li * lo || 1);
+    const g1 = cos > 0.9993; // within ~2 degrees
+    const c1 = g1 && Math.abs(li - lo) / Math.max(li, lo) < 0.03;
+    return { g1, c1 };
+  }
+
+  // --- drawing ---------------------------------------------------------------
+  function W() { return canvas.clientWidth; }
+  function H() { return canvas.clientHeight; }
+  const toPx = p => ({ x: p.x * W(), y: p.y * H() });
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.round(W() * dpr) || canvas.height !== Math.round(H() * dpr)) {
+      canvas.width = Math.round(W() * dpr);
+      canvas.height = Math.round(H() * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W(), H());
+    const tables = chains.map(arcTable);
+
+    // ruling families first (underneath the chains)
+    const families = [
+      { on: rulUBox.checked, color: css("--uniform"), map: (pts, s) => mapUniform(s) },
+      { on: rulABox.checked, color: css("--arclen"), map: (pts, s, table) => mapArcLength(s, table) },
+    ];
+    for (const fam of families) {
+      if (!fam.on) continue;
+      ctx.strokeStyle = fam.color;
+      ctx.globalAlpha = 0.30;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 24; i++) {
+        const s = i / 24;
+        const pb = toPx(chainPoint(chains[0], fam.map(chains[0], s, tables[0])));
+        const pt = toPx(chainPoint(chains[1], fam.map(chains[1], s, tables[1])));
+        ctx.beginPath(); ctx.moveTo(pb.x, pb.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    for (let c = 0; c < 2; c++) {
+      const pts = chains[c];
+      for (let seg = 0; seg < 3; seg++) {
+        const p = segPoints(pts, seg).map(toPx);
+        ctx.strokeStyle = css("--net");
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p[0].x, p[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(p[i].x, p[i].y);
+        ctx.stroke();
+        ctx.strokeStyle = css(SEG_COLORS[seg]);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const q = toPx(bez(segPoints(pts, seg), i / 48));
+          i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y);
+        }
+        ctx.stroke();
+      }
+
+      if (ticksBox.checked) {
+        const TICKS = 41;
+        for (let i = 0; i < TICKS; i++) {
+          const s = i / (TICKS - 1);
+          const pu = toPx(chainPoint(pts, mapUniform(s)));
+          const pa = toPx(chainPoint(pts, mapArcLength(s, tables[c])));
+          ctx.strokeStyle = css("--uniform");
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(pu.x, pu.y, 5, 0, 7); ctx.stroke();
+          ctx.fillStyle = css("--arclen");
+          ctx.beginPath(); ctx.arc(pa.x, pa.y, 2.5, 0, 7); ctx.fill();
+        }
+      }
+
+      for (let i = 0; i < pts.length; i++) {
+        const p = toPx(pts[i]);
+        const isJoint = i % 3 === 0;
+        ctx.fillStyle = isJoint ? css("--corner") : css("--ink");
+        if (isJoint) ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
+        else { ctx.beginPath(); ctx.arc(p.x, p.y, 4.5, 0, 7); ctx.fill(); }
+      }
+      for (const j of [1, 2]) {
+        const info = jointInfo(pts, j);
+        const p = toPx(pts[3*j]);
+        ctx.font = "12px ui-monospace, Consolas, monospace";
+        ctx.fillStyle = info.g1 ? css("--good") : css("--bad");
+        ctx.fillText(info.c1 ? "C1" : info.g1 ? "G1" : "kink", p.x + 10, p.y - 10);
+      }
+    }
+
+    // the current-s ruling (thick) + moving dots on both chains
+    const s = parseFloat(slider.value);
+    const uB = chainPoint(chains[0], mapUniform(s)), uT = chainPoint(chains[1], mapUniform(s));
+    const aB = chainPoint(chains[0], mapArcLength(s, tables[0])), aT = chainPoint(chains[1], mapArcLength(s, tables[1]));
+    for (const fam of [
+      { on: rulUBox.checked, color: css("--uniform"), b: uB, t: uT },
+      { on: rulABox.checked, color: css("--arclen"), b: aB, t: aT },
+    ]) {
+      if (!fam.on) continue;
+      const pb = toPx(fam.b), pt = toPx(fam.t);
+      ctx.strokeStyle = fam.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pb.x, pb.y); ctx.lineTo(pt.x, pt.y); ctx.stroke();
+      for (const q of [pb, pt]) {
+        ctx.fillStyle = fam.color;
+        ctx.beginPath(); ctx.arc(q.x, q.y, 7, 0, 7); ctx.fill();
+      }
+    }
+
+    const um = mapUniform(s), ab = mapArcLength(s, tables[0]), at = mapArcLength(s, tables[1]);
+    readout.textContent =
+      `s=${s.toFixed(3)}   uniform → seg ${um.seg}, t=${um.t.toFixed(3)} (both chains)   ` +
+      `arc-length → bottom: seg ${ab.seg}, t=${ab.t.toFixed(3)} · top: seg ${at.seg}, t=${at.t.toFixed(3)}`;
+  }
+
+  // --- interaction -----------------------------------------------------------
+  let dragging = null; // { chain, index }
+  function eventNorm(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  }
+  canvas.addEventListener("pointerdown", e => {
+    const m = eventNorm(e);
+    let best = null, bestD = 0.03 * 0.03 * 4;
+    for (let c = 0; c < 2; c++) {
+      for (let i = 0; i < chains[c].length; i++) {
+        const dx = (chains[c][i].x - m.x) * (W() / H()), dy = chains[c][i].y - m.y;
+        const d = dx*dx + dy*dy;
+        if (d < bestD) { bestD = d; best = { chain: c, index: i }; }
+      }
+    }
+    dragging = best;
+    if (best) canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    const m = eventNorm(e);
+    chains[dragging.chain][dragging.index] = { x: Math.max(0, Math.min(1, m.x)), y: Math.max(0, Math.min(1, m.y)) };
+    draw();
+  });
+  canvas.addEventListener("pointerup", () => dragging = null);
+  for (const el of [slider, ticksBox, rulUBox, rulABox]) el.addEventListener("input", draw);
+  window.addEventListener("resize", draw);
+
+  // Smoothing: rewrite the OUTGOING handle at each interior joint from the incoming one.
+  // G1 keeps the outgoing handle's length (direction only); C1 mirrors the full vector.
+  function smooth(keepLength) {
+    for (const pts of chains) {
+      for (const j of [1, 2]) {
+        const joint = pts[3*j];
+        const inn = { x: joint.x - pts[3*j-1].x, y: joint.y - pts[3*j-1].y };
+        const li = Math.hypot(inn.x, inn.y) || 1;
+        const lo = keepLength
+          ? Math.hypot(pts[3*j+1].x - joint.x, pts[3*j+1].y - joint.y)
+          : li;
+        pts[3*j+1] = { x: joint.x + inn.x / li * lo, y: joint.y + inn.y / li * lo };
+      }
+    }
+    draw();
+  }
+  document.getElementById("smoothG1").addEventListener("click", () => smooth(true));
+  document.getElementById("smoothC1").addEventListener("click", () => smooth(false));
+  document.getElementById("reset").addEventListener("click", () => {
+    chains = [initialBottom.map(p => ({...p})), initialTop.map(p => ({...p}))];
+    draw();
+  });
+
+  draw();
+})();
+</script>

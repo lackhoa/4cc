@@ -1,0 +1,804 @@
+<title>Bezier Patch Playground</title>
+<style>
+  :root {
+    --bg: #14161c;
+    --panel: #1d2029;
+    --ink: #e6e6ef;
+    --muted: #9aa0b4;
+    --accent: #7ab8ff;
+    --net: #3a3f52;
+    --surf: #5c6480;
+    --corner: #ffd166;
+    --edgept: #7ab8ff;
+    --interior: #ef6b9a;
+    --bottom: #ff6b6b;
+    --top: #ffa94d;
+    --left: #4dd4c0;
+    --right: #7bd45c;
+    --r1: #ffa94d;
+    --r2: #4dd4c0;
+    --bsheet: #8a91a8;
+    --ssheet: #ef6b9a;
+  }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; margin: 0; }
+  main { max-width: 1060px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 26px; }
+  section { background: var(--panel); border-radius: 12px; padding: 18px 20px; margin: 26px 0; }
+  h2 { font-size: 17px; margin: 0 0 8px; color: var(--accent); }
+  p, li { color: var(--muted); }
+  p strong, li strong { color: var(--ink); }
+  code, .formula { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .formula { background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 8px 0; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+  canvas { display: block; width: 100%; border-radius: 8px; background: var(--bg); touch-action: none; cursor: grab; margin: 10px 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; margin: 6px 0; }
+  .controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--ink); white-space: nowrap; }
+  input[type=range] { width: 180px; accent-color: var(--accent); }
+  button { background: var(--net); color: var(--ink); border: 0; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+  button:hover { background: #4a5069; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .swatch { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+  .quiz { border-left: 3px solid var(--interior); padding: 2px 0 2px 12px; margin: 12px 0; }
+  .quiz p { margin: 4px 0; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .todo { color: var(--corner); font-weight: 600; }
+  details { background: var(--bg); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  details[open] summary { margin-bottom: 8px; }
+  .resolved h3 { font-size: 14px; margin: 14px 0 4px; color: var(--ink); }
+</style>
+
+<main>
+  <h1>Coons patches from first principles</h1>
+  <p class="sub">Three stages. Everything is draggable; in 3D views, drag empty space to orbit, wheel to zoom.</p>
+
+  <!-- ============================ STAGE 1 ============================ -->
+  <section>
+    <h2>1 · The bezier curve (refresher)</h2>
+    <p>4 control points, one parameter <code>t ∈ [0,1]</code>. The curve is repeated
+      linear interpolation (de Casteljau): lerp neighbors → 3 points → lerp → 2 → lerp
+      → 1 point on the curve. Expanding the lerps gives the Bernstein weights:</p>
+    <div class="formula">C(t) = (1−t)³·P₀ + 3(1−t)²t·P₁ + 3(1−t)t²·P₂ + t³·P₃</div>
+    <canvas id="cv1" height="340"></canvas>
+    <div class="controls">
+      <label>t <input type="range" id="t1" min="0" max="1" step="0.005" value="0.35"></label>
+      <label><input type="checkbox" id="split1"> show split halves (the scaffold's two flanks = the control polygons of the two sub-curves cut at t)</label>
+      <span class="hint">the bars show each point's Bernstein weight at this t — note only P₀/P₃ ever reach weight 1 (at the ends)</span>
+    </div>
+  </section>
+
+  <!-- ============================ STAGE 2 ============================ -->
+  <section>
+    <h2>2 · Tensor product: a curve of curves</h2>
+    <p>Add a second parameter <code>v</code>. Take 4 bezier curves running in the
+      <code>v</code> direction (the <strong>columns</strong> of a 4×4 grid). At any
+      <code>v</code>, evaluate all 4 columns — that gives 4 points — and use <em>those</em>
+      as the control points of a bezier curve in <code>u</code>. Sweep <code>v</code>
+      and the moving curve traces the surface:</p>
+    <div class="formula">S(u,v) = Σᵢ Σⱼ Bᵢ(u)·Bⱼ(v)·Pᵢⱼ</div>
+    <p>The "16 numbers" are the 16 grid points <code>Pᵢⱼ</code>:
+      <span class="dot" style="background:var(--corner)"></span><strong>4 corners</strong> (surface passes through),
+      <span class="dot" style="background:var(--edgept)"></span><strong>8 edge points</strong> (shape the 4 boundary curves),
+      <span class="dot" style="background:var(--interior)"></span><strong>4 interior "belly" points</strong> (never touch the boundary).</p>
+    <canvas id="cv2" height="430"></canvas>
+    <div class="controls">
+      <label>v <input type="range" id="v2" min="0" max="1" step="0.005" value="0.4"></label>
+      <label><input type="checkbox" id="cols2" checked> column curves</label>
+      <label><input type="checkbox" id="coons2"> Coons mode (belly derived from rim)</label>
+      <button id="reset2">reset</button>
+    </div>
+    <p class="hint">White curve = the bezier-in-u whose 4 control points (small white dots)
+      ride the column curves at the current v. Drag any point; click one to heatmap its
+      influence Bᵢ(u)Bⱼ(v).</p>
+  </section>
+
+  <!-- ============================ STAGE 3 ============================ -->
+  <section>
+    <h2>3 · Building the Coons fill — discovery lab</h2>
+    <p>Now forget the interior: you're the tablet user who drew only the
+      <strong>4 boundary curves</strong> (drag their control points — corners are shared).
+      We want a surface that fits all four edges exactly. Toggle the candidate sheets:</p>
+    <canvas id="cv3" height="430"></canvas>
+    <div class="controls">
+      <label><input type="checkbox" id="show_r1"><span class="swatch" style="background:var(--r1)"></span>R1 = ruled bottom↔top</label>
+      <label><input type="checkbox" id="show_r2"><span class="swatch" style="background:var(--r2)"></span>R2 = ruled left↔right</label>
+      <label><input type="checkbox" id="show_b"><span class="swatch" style="background:var(--bsheet)"></span>B = bilinear corner sheet</label>
+      <label><input type="checkbox" id="show_sum"><span class="swatch" style="background:#e8d44d"></span>R1 + R2</label>
+      <label><input type="checkbox" id="show_s"><span class="swatch" style="background:var(--ssheet)"></span>R1 + R2 − B</label>
+      <button id="reset3">reset</button>
+    </div>
+    <div class="quiz">
+      <p><em>Q2/Q3/Q6/Q7 all resolved — see the Resolved section. Still open here: Q12
+        (section 4). Q13/Q14 (bezier chains) live in
+        <code>interactive-bezier-chain.html</code>.</em></p>
+      <details>
+        <summary>"How do you even 'add' two curves?" — is this legal math? (resolved side-question)</summary>
+        <p>It's real, and it has a name: Coons' construction is a <strong>Boolean
+          sum</strong> (Coons, late 1960s; Gordon generalized it — the field is called
+          <em>transfinite interpolation</em>). "Adding sheets" means: each sheet is a
+          function (s,t) → point in ℝ³, and you add them <em>pointwise, coordinate by
+          coordinate</em>: (R1+R2)(s,t) = R1(s,t) + R2(s,t) as a plain vector sum. So
+          the yellow sheet's left edge at parameter t is literally the point
+          left(t) + chord(t) — coordinates summed. That's also why the yellow sheet
+          floats way off: it sits at roughly <em>double</em> the distance from the
+          origin.</p>
+        <p>And your suspicion is mathematically well-founded! Adding two <em>positions</em>
+          is NOT a geometric operation by itself — the result depends on where you put
+          the origin (the weights sum to 2, not 1). R1+R2 alone is meaningless scaffolding.
+          Only the full combination R1 + R2 − B has weights 1 + 1 − 1 = 1 — an
+          <em>affine combination</em>, origin-independent, hence a genuine geometric
+          object. The subtraction isn't just fixing the edges; it's what makes the
+          algebra geometrically legal at all.</p>
+      </details>
+    </div>
+    <details>
+      <summary>Spoiler: the full construction (read after attempting Q2 / Q6)</summary>
+      <p>Four boundary curves on a unit square: bottom(s), top(s) along s∈[0,1];
+        left(t), right(t) along t∈[0,1]. Corners P00 (bottom-left), P10, P11, P01.
+        Three simple surfaces:</p>
+      <div class="formula">R1(s,t) = (1−t)·bottom(s) + t·top(s)</div>
+      <p>— correct on bottom and top, but its left edge is just the straight line
+        P00→P01, ignoring the drawn left curve.</p>
+      <div class="formula">R2(s,t) = (1−s)·left(t) + s·right(t)</div>
+      <p>— correct on left and right, straight-line wrong on bottom and top.</p>
+      <div class="formula">B(s,t) = (1−s)(1−t)·P00 + s(1−t)·P10 + (1−s)t·P01 + st·P11</div>
+      <p>Coons: <strong>S = R1 + R2 − B</strong>. Along any edge, one ruled surface
+        contributes the true curve, the other contributes the straight chord, and B
+        equals exactly that chord — the chord cancels, so every edge is interpolated
+        exactly. The interior is fully derived from the edges — no independent belly
+        control (that's what a full bezier patch adds).</p>
+      <p>Worked check along the bottom edge (t=0):</p>
+      <div class="formula">S(s,0) = bottom(s) + [(1−s)·left(0) + s·right(0)] − [(1−s)·P00 + s·P10]</div>
+      <p>With exact corners (left(0)=P00, right(0)=P10) the brackets cancel →
+        S(s,0) = bottom(s). Our corners are sketched, so coons.ts averages the two
+        candidate endpoints into each corner and the leftover half-gap is linearly
+        smeared along the rims instead of tearing — visible only when a side is
+        dragged far from its neighbors.</p>
+    </details>
+    <details>
+      <summary>Our implementation (tablet/src/coons.ts) — no Q2 spoilers</summary>
+      <ul>
+        <li>No bicubic fit: each side is presampled at 17 points (<code>COONS_GRID=16</code>
+          cells, <code>sample_side</code>, uniform over the stroke's bezier chain, world
+          space) and the blend formula is evaluated directly on the 17×17 grid
+          (<code>surface_point</code>).</li>
+        <li><strong>Chaining</strong> (<code>chain_sides</code>): tap order and draw
+          direction don't matter — greedy nearest-endpoint walk starting from the first
+          tapped stroke orients the 4 strokes into a head-to-tail loop. Sides 2 and 3 of
+          the loop run backwards relative to the (s,t) grid, hence the
+          <code>COONS_GRID − i</code> indexing for <code>top</code>/<code>left</code>.</li>
+        <li>Linked, not baked: retessellated from current strokes every frame → editing
+          any side reshapes the fill live.</li>
+        <li>Shading: per-face flat headlight like inflate (brightness from
+          |normal·camera_forward|, ambient 0.35), baked into vertex colors.</li>
+      </ul>
+    </details>
+  </section>
+
+  <!-- ====================== BEZIER BRIDGE / Q5 ======================== -->
+  <section>
+    <h2>4 · The bezier bridge (desktop parity)</h2>
+    <p>Q4 resolved: a bilinearly blended Coons patch with single-cubic boundaries IS a
+      bicubic bezier patch (stage 2's format) whose 4 belly points are derived from the
+      boundary control points — that's the "Coons mode" checkbox in stage 2. This is the
+      bridge to desktop <code>Primitive_Type_Patch</code>
+      (game/framework_driver_shared.h:269).</p>
+    <div class="quiz">
+      <p><em>Q5 resolved: derive it yourself via quizzes. The ladder — answer in
+        order; Q10 is the assembly finale. (Setup: bottom/top/left/right are single
+        cubics with control points b0..b3, t0..t3, l0..l3, r0..r3; corners shared,
+        e.g. b0 = l0 = P00.)</em></p>
+      <p><em>Q8/Q11 ✓: R1 is a (3,1) patch whose 4×2 net is exactly b0..b3, t0..t3 —
+        column i is the straight segment bᵢ→tᵢ, because factoring gives
+        R1 = Σᵢ B³ᵢ(s)·[(1−t)·bᵢ + t·tᵢ]. You then asked "can we transform it into a
+        (3,3) patch?" — that is exactly Q9:</em></p>
+      <p><em>Q9 ✓: the segment A→B as a cubic has controls at A, A+⅓(B−A), A+⅔(B−A),
+        B. Why ⅓/⅔: as fractions along the segment the controls sit at 0, ⅓, ⅔, 1, and
+        the Bernstein average 3(1−t)²t·⅓ + 3(1−t)t²·⅔ + t³ = t·[(1−t)+t]² = t — the
+        thirds exactly cancel Bernstein's 3s, so the curve rides the line at speed t.
+        Elevating all 4 columns turns R1's 4×2 net into 4×4: R1 as a (3,3) patch.
+        Same trick elevates R2 (rows) and B (both directions). On to the finale:</em></p>
+      <details open>
+        <summary>Worked example: elevating B to (3,3) — two passes of the Q9 trick</summary>
+        <p>B's own net is just the 2×2 corners. Elevate one direction at a time:</p>
+        <p><strong>Pass 1 (s-direction):</strong> B's bottom row is the segment
+          P00→P10, its top row P01→P11. Q9 each: the rows become 4 points at fractions
+          0, ⅓, ⅔, 1 along those segments. Now the net is 4×2.</p>
+        <p><strong>Pass 2 (t-direction):</strong> each of the 4 columns of that 4×2
+          net is itself a straight segment (bottom-row point → top-row point). Q9 each
+          again: 4 points per column at fractions 0, ⅓, ⅔, 1. Net is now 4×4.</p>
+        <p>Net effect: entry (i,j) sits at fraction i/3 across and j/3 up — which is
+          precisely B <em>evaluated</em> at (s,t) = (i/3, j/3):</p>
+        <div class="formula">net(B)ᵢⱼ = B(i/3, j/3) = (1−i/3)(1−j/3)·P00 + (i/3)(1−j/3)·P10 + (1−i/3)(j/3)·P01 + (i/3)(j/3)·P11</div>
+        <p>(That "net = surface sampled at the grid fractions" shortcut works for B
+          because B is linear in <em>both</em> directions. For R1 only the t-direction
+          is linear, so elevation gives net(R1)ᵢⱼ = (1−j/3)·bᵢ + (j/3)·tᵢ — the lerp
+          applied to <em>control points</em> bᵢ, tᵢ, not to points on the curves.
+          Mirror for R2: net(R2)ᵢⱼ = (1−i/3)·lⱼ + (i/3)·rⱼ.)</p>
+        <p>All three nets now have the same degree (3,3), so they add entry-by-entry.
+          The full sum, ready to manipulate (this IS the answer's raw form — Q10 is to
+          simplify/recognize it):</p>
+        <div class="formula">Cᵢⱼ = (1−j/3)·bᵢ + (j/3)·tᵢ<br>
+&nbsp;&nbsp;&nbsp;&nbsp; + (1−i/3)·lⱼ + (i/3)·rⱼ<br>
+&nbsp;&nbsp;&nbsp;&nbsp; − [(1−i/3)(1−j/3)·P00 + (i/3)(1−j/3)·P10 + (1−i/3)(j/3)·P01 + (i/3)(j/3)·P11]</div>
+        <p>Sanity workout before the belly: try a boundary entry, e.g. i=0 (left
+          column, remember b0=l0=P00, t0=l3=P01) — the entry should collapse to just
+          lⱼ. Then do C11 (i=1, j=1).</p>
+        <p><em>Khoa's observation: i and j never appear alone — always as thirds. So
+          substitute u = i/3, v = j/3:</em></p>
+        <div class="formula">Cᵢⱼ = (1−v)·bᵢ + v·tᵢ  +  (1−u)·lⱼ + u·rⱼ  −  [(1−u)(1−v)·P00 + u(1−v)·P10 + (1−u)v·P01 + uv·P11]</div>
+        <p>Now compare, line by line, with the surface formula from stage 3's spoiler:</p>
+        <div class="formula">S(s,t) = (1−t)·bottom(s) + t·top(s)  +  (1−s)·left(t) + s·right(t)  −  [(1−s)(1−t)·P00 + s(1−t)·P10 + (1−s)t·P01 + st·P11]</div>
+        <p>Same shape. What's playing the role of bottom(s), top(s), left(t),
+          right(t)? Say it out loud — that's the Eureka, and the rest of Q10 (C11
+          concretely) is plugging in u = v = ⅓.</p>
+      </details>
+      <p><em>Q10 ✓ — the ladder is complete; see Resolved. C11 written out (u=v=⅓,
+        corner bracket collapsing to ninths) is in the "interior-point formula"
+        spoiler below, alongside the other three belly points and the chains/knot
+        caveat for the real export.</em></p>
+      <p><em>The chains wrinkle (Q13/Q14) moved to its own page:
+        <code>interactive-bezier-chain.html</code> — bezier chains turned out to be a
+        topic worth learning from the ground up, with its own playground.</em></p>
+      <p><span class="todo">TODO(user) Q12</span> — <strong>what's next?</strong> The
+        derivation is yours now. Deferred from Q5: (a) numeric verification in the
+        tablet (evaluate Coons vs converted bezier at random (s,t) — an hour, proves
+        the formula and the chain/knot handling before building on it; still my
+        recommendation), (b) <s>plan the export path to desktop
+        <code>Primitive_Type_Patch</code></s> — decided 2026-08-31: no re-encoding; the
+        desktop will get native Coons-over-chains evaluation instead (see the chain page's
+        Resolved), and the unanswered "what are the other main
+        investigation threads besides the bezier bridge?"</p>
+    </div>
+    <details>
+      <summary>The interior-point formula (derived 2026-08-31 — spoils Q5(c))</summary>
+      <p>Sourcing note: derived by degree elevation (below), edge-checked, and it
+        matches the implicit-control-point formula of PDF Type 6 (Coons mesh) shadings;
+        no freely published statement found, so treat this algebra as primary and
+        verify numerically during parity work.</p>
+      <p>Boundary control points: bottom <code>b0..b3</code>, top <code>t0..t3</code>
+        (both running in s); left <code>l0..l3</code>, right <code>r0..r3</code> (both
+        in t). Corners shared: <code>b0=l0=P00</code>, <code>b3=r0=P10</code>,
+        <code>t0=l3=P01</code>, <code>t3=r3=P11</code>.</p>
+      <p>Derivation: each sheet is already a low-degree bezier patch — R1 is degree
+        (3,1), R2 is (1,3), B is (1,1). Degree-elevate all three to (3,3) and add the
+        control nets pointwise:</p>
+      <div class="formula">net(S)ᵢⱼ = (1−j/3)·bᵢ + (j/3)·tᵢ  +  (1−i/3)·lⱼ + (i/3)·rⱼ  −  bilinear(i/3, j/3; corners)</div>
+      <p><strong>The elegant bit: the control net of the Coons patch is the Coons
+        construction applied to the control points themselves</strong>, sampled at
+        (i/3, j/3). Boundary rows/columns collapse to the original boundary control
+        points (same cancellation as the surface-level edge check). The 4 interior
+        points written out:</p>
+      <div class="formula">C11 = 2/3(b1+l1) + 1/3(t1+r1) − (4·P00 + 2·P10 + 2·P01 + 1·P11)/9<br>
+C21 = 2/3(b2+r1) + 1/3(t2+l1) − (2·P00 + 4·P10 + 1·P01 + 2·P11)/9<br>
+C12 = 2/3(t1+l2) + 1/3(b1+r2) − (2·P00 + 1·P10 + 4·P01 + 2·P11)/9<br>
+C22 = 2/3(t2+r2) + 1/3(b2+l2) − (1·P00 + 2·P10 + 2·P01 + 4·P11)/9</div>
+      <p>(Each is: 2/3 of the two <em>near</em> edge tangential points + 1/3 of the two
+        <em>far</em> ones, minus the corner sheet at that grid position.)</p>
+      <p>Hermite note: the bicubically-blended (Hermite) Coons variant is <em>also</em>
+        a bicubic bezier patch per cell — different interior points (they encode the
+        prescribed cross-derivatives) but the same target format. So a later C1 upgrade
+        changes only the interior-point computation, not the parity format.</p>
+      <p><strong>Chains → patch grid (the honest complication):</strong> our sides are
+        bezier <em>chains</em>, so one fill is an N×M grid of bicubic patches — exact
+        per-cell only if opposite sides share knot positions in the blend parameter.
+        Parity conversion = union of s-knots (bottom+top) × union of t-knots
+        (left+right), split all four chains there (de Casteljau subdivision), then the
+        formula per cell. Wrinkle: <code>sample_side</code> parameterizes uniformly
+        over the chain parameter, which the desktop conversion must reproduce — or both
+        move to arc-length; pick one before parity.</p>
+      <p>Sourcing: Coons over composite/spline boundaries is standard CAGD (the
+        construction is transfinite — any parametric boundaries); PDF Type 6 shadings
+        are deployed meshes of bezier-boundary Coons patches; de Casteljau subdivision
+        and knot-union compatibility are textbook. The assembled recipe above is our
+        composition of those pieces, not one published algorithm — hence the numeric
+        verification step.</p>
+    </details>
+  </section>
+
+  <!-- =========================== RESOLVED ============================= -->
+  <section class="resolved">
+    <h2>Resolved</h2>
+    <ul>
+      <li><strong>Q10 the assembly → derived, eureka reached</strong> (2026-08-31):
+        Khoa's summary — "degree-elevate the control points, then do the same thing
+        you did when evaluating the surface" (conceptual recipe; he knows the code
+        just evaluates the Coons blend on control points at (i/3, j/3)). The two
+        operations commute: bezier-net-of(Coons of curves) = Coons-of(bezier nets).
+        That makes the tablet→desktop conversion ~5 lines of lerps on the 12 points
+        already in hand — no evaluation, no solving. He also spotted the key
+        substitution (i, j only ever appear as thirds → u = i/3, v = j/3) himself.</li>
+      <li><strong>Q9 degree elevation → answered correctly</strong> (2026-08-31):
+        controls of the cubic-as-segment sit at fractions 0, ⅓, ⅔, 1 along A→B; the
+        thirds cancel Bernstein's 3s so the Bernstein average of the fractions is
+        exactly t.</li>
+      <li><strong>Q8/Q11 R1 as a bezier patch → answered</strong> (2026-08-31):
+        degree (3,1); factoring R1 = Σᵢ B³ᵢ(s)·[(1−t)·bᵢ + t·tᵢ] shows the 4×2 net is
+        b0..b3, t0..t3, each column the straight segment bᵢ→tᵢ. Khoa then asked for
+        the (3,3) transform himself — which is Q9 (degree elevation).</li>
+      <li><strong>Q5 parity investigation shape → (c): derive it via quizzes</strong>
+        (2026-08-31): quiz ladder Q8–Q10 in section 4. Numeric verification (a) and the
+        export-path plan (b) remain sensible follow-ups once the derivation is his.
+        "What are the other main investigation threads" was left unanswered — re-ask
+        when the ladder is done.</li>
+      <li><strong>Q3 degenerate cases → (a) R2, (b) B, both correct</strong>
+        (2026-08-31): with bottom/top straight, R1 collapses onto B exactly and they
+        cancel → pure R2; all four straight → B. Part (c) (duplicate stroke as two
+        adjacent sides) dropped by choice — irrelevant edge case, the UI blocks it.</li>
+      <li><strong>Q2 why subtract the corner sheet → answered</strong> (2026-08-31,
+        assembled across Q6/Q7): without −B every edge of R1+R2 = true curve + that
+        edge's chord (one ruled sheet contributes the curve, the other its chord).
+        B's four edges ARE those four chords, so one subtraction cancels the excess on
+        every boundary parameter (s=0 left, s=1 right, t=0 bottom, t=1 top) at once,
+        leaving the drawn curves exactly. Bonus (also Khoa's): the subtraction is what
+        makes the weights sum to 1 — geometrically legal at all.</li>
+      <li><strong>Q7 the overshoot → answered correctly</strong> (2026-08-31): each
+        edge of R1+R2 is "true curve + that edge's chord"; the fix is the bilinear
+        sheet, and — as Khoa guessed — bilinear is not special: <em>any</em> sheet
+        whose four edges are the four chords cancels them too (still legal: weights
+        stay 1+1−1=1), it just produces a different belly. Bilinear is the canonical
+        pick because it's the unique lowest-degree (1,1) such sheet, fully determined
+        by the corners alone. (Cute self-consistency: run the Coons construction on
+        four straight edges and you get exactly B back.)</li>
+      <li><strong>Q6 what R1 actually is → answered correctly</strong> (2026-08-31):
+        R1's left edge is just a straight line (the chord P00→P01) — it ignores the
+        drawn left curve entirely. R1 gets bottom+top exact (Q2 attempt, also correct);
+        R2 is the mirror image.</li>
+      <li><strong>Q4 bezier-patch relationship → yes, a primary investigation thread</strong>
+        (2026-08-31): formula + derivation + chains caveat in section 4's spoiler;
+        follow-up scoping in Q5.</li>
+      <li><strong>Q1 math depth → implementation-level only</strong> (2026-08-31): the
+        blend, the subtraction, chaining. General theory (Hermite variants, triangular
+        Coons) deferred unless patches survive the feel test; C1 verdict below.</li>
+    </ul>
+    <details>
+      <summary>C1 stitching reality check ("would it really work?")</summary>
+      <p>Short answer: <strong>not with our variant, no.</strong> Two bilinearly blended
+        Coons patches sharing a boundary curve are C0 for free (same edge curve on both
+        sides), but the cross-boundary derivative of each patch is <em>derived</em> —
+        determined by that patch's opposite side and corners — so the two derivatives
+        generally disagree and you get a visible crease. The linear blend has no degree
+        of freedom to prescribe them.</p>
+      <p>What "C1 Coons" actually requires, in increasing order of pain:</p>
+      <ol>
+        <li><strong>Hermite (bicubically blended) Coons</strong>: the blend takes not
+          just the 4 edge curves but also a cross-derivative field along each edge,
+          using cubic Hermite weights instead of (1−t, t). Give both patches the
+          <em>same</em> prescribed cross-derivative along the shared edge → C1.</li>
+        <li><strong>Twist compatibility at corners</strong>: where 4 patches meet, the
+          prescribed derivative fields must agree on the mixed second derivative (the
+          "twist vector"). Incompatible twists are the classic failure; Gregory patches
+          exist to paper over it (at the cost of rational, messier surfaces).</li>
+        <li>Sketch tools usually cheat: estimate a shared normal/derivative field by
+          averaging the two patches' natural derivatives along the edge → approximate
+          G1, good enough visually.</li>
+      </ol>
+      <p>Design consequence: creases at patch borders may actually be <em>fine</em>
+        (drawn edges often ARE creases — a box wants them). Smooth multi-patch blobs
+        are better served by inflate; if we ever need smooth patch networks, that's the
+        Hermite upgrade + averaged derivative field (option 3), not the bilinear blend
+        we have.</p>
+    </details>
+  </section>
+</main>
+
+<script>
+(() => {
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function bernstein(t) {
+    const m = 1 - t;
+    return [m * m * m, 3 * m * m * t, 3 * m * t * t, t * t * t];
+  }
+  const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: (a.z ?? 0) + ((b.z ?? 0) - (a.z ?? 0)) * t });
+  function bezier4(pts, t) {
+    const w = bernstein(t);
+    const out = { x: 0, y: 0, z: 0 };
+    for (let k = 0; k < 4; k++) {
+      out.x += w[k] * pts[k].x; out.y += w[k] * pts[k].y; out.z += w[k] * (pts[k].z ?? 0);
+    }
+    return out;
+  }
+  function fit_canvas(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    // remember the designed CSS height once — cv.height writes the same attribute
+    if (!cv.dataset.design_h) cv.dataset.design_h = cv.getAttribute('height');
+    const w = cv.clientWidth, h = parseInt(cv.dataset.design_h, 10);
+    cv.width = w * dpr; cv.height = h * dpr;
+    cv.style.height = h + 'px';
+    cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w, h };
+  }
+
+  // ======================= STAGE 1: 2D curve =============================
+  (() => {
+    const cv = document.getElementById('cv1');
+    const ctx = cv.getContext('2d');
+    const slider = document.getElementById('t1');
+    let W = 0, H = 0;
+    const pts = [{ x: 0.08, y: 0.78 }, { x: 0.3, y: 0.12 }, { x: 0.62, y: 0.95 }, { x: 0.9, y: 0.3 }]; // fractions of canvas
+    const S = p => ({ x: p.x * W, y: p.y * H });
+
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      const t = parseFloat(slider.value);
+      // control polygon
+      ctx.strokeStyle = css('--net'); ctx.lineWidth = 1;
+      ctx.beginPath();
+      pts.forEach((p, k) => { const q = S(p); k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+      ctx.stroke();
+      // curve
+      ctx.strokeStyle = css('--accent'); ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let s = 0; s <= 64; s++) {
+        const q = S(bezier4(pts, s / 64));
+        s ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+      }
+      ctx.stroke();
+      // de Casteljau scaffolding (levels kept: the tableau's flanks are the split controls)
+      const levels = [pts.map(p => ({ ...p }))];
+      const level_colors = ['#7bd45c', '#ffa94d', '#ef6b9a'];
+      for (let round = 0; round < 3; round++) {
+        const level = levels[round];
+        const next = [];
+        for (let k = 0; k + 1 < level.length; k++) next.push(lerp(level[k], level[k + 1], t));
+        ctx.strokeStyle = level_colors[round]; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        next.forEach((p, k) => { const q = S(p); k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+        if (next.length === 1) { /* single point: no line */ }
+        ctx.stroke();
+        next.forEach(p => {
+          const q = S(p);
+          ctx.fillStyle = level_colors[round];
+          ctx.beginPath(); ctx.arc(q.x, q.y, round === 2 ? 6 : 3.5, 0, Math.PI * 2); ctx.fill();
+        });
+        levels.push(next);
+      }
+      if (document.getElementById('split1').checked) {
+        // left flank: first point of each level; right flank: last of each, reversed
+        const left = levels.map(lv => lv[0]);
+        const right = levels.map(lv => lv[lv.length - 1]).reverse();
+        for (const [half, color] of [[left, '#4dd4c0'], [right, '#ffd166']]) {
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          half.forEach((p, k) => { const q = S(p); k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+          ctx.stroke();
+          ctx.setLineDash([]);
+          half.forEach(p => {
+            const q = S(p);
+            ctx.strokeStyle = color; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(q.x, q.y, 9, 0, Math.PI * 2); ctx.stroke();
+          });
+        }
+      }
+      // control points
+      pts.forEach((p, k) => {
+        const q = S(p);
+        ctx.fillStyle = (k === 0 || k === 3) ? css('--corner') : css('--edgept');
+        ctx.beginPath(); ctx.arc(q.x, q.y, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = css('--muted'); ctx.font = '12px system-ui';
+        ctx.fillText('P' + k, q.x + 10, q.y - 8);
+      });
+      // Bernstein weight bars
+      const w = bernstein(t), bx = W - 130, by = H - 20;
+      ctx.font = '11px system-ui';
+      for (let k = 0; k < 4; k++) {
+        const h = w[k] * 70;
+        ctx.fillStyle = (k === 0 || k === 3) ? css('--corner') : css('--edgept');
+        ctx.fillRect(bx + k * 30, by - h, 18, h);
+        ctx.fillStyle = css('--muted');
+        ctx.fillText('P' + k, bx + k * 30 + 2, by + 13);
+      }
+    }
+
+    let drag = null;
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId);
+      const r = cv.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      pts.forEach((p, k) => { const q = S(p); if (Math.hypot(q.x - mx, q.y - my) < 14) drag = k; });
+    });
+    cv.addEventListener('pointermove', e => {
+      if (drag === null) return;
+      const r = cv.getBoundingClientRect();
+      pts[drag] = { x: Math.min(1, Math.max(0, (e.clientX - r.left) / W)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / H)) };
+      render();
+    });
+    cv.addEventListener('pointerup', () => drag = null);
+    slider.addEventListener('input', render);
+    document.getElementById('split1').addEventListener('input', render);
+    window.addEventListener('resize', () => { ({ w: W, h: H } = fit_canvas(cv)); render(); });
+    ({ w: W, h: H } = fit_canvas(cv)); render();
+  })();
+
+  // ==================== shared 3D view machinery =========================
+  // makes an orbitable canvas; caller supplies pickable points + render body
+  function view3d(cv, opts) {
+    const ctx = cv.getContext('2d');
+    let W = 0, H = 0;
+    const cam = { yaw: 0.7, pitch: 0.42, scale: 110 };
+    function rotate(p) {
+      const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+      const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+      const x1 = cy * p.x + sy * p.z;
+      const z1 = -sy * p.x + cy * p.z;
+      return { x: x1, y: cp * p.y - sp * z1 };
+    }
+    const project = p => { const r = rotate(p); return { x: W / 2 + r.x * cam.scale, y: H / 2 - r.y * cam.scale }; };
+    function screen_axes() {
+      const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+      const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+      return { right: { x: cy, y: 0, z: sy }, up: { x: -sy * sp, y: cp, z: cy * sp } };
+    }
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      opts.draw(ctx, project);
+    }
+    let drag = null;
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId);
+      const r = cv.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      let best = null, best_d = 14;
+      for (const p of opts.pickable()) {
+        const q = project(p);
+        const d = Math.hypot(q.x - mx, q.y - my);
+        if (d < best_d) { best_d = d; best = p; }
+      }
+      drag = best ? { point: best, moved: false } : { orbit: true };
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.movementX, dy = e.movementY;
+      if (drag.orbit) {
+        cam.yaw += dx * 0.008;
+        cam.pitch = Math.max(-1.4, Math.min(1.4, cam.pitch + dy * 0.008));
+      } else {
+        drag.moved = true;
+        const ax = screen_axes(), p = drag.point;
+        p.x += (dx * ax.right.x - dy * ax.up.x) / cam.scale;
+        p.y += (dx * ax.right.y - dy * ax.up.y) / cam.scale;
+        p.z += (dx * ax.right.z - dy * ax.up.z) / cam.scale;
+      }
+      render();
+    });
+    cv.addEventListener('pointerup', () => {
+      if (drag && drag.point && !drag.moved && opts.on_click) opts.on_click(drag.point);
+      drag = null;
+      render();
+    });
+    cv.addEventListener('wheel', e => {
+      e.preventDefault();
+      cam.scale = Math.max(40, Math.min(400, cam.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+      render();
+    }, { passive: false });
+    window.addEventListener('resize', () => { ({ w: W, h: H } = fit_canvas(cv)); render(); });
+    ({ w: W, h: H } = fit_canvas(cv));
+    return { render };
+  }
+
+  function draw_curve3(ctx, project, point_at, color, width) {
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.beginPath();
+    for (let s = 0; s <= 32; s++) {
+      const q = project(point_at(s / 32));
+      s ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+    }
+    ctx.stroke();
+  }
+  function draw_sheet(ctx, project, surface_at, color, alpha, seg_color) {
+    ctx.globalAlpha = alpha;
+    for (let dir = 0; dir < 2; dir++) {
+      for (let k = 0; k <= 8; k++) {
+        const c = k / 8;
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let s = 0; s <= 24; s++) {
+          const t = s / 24;
+          const q = project(dir ? surface_at(c, t) : surface_at(t, c));
+          if (seg_color) ctx.strokeStyle = seg_color(dir ? c : t, dir ? t : c);
+          s ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ======================= STAGE 2: tensor patch =========================
+  (() => {
+    const cv = document.getElementById('cv2');
+    const v_slider = document.getElementById('v2');
+    const cols_box = document.getElementById('cols2');
+    const coons_box = document.getElementById('coons2');
+    let P, selected = null;
+    function default_points() {
+      const pts = [];
+      for (let i = 0; i < 4; i++) {
+        pts.push([]);
+        for (let j = 0; j < 4; j++) pts[i].push({ x: (i - 1.5) * 1.1, y: 0, z: (j - 1.5) * 1.1 });
+      }
+      pts[1][1].y = 1.2; pts[2][2].y = -0.6;
+      return pts;
+    }
+    P = default_points();
+    const is_interior = (i, j) => i > 0 && i < 3 && j > 0 && j < 3;
+    function apply_coons() {
+      for (let i = 1; i <= 2; i++) for (let j = 1; j <= 2; j++) {
+        const s = i / 3, t = j / 3;
+        const b = P[i][0], tp = P[i][3], l = P[0][j], r = P[3][j];
+        const c00 = P[0][0], c10 = P[3][0], c01 = P[0][3], c11 = P[3][3];
+        const pt = { x: 0, y: 0, z: 0 };
+        for (const k of ['x', 'y', 'z']) {
+          pt[k] = (1 - t) * b[k] + t * tp[k] + (1 - s) * l[k] + s * r[k]
+                - ((1 - s) * (1 - t) * c00[k] + s * (1 - t) * c10[k] + (1 - s) * t * c01[k] + s * t * c11[k]);
+        }
+        P[i][j] = pt;
+      }
+    }
+    function surface_point(u, v) {
+      const bu = bernstein(u), bv = bernstein(v);
+      const out = { x: 0, y: 0, z: 0 };
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+        const w = bu[i] * bv[j];
+        out.x += w * P[i][j].x; out.y += w * P[i][j].y; out.z += w * P[i][j].z;
+      }
+      return out;
+    }
+    function find_ij(pt) {
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if (P[i][j] === pt) return { i, j };
+      return null;
+    }
+    function mix(a, b, t) {
+      const pc = s => s[0] === '#'
+        ? [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)]
+        : (s.match(/\d+/g) || ['128','128','128']).slice(0, 3).map(Number);
+      const pa = pc(a), pb = pc(b);
+      return `rgb(${pa.map((x, k) => Math.round(x + (pb[k] - x) * t)).join(',')})`;
+    }
+
+    const view = view3d(cv, {
+      pickable: () => {
+        const out = [];
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+          if (coons_box.checked && is_interior(i, j)) continue;
+          out.push(P[i][j]);
+        }
+        return out;
+      },
+      on_click: pt => {
+        const ij = find_ij(pt);
+        selected = (selected && ij && selected.i === ij.i && selected.j === ij.j) ? null : ij;
+      },
+      draw: (ctx, project) => {
+        if (coons_box.checked) apply_coons();
+        const v = parseFloat(v_slider.value);
+        // surface isolines, heat-tinted when a point is selected
+        const seg_color = selected
+          ? (u, vv) => mix(css('--surf'), css('--accent'), Math.min(1, bernstein(u)[selected.i] * bernstein(vv)[selected.j] * 4))
+          : null;
+        draw_sheet(ctx, project, surface_point, css('--surf'), 1, seg_color);
+        // boundary curves
+        draw_curve3(ctx, project, u => surface_point(u, 0), css('--bottom'), 2.5);
+        draw_curve3(ctx, project, u => surface_point(u, 1), css('--top'), 2.5);
+        draw_curve3(ctx, project, t => surface_point(0, t), css('--left'), 2.5);
+        draw_curve3(ctx, project, t => surface_point(1, t), css('--right'), 2.5);
+        // column curves + riding points + moving u-curve
+        if (cols_box.checked) {
+          for (let i = 0; i < 4; i++) {
+            draw_curve3(ctx, project, t => bezier4(P[i], t), '#565d78', 1.2);
+          }
+        }
+        const riders = [0, 1, 2, 3].map(i => bezier4(P[i], v));
+        draw_curve3(ctx, project, u => bezier4(riders, u), '#ffffff', 2.2);
+        riders.forEach(p => {
+          const q = project(p);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(q.x, q.y, 3.5, 0, Math.PI * 2); ctx.fill();
+        });
+        // control net + points
+        ctx.strokeStyle = css('--net'); ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+          const a = project(P[i][j]);
+          if (i < 3) { const b = project(P[i + 1][j]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+          if (j < 3) { const b = project(P[i][j + 1]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+        }
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+          const q = project(P[i][j]);
+          const corner = (i === 0 || i === 3) && (j === 0 || j === 3);
+          ctx.fillStyle = corner ? css('--corner') : is_interior(i, j) ? css('--interior') : css('--edgept');
+          if (is_interior(i, j) && coons_box.checked) ctx.globalAlpha = 0.45;
+          ctx.beginPath(); ctx.arc(q.x, q.y, corner ? 7 : 6, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          if (selected && selected.i === i && selected.j === j) {
+            ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(q.x, q.y, 10, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+      },
+    });
+    v_slider.addEventListener('input', view.render);
+    cols_box.addEventListener('change', view.render);
+    coons_box.addEventListener('change', () => {
+      if (coons_box.checked && selected && is_interior(selected.i, selected.j)) selected = null;
+      view.render();
+    });
+    document.getElementById('reset2').addEventListener('click', () => { P = default_points(); view.render(); });
+    view.render();
+  })();
+
+  // ================= STAGE 3: Coons discovery lab ========================
+  (() => {
+    const cv = document.getElementById('cv3');
+    // 12 unique points; corners shared between adjacent curves
+    let pt;
+    function default_boundary() {
+      return {
+        c00: { x: -1.7, y: 0.0, z: -1.5 }, c10: { x: 1.7, y: 0.3, z: -1.6 },
+        c01: { x: -1.6, y: 0.2, z: 1.6 },  c11: { x: 1.6, y: -0.2, z: 1.5 },
+        b1: { x: -0.6, y: 0.9, z: -1.7 },  b2: { x: 0.6, y: 0.9, z: -1.7 },
+        t1: { x: -0.5, y: -0.8, z: 1.8 },  t2: { x: 0.5, y: -0.8, z: 1.8 },
+        l1: { x: -1.9, y: 0.6, z: -0.5 },  l2: { x: -1.9, y: 0.6, z: 0.5 },
+        r1: { x: 1.9, y: -0.7, z: -0.5 },  r2: { x: 1.9, y: -0.7, z: 0.5 },
+      };
+    }
+    pt = default_boundary();
+    const bottom = s => bezier4([pt.c00, pt.b1, pt.b2, pt.c10], s);
+    const top    = s => bezier4([pt.c01, pt.t1, pt.t2, pt.c11], s);
+    const left   = t => bezier4([pt.c00, pt.l1, pt.l2, pt.c01], t);
+    const right  = t => bezier4([pt.c10, pt.r1, pt.r2, pt.c11], t);
+    const r1_sheet = (s, t) => lerp(bottom(s), top(s), t);
+    const r2_sheet = (s, t) => lerp(left(t), right(t), s);
+    const b_sheet = (s, t) => lerp(lerp(pt.c00, pt.c10, s), lerp(pt.c01, pt.c11, s), t);
+    const combine = (s, t, use_b) => {
+      const a = r1_sheet(s, t), b = r2_sheet(s, t), c = b_sheet(s, t);
+      return { x: a.x + b.x - (use_b ? c.x : 0), y: a.y + b.y - (use_b ? c.y : 0), z: a.z + b.z - (use_b ? c.z : 0) };
+    };
+
+    const boxes = ['show_r1', 'show_r2', 'show_b', 'show_sum', 'show_s'].map(id => document.getElementById(id));
+    const view = view3d(cv, {
+      pickable: () => Object.values(pt),
+      draw: (ctx, project) => {
+        const [r1_on, r2_on, b_on, sum_on, s_on] = boxes.map(b => b.checked);
+        // bold straight ruling lines: the whole construction of a ruled sheet
+        const draw_rulings = (a_curve, b_curve, color) => {
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.globalAlpha = 0.9;
+          for (let k = 0; k <= 6; k++) {
+            const a = project(a_curve(k / 6)), b = project(b_curve(k / 6));
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        };
+        if (r1_on) {
+          draw_sheet(ctx, project, r1_sheet, css('--r1'), 0.4);
+          draw_rulings(bottom, top, css('--r1'));
+        }
+        if (r2_on) {
+          draw_sheet(ctx, project, r2_sheet, css('--r2'), 0.4);
+          draw_rulings(left, right, css('--r2'));
+        }
+        if (b_on) draw_sheet(ctx, project, b_sheet, css('--bsheet'), 0.55);
+        if (sum_on) draw_sheet(ctx, project, (s, t) => combine(s, t, false), '#e8d44d', 0.7);
+        if (s_on) draw_sheet(ctx, project, (s, t) => combine(s, t, true), css('--ssheet'), 0.9);
+        // the drawn boundary, always on top
+        draw_curve3(ctx, project, bottom, css('--bottom'), 2.5);
+        draw_curve3(ctx, project, top, css('--top'), 2.5);
+        draw_curve3(ctx, project, left, css('--left'), 2.5);
+        draw_curve3(ctx, project, right, css('--right'), 2.5);
+        // control points
+        for (const [name, p] of Object.entries(pt)) {
+          const q = project(p);
+          ctx.fillStyle = name.startsWith('c') ? css('--corner') : css('--edgept');
+          ctx.beginPath(); ctx.arc(q.x, q.y, name.startsWith('c') ? 7 : 5.5, 0, Math.PI * 2); ctx.fill();
+        }
+      },
+    });
+    boxes.forEach(b => b.addEventListener('change', view.render));
+    document.getElementById('reset3').addEventListener('click', () => {
+      pt = default_boundary();
+      view.render();
+    });
+    view.render();
+  })();
+})();
+</script>

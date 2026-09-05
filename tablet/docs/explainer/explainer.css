@@ -1,0 +1,39 @@
+/* Shared look for the interactive explainer docs (interactive-*.html).
+   Load with <link rel="stylesheet" href="explainer/explainer.css">. */
+:root {
+  --bg: #14161c;
+  --panel: #1d2029;
+  --ink: #e6e6ef;
+  --muted: #9aa0b4;
+  --accent: #7ab8ff;
+  --net: #3a3f52;
+  --corner: #ffd166;
+  --interior: #ef6b9a;
+  --teal: #4dd4c0;
+  --green: #7bd45c;
+  --orange: #ffa94d;
+  --front: #4d6fa8;
+  --back: #a84d5c;
+  --pos: #7ab8ff;
+  --neg: #ff6b6b;
+}
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; margin: 0; }
+main { max-width: 1060px; margin: 0 auto; padding: 24px 16px 80px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 26px; }
+section { background: var(--panel); border-radius: 12px; padding: 18px 20px; margin: 26px 0; }
+h2 { font-size: 17px; margin: 0 0 8px; color: var(--accent); }
+p, li { color: var(--muted); }
+p strong, li strong { color: var(--ink); }
+code, .formula { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.formula { background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 8px 0; color: var(--ink); overflow-x: auto; white-space: nowrap; }
+canvas { display: block; width: 100%; border-radius: 8px; background: var(--bg); touch-action: none; cursor: grab; margin: 10px 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; margin: 6px 0; }
+.controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--ink); white-space: nowrap; }
+input[type=range] { width: 180px; accent-color: var(--accent); }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.swatch { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+.hint { font-size: 12px; color: var(--muted); }
+.quiz { border-left: 3px solid var(--corner); padding-left: 12px; margin: 12px 0; }
+details { margin: 8px 0; }
+summary { cursor: pointer; color: var(--accent); }

@@ -1,0 +1,175 @@
+<title>Planar Handle Drags</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --ink: #1b2130;
+    --ink-2: #4b5468;
+    --rule: #d7dce6;
+    --p1: #1f6a99;   /* dragged handle */
+    --p2: #b9472a;   /* the other handle */
+    --chord: #6b7386;
+    --tag-bg: #e4ecf4;
+    --code-bg: #e9edf3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151923; --surface: #1d2230; --ink: #e6e9f0; --ink-2: #a7afc0; --rule: #313848;
+      --p1: #6fb3e0; --p2: #e8886a; --chord: #8f98ab; --tag-bg: #263242; --code-bg: #262d3c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151923; --surface: #1d2230; --ink: #e6e9f0; --ink-2: #a7afc0; --rule: #313848;
+    --p1: #6fb3e0; --p2: #e8886a; --chord: #8f98ab; --tag-bg: #263242; --code-bg: #262d3c;
+  }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.55 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 68ch; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; display: flex; flex-direction: column; gap: 1.75rem; }
+  h1 { font-size: 1.9rem; font-weight: 600; line-height: 1.15; margin: 0; text-wrap: balance; }
+  h2 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 0.75rem; }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 0 0 0.5rem; text-wrap: balance; }
+  p { margin: 0; }
+  p + p { margin-top: 0.7rem; }
+  code { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 0.88em; background: var(--code-bg); padding: 0.05em 0.35em; border-radius: 3px; }
+  .origin { color: var(--ink-2); font-size: 0.95rem; }
+  .origin b { color: var(--ink); font-weight: 500; }
+  .q { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 1.1rem 1.25rem; }
+  .q + .q { margin-top: 0.9rem; }
+  .tag { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.06em; background: var(--tag-bg); color: var(--ink-2); padding: 0.15em 0.5em; border-radius: 3px; margin-bottom: 0.5rem; }
+  .rec { font-weight: 500; }
+  .rec::before { content: "Recommendation "; font-weight: 400; color: var(--ink-2); }
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.25rem; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 0.9rem; color: var(--ink-2); margin-top: 0.6rem; }
+  .p1 { color: var(--p1); font-weight: 500; } .p2 { color: var(--p2); font-weight: 500; }
+  ol { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .file { font-size: 0.85rem; color: var(--ink-2); }
+  table { border-collapse: collapse; font-size: 0.9rem; width: 100%; }
+  th, td { text-align: left; vertical-align: top; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule); }
+  th { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+</style>
+<main>
+  <header>
+    <h1>Tablet handle drags: keep the curve planar, drag in its plane</h1>
+    <p class="file" style="margin-top:0.5rem"><code>~/notes/tasks/autodraw_ipad/plan-tablet-planar-handle-drags.html</code>. All questions resolved; see Implementation at the bottom.</p>
+  </header>
+
+  <section>
+    <h2>Why it feels broken</h2>
+    <p class="origin">The free-handles refactor (2026-09-02) kept an invariant: <b>d0, d3 and the chord stay coplanar</b>. So on every pen move, the handle you are <em>not</em> dragging gets swung into the plane the dragged handle now spans with the chord. Your pen moves in the camera plane, which tilts that plane on nearly every move, so the other handle is rotated about the chord every frame. For an S-curve (handles on opposite sides of the chord) that rotation shows up on screen as the other handle going the opposite way.</p>
+    <p class="origin" style="margin-top:0.7rem">Decision (Q1): the curve <b>stays planar</b>. So the fix is the drag, not the invariant: a handle drag must move the handle <em>inside the stroke's current plane</em>, so the plane never changes mid-drag and the other handle never moves. Changing the plane becomes its own, deliberate action.</p>
+  </section>
+
+  <figure>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="13">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--p1)"/></marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--p2)"/></marker>
+      </defs>
+      <!-- left: before -->
+      <g transform="translate(160,140)">
+        <circle r="70" fill="none" stroke="var(--rule)" stroke-dasharray="3 4"/>
+        <circle r="4" fill="var(--chord)"/>
+        <text x="8" y="16" fill="var(--chord)">chord (end-on)</text>
+        <line x1="0" y1="0" x2="0" y2="-70" stroke="var(--p1)" stroke-width="2.5" marker-end="url(#a1)"/>
+        <text x="8" y="-60" fill="var(--p1)">d0</text>
+        <line x1="0" y1="0" x2="0" y2="70" stroke="var(--p2)" stroke-width="2.5" marker-end="url(#a2)"/>
+        <text x="8" y="72" fill="var(--p2)">d3</text>
+        <text x="0" y="-100" text-anchor="middle" fill="var(--ink-2)">before</text>
+      </g>
+      <!-- right: after dragging d0 -->
+      <g transform="translate(470,140)">
+        <circle r="70" fill="none" stroke="var(--rule)" stroke-dasharray="3 4"/>
+        <circle r="4" fill="var(--chord)"/>
+        <line x1="0" y1="0" x2="0" y2="-70" stroke="var(--p1)" stroke-width="1" opacity="0.35"/>
+        <line x1="0" y1="0" x2="0" y2="70" stroke="var(--p2)" stroke-width="1" opacity="0.35"/>
+        <line x1="0" y1="0" x2="49.5" y2="-49.5" stroke="var(--p1)" stroke-width="2.5" marker-end="url(#a1)"/>
+        <path d="M0 -84 A84 84 0 0 1 59.4 -59.4" fill="none" stroke="var(--p1)" stroke-width="1.5" marker-end="url(#a1)"/>
+        <text x="30" y="-86" fill="var(--p1)">pen drags d0 right</text>
+        <line x1="0" y1="0" x2="-49.5" y2="49.5" stroke="var(--p2)" stroke-width="2.5" marker-end="url(#a2)"/>
+        <path d="M0 84 A84 84 0 0 1 -59.4 59.4" fill="none" stroke="var(--p2)" stroke-width="1.5" marker-end="url(#a2)"/>
+        <text x="-150" y="96" fill="var(--p2)">d3 swung: goes LEFT</text>
+        <text x="0" y="-100" text-anchor="middle" fill="var(--ink-2)">after</text>
+      </g>
+    </svg>
+    <figcaption>Looking down the chord. Keeping the three coplanar means <span class="p1">d0</span> and <span class="p2">d3</span> share one rotation about the chord. When they sit on opposite sides (an S-curve), the same rotation moves their tips in opposite screen directions.</figcaption>
+  </figure>
+
+  <section>
+    <h2>Terms used in Q4</h2>
+    <p class="origin">Worked example, one stroke: <code>p0 = (0,0,0)</code>, <code>p3 = (3,0,0)</code>, <code>d0 = (0,1,0)</code>, <code>d3 = (0,1,0)</code>.</p>
+    <div style="overflow-x:auto;margin-top:0.8rem">
+    <table>
+      <tr><th>term</th><th>meaning</th><th>in the example</th><th>code</th></tr>
+      <tr><td><b>chord</b></td><td>the straight segment p0 → p3, the stroke's endpoints joined</td><td><code>p3 − p0 = (3,0,0)</code></td><td><code>v3_sub(p3, p0)</code></td></tr>
+      <tr><td><b>u</b></td><td>unit vector along the chord (direction only, length 1)</td><td><code>(1,0,0)</code></td><td><code>chord_direction</code> in document.ts</td></tr>
+      <tr><td><b>1/3 point</b></td><td>where p1 sits when the stroke is straight</td><td><code>(1,0,0)</code></td><td><code>(2·p0 + p3)/3</code></td></tr>
+      <tr><td><b>d0</b></td><td>offset from the 1/3 point to the real p1</td><td>p1 = (1,0,0)+(0,1,0) = <code>(1,1,0)</code></td><td><code>stroke.d0</code></td></tr>
+      <tr><td><b>plane normal</b></td><td>perpendicular to the plane holding chord + handles</td><td><code>cross(u, d0) = (0,0,1)</code> → the XY plane</td><td>new <code>stroke_plane_normal</code></td></tr>
+      <tr><td><b>camera_pen_ray</b></td><td>line from the eye through the pixel under the pen, into the scene</td><td>eye at (1.5, 2, 5) looking down: ray = eye + t·direction</td><td><code>camera.ts:93</code>, returns <code>{origin, direction}</code></td></tr>
+      <tr><td><b>ray ∩ plane</b></td><td>the one point where that line pierces the stroke's plane; p1 is set there</td><td>solve <code>dot(hit − p0, normal) = 0</code> for t</td><td>new, ~5 lines</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <figure>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, monospace" font-size="13">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--ink-2)"/></marker>
+        <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--p1)"/></marker>
+      </defs>
+      <!-- the stroke's plane, drawn in perspective -->
+      <polygon points="120,250 560,250 470,110 30,110" fill="var(--tag-bg)" stroke="var(--rule)"/>
+      <text x="36" y="128" fill="var(--ink-2)">stroke plane (normal = cross(u, d0))</text>
+      <!-- chord -->
+      <line x1="150" y1="215" x2="450" y2="185" stroke="var(--chord)" stroke-width="2" stroke-dasharray="6 4"/>
+      <circle cx="150" cy="215" r="5" fill="var(--chord)"/><text x="130" y="238" fill="var(--chord)">p0</text>
+      <circle cx="450" cy="185" r="5" fill="var(--chord)"/><text x="458" y="206" fill="var(--chord)">p3</text>
+      <text x="270" y="222" fill="var(--chord)">chord = p3 − p0,  u = chord/|chord|</text>
+      <!-- u arrow -->
+      <line x1="150" y1="215" x2="205" y2="209.5" stroke="var(--ink-2)" stroke-width="2.5" marker-end="url(#a3)"/>
+      <text x="160" y="202" fill="var(--ink-2)">u</text>
+      <!-- 1/3 point and d0 -->
+      <circle cx="250" cy="205" r="3.5" fill="var(--ink-2)"/><text x="232" y="228" fill="var(--ink-2)">1/3 pt</text>
+      <line x1="250" y1="205" x2="270" y2="150" stroke="var(--p1)" stroke-width="2.5" marker-end="url(#a4)"/>
+      <text x="278" y="176" fill="var(--p1)">d0</text>
+      <circle cx="270" cy="150" r="6" fill="var(--p1)"/><text x="280" y="146" fill="var(--p1)">p1 (handle)</text>
+      <!-- curve -->
+      <path d="M150 215 C 270 150, 380 130, 450 185" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
+      <circle cx="380" cy="130" r="6" fill="var(--p2)"/><text x="392" y="128" fill="var(--p2)">p2</text>
+      <!-- eye and ray -->
+      <ellipse cx="520" cy="40" rx="18" ry="10" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <circle cx="520" cy="40" r="4" fill="var(--ink)"/>
+      <text x="545" y="45" fill="var(--ink)">eye (ray.origin)</text>
+      <line x1="505" y1="48" x2="330" y2="140" stroke="var(--p1)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a4)"/>
+      <text x="400" y="80" fill="var(--p1)">camera_pen_ray</text>
+      <text x="400" y="96" fill="var(--p1)">through the pen pixel</text>
+      <circle cx="330" cy="140" r="7" fill="none" stroke="var(--p1)" stroke-width="2"/>
+      <text x="300" y="118" fill="var(--p1)">ray ∩ plane: new p1</text>
+    </svg>
+    <figcaption>Q4 in one picture: the pen pixel defines a ray from the eye; where it pierces the stroke's plane is where p1 goes. Because the hit point is <em>in</em> the plane, <span class="p1">d0</span> stays in the plane and <span class="p2">p2</span> has no reason to move.</figcaption>
+  </figure>
+
+  <section>
+    <h2>Open questions</h2>
+    <p class="origin">None. Implemented 2026-09-03 on the dev tree; deployed when noted below.</p>
+  </section>
+
+  <section>
+    <h2>Resolved</h2>
+    <p>Q2 → <b>keep move_vertex</b>; Q3 → <b>no format bump</b>; Q4 → <b>pen ray ∩ stroke plane</b>; Q5 → <b>ignore the move below |cos| 0.15</b>; Q6 → <b>camera-facing plane for straight strokes</b>; Q8 → <b>tilt = sticky toggle, handle drag uses camera-plane drag + swing</b> (all 2026-09-03, recommendations taken).</p>
+    <p>Q1 → <b>curves stay planar</b> (2026-09-03). Two independent 3D handles rejected.</p>
+    <p>Q7 → <b>tilt button</b> (2026-09-03). Handle drags never roll the plane by themselves: with the curve planar and p0/p3 fixed, a handle leaving the plane forces the other handle to move by the same y·tanθ, opposite way on an S-curve. So rolling the plane is an explicit, armed action; the gesture is Q8.</p>
+  </section>
+
+  <section>
+    <h2>Implementation (done 2026-09-03, uncommitted until approved)</h2>
+    <ol>
+      <li><code>document.ts</code>: <code>stroke_plane_normal(stroke, document, camera_forward)</code> — cross(u, d0), fallback d3, fallback camera-facing (Q6). <code>swing_offset_into_plane</code> stays (tilt mode uses it).</li>
+      <li><code>edit_mode.ts</code>: p1/p2 branch → <code>camera_pen_ray</code> ∩ plane, edge-on guard (Q5), assign the dragged offset, leave the other alone. Header comment updated.</li>
+      <li>Tilt button (Q8): <code>tilt_button</code> in <code>index.html</code>, <code>"tilt"</code> in <code>ArmedTool</code>, and the p1/p2 drag branches on it: armed → today's camera-plane drag + swing; not armed → ray ∩ plane.</li>
+      <li>Verified on 5174 with test-doc (synthetic pen events, autosave read back): plain drag — d0 changed, d3 bit-identical, plane normal unchanged, coplanarity 1e-15, handle under the pen; tilt drag — d3 swung, plane rolled (cos 0.9991), still coplanar; tsc clean. Untested: edge-on guard, straight-stroke plane, undo/redo.</li>
+      <li>Deploy: <code>npm run build</code>, reload the iPad.</li>
+    </ol>
+  </section>
+</main>

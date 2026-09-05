@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contour Extraction Playground</title>
+<link rel="stylesheet" href="explainer/explainer.css">
+</head>
+<body>
+
+<main>
+  <h1>Contour extraction from a patch</h1>
+  <p class="sub">How a contour (the line where the surface turns away from the camera) is computed from a Coons patch, and where it goes wrong. One shared camera: drag empty space in any view to orbit, wheel to zoom.</p>
+
+  <section>
+    <h2>1 · What a contour is</h2>
+    <p>At every surface point compute <code>f = n · v</code>: the unit normal dotted with the
+      direction to the eye. <strong>f &gt; 0</strong> faces the camera
+      (<span class="dot" style="background:var(--front)"></span>blue), <strong>f &lt; 0</strong> faces
+      away (<span class="dot" style="background:var(--back)"></span>red). The contour is the set
+      <code>f = 0</code>, drawn here in <span class="swatch" style="background:var(--contour)"></span>yellow
+      from a dense 96×96 evaluation, the "ground truth" the later stages approximate.
+      Orbit and watch it slide: it's a property of the camera, not of the patch.</p>
+    <div class="formula">n(u,v) = normalize(∂S/∂u × ∂S/∂v) &nbsp;&nbsp; v(u,v) = normalize(eye − S(u,v)) &nbsp;&nbsp; f = n · v</div>
+    <canvas id="cv1" height="380"></canvas>
+    <div class="controls">
+      <label>bulge <input type="range" id="bulge" min="0" max="1.5" step="0.01" value="0.7"></label>
+      <label>twist <input type="range" id="twist" min="-1" max="1" step="0.01" value="0.3"></label>
+      <span class="hint">the partials come from the Coons formula directly; here they're finite differences on S, which is enough</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Sampling on the grid: marching squares</h2>
+    <p>The tablet tessellates a patch on a 16×16 grid. Evaluate <code>f</code> at the grid
+      corners (<span class="dot" style="background:var(--pos)"></span>positive,
+      <span class="dot" style="background:var(--neg)"></span>negative). Every grid edge whose two
+      ends differ in sign has a crossing somewhere on it. Place the crossing, then inside each
+      cell join its crossings in pairs: that's a contour segment. This is marching squares on
+      the scalar field <code>f</code>.</p>
+    <p><strong>Where on the edge?</strong> Linear interpolation of <code>f</code> is the cheap
+      answer: <code>s = f₀ / (f₀ − f₁)</code>. But the segment then runs straight across the cell
+      and the yellow reference bends: at 16×16 the result is visibly jaggy. The fix is cheap
+      because the surface is analytic: bisect along the edge in <code>(u,v)</code> space,
+      evaluating the true <code>f</code> each time, and the crossing lands on the real contour.
+      Compare with the toggle at low grid counts.</p>
+    <canvas id="cv2" height="380"></canvas>
+    <div class="controls">
+      <label>grid <input type="range" id="grid" min="3" max="32" step="1" value="8"> <span id="grid_value">8</span></label>
+      <label><input type="checkbox" id="rootfind"> root-find crossings on the analytic surface</label>
+      <label><input type="checkbox" id="show_ref" checked> show dense reference</label>
+    </div>
+    <p class="hint">Root-finding fixes where the crossing sits on each edge, not the straight segment between two crossings. A cell that the contour bends through still gets one straight segment, so the grid count still matters, just much less. Also: a cell with 4 crossings (the contour passes through twice) is ambiguous; it's paired arbitrarily here.</p>
+  </section>
+
+  <section>
+    <h2>3 · Joining segments into polylines</h2>
+    <p>Segments come out per cell, unordered. Two segments meet exactly when they share a grid
+      edge, so key each crossing by its edge index and walk: start at any unused segment, follow
+      the shared edges until the chain closes or ends at the patch boundary. Each polyline gets
+      its own color below. A contour that leaves through the patch boundary continues on the
+      neighbouring patch; joining those is the same walk keyed by the shared boundary stroke
+      instead of a grid edge.</p>
+    <p><strong>The 3-sided trap.</strong> The tablet's 3-sided patch is a Coons patch with one
+      side collapsed to a point. At that corner both partials shrink to zero, the normal is
+      undefined and <code>f</code> is noise: sign flips everywhere, spurious crossings, garbage
+      segments. Toggle the collapse and watch the corner. The remedy is to skip cells whose
+      un-normalized normal is shorter than a threshold (the mask toggle); the contour then
+      ends a cell short of the corner, which is what an artist's line would do anyway.</p>
+    <canvas id="cv3" height="380"></canvas>
+    <div class="controls">
+      <label><input type="checkbox" id="collapse"> collapse the left side (3-sided patch)</label>
+      <label><input type="checkbox" id="mask"> mask degenerate cells</label>
+      <span class="hint">grid and root-find settings from stage 2 apply</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · From polyline to boundary</h2>
+    <p>A polyline is only a contour. A <strong>boundary</strong> is a contour with style: taper
+      and color. Once the polyline exists it goes down the same path as any stroke: a camera-facing
+      ribbon whose radius follows a taper. The taper here runs over the polyline's own arc length,
+      because a contour that ends mid-patch (it left through a seam or turned back) has no
+      stroke end to inherit from. Color and base radius would come from blending the patch's
+      boundary strokes at the contour point's <code>(u,v)</code>; here it's one fixed color.</p>
+    <canvas id="cv4" height="380"></canvas>
+    <div class="controls">
+      <label>radius <input type="range" id="radius" min="1" max="12" step="0.5" value="5"></label>
+      <label><input type="checkbox" id="taper" checked> taper over arc length</label>
+      <label><input type="checkbox" id="hide_surface"> hide the surface (the final look)</label>
+    </div>
+    <p class="hint">Not shown: occlusion. In the app the ribbon is depth-tested against the patches with a small bias, exactly like drawn strokes, so the far half of a closed contour hides behind the patch.</p>
+  </section>
+
+  <section>
+    <h2>5 · Where the style comes from: Coons-blend the boundary strokes</h2>
+    <p>The patch's four boundary strokes each carry a style (here: a color and a base radius;
+      in the desktop app, <code>radii</code> and <code>lightness_additions</code>). A contour point
+      lives at some <code>(u,v)</code> on the patch, and the patch already knows how to blend
+      four sides into an interior: the same Coons formula that blends positions blends style.
+      Each side's style is constant along it, so the formula collapses to: interpolate bottom
+      and top in <code>v</code>, add left and right interpolated in <code>u</code>, subtract the
+      bilinear blend of the corner values (a corner belongs to two strokes; take their mean).</p>
+    <div class="formula">style(u,v) = (1−v)·bottom + v·top + (1−u)·left + u·right − [(1−u)(1−v)·c00 + u(1−v)·c10 + (1−u)v·c01 + uv·c11]</div>
+    <p>Below, the four sides are painted in their own style (<span class="swatch" style="background:#ffd166"></span>bottom
+      thick, <span class="swatch" style="background:#4dd4c0"></span>top thin,
+      <span class="swatch" style="background:#ef6b9a"></span>left, <span class="swatch" style="background:#7ab8ff"></span>right).
+      The contour ribbon picks up whichever side it runs closest to and fades between them.
+      A contour near the jawline stroke looks like the jawline stroke. No nearest-stroke search,
+      nothing jumps when the camera moves: the blend is continuous over the patch.</p>
+    <canvas id="cv5" height="380"></canvas>
+    <div class="controls">
+      <label><input type="checkbox" id="style_field" checked> tint the surface with the blended style</label>
+      <label><input type="checkbox" id="style_radius" checked> blend the radius too</label>
+    </div>
+    <p class="hint">Stage 4's arc-length taper still applies on top of the blended radius, so a contour ending mid-patch still fades out. Prerequisite in the tablet: strokes have no style yet; until they do, every side blends to the one fixed style and this stage is a no-op.</p>
+  </section>
+</main>
+
+<script src="explainer/explainer.js"></script>
+<script>
+const { v3, add, sub, scale, dot, length, normalize, bezier, rgba } = EX;
+
+// ---------- the patch: 4 cubic boundaries, Coons-blended ----------
+// A dome over [-1,1]² with a "twist" so the contour is not a boring circle.
+const params = { bulge: 0.7, twist: 0.3, collapse: false };
+
+function boundaries() {
+  const b = params.bulge, w = params.twist;
+  const c00 = v3(-1, 0, -1), c10 = v3(1, 0, -1), c01 = v3(-1, 0, 1), c11 = v3(1, 0, 1);
+  const B = {
+    bottom: [c00, v3(-0.4, b, -1 - w * 0.5), v3(0.4, b, -1 + w * 0.5), c10],  // v = 0, u: 0 -> 1
+    top:    [c01, v3(-0.4, b * 0.6, 1 + w * 0.5), v3(0.4, b * 1.3, 1 - w * 0.5), c11],  // v = 1
+    left:   [c00, v3(-1 - w * 0.4, b, -0.4), v3(-1 + w * 0.4, b, 0.4), c01],  // u = 0, v: 0 -> 1
+    right:  [c10, v3(1 + w * 0.4, b * 1.2, -0.4), v3(1 - w * 0.4, b * 0.8, 0.4), c11],  // u = 1
+  };
+  // 3-sided: the left side is the single point c00 (what the tablet does).
+  if (params.collapse) { B.left = [c00, c00, c00, c00]; B.top = [c00, ...B.top.slice(1)]; }
+  return B;
+}
+const surface = (u, v) => EX.coons(boundaries(), u, v);
+const raw_normal = (u, v) => EX.raw_normal(surface, u, v);
+const DEGENERATE_NORMAL_LENGTH = 0.05;
+
+const camera = EX.orbit_camera();
+function facing(u, v) {
+  return dot(normalize(raw_normal(u, v)), normalize(sub(EX.camera_eye(camera), surface(u, v))));
+}
+
+// f = n·v at the grid corners, marching squares, optional root-find + mask.
+function extract_contour(grid, rootfind, mask) {
+  const f = [], degenerate = [];
+  for (let j = 0; j <= grid; j++) for (let i = 0; i <= grid; i++) {
+    degenerate.push(length(raw_normal(i / grid, j / grid)) < DEGENERATE_NORMAL_LENGTH);
+    f.push(facing(i / grid, j / grid));
+  }
+  const degenerate_at = (i, j) => degenerate[j * (grid + 1) + i];
+  const skip_cell = mask ? (i, j) => degenerate_at(i, j) || degenerate_at(i + 1, j) || degenerate_at(i, j + 1) || degenerate_at(i + 1, j + 1) : null;
+  return { f, ...EX.marching_squares(f, grid, rootfind ? facing : null, skip_cell) };
+}
+
+// ---------- drawing ----------
+const canvases = ["cv1", "cv2", "cv3", "cv4", "cv5"].map((id) => document.getElementById(id));
+const ui = EX.bind_controls(["bulge", "twist", "grid", "rootfind", "show_ref", "collapse", "mask", "radius", "taper", "hide_surface", "style_field", "style_radius"], draw_all);
+
+const PLAIN_QUAD = () => ({ fill: "rgba(92,100,128,0.9)" });
+function facing_quad(q) {
+  const f = facing(q.u, q.v);
+  const strength = Math.min(1, Math.abs(f) * 1.4 + 0.15);
+  return { fill: f >= 0 ? `rgba(77,111,168,${strength})` : `rgba(168,77,92,${strength})` };
+}
+const masked_quad = (q) => (length(raw_normal(q.u, q.v)) < DEGENERATE_NORMAL_LENGTH ? { fill: "rgba(239,107,154,0.7)" } : PLAIN_QUAD());
+
+const uv_to_screen = (view, points_uv) => points_uv.map((uv) => view.project(surface(uv.u, uv.v)));
+function draw_reference(ctx, view, color = "rgba(255,209,102,0.95)", width = 2.5) {
+  for (const poly of extract_contour(96, false, params.collapse).polylines) EX.stroke_polyline(ctx, uv_to_screen(view, poly), color, width);
+}
+
+function draw_stage1() {
+  const { ctx } = EX.fit_canvas(canvases[0]);
+  const view = EX.viewer(camera, canvases[0]);
+  EX.draw_surface(ctx, view, surface, 40, facing_quad);
+  draw_reference(ctx, view);
+}
+
+function draw_stage2() {
+  const canvas = canvases[1], { ctx } = EX.fit_canvas(canvas);
+  const view = EX.viewer(camera, canvas);
+  const grid = Number(ui.grid.value);
+  document.getElementById("grid_value").textContent = grid;
+  EX.draw_surface(ctx, view, surface, grid, PLAIN_QUAD);
+  if (ui.show_ref.checked) draw_reference(ctx, view, "rgba(255,209,102,0.45)", 2);
+  const result = extract_contour(grid, ui.rootfind.checked, false);
+  for (let j = 0; j <= grid; j++) for (let i = 0; i <= grid; i++) {
+    EX.fill_dot(ctx, view.project(surface(i / grid, j / grid)), 3, result.f[j * (grid + 1) + i] >= 0 ? "#7ab8ff" : "#ff6b6b");
+  }
+  for (const seg of result.segments) EX.stroke_polyline(ctx, uv_to_screen(view, [seg.a.uv, seg.b.uv]), "#ffd166", 3);
+  for (const uv of result.crossings) EX.fill_dot(ctx, view.project(surface(uv.u, uv.v)), 4, "#4dd4c0");
+}
+
+const POLYLINE_COLORS = ["#ffd166", "#4dd4c0", "#7bd45c", "#ef6b9a", "#ffa94d", "#7ab8ff"];
+function draw_stage3() {
+  const canvas = canvases[2], { ctx, dpr } = EX.fit_canvas(canvas);
+  const view = EX.viewer(camera, canvas);
+  const grid = Number(ui.grid.value);
+  EX.draw_surface(ctx, view, surface, grid, ui.mask.checked ? masked_quad : PLAIN_QUAD);
+  const result = extract_contour(grid, ui.rootfind.checked, ui.mask.checked);
+  result.polylines.forEach((poly, k) => EX.stroke_polyline(ctx, uv_to_screen(view, poly), POLYLINE_COLORS[k % POLYLINE_COLORS.length], 3.5));
+  ctx.fillStyle = "#9aa0b4";
+  ctx.font = `${13 * dpr}px system-ui`;
+  ctx.fillText(`${result.segments.length} segments → ${result.polylines.length} polyline(s)`, 12 * dpr, 20 * dpr);
+}
+
+function draw_stage4() {
+  const canvas = canvases[3], { ctx, dpr } = EX.fit_canvas(canvas);
+  const view = EX.viewer(camera, canvas);
+  const grid = Number(ui.grid.value);
+  if (!ui.hide_surface.checked) EX.draw_surface(ctx, view, surface, grid, PLAIN_QUAD);
+  const result = extract_contour(Math.max(grid, 16), true, ui.mask.checked);
+  const radius = Number(ui.radius.value) * dpr;
+  for (const poly of result.polylines) {
+    EX.draw_ribbon(ctx, uv_to_screen(view, poly), (k, t) => ({ radius: radius * (ui.taper.checked ? EX.taper_at(t) : 1), color: "#e6e6ef" }));
+  }
+}
+
+// ---------- stage 5: style blended from the four boundary strokes ----------
+// Per-side style is constant along the side, so the Coons blend is exact with
+// corner values = mean of the two strokes meeting there.
+const SIDE_STYLE = {
+  bottom: { color: [255, 209, 102], radius: 1.6 },
+  top:    { color: [77, 212, 192],  radius: 0.5 },
+  left:   { color: [239, 107, 154], radius: 1.0 },
+  right:  { color: [122, 184, 255], radius: 1.0 },
+};
+function blend_style(u, v) {
+  const mix = (weights) => {
+    const out = { color: [0, 0, 0], radius: 0 };
+    for (const [style, w] of weights) {
+      out.radius += style.radius * w;
+      for (let k = 0; k < 3; k++) out.color[k] += style.color[k] * w;
+    }
+    return out;
+  };
+  const S = SIDE_STYLE;
+  const c00 = mix([[S.bottom, 0.5], [S.left, 0.5]]), c10 = mix([[S.bottom, 0.5], [S.right, 0.5]]);
+  const c01 = mix([[S.top, 0.5], [S.left, 0.5]]), c11 = mix([[S.top, 0.5], [S.right, 0.5]]);
+  return mix([
+    [S.bottom, 1 - v], [S.top, v], [S.left, 1 - u], [S.right, u],
+    [c00, -(1 - u) * (1 - v)], [c10, -u * (1 - v)], [c01, -(1 - u) * v], [c11, -u * v],
+  ]);
+}
+
+function draw_side_strokes(ctx, view, dpr) {
+  for (const [side, control] of Object.entries(boundaries())) {
+    if (side === "left" && params.collapse) continue;
+    const points = [];
+    for (let k = 0; k <= 24; k++) points.push(view.project(bezier(control, k / 24)));
+    EX.stroke_polyline(ctx, points, rgba(SIDE_STYLE[side].color), 4 * SIDE_STYLE[side].radius * dpr);
+  }
+}
+
+function draw_stage5() {
+  const canvas = canvases[4], { ctx, dpr } = EX.fit_canvas(canvas);
+  const view = EX.viewer(camera, canvas);
+  const grid = Math.max(Number(ui.grid.value), 16);
+  const tinted_quad = (q) => ({ fill: rgba(blend_style(q.u, q.v).color.map((c) => c * 0.35), 0.95), stroke: "rgba(20,22,28,0.5)" });
+  EX.draw_surface(ctx, view, surface, grid, ui.style_field.checked ? tinted_quad : PLAIN_QUAD);
+  draw_side_strokes(ctx, view, dpr);
+  const result = extract_contour(grid, true, ui.mask.checked);
+  const radius = Number(ui.radius.value) * dpr;
+  for (const poly of result.polylines) {
+    EX.draw_ribbon(ctx, uv_to_screen(view, poly), (k, t) => {
+      const style = blend_style(poly[k].u, poly[k].v);
+      return { radius: radius * EX.taper_at(t) * (ui.style_radius.checked ? style.radius : 1), color: rgba(style.color) };
+    });
+  }
+}
+
+function draw_all() {
+  params.bulge = Number(ui.bulge.value);
+  params.twist = Number(ui.twist.value);
+  params.collapse = ui.collapse.checked;
+  draw_stage1();
+  draw_stage2();
+  draw_stage3();
+  draw_stage4();
+  draw_stage5();
+}
+
+EX.attach_orbit(canvases, camera, draw_all);
+draw_all();
+</script>
+</body>
+</html>
