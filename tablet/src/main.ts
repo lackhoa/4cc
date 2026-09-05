@@ -6,7 +6,7 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
-import { bezier_point, delete_stroke, empty_document, stroke_control_points, update_pinned_vertex_positions } from "./document";
+import { bezier_point, delete_stroke, empty_document, find_snap_target_stroke, stroke_control_points, update_pinned_vertex_positions } from "./document";
 import { EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -83,7 +83,7 @@ function request_render(): void {
   requestAnimationFrame(() => {
     frame_requested = false;
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_index);
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_index, drag_snap_target_stroke());
     rebuild_surface_mesh();
     rebuild_reference_mesh();
     rebuild_edit_overlay();
@@ -100,10 +100,21 @@ function resize_canvas_to_display(): void {
 }
 window.addEventListener("resize", resize_canvas_to_display);
 
-function rebuild_stroke_mesh(highlighted_index: number | null): void {
+// The stroke a dragged vertex would get pinned to on release (drag-time
+// warning, same function as the release so they can never disagree), or null.
+function drag_snap_target_stroke(): number | null {
+  if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
+  const stroke = tablet_document.strokes[edit_state.stroke_index];
+  const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+  if (find_merge_target_vertex(tablet_document, dragged_vertex) !== null) return null; // weld wins
+  const target = find_snap_target_stroke(tablet_document, dragged_vertex);
+  return target === null ? null : target.stroke_index;
+}
+
+function rebuild_stroke_mesh(highlighted_index: number | null, snap_target_index: number | null): void {
   const vertices: number[] = [];
   for (let i = 0; i < tablet_document.strokes.length; i++) {
-    const color = i === highlighted_index ? HIGHLIGHT_COLOR : STROKE_COLOR;
+    const color = i === highlighted_index || i === snap_target_index ? HIGHLIGHT_COLOR : STROKE_COLOR;
     append_stroke_ribbon(tablet_document.strokes[i], tablet_document, camera, color, vertices);
   }
   set_stroke_mesh(renderer, new Float32Array(vertices));

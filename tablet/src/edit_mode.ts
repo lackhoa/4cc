@@ -8,14 +8,15 @@
 // "swing" keeps picking, but a dragged handle follows the pen in the camera
 // plane and the other handle swings into the new plane
 // (plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
-// merges the two into one shared junction. Pinned vertices (vertex_pins) only
+// merges the two into one shared junction; releasing it near another stroke's
+// curve instead pins it there (plan-tablet-vertex-to-line-snap.md). Pinned vertices (vertex_pins) only
 // ever slide along their host curve, whichever way they're grabbed.
 // A drag starting ON the stroke body translates
 // the whole stroke (both vertices) in the camera plane; a drag starting on
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, TabletDocument, bezier_point, move_vertex, pick_vertex_near_world_point, stroke_control_points, stroke_plane_normal, swing_offset_into_plane } from "./document";
+import { Stroke, TabletDocument, bezier_point, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, stroke_control_points, stroke_plane_normal, swing_offset_into_plane } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_rotate_about_axis, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -305,9 +306,9 @@ export function find_merge_target_vertex(tablet_document: TabletDocument, dragge
 // Merge the dragged vertex into another vertex within world-space snap range
 // (same feel as draw-time endpoint snapping): every stroke referencing it is
 // rewired to the target, welding the junction, and the vertex is removed.
-function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: number): void {
+function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: number): boolean {
   const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
-  if (target_vertex === null) return;
+  if (target_vertex === null) return false;
   // Snap first so the strokes ending on the dragged vertex rotate their
   // offsets with the chord change (Q4), then rewire them to the target.
   move_vertex(tablet_document, dragged_vertex, tablet_document.vertices[target_vertex]);
@@ -326,13 +327,27 @@ function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_v
   for (const pin of tablet_document.vertex_pins) {
     if (pin.vertex > dragged_vertex) pin.vertex--;
   }
+  return true;
+}
+
+// Pin the dragged vertex to the curve it was released next to (vertex weld
+// has priority — call after merge_vertex_if_near_another misses). The vertex
+// snaps onto the curve through move_vertex so its strokes' offsets follow.
+function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_vertex: number): void {
+  const target = find_snap_target_stroke(tablet_document, dragged_vertex);
+  if (target === null) return;
+  const points = stroke_control_points(tablet_document.strokes[target.stroke_index], tablet_document);
+  move_vertex(tablet_document, dragged_vertex, bezier_point(points, target.t));
+  tablet_document.vertex_pins.push({ vertex: dragged_vertex, host_stroke: target.stroke_index, t: target.t });
 }
 
 export function edit_pen_up(state: EditState, tablet_document: TabletDocument): void {
   if (state.dragging === "p0" || state.dragging === "p3") {
     const stroke = tablet_document.strokes[state.stroke_index];
     const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    merge_vertex_if_near_another(tablet_document, dragged_vertex);
+    if (!merge_vertex_if_near_another(tablet_document, dragged_vertex)) {
+      pin_vertex_if_near_curve(tablet_document, dragged_vertex);
+    }
   }
   state.dragging = null;
   state.dragging_pin = null;

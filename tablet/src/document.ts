@@ -128,6 +128,58 @@ export function pick_vertex_near_world_point(
   return best_index;
 }
 
+// Nearest point of a stroke's curve to a world point: coarse t sweep, then a
+// local ternary refinement around the best sample.
+const CURVE_DISTANCE_SAMPLES = 128;
+export function nearest_point_on_stroke_world(
+  stroke: Stroke, tablet_document: TabletDocument, point: V3,
+): { t: number; distance: number } {
+  const points = stroke_control_points(stroke, tablet_document);
+  const distance_at = (t: number) => v3_length(v3_sub(bezier_point(points, t), point));
+  let best_t = 0;
+  let best_distance = Infinity;
+  for (let i = 0; i <= CURVE_DISTANCE_SAMPLES; i++) {
+    const t = i / CURVE_DISTANCE_SAMPLES;
+    const distance = distance_at(t);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best_t = t;
+    }
+  }
+  let low = Math.max(0, best_t - 1 / CURVE_DISTANCE_SAMPLES);
+  let high = Math.min(1, best_t + 1 / CURVE_DISTANCE_SAMPLES);
+  for (let i = 0; i < 20; i++) {
+    const t1 = low + (high - low) / 3;
+    const t2 = high - (high - low) / 3;
+    if (distance_at(t1) < distance_at(t2)) high = t2; else low = t1;
+  }
+  const t = (low + high) / 2;
+  return { t, distance: distance_at(t) };
+}
+
+// The stroke a free vertex would get pinned to on release: the nearest curve
+// within VERTEX_SNAP_RADIUS_WORLD, or null. Skips strokes ending on the vertex
+// (always at distance 0) and vertices that are already pinned (unpin first).
+// Vertex-to-vertex welding takes priority — the caller checks that first.
+export function find_snap_target_stroke(
+  tablet_document: TabletDocument, vertex_index: number,
+): { stroke_index: number; t: number } | null {
+  if (tablet_document.vertex_pins.some((pin) => pin.vertex === vertex_index)) return null;
+  const point = tablet_document.vertices[vertex_index];
+  let best: { stroke_index: number; t: number } | null = null;
+  let best_distance = VERTEX_SNAP_RADIUS_WORLD;
+  for (let stroke_index = 0; stroke_index < tablet_document.strokes.length; stroke_index++) {
+    const stroke = tablet_document.strokes[stroke_index];
+    if (stroke.p0_vertex === vertex_index || stroke.p3_vertex === vertex_index) continue;
+    const nearest = nearest_point_on_stroke_world(stroke, tablet_document, point);
+    if (nearest.distance < best_distance) {
+      best_distance = nearest.distance;
+      best = { stroke_index, t: nearest.t };
+    }
+  }
+  return best;
+}
+
 // Move one vertex, rotating the offsets of every stroke ending on it by the
 // minimal rotation taking the stroke's old chord direction to its new one
 // (plan Q4): the in-plane shape rides the chord, and d0/d3 stay coplanar with

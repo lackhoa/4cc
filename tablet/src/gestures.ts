@@ -2,7 +2,9 @@
 // 1-finger drag = orbit, 2-finger drag = pan, pinch = zoom. A multi-finger
 // *tap* (all fingers barely move and lift quickly) is undo (2 fingers) / redo
 // (3 fingers), Procreate-style. Pen (and mouse) events are forwarded to the caller
-// (drawing modes handle them in later steps).
+// (drawing modes handle them in later steps). Mouse wheel = zoom, eased
+// toward a target distance over a few frames so notched wheels feel smooth;
+// alt+drag with the pen/mouse = pan (never reaches the pen handlers).
 
 import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
 import { V2 } from "./math";
@@ -15,6 +17,13 @@ export const ORBIT_RADIANS_PER_PIXEL = 0.006; // shared with pen-drag orbiting i
 // touches, read at release, so a late third finger still counts as 3.
 const FINGER_TAP_MAX_MOVEMENT_PIXELS = 12;
 const FINGER_TAP_MAX_DURATION_MS = 250;
+
+// Wheel zoom: one notch (deltaY ≈ 100) scales the target distance by e^0.15 ≈ 1.16x.
+// Each frame the camera closes this fraction of the remaining gap to the
+// target (~60 Hz), settling in roughly a quarter second.
+const WHEEL_ZOOM_LOG_PER_DELTA = 0.0015;
+const WHEEL_ZOOM_EASE_PER_FRAME = 0.25;
+const WHEEL_ZOOM_SETTLE_RATIO = 1e-3;
 
 export type PenHandlers = {
   on_pen_down: (position: V2, event: PointerEvent) => void;
@@ -53,6 +62,10 @@ export function attach_gestures(
     return { centroid, spread };
   }
 
+  // Alt+drag pan: last position of the panning pen pointer, null when idle.
+  // Decided at pen-down, so releasing alt mid-drag keeps panning.
+  let alt_pan_last_position: V2 | null = null;
+
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     // NOTE: throws NotFoundError for synthetic events (no active pointer) —
@@ -60,6 +73,10 @@ export function attach_gestures(
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     const position = { x: e.clientX, y: e.clientY };
     if (is_pen_pointer(e)) {
+      if (e.altKey) {
+        alt_pan_last_position = position;
+        return;
+      }
       pen.on_pen_down(position, e);
     } else {
       if (touch_positions.size === 0) {
@@ -78,6 +95,17 @@ export function attach_gestures(
     e.preventDefault();
     const position = { x: e.clientX, y: e.clientY };
     if (is_pen_pointer(e)) {
+      if (alt_pan_last_position !== null) {
+        const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
+        camera_pan(
+          camera,
+          -(position.x - alt_pan_last_position.x) * units_per_pixel,
+          (position.y - alt_pan_last_position.y) * units_per_pixel,
+        );
+        alt_pan_last_position = position;
+        on_camera_change();
+        return;
+      }
       if (e.buttons !== 0) pen.on_pen_move(position, e);
       return;
     }
@@ -113,11 +141,47 @@ export function attach_gestures(
     }
   });
 
+  // Wheel zoom animation state: target distance, and whether the easing loop
+  // is already scheduled. Wheel deltas accumulate into the target instantly.
+  let wheel_zoom_target_distance: number | null = null;
+  let wheel_zoom_frame_scheduled = false;
+  function ease_wheel_zoom(): void {
+    wheel_zoom_frame_scheduled = false;
+    if (wheel_zoom_target_distance === null) return;
+    const ratio = wheel_zoom_target_distance / camera.distance;
+    if (Math.abs(ratio - 1) < WHEEL_ZOOM_SETTLE_RATIO) {
+      camera_zoom(camera, ratio);
+      wheel_zoom_target_distance = null;
+    } else {
+      // Ease in log space so zooming in and out feel symmetric.
+      camera_zoom(camera, Math.exp(Math.log(ratio) * WHEEL_ZOOM_EASE_PER_FRAME));
+      wheel_zoom_frame_scheduled = true;
+      requestAnimationFrame(ease_wheel_zoom);
+    }
+    on_camera_change();
+  }
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const current_target = wheel_zoom_target_distance ?? camera.distance;
+    // Clamp through camera_zoom's own limits: apply to a scratch copy.
+    const scratch = { ...camera, distance: current_target };
+    camera_zoom(scratch, Math.exp(e.deltaY * WHEEL_ZOOM_LOG_PER_DELTA));
+    wheel_zoom_target_distance = scratch.distance;
+    if (!wheel_zoom_frame_scheduled) {
+      wheel_zoom_frame_scheduled = true;
+      requestAnimationFrame(ease_wheel_zoom);
+    }
+  }, { passive: false });
+
   for (const type of ["pointerup", "pointercancel"] as const) {
     canvas.addEventListener(type, (e) => {
       e.preventDefault();
       const position = { x: e.clientX, y: e.clientY };
       if (is_pen_pointer(e)) {
+        if (alt_pan_last_position !== null) {
+          alt_pan_last_position = null;
+          return;
+        }
         pen.on_pen_up(position, e);
       } else {
         touch_positions.delete(e.pointerId);
