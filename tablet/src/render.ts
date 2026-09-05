@@ -164,7 +164,8 @@ function bind_interleaved_buffer(renderer: LineRenderer, buffer: WebGLBuffer): v
 
 export function render_frame(renderer: LineRenderer, view_projection: Mat4): void {
   const gl = renderer.gl;
-  gl.clearColor(0.1, 0.1, 0.12, 1.0);
+  // Desktop app background: tweaks->background_rgb = gray 0.12 linear -> 0.384 sRGB.
+  gl.clearColor(0.384, 0.384, 0.384, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 

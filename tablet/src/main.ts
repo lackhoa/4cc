@@ -21,7 +21,9 @@ import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./re
 import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
 
-const STROKE_COLOR = { r: 0.85, g: 0.85, b: 0.9 };
+// Ported from the desktop app (driver.kc default_line_color = gray 0.03
+// linear -> 0.196 sRGB; we write sRGB straight to the framebuffer).
+const STROKE_COLOR = { r: 0.196, g: 0.196, b: 0.196 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
 const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
@@ -31,6 +33,9 @@ const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
 const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
+// "surf" off: same opaque fill, painted in the clear color (render.ts) so the
+// patch still occludes what's behind it but reads as background.
+const SURFACE_BACKGROUND_COLOR = { r: 0.384, g: 0.384, b: 0.384 };
 const ANCHOR_SIZE_PIXELS = 12;
 const HANDLE_SIZE_PIXELS = 9;
 const HOT_SIZE_SCALE = 1.5; // hot markers grow by this much
@@ -49,7 +54,7 @@ const persistence = create_persistence_state();
 const history = create_history_state();
 let reference_mesh: ReferenceMesh | null = null;
 let reference_visible = true;
-let surface_visible = true; // "surf" button: hide loft surfaces (contour ribbons stay)
+let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
 let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
 // Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
 // Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
@@ -196,8 +201,8 @@ function append_contour_ribbons(vertices: VertexSink): void {
 function rebuild_surface_mesh(): void {
   const vertices = surface_sink;
   reset_vertex_sink(vertices);
-  if (surface_visible) for (const patch of tablet_document.patches) {
-    append_patch_mesh(patch, tablet_document, camera, SURFACE_COLOR, vertices);
+  for (const patch of tablet_document.patches) {
+    append_patch_mesh(patch, tablet_document, camera, surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR, vertices);
   }
   set_surface_mesh(renderer, vertex_sink_view(vertices));
 }
@@ -681,11 +686,11 @@ reference_button.classList.toggle("armed", reference_visible);
 
 const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
 surface_button.addEventListener("click", () => {
-  surface_visible = !surface_visible;
-  surface_button.classList.toggle("armed", surface_visible);
+  surface_colored = !surface_colored;
+  surface_button.classList.toggle("armed", surface_colored);
   request_render();
 });
-surface_button.classList.toggle("armed", surface_visible);
+surface_button.classList.toggle("armed", surface_colored);
 
 // Docs panel: lists server documents to switch between, plus "new…" (prompt
 // for a name; unknown names start empty) and "rename…" for the current one.
