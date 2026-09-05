@@ -60,7 +60,17 @@ export function begin_edit_state(stroke_id: StrokeId): EditState {
   };
 }
 
-// Nearest stroke within pick range of a screen tap, or null.
+function distance_point_to_segment(point: V2, a: V2, b: V2): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const length_squared = abx * abx + aby * aby;
+  const t = length_squared < 1e-12 ? 0 : Math.max(0, Math.min(1, ((point.x - a.x) * abx + (point.y - a.y) * aby) / length_squared));
+  return Math.hypot(point.x - (a.x + abx * t), point.y - (a.y + aby * t));
+}
+
+// Nearest stroke within pick range of a screen tap, or null. Distance is to
+// the projected polyline's segments, not its sample points, so a long or
+// zoomed-in stroke has no dead zones between samples.
 export function pick_stroke(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
 ): StrokeId | null {
@@ -68,15 +78,22 @@ export function pick_stroke(
   let best_distance = STROKE_PICK_RADIUS_PIXELS;
   for (const stroke of tablet_document.strokes) {
     const points = stroke_control_points(stroke, tablet_document);
+    let previous: V2 | null = null;
     for (let i = 0; i <= PICK_SAMPLES_PER_STROKE; i++) {
       const world = bezier_point(points, i / PICK_SAMPLES_PER_STROKE);
       const projected = camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
-      if (projected === null) continue;
-      const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
+      if (projected === null) {
+        previous = null;
+        continue;
+      }
+      const distance = previous === null
+        ? Math.hypot(projected.x - screen.x, projected.y - screen.y)
+        : distance_point_to_segment(screen, previous, projected);
       if (distance < best_distance) {
         best_distance = distance;
         best_id = stroke.id;
       }
+      previous = projected;
     }
   }
   return best_id;
