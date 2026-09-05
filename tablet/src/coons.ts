@@ -7,7 +7,7 @@
 // sides actually join; the corner averaging stays for sloppy unjoined picks.
 
 import { OrbitCamera, camera_basis } from "./camera";
-import { Coons, Stroke, TabletDocument, bezier_point, stroke_control_points } from "./document";
+import { Coons, Stroke, TabletDocument, bezier_point, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 const COONS_GRID = 16; // grid cells per side
@@ -16,7 +16,7 @@ const COONS_AMBIENT = 0.35;
 type OrientedSide = { stroke: Stroke; reversed: boolean };
 
 function stroke_endpoint(stroke: Stroke, tablet_document: TabletDocument, at_end: boolean): V3 {
-  return tablet_document.vertices[at_end ? stroke.p3_vertex : stroke.p0_vertex];
+  return vertex_position(tablet_document, at_end ? stroke.p3_vertex : stroke.p0_vertex);
 }
 
 // Arrange the four tapped strokes into a head-to-tail loop, greedily picking
@@ -66,7 +66,7 @@ export function append_coons_mesh(
   coons: Coons, tablet_document: TabletDocument, camera: OrbitCamera,
   color: { r: number; g: number; b: number }, out: number[],
 ): void {
-  const sides = chain_sides(coons.strokes.map((index) => tablet_document.strokes[index]), tablet_document);
+  const sides = chain_sides(coons.strokes.map((id) => stroke_by_id(tablet_document, id)), tablet_document);
   // Loop traversal order: bottom (s 0→1), right (t 0→1), top and left run
   // backwards along the loop, so index from the far end when reading them.
   const bottom = sample_side(sides[0], tablet_document, COONS_GRID);

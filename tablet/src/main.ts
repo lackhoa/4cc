@@ -6,7 +6,7 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { bezier_point, delete_stroke, empty_document, find_snap_target_stroke, stroke_control_points, update_pinned_vertex_positions } from "./document";
+import { StrokeId, VertexId, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, pin_by_vertex, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_position } from "./document";
 import { EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -58,7 +58,7 @@ let armed_tool: ArmedTool | null = null;
 // "swing" — a handle drag tilts the plane by swinging the other handle
 // (edit_pen_down/move).
 let handle_mode: HandleMode = "plane";
-const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
+const patch_picks: StrokeId[] = []; // strokes collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
 let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
 let frame_requested = false;
@@ -83,7 +83,7 @@ function request_render(): void {
   requestAnimationFrame(() => {
     frame_requested = false;
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_index, drag_snap_target_stroke());
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
     rebuild_surface_mesh();
     rebuild_reference_mesh();
     rebuild_edit_overlay();
@@ -97,7 +97,7 @@ function request_render(): void {
 const stroke_labels = document.getElementById("stroke_labels") as HTMLDivElement;
 function rebuild_stroke_labels(): void {
   const labels: HTMLDivElement[] = [];
-  const stroke = edit_state === null ? null : tablet_document.strokes[edit_state.stroke_index];
+  const stroke = edit_state === null ? null : stroke_by_id(tablet_document, edit_state.stroke_id);
   if (stroke !== null && stroke.name !== undefined) {
     const midpoint = bezier_point(stroke_control_points(stroke, tablet_document), 0.5);
     const screen = camera_world_to_screen(camera, midpoint, canvas.clientWidth, canvas.clientHeight);
@@ -123,20 +123,20 @@ window.addEventListener("resize", resize_canvas_to_display);
 
 // The stroke a dragged vertex would get pinned to on release (drag-time
 // warning, same function as the release so they can never disagree), or null.
-function drag_snap_target_stroke(): number | null {
+function drag_snap_target_stroke(): StrokeId | null {
   if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
-  const stroke = tablet_document.strokes[edit_state.stroke_index];
+  const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
   const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
   if (find_merge_target_vertex(tablet_document, dragged_vertex) !== null) return null; // weld wins
   const target = find_snap_target_stroke(tablet_document, dragged_vertex);
-  return target === null ? null : target.stroke_index;
+  return target === null ? null : target.stroke_id;
 }
 
-function rebuild_stroke_mesh(highlighted_index: number | null, snap_target_index: number | null): void {
+function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_stroke: StrokeId | null): void {
   const vertices: number[] = [];
-  for (let i = 0; i < tablet_document.strokes.length; i++) {
-    const color = i === highlighted_index || i === snap_target_index ? HIGHLIGHT_COLOR : STROKE_COLOR;
-    append_stroke_ribbon(tablet_document.strokes[i], tablet_document, camera, color, vertices);
+  for (const stroke of tablet_document.strokes) {
+    const color = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke ? HIGHLIGHT_COLOR : STROKE_COLOR;
+    append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
   }
   set_stroke_mesh(renderer, new Float32Array(vertices));
 }
@@ -185,7 +185,8 @@ function rebuild_edit_overlay(): void {
     set_overlay_triangles(renderer, new Float32Array(0));
     return;
   }
-  const points = stroke_control_points(tablet_document.strokes[edit_state.stroke_index], tablet_document);
+  const selected_stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+  const points = stroke_control_points(selected_stroke, tablet_document);
   const basis = camera_basis(camera);
   const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
   const anchor_half = (ANCHOR_SIZE_PIXELS / 2) * units_per_pixel;
@@ -201,32 +202,29 @@ function rebuild_edit_overlay(): void {
   push_line(points.p3, points.p2);
   append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
-  const selected_stroke = tablet_document.strokes[edit_state.stroke_index];
   // Endpoints that are pinned vertices (riding some other stroke) show in the
   // pin color so it's clear they'll slide, not translate, when grabbed.
-  const anchor_color = (vertex: number) =>
-    tablet_document.vertex_pins.some((pin) => pin.vertex === vertex) ? PIN_COLOR : ANCHOR_COLOR;
+  const anchor_color = (vertex: VertexId) =>
+    pin_by_vertex(tablet_document, vertex) !== null ? PIN_COLOR : ANCHOR_COLOR;
   append_billboard_square(points.p0, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p0_vertex), triangle_vertices);
   append_billboard_square(points.p3, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p3_vertex), triangle_vertices);
   // Pinned vertices riding the selected stroke; the selected pin (the unpin
   // button's target) draws larger.
-  for (let pin_index = 0; pin_index < tablet_document.vertex_pins.length; pin_index++) {
-    const pin = tablet_document.vertex_pins[pin_index];
-    if (pin.host_stroke !== edit_state.stroke_index) continue;
-    const half_size = pin_index === edit_state.selected_pin ? anchor_half : handle_half;
+  for (const pin of tablet_document.vertex_pins) {
+    if (pin.host_stroke !== edit_state.stroke_id) continue;
+    const half_size = pin.vertex === edit_state.selected_pin ? anchor_half : handle_half;
     append_billboard_square(
-      tablet_document.vertices[pin.vertex], half_size, basis.right, basis.up, PIN_COLOR, triangle_vertices,
+      vertex_position(tablet_document, pin.vertex), half_size, basis.right, basis.up, PIN_COLOR, triangle_vertices,
     );
   }
   // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
   // vertex it would weld into on release so the merge is never a surprise.
   if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
-    const stroke = tablet_document.strokes[edit_state.stroke_index];
-    const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+    const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
     const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
     if (target_vertex !== null) {
       append_billboard_square(
-        tablet_document.vertices[target_vertex], anchor_half * 2, basis.right, basis.up,
+        vertex_position(tablet_document, target_vertex), anchor_half * 2, basis.right, basis.up,
         HIGHLIGHT_COLOR, triangle_vertices,
       );
     }
@@ -254,8 +252,8 @@ function update_preview_line(): void {
 function line_mode_pen_up(): void {
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
   if (!was_tap && line_state !== null) {
-    const stroke_index = line_pen_up(line_state, tablet_document);
-    if (stroke_index !== null) edit_state = begin_edit_state(stroke_index);
+    const stroke_id = line_pen_up(line_state, tablet_document);
+    if (stroke_id !== null) edit_state = begin_edit_state(stroke_id);
   }
   set_armed_tool(null); // also clears line_state
   update_preview_line();
@@ -275,16 +273,12 @@ function edit_mode_pen_up(position: V2): void {
   if (armed_tool === "pin") {
     // Pin creation (Q2): a tap on the selected stroke's curve drops a new
     // vertex at the nearest curve point, constrained there permanently.
-    const nearest = nearest_t_on_stroke_screen(tablet_document, edit_state.stroke_index, camera, position, canvas);
+    const nearest = nearest_t_on_stroke_screen(tablet_document, edit_state.stroke_id, camera, position, canvas);
     if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) {
-      const points = stroke_control_points(tablet_document.strokes[edit_state.stroke_index], tablet_document);
-      tablet_document.vertices.push(bezier_point(points, nearest.t));
-      tablet_document.vertex_pins.push({
-        vertex: tablet_document.vertices.length - 1,
-        host_stroke: edit_state.stroke_index,
-        t: nearest.t,
-      });
-      edit_state.selected_pin = tablet_document.vertex_pins.length - 1;
+      const points = stroke_control_points(stroke_by_id(tablet_document, edit_state.stroke_id), tablet_document);
+      const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t));
+      tablet_document.vertex_pins.push({ vertex, host_stroke: edit_state.stroke_id, t: nearest.t });
+      edit_state.selected_pin = vertex;
     }
     set_armed_tool(null); // tap off the curve = cancel, selection kept
     return;
@@ -304,14 +298,14 @@ function edit_mode_pen_up(position: V2): void {
     return;
   }
   if (armed_tool !== null) {
-    if (picked !== null && picked !== edit_state.stroke_index) {
+    if (picked !== null && picked !== edit_state.stroke_id) {
       if (armed_tool === "loft") {
-        tablet_document.lofts.push({ stroke_a: edit_state.stroke_index, stroke_b: picked });
+        tablet_document.lofts.push({ stroke_a: edit_state.stroke_id, stroke_b: picked });
         edit_state = null;
       } else if (armed_tool === "join") {
-        const merged_index = merge_adjacent_strokes(tablet_document, edit_state.stroke_index, picked);
+        const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, picked);
         // Not adjacent (or a closed loop): keep the selection, just disarm.
-        if (merged_index !== null) edit_state = begin_edit_state(merged_index);
+        if (merged_id !== null) edit_state = begin_edit_state(merged_id);
       }
     }
     set_armed_tool(null); // tap empty (or the same stroke) = cancel, selection kept
@@ -368,7 +362,7 @@ patch_button.addEventListener("click", () => {
     return;
   }
   set_armed_tool("patch");
-  patch_picks.push(edit_state.stroke_index);
+  patch_picks.push(edit_state.stroke_id);
 });
 
 // Join: the next tapped stroke merges with the selection into one cubic
@@ -385,7 +379,8 @@ pin_button.addEventListener("click", () => {
   if (edit_state === null) return; // needs a selected host stroke
   if (edit_state.selected_pin !== null) {
     begin_history_step(history, tablet_document);
-    tablet_document.vertex_pins.splice(edit_state.selected_pin, 1);
+    const unpinned_vertex = edit_state.selected_pin;
+    tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== unpinned_vertex);
     end_history_step(history, tablet_document);
     edit_state.selected_pin = null;
     request_render();
@@ -405,7 +400,7 @@ function pen_orbit(position: V2): void {
 }
 
 // Undo/redo (plan-tablet-undo-redo.md): restore drops the selection — the
-// selected stroke index may not survive the snapshot.
+// selected stroke may not survive the snapshot.
 function perform_undo(): void {
   if (!undo(history, tablet_document)) return;
   edit_state = null;
@@ -482,7 +477,7 @@ attach_gestures(canvas, camera, {
 const name_button = document.getElementById("name_button") as HTMLButtonElement;
 name_button.addEventListener("click", () => {
   if (edit_state === null) return;
-  const stroke = tablet_document.strokes[edit_state.stroke_index];
+  const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
   const name = window.prompt("Line name (empty to clear):", stroke.name ?? "");
   if (name === null) return;
   begin_history_step(history, tablet_document);
@@ -497,7 +492,7 @@ const delete_button = document.getElementById("delete_button") as HTMLButtonElem
 delete_button.addEventListener("click", () => {
   if (edit_state === null) return;
   begin_history_step(history, tablet_document);
-  delete_stroke(tablet_document, edit_state.stroke_index);
+  delete_stroke(tablet_document, edit_state.stroke_id);
   end_history_step(history, tablet_document);
   edit_state = null;
   set_armed_tool(null);

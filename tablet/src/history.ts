@@ -33,6 +33,8 @@ function serialize_document(tablet_document: TabletDocument): string {
 function restore_document_in_place(tablet_document: TabletDocument, snapshot: string): void {
   const parsed = JSON.parse(snapshot);
   clear_document_in_place(tablet_document);
+  tablet_document.next_vertex_id = parsed.next_vertex_id;
+  tablet_document.next_stroke_id = parsed.next_stroke_id;
   tablet_document.vertices.push(...parsed.vertices);
   tablet_document.vertex_pins.push(...parsed.vertex_pins);
   tablet_document.strokes.push(...parsed.strokes);

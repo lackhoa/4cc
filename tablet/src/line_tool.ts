@@ -7,18 +7,18 @@
 // (no drag) exits the tool.
 
 import { OrbitCamera, camera_basis, camera_pen_ray } from "./camera";
-import { Stroke, TabletDocument, pick_vertex_near_world_point, stroke_handles_from_control_points } from "./document";
+import { StrokeId, TabletDocument, VertexId, add_stroke, add_vertex, pick_vertex_near_world_point, stroke_handles_from_control_points, vertex_position } from "./document";
 import { V2, V3, v3, v3_add, v3_dot, v3_length, v3_scale, v3_sub } from "./math";
 
 // Both endpoints while the pen is down: the world position, plus the existing
-// vertex index it snapped to (null = a new vertex will be created on pen-up).
+// vertex id it snapped to (null = a new vertex will be created on pen-up).
 // path_world is every raw (unsnapped) plane sample from down to up, the input
 // to the curve fit and the live preview polyline.
 export type LineToolState = {
   start_world: V3;
-  start_snap_vertex: number | null;
+  start_snap_vertex: VertexId | null;
   end_world: V3;
-  end_snap_vertex: number | null;
+  end_snap_vertex: VertexId | null;
   path_world: V3[];
 };
 
@@ -37,12 +37,12 @@ export function pen_point_on_camera_plane(
 
 function resolve_endpoint(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
-): { world: V3; snap_vertex: number | null } | null {
+): { world: V3; snap_vertex: VertexId | null } | null {
   const world = pen_point_on_camera_plane(camera, screen, canvas);
   if (world === null) return null;
   const snap_vertex = pick_vertex_near_world_point(tablet_document, world, null);
   if (snap_vertex !== null) {
-    return { world: tablet_document.vertices[snap_vertex], snap_vertex };
+    return { world: vertex_position(tablet_document, snap_vertex), snap_vertex };
   }
   return { world, snap_vertex: null };
 }
@@ -120,19 +120,14 @@ export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { d0: V3; d3: V3
 }
 
 // Commit the pen path as a fitted cubic stroke, creating vertices for
-// unsnapped endpoints. Returns the new stroke's index, or null when the two
+// unsnapped endpoints. Returns the new stroke's id, or null when the two
 // endpoints collapsed to the same vertex.
-export function line_pen_up(state: LineToolState, tablet_document: TabletDocument): number | null {
+export function line_pen_up(state: LineToolState, tablet_document: TabletDocument): StrokeId | null {
   if (state.start_snap_vertex !== null && state.start_snap_vertex === state.end_snap_vertex) return null;
-  const claim_vertex = (world: V3, snap_vertex: number | null): number => {
-    if (snap_vertex !== null) return snap_vertex;
-    tablet_document.vertices.push(world);
-    return tablet_document.vertices.length - 1;
-  };
+  const claim_vertex = (world: V3, snap_vertex: VertexId | null): VertexId =>
+    snap_vertex !== null ? snap_vertex : add_vertex(tablet_document, world);
   const p0_vertex = claim_vertex(state.start_world, state.start_snap_vertex);
   const p3_vertex = claim_vertex(state.end_world, state.end_snap_vertex);
   const handles = fit_stroke_handles(state.path_world, state.start_world, state.end_world);
-  const stroke: Stroke = { p0_vertex, p3_vertex, d0: handles.d0, d3: handles.d3 };
-  tablet_document.strokes.push(stroke);
-  return tablet_document.strokes.length - 1;
+  return add_stroke(tablet_document, p0_vertex, p3_vertex, handles.d0, handles.d3);
 }

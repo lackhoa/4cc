@@ -4,16 +4,20 @@
 // server is unreachable. Debounced autosave, no save button.
 
 import { OrbitCamera } from "./camera";
-import { Stroke, TabletDocument, fallback_perpendicular, stroke_handles_from_control_points } from "./document";
+import { Stroke, TabletDocument, Vertex, fallback_perpendicular, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 export const DEFAULT_DOCUMENT_NAME = "untitled";
-// Version 3 (2026-09-02): free-handle strokes {d0: V3, d3: V3}, coplanar with
-// the chord by invariant. Version 2 (2026-09-01) was explicit-normal
-// {normal: V3, d0: V2, d3: V2}; version 1 bez_v3v2 {d0: V3, d3: V2}. Older
-// files convert on load; saves are always the current version.
-const DOCUMENT_FORMAT_VERSION = 3;
-const LOADABLE_VERSIONS = [1, 2, DOCUMENT_FORMAT_VERSION];
+// Version 4 (2026-09-05): stable ids — vertices are {id, position}, strokes
+// carry an id, every cross-reference holds ids, and the document stores the
+// two id counters. Versions 1-3 referenced strokes/vertices by array index
+// (loading assigns id = index and counters = array lengths). Version 3
+// (2026-09-02): free-handle strokes {d0: V3, d3: V3}, coplanar with the chord
+// by invariant. Version 2 (2026-09-01) was explicit-normal {normal: V3, d0:
+// V2, d3: V2}; version 1 bez_v3v2 {d0: V3, d3: V2}. Older files convert on
+// load; saves are always the current version.
+const DOCUMENT_FORMAT_VERSION = 4;
+const LOADABLE_VERSIONS = [1, 2, 3, DOCUMENT_FORMAT_VERSION];
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 const CURRENT_NAME_STORAGE_KEY = "autodraw_tablet_current_document";
 const BUFFER_STORAGE_KEY = "autodraw_tablet_crash_buffer";
@@ -43,7 +47,7 @@ export function create_persistence_state(): PersistenceState {
   return { current_document_name: name, last_saved_json: null, autosave_timer: null, ready: false };
 }
 
-function serialize_document_state(tablet_document: TabletDocument, camera: OrbitCamera): string {
+export function serialize_document_state(tablet_document: TabletDocument, camera: OrbitCamera): string {
   return JSON.stringify({
     version: DOCUMENT_FORMAT_VERSION,
     camera: { pivot: camera.pivot, yaw: camera.yaw, pitch: camera.pitch, distance: camera.distance },
@@ -52,6 +56,8 @@ function serialize_document_state(tablet_document: TabletDocument, camera: Orbit
 }
 
 export function clear_document_in_place(tablet_document: TabletDocument): void {
+  tablet_document.next_vertex_id = 0;
+  tablet_document.next_stroke_id = 0;
   tablet_document.vertices.length = 0;
   tablet_document.vertex_pins.length = 0;
   tablet_document.strokes.length = 0;
@@ -65,12 +71,16 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
 // construction.
 type StrokeV1 = { p0_vertex: number; d0: V3; d3: V2; p3_vertex: number };
 
+// Strokes of versions 1-3 (and their vertex references) are array positions;
+// the converters produce v4 strokes whose id is that position.
+type StrokeV3 = { p0_vertex: number; p3_vertex: number; d0: V3; d3: V3; name?: string };
+
 // v2 stroke: stored unit normal, handles as 2D offsets in the plane frame
 // (u along the chord, v = cross(normal, u)). The world offsets are those same
 // frame combinations — exact.
 type StrokeV2 = { p0_vertex: number; p3_vertex: number; normal: V3; d0: V2; d3: V2 };
 
-function stroke_from_v2(old: StrokeV2, vertices: V3[]): Stroke {
+function stroke_from_v2(old: StrokeV2, id: number, vertices: V3[]): Stroke {
   const p0 = vertices[old.p0_vertex];
   const p3 = vertices[old.p3_vertex];
   const chord = v3_sub(p3, p0);
@@ -78,10 +88,10 @@ function stroke_from_v2(old: StrokeV2, vertices: V3[]): Stroke {
   const v_raw = v3_cross(old.normal, u);
   const v = v3_length(v_raw) > 1e-9 ? v3_normalize(v_raw) : fallback_perpendicular(u);
   const in_plane = (offset: V2) => v3_add(v3_scale(u, offset.x), v3_scale(v, offset.y));
-  return { p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, d0: in_plane(old.d0), d3: in_plane(old.d3) };
+  return { id, p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, d0: in_plane(old.d0), d3: in_plane(old.d3) };
 }
 
-function stroke_from_v1(old: StrokeV1, vertices: V3[]): Stroke {
+function stroke_from_v1(old: StrokeV1, id: number, vertices: V3[]): Stroke {
   const p0 = vertices[old.p0_vertex];
   const p3 = vertices[old.p3_vertex];
   const p1 = v3_add(v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3), old.d0);
@@ -97,12 +107,32 @@ function stroke_from_v1(old: StrokeV1, vertices: V3[]): Stroke {
     v3_add(v3_scale(u2, old.d3.x), v3_scale(v_axis, old.d3.y)),
   );
   const handles = stroke_handles_from_control_points(p0, p1, p2, p3);
-  return { p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, ...handles };
+  return { id, p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, ...handles };
+}
+
+function stroke_from_v3(old: StrokeV3, id: number): Stroke {
+  return { id, ...old };
+}
+
+// Index-addressed documents (versions 1-3) become id-addressed: every array
+// position turns into that entry's id, so stored references stay valid as-is.
+function document_from_indexed(parsed_version: number, stored: any, tablet_document: TabletDocument): void {
+  const stored_vertices: V3[] = stored.vertices;
+  const vertices: Vertex[] = stored_vertices.map((position, id) => ({ id, position }));
+  const strokes: Stroke[] = parsed_version === 1
+    ? stored.strokes.map((stroke: StrokeV1, id: number) => stroke_from_v1(stroke, id, stored_vertices))
+    : parsed_version === 2
+      ? stored.strokes.map((stroke: StrokeV2, id: number) => stroke_from_v2(stroke, id, stored_vertices))
+      : stored.strokes.map((stroke: StrokeV3, id: number) => stroke_from_v3(stroke, id));
+  tablet_document.next_vertex_id = vertices.length;
+  tablet_document.next_stroke_id = strokes.length;
+  tablet_document.vertices.push(...vertices);
+  tablet_document.strokes.push(...strokes);
 }
 
 // Parse + apply a stored snapshot into the live document/camera (in place —
 // main.ts holds references to both). Returns false on a bad payload.
-function apply_document_state(json: string, tablet_document: TabletDocument, camera: OrbitCamera): boolean {
+export function apply_document_state(json: string, tablet_document: TabletDocument, camera: OrbitCamera): boolean {
   let parsed;
   try {
     parsed = JSON.parse(json);
@@ -115,14 +145,14 @@ function apply_document_state(json: string, tablet_document: TabletDocument, cam
     return false;
   }
   clear_document_in_place(tablet_document);
-  tablet_document.vertices.push(...parsed.document.vertices);
-  const stored_vertices: V3[] = parsed.document.vertices;
-  const strokes: Stroke[] = parsed.version === 1
-    ? parsed.document.strokes.map((stroke: StrokeV1) => stroke_from_v1(stroke, stored_vertices))
-    : parsed.version === 2
-      ? parsed.document.strokes.map((stroke: StrokeV2) => stroke_from_v2(stroke, stored_vertices))
-      : parsed.document.strokes;
-  tablet_document.strokes.push(...strokes);
+  if (parsed.version < 4) {
+    document_from_indexed(parsed.version, parsed.document, tablet_document);
+  } else {
+    tablet_document.next_vertex_id = parsed.document.next_vertex_id;
+    tablet_document.next_stroke_id = parsed.document.next_stroke_id;
+    tablet_document.vertices.push(...parsed.document.vertices);
+    tablet_document.strokes.push(...parsed.document.strokes);
+  }
   // vertex_pins arrived after the v2 bump — absent in v1 docs and early v2 saves.
   tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
   tablet_document.lofts.push(...parsed.document.lofts);

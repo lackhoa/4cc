@@ -1,11 +1,11 @@
 // Ruled-surface loft between two strokes (step 6 / Q14, Q22). Linked, not
-// baked: the loft stores stroke indices and is retessellated from the current
+// baked: the loft stores stroke ids and is retessellated from the current
 // strokes every frame, so editing a rail reshapes the surface. Shading is baked
 // CPU-side per vertex (headlight: brightness from the surface normal vs the
 // camera forward, two-sided), which fits the existing position+color pipeline.
 
 import { OrbitCamera, camera_basis } from "./camera";
-import { Loft, Stroke, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
+import { Loft, Stroke, TabletDocument, bezier_point, bezier_tangent, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
@@ -31,10 +31,10 @@ function sample_rail(stroke: Stroke, tablet_document: TabletDocument, sample_cou
 // Rails drawn in opposite directions would twist the surface; detect by
 // comparing endpoint pairings and reverse rail B when crossed.
 function rails_are_crossed(rail_a: Stroke, rail_b: Stroke, tablet_document: TabletDocument): boolean {
-  const a_start = tablet_document.vertices[rail_a.p0_vertex];
-  const a_end = tablet_document.vertices[rail_a.p3_vertex];
-  const b_start = tablet_document.vertices[rail_b.p0_vertex];
-  const b_end = tablet_document.vertices[rail_b.p3_vertex];
+  const a_start = vertex_position(tablet_document, rail_a.p0_vertex);
+  const a_end = vertex_position(tablet_document, rail_a.p3_vertex);
+  const b_start = vertex_position(tablet_document, rail_b.p0_vertex);
+  const b_end = vertex_position(tablet_document, rail_b.p3_vertex);
   const straight = v3_length(v3_sub(a_start, b_start)) + v3_length(v3_sub(a_end, b_end));
   const crossed = v3_length(v3_sub(a_start, b_end)) + v3_length(v3_sub(a_end, b_start));
   return crossed < straight;
@@ -45,8 +45,8 @@ export function append_loft_mesh(
   loft: Loft, tablet_document: TabletDocument, camera: OrbitCamera,
   color: { r: number; g: number; b: number }, out: number[],
 ): void {
-  const rail_a = tablet_document.strokes[loft.stroke_a];
-  const rail_b = tablet_document.strokes[loft.stroke_b];
+  const rail_a = stroke_by_id(tablet_document, loft.stroke_a);
+  const rail_b = stroke_by_id(tablet_document, loft.stroke_b);
   const samples_a = sample_rail(rail_a, tablet_document, LOFT_SAMPLES_ALONG_RAILS, false);
   const samples_b = sample_rail(rail_b, tablet_document, LOFT_SAMPLES_ALONG_RAILS, rails_are_crossed(rail_a, rail_b, tablet_document));
   const camera_forward = camera_basis(camera).forward;
