@@ -1,11 +1,12 @@
 // One-off check (plan-tablet-multi-select-patch.md Q8 step 5): a patch's
 // fill is derived from its corner count — 4 strokes with 2 knots read as
 // 4 sides (Coons), a knot removed makes 5 sides (refused until Q7), 2
-// detached strokes loft, a 2-corner lens lofts, and an old-format document
+// detached strokes loft, a 2-corner lens lofts, a triangle is a 3-sided
+// (degenerate) Coons, and an old-format document
 // with lofts/coons loads as patches.
 // Usage: npx tsx tmp/verify_patch_sides.ts
 import { add_stroke, add_vertex, empty_document, smooth_strokes, split_stroke } from "../src/document";
-import { resolve_patch_fill } from "../src/patch";
+import { append_patch_mesh, resolve_patch_fill } from "../src/patch";
 import { apply_document_state, serialize_document_state } from "../src/persistence";
 import { default_camera } from "../src/camera";
 import { v3 } from "../src/math";
@@ -62,6 +63,19 @@ const side_start = (side: typeof lens.side_a) => (side[0].reversed ? side[0].str
 assert.equal(side_start(lens.side_a), side_start(lens.side_b));
 console.log("ok: lens with a knotted side -> loft of two chains");
 
+// A triangle: 3 sides, degenerate Coons, and its mesh has the expected size.
+const tri_a = add_vertex(doc, v3(30, 0, 0));
+const tri_b = add_vertex(doc, v3(32, 0, 0));
+const tri_c = add_vertex(doc, v3(31, 2, 0));
+const triangle = { strokes: [add_stroke(doc, tri_a, tri_b, zero, zero), add_stroke(doc, tri_b, tri_c, zero, zero), add_stroke(doc, tri_c, tri_a, zero, zero)] };
+const tri_fill = resolve_patch_fill(triangle, doc);
+assert.ok(tri_fill !== null && tri_fill.kind === "coons" && tri_fill.sides.length === 3);
+const tri_mesh: number[] = [];
+append_patch_mesh(triangle, doc, default_camera(), { r: 1, g: 1, b: 1 }, tri_mesh);
+assert.equal(tri_mesh.length, 16 * 16 * 6 * 6); // COONS_GRID² cells × 6 vertices × 6 floats
+assert.ok(tri_mesh.every(Number.isFinite));
+console.log("ok: triangle -> 3-sided Coons, finite mesh");
+
 // Three strokes that don't close: nothing.
 assert.equal(resolve_patch_fill({ strokes: [bottom, right, rail_a] }, doc), null);
 // A closed ring with every junction smooth: nothing.
@@ -75,10 +89,13 @@ assert.equal(resolve_patch_fill({ strokes: [ring_upper, ring_lower] }, doc), nul
 console.log("ok: open chain and all-smooth ring -> no fill");
 
 // Old-format document: `lofts` + `coons` load as patches and the old keys are
-// gone on save. skull-test.json carries two coons entries (as of 2026-09-05);
-// a synthetic loft is added to cover that key too.
+// gone on save. The fixture is skull-test.json with its 4-sided patches moved
+// back under `coons` and a synthetic `lofts` entry.
 const old_json = JSON.parse(readFileSync(new URL("../documents/skull-test.json", import.meta.url), "utf8"));
-const old_coons: { strokes: number[] }[] = old_json.document.coons;
+const old_coons: { strokes: number[] }[] = old_json.document.patches.filter((patch: { strokes: number[] }) => patch.strokes.length === 4);
+assert.ok(old_coons.length > 0, "skull-test.json has 4-sided patches");
+delete old_json.document.patches;
+old_json.document.coons = old_coons;
 old_json.document.lofts = [{ stroke_a: old_coons[0].strokes[0], stroke_b: old_coons[0].strokes[2] }];
 const loaded = empty_document();
 assert.ok(apply_document_state(JSON.stringify(old_json), loaded, default_camera()));

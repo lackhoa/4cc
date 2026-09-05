@@ -4,9 +4,10 @@
 // vertices into a closed loop, the loop is cut into logical *sides* at its
 // corners — a corner is a junction with no smooth knot between the two
 // strokes meeting there, so a knotted chain reads as one side — and the side
-// count picks the fill: 2 sides = ruled loft, 4 sides = Coons. Two strokes
-// that don't close a loop are the one exception: a plain loft between them.
-// 3 and 5+ sides: TODO midpoint subdivision (plan Q7), drawn as nothing now.
+// count picks the fill: 2 sides = ruled loft, 4 sides = Coons, 3 sides =
+// Coons with the fourth side collapsed to a corner. Two strokes that don't
+// close a loop are the one exception: a plain loft between them.
+// 5+ sides: TODO midpoint subdivision (plan Q7), drawn as nothing now.
 // Shading is baked CPU-side per vertex (headlight: brightness from the
 // surface normal vs the camera forward, two-sided), which fits the existing
 // position+color pipeline.
@@ -160,6 +161,9 @@ function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDoc
 // (no bicubic fit): each side is presampled on the grid resolution and blended
 // directly, so the patch hugs the drawn boundaries exactly at the rims. Sides
 // share their corner vertices (chained by id), so the corners are exact.
+// Three sides: the left side is a constant point at the bottom-left corner,
+// which the blend degenerates into a triangle fan there (zero-area cells,
+// normal falls back to flat shading).
 function append_coons_mesh(sides: Side[], tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: number[]): void {
   // Loop traversal order: bottom (s 0→1), right (t 0→1), top and left run
   // backwards along the loop, so index from the far end when reading them.
@@ -167,7 +171,7 @@ function append_coons_mesh(sides: Side[], tablet_document: TabletDocument, camer
   const bottom = positions(sides[0]);
   const right = positions(sides[1]);
   const top_backwards = positions(sides[2]);
-  const left_backwards = positions(sides[3]);
+  const left_backwards = sides.length === 4 ? positions(sides[3]) : new Array<V3>(COONS_GRID + 1).fill(bottom[0]);
   const top = (i: number): V3 => top_backwards[COONS_GRID - i];
   const left = (j: number): V3 => left_backwards[COONS_GRID - j];
   const corner_00 = bottom[0];
@@ -219,7 +223,7 @@ export function resolve_patch_fill(patch: Patch, tablet_document: TabletDocument
   if (sides === null) return null;
   // A lens: both sides run corner A → corner B once the second is reversed.
   if (sides.length === 2) return { kind: "loft", side_a: sides[0], side_b: reversed_side(sides[1]) };
-  if (sides.length === 4) return { kind: "coons", sides };
+  if (sides.length === 3 || sides.length === 4) return { kind: "coons", sides };
   return null;
 }
 
