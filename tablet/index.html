@@ -25,6 +25,10 @@
     #docs_panel button { padding: 8px 14px; font-size: 15px; color: #ccc; text-align: left;
                          background: #2a2a30; border: 1px solid #444; border-radius: 6px; }
     #docs_panel button.current { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+    #stroke_labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+    #stroke_labels div { position: absolute; transform: translate(-50%, -50%);
+                         padding: 2px 6px; font-size: 13px; color: #eee; white-space: nowrap;
+                         background: rgba(20, 20, 26, 0.75); border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -37,6 +41,7 @@
     <button id="pin_button">pin</button>
     <button id="tilt_button">tilt</button>
     <button id="swing_button">swing</button>
+    <button id="name_button">name</button>
     <button id="undo_button">undo</button>
     <button id="redo_button">redo</button>
     <button id="delete_button">del</button>
@@ -45,6 +50,7 @@
     <button id="reference_button">ref</button>
     <button id="docs_button">docs</button>
   </div>
+  <div id="stroke_labels"></div>
   <div id="docs_panel"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

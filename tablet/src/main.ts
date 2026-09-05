@@ -5,7 +5,7 @@
 // drag starting on the selected stroke translates it; vertex/handle drags
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
-import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
+import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { bezier_point, delete_stroke, empty_document, find_snap_target_stroke, stroke_control_points, update_pinned_vertex_positions } from "./document";
 import { EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
@@ -17,7 +17,7 @@ import { append_loft_mesh } from "./loft";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_stroke_ribbon } from "./ribbon";
 import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
-import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, schedule_autosave, switch_document } from "./persistence";
+import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
 
 const STROKE_COLOR = { r: 0.85, g: 0.85, b: 0.9 };
@@ -88,7 +88,28 @@ function request_render(): void {
     rebuild_reference_mesh();
     rebuild_edit_overlay();
     render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
+    rebuild_stroke_labels();
   });
+}
+
+// Stroke names live in an HTML overlay (no text rendering in WebGL): only the
+// selected stroke's name shows, placed at the curve's midpoint each frame.
+const stroke_labels = document.getElementById("stroke_labels") as HTMLDivElement;
+function rebuild_stroke_labels(): void {
+  const labels: HTMLDivElement[] = [];
+  const stroke = edit_state === null ? null : tablet_document.strokes[edit_state.stroke_index];
+  if (stroke !== null && stroke.name !== undefined) {
+    const midpoint = bezier_point(stroke_control_points(stroke, tablet_document), 0.5);
+    const screen = camera_world_to_screen(camera, midpoint, canvas.clientWidth, canvas.clientHeight);
+    if (screen !== null) {
+      const label = document.createElement("div");
+      label.textContent = stroke.name;
+      label.style.left = `${screen.x}px`;
+      label.style.top = `${screen.y}px`;
+      labels.push(label);
+    }
+  }
+  stroke_labels.replaceChildren(...labels);
 }
 
 function resize_canvas_to_display(): void {
@@ -457,6 +478,20 @@ attach_gestures(canvas, camera, {
   request_render();
 });
 
+// Name (or rename; empty clears) the selected stroke.
+const name_button = document.getElementById("name_button") as HTMLButtonElement;
+name_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  const stroke = tablet_document.strokes[edit_state.stroke_index];
+  const name = window.prompt("Line name (empty to clear):", stroke.name ?? "");
+  if (name === null) return;
+  begin_history_step(history, tablet_document);
+  if (name.trim() === "") delete stroke.name;
+  else stroke.name = name.trim();
+  end_history_step(history, tablet_document);
+  request_render();
+});
+
 // Delete the selected stroke (surfaces built on it go with it).
 const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
 delete_button.addEventListener("click", () => {
@@ -520,8 +555,19 @@ reference_button.addEventListener("click", () => {
 reference_button.classList.toggle("armed", reference_visible);
 
 // Docs panel: lists server documents to switch between, plus "new…" (prompt
-// for a name; unknown names start empty). Autosave keeps targeting whichever
-// document is current.
+// for a name; unknown names start empty) and "rename…" for the current one.
+// Autosave keeps targeting whichever document is current.
+const DOCUMENT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/; // mirrors is_safe_document_name in vite.config.ts
+
+function prompt_document_name(message: string, initial: string): string | null {
+  const name = window.prompt(message, initial);
+  if (name === null) return null;
+  if (!DOCUMENT_NAME_PATTERN.test(name)) {
+    window.alert("Bad name — letters, digits, - and _ only.");
+    return null;
+  }
+  return name;
+}
 const docs_button = document.getElementById("docs_button") as HTMLButtonElement;
 const docs_panel = document.getElementById("docs_panel") as HTMLDivElement;
 
@@ -555,15 +601,20 @@ async function open_docs_panel(): Promise<void> {
     const new_button = document.createElement("button");
     new_button.textContent = "new…";
     new_button.addEventListener("click", () => {
-      const name = window.prompt("Document name (letters, digits, - and _):");
-      if (name === null) return;
-      if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) {
-        window.alert("Bad name — letters, digits, - and _ only.");
-        return;
-      }
-      void switch_to_document_and_rerender(name);
+      const name = prompt_document_name("Document name (letters, digits, - and _):", "");
+      if (name !== null) void switch_to_document_and_rerender(name);
     });
     docs_panel.appendChild(new_button);
+    const rename_button = document.createElement("button");
+    rename_button.textContent = "rename…";
+    rename_button.addEventListener("click", () => {
+      const name = prompt_document_name("New document name:", persistence.current_document_name);
+      if (name === null) return;
+      void rename_document(persistence, tablet_document, camera, name).then((renamed) => {
+        if (renamed) docs_panel.classList.remove("open");
+      });
+    });
+    docs_panel.appendChild(rename_button);
   }
   docs_panel.classList.add("open");
 }

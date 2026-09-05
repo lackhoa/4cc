@@ -4,7 +4,8 @@
 // (3 fingers), Procreate-style. Pen (and mouse) events are forwarded to the caller
 // (drawing modes handle them in later steps). Mouse wheel = zoom, eased
 // toward a target distance over a few frames so notched wheels feel smooth;
-// alt+drag with the pen/mouse = pan (never reaches the pen handlers).
+// alt+drag or middle-button drag with the pen/mouse = pan (never reaches the
+// pen handlers).
 
 import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
 import { V2 } from "./math";
@@ -62,8 +63,8 @@ export function attach_gestures(
     return { centroid, spread };
   }
 
-  // Alt+drag pan: last position of the panning pen pointer, null when idle.
-  // Decided at pen-down, so releasing alt mid-drag keeps panning.
+  // Alt+drag / middle-button pan: last position of the panning pen pointer,
+  // null when idle. Decided at pen-down, so releasing alt mid-drag keeps panning.
   let alt_pan_last_position: V2 | null = null;
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -73,7 +74,7 @@ export function attach_gestures(
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     const position = { x: e.clientX, y: e.clientY };
     if (is_pen_pointer(e)) {
-      if (e.altKey) {
+      if (e.altKey || e.button === 1) {
         alt_pan_last_position = position;
         return;
       }

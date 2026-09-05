@@ -258,6 +258,43 @@ async function load_current_document_inner(
   // Name unknown to the server and no buffer: fresh empty document.
 }
 
+// Rename the current document: save it under the new name, then delete the
+// old server file. Refuses a name the server already has (no silent clobber).
+// Returns false when nothing changed (name taken / server unreachable).
+export async function rename_document(
+  state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, new_name: string,
+): Promise<boolean> {
+  const old_name = state.current_document_name;
+  if (new_name === old_name) return false;
+  const existing = await list_documents_from_server();
+  if (existing === null) return false;
+  if (existing.some((entry) => entry.name === new_name)) {
+    window.alert(`A document named '${new_name}' already exists.`);
+    return false;
+  }
+  if (state.autosave_timer !== null) {
+    window.clearTimeout(state.autosave_timer);
+    state.autosave_timer = null;
+  }
+  const json = serialize_document_state(tablet_document, camera);
+  if (!(await save_to_server(new_name, json))) return false;
+  state.current_document_name = new_name;
+  state.last_saved_json = json;
+  remember_current_name(new_name);
+  write_crash_buffer({ name: new_name, json, server_saved: true, saved_at_ms: Date.now() });
+  // The old file only exists if it was saved at least once.
+  if (existing.some((entry) => entry.name === old_name)) {
+    try {
+      const response = await fetch(`/api/documents/${encodeURIComponent(old_name)}`, { method: "DELETE" });
+      if (!response.ok) window.alert(`Renamed, but the old copy '${old_name}' could not be deleted (${response.status}).`);
+    } catch (error) {
+      console.error(`deleting old document '${old_name}' failed`, error);
+      window.alert(`Renamed, but the old copy '${old_name}' could not be deleted (server unreachable).`);
+    }
+  }
+  return true;
+}
+
 // Switch to (or create) another document: flush the current one first, then
 // load the target — a name the server doesn't know starts empty.
 export async function switch_document(

@@ -81,6 +81,16 @@ function handle_document_save(name: string, request: IncomingMessage, response: 
   });
 }
 
+function handle_document_delete(name: string, response: ServerResponse): void {
+  const file_path = path.join(documents_directory, `${name}.json`);
+  if (!fs.existsSync(file_path)) {
+    send_json(response, 404, { error: "no such document" });
+    return;
+  }
+  fs.unlinkSync(file_path);
+  send_json(response, 200, { ok: true });
+}
+
 function tablet_api_middleware(request: IncomingMessage, response: ServerResponse, next: () => void): void {
   const url = request.url ?? "";
   if (url.startsWith("/reference/") && request.method === "GET") {
@@ -103,6 +113,10 @@ function tablet_api_middleware(request: IncomingMessage, response: ServerRespons
     }
     if (request.method === "POST") {
       handle_document_save(name, request, response);
+      return;
+    }
+    if (request.method === "DELETE") {
+      handle_document_delete(name, response);
       return;
     }
   }

@@ -15,6 +15,7 @@ export type Stroke = {
   p3_vertex: number;
   d0: V3; // p1 = (2*p0 + p3)/3 + d0 (world units)
   d3: V3; // p2 = (p0 + 2*p3)/3 + d3
+  name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
 };
 
 // Ruled surface between two strokes.
