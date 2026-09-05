@@ -15,6 +15,7 @@
 import { OrbitCamera, camera_basis } from "./camera";
 import { Patch, Stroke, TabletDocument, VertexId, bezier_point, bezier_tangent, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
+import { VertexSink, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
 const LOFT_ROWS_ACROSS = 4;
@@ -126,13 +127,13 @@ function brightness_of_normal(cross: V3, camera_forward: V3): number {
   return SURFACE_AMBIENT + (1 - SURFACE_AMBIENT) * Math.abs(v3_dot(v3_normalize(cross), camera_forward));
 }
 
-function push_shaded_vertex(position: V3, brightness: number, color: Color, out: number[]): void {
-  out.push(position.x, position.y, position.z, color.r * brightness, color.g * brightness, color.b * brightness);
+function push_shaded_vertex(position: V3, brightness: number, color: Color, out: VertexSink): void {
+  push_vertex(out, position, { r: color.r * brightness, g: color.g * brightness, b: color.b * brightness });
 }
 
 // Ruled surface P(u, v) = lerp(A(u), B(u), v), both sides running the same
 // way — normals from the analytic partials.
-function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: number[]): void {
+function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: VertexSink): void {
   const samples_a = sample_side(side_a, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
   const samples_b = sample_side(side_b, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
   const camera_forward = camera_basis(camera).forward;
@@ -217,7 +218,7 @@ function loft_surface_grid(side_a: Side, side_b: Side, tablet_document: TabletDo
   return { columns: LOFT_SAMPLES_ALONG_RAILS, rows: LOFT_ROWS_ACROSS, positions: grid_positions };
 }
 
-function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: Color, out: number[]): void {
+function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: Color, out: VertexSink): void {
   const camera_forward = camera_basis(camera).forward;
   const push_triangle = (a: V3, b: V3, c: V3) => {
     const brightness = brightness_of_normal(v3_cross(v3_sub(b, a), v3_sub(c, a)), camera_forward);
@@ -263,7 +264,7 @@ export function patch_surface_grid(patch: Patch, tablet_document: TabletDocument
   return coons_surface_grid(fill.sides, tablet_document);
 }
 
-export function append_patch_mesh(patch: Patch, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: number[]): void {
+export function append_patch_mesh(patch: Patch, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: VertexSink): void {
   const fill = resolve_patch_fill(patch, tablet_document);
   if (fill === null) return;
   // The loft keeps its analytic-partial shading; Coons shades per triangle.

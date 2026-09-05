@@ -5,6 +5,7 @@
 
 import { OrbitCamera, camera_basis } from "./camera";
 import { V3, v3, v3_cross, v3_dot, v3_length, v3_normalize, v3_sub } from "./math";
+import { VertexSink, push_vertex } from "./vertex_sink";
 
 const REFERENCE_AMBIENT = 0.2; // dimmer than surfaces (LOFT_AMBIENT 0.35)
 const REFERENCE_COLOR = { r: 0.5, g: 0.48, b: 0.46 };
@@ -91,7 +92,7 @@ export async function fetch_reference_mesh(url: string): Promise<ReferenceMesh |
 }
 
 // Flat-shaded headlight, same scheme as surfaces but dimmer (two-sided).
-export function append_reference_mesh(mesh: ReferenceMesh, camera: OrbitCamera, out: number[]): void {
+export function append_reference_mesh(mesh: ReferenceMesh, camera: OrbitCamera, out: VertexSink): void {
   const camera_forward = camera_basis(camera).forward;
   for (let triangle = 0; triangle < mesh.triangle_normals.length; triangle++) {
     const normal = mesh.triangle_normals[triangle];
@@ -102,7 +103,7 @@ export function append_reference_mesh(mesh: ReferenceMesh, camera: OrbitCamera, 
     const b = REFERENCE_COLOR.b * brightness;
     for (let corner = 0; corner < 3; corner++) {
       const position = mesh.triangle_positions[triangle * 3 + corner];
-      out.push(position.x, position.y, position.z, r, g, b);
+      push_vertex(out, position, { r, g, b });
     }
   }
 }

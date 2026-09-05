@@ -8,13 +8,14 @@
 import { OrbitCamera, camera_basis } from "./camera";
 import { Stroke, StrokeControlPoints, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
 import { v3_add, v3_dot, v3_length, v3_scale, v3_sub, V3 } from "./math";
+import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
 const RIBBON_RADIUS = 0.02; // world units; grid cell = 1
 const RIBBON_SAMPLES = 24;
 // Desktop taper: cubic-bezier-interpolated radii multipliers along the stroke.
 const TAPER = [0.25, 1, 1, 0.25];
 
-export type Rgb = { r: number; g: number; b: number };
+export type { Rgb };
 
 function taper_at(t: number): number {
   const s = 1 - t;
@@ -23,7 +24,7 @@ function taper_at(t: number): number {
 
 // Appends interleaved [x,y,z, r,g,b] triangle vertices to out.
 export function append_stroke_ribbon(
-  stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: number[],
+  stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
   append_bezier_ribbon(stroke_control_points(stroke, tablet_document), { start: 0, end: 1 }, camera, color, out);
 }
@@ -34,7 +35,7 @@ export function append_stroke_ribbon(
 export type TaperWindow = { start: number; end: number };
 
 export function append_bezier_ribbon(
-  points: StrokeControlPoints, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: number[],
+  points: StrokeControlPoints, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
   const basis = camera_basis(camera);
   const centers: V3[] = [];
@@ -73,7 +74,7 @@ export function append_bezier_ribbon(
 
 // A chain of cubics rendered as one stroke: a single taper spread over the
 // chain by chord length (cubics here are short cell segments, chord ≈ arc).
-export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: number[]): void {
+export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: VertexSink): void {
   const chords = chain.map((points) => v3_length(v3_sub(points.p3, points.p0)));
   const total = chords.reduce((sum, chord) => sum + chord, 0);
   if (total < 1e-9) return;
@@ -83,8 +84,4 @@ export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitC
     covered += chords[index];
     append_bezier_ribbon(points, { start, end: covered / total }, camera, color, out);
   });
-}
-
-function push_vertex(out: number[], position: V3, color: Rgb): void {
-  out.push(position.x, position.y, position.z, color.r, color.g, color.b);
 }

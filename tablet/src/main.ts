@@ -16,6 +16,7 @@ import { append_patch_mesh, patch_surface_grid } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
+import { VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
 import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
@@ -162,8 +163,14 @@ function drag_snap_target_stroke(): StrokeId | null {
   return target === null ? null : target.stroke_id;
 }
 
+// Per-frame meshes reuse one sink each so a frame allocates nothing for them.
+const stroke_sink = create_vertex_sink(1 << 15);
+const surface_sink = create_vertex_sink(1 << 15);
+const reference_sink = create_vertex_sink(1 << 15);
+
 function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_stroke: StrokeId | null): void {
-  const vertices: number[] = [];
+  const vertices = stroke_sink;
+  reset_vertex_sink(vertices);
   for (const stroke of tablet_document.strokes) {
     const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
     const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
@@ -171,12 +178,12 @@ function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_st
     append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
   }
   append_contour_ribbons(vertices);
-  set_stroke_mesh(renderer, new Float32Array(vertices));
+  set_stroke_mesh(renderer, vertex_sink_view(vertices));
 }
 
 // Computed contours share the stroke mesh so they get the same depth bias
 // and draw order as drawn strokes; they are derived per frame, never stored.
-function append_contour_ribbons(vertices: number[]): void {
+function append_contour_ribbons(vertices: VertexSink): void {
   const eye = camera_eye(camera);
   for (const patch of tablet_document.patches) {
     const grid = patch_surface_grid(patch, tablet_document);
@@ -186,11 +193,12 @@ function append_contour_ribbons(vertices: number[]): void {
 }
 
 function rebuild_surface_mesh(): void {
-  const vertices: number[] = [];
+  const vertices = surface_sink;
+  reset_vertex_sink(vertices);
   for (const patch of tablet_document.patches) {
     append_patch_mesh(patch, tablet_document, camera, SURFACE_COLOR, vertices);
   }
-  set_surface_mesh(renderer, new Float32Array(vertices));
+  set_surface_mesh(renderer, vertex_sink_view(vertices));
 }
 
 // Camera-facing square marker, two triangles.
@@ -215,9 +223,10 @@ function rebuild_reference_mesh(): void {
     set_reference_mesh(renderer, new Float32Array(0));
     return;
   }
-  const vertices: number[] = [];
+  const vertices = reference_sink;
+  reset_vertex_sink(vertices);
   append_reference_mesh(reference_mesh, camera, vertices);
-  set_reference_mesh(renderer, new Float32Array(vertices));
+  set_reference_mesh(renderer, vertex_sink_view(vertices));
 }
 
 function rebuild_edit_overlay(): void {
