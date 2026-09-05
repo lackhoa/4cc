@@ -12,8 +12,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { merge_adjacent_strokes } from "./stroke_merge";
-import { append_coons_mesh } from "./coons";
-import { append_loft_mesh } from "./loft";
+import { append_patch_mesh } from "./patch";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_stroke_ribbon } from "./ribbon";
 import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
@@ -46,23 +45,23 @@ const persistence = create_persistence_state();
 const history = create_history_state();
 let reference_mesh: ReferenceMesh | null = null;
 let reference_visible = true;
-let edit_state: EditState | null = null; // non-null = a stroke is selected
-// Armed tools: "line" creates strokes; the pick tools make the next tapped
-// stroke the loft's second rail ("loft"), one of the Coons patch's remaining
-// boundary sides ("patch", collects until 4), or the adjacent stroke to merge
-// the selection with ("join"). "pin" waits for a tap on the selected stroke's
-// curve and creates a vertex pinned there. "split" waits for a tap on the
-// selected curve and splits it there into two strokes joined by a smooth knot.
-// "smooth" makes the next tapped stroke smooth with the selection at their
-// shared endpoint (selection leads).
-type ArmedTool = "line" | "loft" | "patch" | "join" | "pin" | "split" | "smooth";
+let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
+// Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
+// Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
+// act on primary + extras. Kept apart from EditState so the selection can
+// later widen to vertices/patches without touching stroke editing.
+let extra_selection: StrokeId[] = [];
+// Armed tools: "line" creates strokes. "pin" waits for a tap on the selected
+// stroke's curve and creates a vertex pinned there. "split" waits for a tap on
+// the selected curve and splits it there into two strokes joined by a smooth
+// knot.
+type ArmedTool = "line" | "pin" | "split";
 let armed_tool: ArmedTool | null = null;
 // Tilt is a sticky mode, not a tap tool. Two variants to compare, mutually
 // exclusive: "dial" — any drag rolls the selected stroke about its chord;
 // "swing" — a handle drag tilts the plane by swinging the other handle
 // (edit_pen_down/move).
 let handle_mode: HandleMode = "plane";
-const patch_picks: StrokeId[] = []; // strokes collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
 let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
 let frame_requested = false;
@@ -139,7 +138,8 @@ function drag_snap_target_stroke(): StrokeId | null {
 function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_stroke: StrokeId | null): void {
   const vertices: number[] = [];
   for (const stroke of tablet_document.strokes) {
-    const color = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke ? HIGHLIGHT_COLOR : STROKE_COLOR;
+    const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
+    const color = highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
     append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
   }
   set_stroke_mesh(renderer, new Float32Array(vertices));
@@ -147,11 +147,8 @@ function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_st
 
 function rebuild_surface_mesh(): void {
   const vertices: number[] = [];
-  for (const loft of tablet_document.lofts) {
-    append_loft_mesh(loft, tablet_document, camera, SURFACE_COLOR, vertices);
-  }
-  for (const coons of tablet_document.coons) {
-    append_coons_mesh(coons, tablet_document, camera, SURFACE_COLOR, vertices);
+  for (const patch of tablet_document.patches) {
+    append_patch_mesh(patch, tablet_document, camera, SURFACE_COLOR, vertices);
   }
   set_surface_mesh(renderer, new Float32Array(vertices));
 }
@@ -261,7 +258,7 @@ function line_mode_pen_up(): void {
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
   if (!was_tap && line_state !== null) {
     const stroke_id = line_pen_up(line_state, tablet_document);
-    if (stroke_id !== null) edit_state = begin_edit_state(stroke_id);
+    if (stroke_id !== null) select_stroke_by_tap(stroke_id, false);
   }
   set_armed_tool(null); // also clears line_state
   update_preview_line();
@@ -285,10 +282,30 @@ function pick_pin_on_stroke(host_stroke: StrokeId, screen: V2): VertexPin | null
   return best;
 }
 
-// Selected-stroke pen-up: a tap on another stroke switches the selection (or,
-// with a pick tool armed, feeds it); a tap on empty space deselects. Drags
-// (control point, whole-stroke move, or orbit) just end.
-function edit_mode_pen_up(position: V2): void {
+// Plain tap on a stroke: it becomes the sole selection. Ctrl-tap: toggles it
+// in the selection — on the primary, the first extra is promoted (Q4).
+function select_stroke_by_tap(picked: StrokeId, multi: boolean): void {
+  if (!multi) {
+    extra_selection = [];
+    edit_state = begin_edit_state(picked);
+    return;
+  }
+  if (edit_state === null) {
+    edit_state = begin_edit_state(picked);
+  } else if (picked === edit_state.stroke_id) {
+    const promoted = extra_selection.shift();
+    edit_state = promoted === undefined ? null : begin_edit_state(promoted);
+  } else if (extra_selection.includes(picked)) {
+    extra_selection = extra_selection.filter((id) => id !== picked);
+  } else {
+    extra_selection.push(picked);
+  }
+}
+
+// Selected-stroke pen-up: a tap on another stroke switches (or ctrl: extends)
+// the selection, or with a pick tool armed, feeds it; a tap on empty space
+// deselects. Drags (control point, whole-stroke move, or orbit) just end.
+function edit_mode_pen_up(position: V2, multi: boolean): void {
   if (edit_state === null) return;
   const was_control_drag =
     edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke ||
@@ -326,40 +343,15 @@ function edit_mode_pen_up(position: V2): void {
     return;
   }
   const picked = pick_stroke(tablet_document, camera, position, canvas);
-  if (armed_tool === "patch") {
-    if (picked === null) {
-      set_armed_tool(null); // tap empty = cancel, selection kept
-      return;
-    }
-    if (!patch_picks.includes(picked)) patch_picks.push(picked);
-    if (patch_picks.length === 4) {
-      tablet_document.coons.push({ strokes: [patch_picks[0], patch_picks[1], patch_picks[2], patch_picks[3]] });
-      set_armed_tool(null);
-      edit_state = null;
-    }
+  if (picked === null) {
+    edit_state = null;
+    extra_selection = [];
     return;
   }
-  if (armed_tool !== null) {
-    if (picked !== null && picked !== edit_state.stroke_id) {
-      if (armed_tool === "loft") {
-        tablet_document.lofts.push({ stroke_a: edit_state.stroke_id, stroke_b: picked });
-        edit_state = null;
-      } else if (armed_tool === "join") {
-        const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, picked);
-        // Not adjacent (or a closed loop): keep the selection, just disarm.
-        if (merged_id !== null) edit_state = begin_edit_state(merged_id);
-      } else if (armed_tool === "smooth") {
-        smooth_strokes(tablet_document, edit_state.stroke_id, picked); // no shared vertex: nothing
-      }
-    }
-    set_armed_tool(null); // tap empty (or the same stroke) = cancel, selection kept
-    return;
-  }
-  edit_state = picked === null ? null : begin_edit_state(picked);
+  select_stroke_by_tap(picked, multi);
 }
 
 const line_button = document.getElementById("line_button") as HTMLButtonElement;
-const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
 const split_button = document.getElementById("split_button") as HTMLButtonElement;
@@ -384,40 +376,44 @@ function refresh_pin_button_armed(): void {
 }
 function set_armed_tool(tool: ArmedTool | null): void {
   armed_tool = tool;
-  if (tool !== "patch") patch_picks.length = 0;
   if (tool !== "line") line_state = null;
   line_button.classList.toggle("armed", tool === "line");
-  surface_button.classList.toggle("armed", tool === "loft");
-  patch_button.classList.toggle("armed", tool === "patch");
-  join_button.classList.toggle("armed", tool === "join");
   split_button.classList.toggle("armed", tool === "split");
-  smooth_button.classList.toggle("armed", tool === "smooth");
   refresh_pin_button_armed();
 }
 line_button.addEventListener("click", () => {
   set_armed_tool(armed_tool === "line" ? null : "line");
 });
-surface_button.addEventListener("click", () => {
-  if (edit_state === null) return; // needs a selected first rail
-  set_armed_tool(armed_tool === "loft" ? null : "loft");
-});
-// Patch: the selected stroke is the first boundary side; the next three taps
-// pick the rest (any order — sides are chained by endpoint proximity).
+// Patch: fill the selected strokes (primary + extras, 2 or more). Which fill
+// they get is derived per frame from their corners (patch.ts).
 patch_button.addEventListener("click", () => {
-  if (edit_state === null) return;
-  if (armed_tool === "patch") {
-    set_armed_tool(null);
-    return;
-  }
-  set_armed_tool("patch");
-  patch_picks.push(edit_state.stroke_id);
+  if (edit_state === null || extra_selection.length === 0) return;
+  begin_history_step(history, tablet_document);
+  tablet_document.patches.push({ strokes: [edit_state.stroke_id, ...extra_selection] });
+  end_history_step(history, tablet_document);
+  edit_state = null;
+  extra_selection = [];
+  request_render();
 });
 
-// Join: the next tapped stroke merges with the selection into one cubic
-// (they must share a vertex).
+// The one extra stroke of a two-stroke selection, or null (join/smooth need
+// exactly a primary and one extra; the primary leads).
+function single_extra_stroke(): StrokeId | null {
+  return edit_state !== null && extra_selection.length === 1 ? extra_selection[0] : null;
+}
+
+// Join: the primary and the one extra merge into one cubic (they must share
+// a vertex); the merged stroke keeps the primary's id and stays selected.
 join_button.addEventListener("click", () => {
-  if (edit_state === null) return; // needs a selected first stroke
-  set_armed_tool(armed_tool === "join" ? null : "join");
+  const other = single_extra_stroke();
+  if (edit_state === null || other === null) return;
+  begin_history_step(history, tablet_document);
+  const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, other);
+  end_history_step(history, tablet_document);
+  if (merged_id === null) return; // not adjacent (or a closed loop): selection kept
+  edit_state = begin_edit_state(merged_id);
+  extra_selection = [];
+  request_render();
 });
 
 // Split: the next tap on the selected curve cuts it there into two strokes
@@ -427,11 +423,15 @@ split_button.addEventListener("click", () => {
   set_armed_tool(armed_tool === "split" ? null : "split");
 });
 
-// Smooth: the next tapped stroke becomes smooth with the selection at their
-// shared endpoint (the selection keeps its tangent, the other is re-aimed).
+// Smooth: the one extra becomes smooth with the primary at their shared
+// endpoint (the primary keeps its tangent, the extra is re-aimed).
 smooth_button.addEventListener("click", () => {
-  if (edit_state === null) return;
-  set_armed_tool(armed_tool === "smooth" ? null : "smooth");
+  const other = single_extra_stroke();
+  if (edit_state === null || other === null) return;
+  begin_history_step(history, tablet_document);
+  smooth_strokes(tablet_document, edit_state.stroke_id, other); // no shared vertex: nothing
+  end_history_step(history, tablet_document);
+  request_render();
 });
 
 // Pin: with a pinned vertex selected, unpin it (frozen in place as a free
@@ -466,12 +466,14 @@ function pen_orbit(position: V2): void {
 function perform_undo(): void {
   if (!undo(history, tablet_document)) return;
   edit_state = null;
+  extra_selection = [];
   set_armed_tool(null);
   request_render();
 }
 function perform_redo(): void {
   if (!redo(history, tablet_document)) return;
   edit_state = null;
+  extra_selection = [];
   set_armed_tool(null);
   request_render();
 }
@@ -515,14 +517,15 @@ attach_gestures(canvas, camera, {
     }
     request_render();
   },
-  on_pen_up: (position) => {
+  on_pen_up: (position, event) => {
+    const multi = event.ctrlKey || event.metaKey; // ctrl/cmd-tap extends the selection (Q1)
     if (armed_tool === "line") {
       line_mode_pen_up();
     } else if (edit_state !== null) {
-      edit_mode_pen_up(position);
+      edit_mode_pen_up(position, multi);
     } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
       const picked = pick_stroke(tablet_document, camera, position, canvas);
-      if (picked !== null) edit_state = begin_edit_state(picked);
+      if (picked !== null) select_stroke_by_tap(picked, multi);
     }
     pen_down_screen = null;
     pen_orbit_last_screen = null;
@@ -549,14 +552,15 @@ name_button.addEventListener("click", () => {
   request_render();
 });
 
-// Delete the selected stroke (surfaces built on it go with it).
+// Delete the whole selection (patches built on any of it go with it).
 const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
 delete_button.addEventListener("click", () => {
   if (edit_state === null) return;
   begin_history_step(history, tablet_document);
-  delete_stroke(tablet_document, edit_state.stroke_id);
+  for (const stroke_id of [edit_state.stroke_id, ...extra_selection]) delete_stroke(tablet_document, stroke_id);
   end_history_step(history, tablet_document);
   edit_state = null;
+  extra_selection = [];
   set_armed_tool(null);
   request_render();
 });
@@ -569,6 +573,7 @@ clear_button.addEventListener("click", () => {
   clear_document_in_place(tablet_document);
   end_history_step(history, tablet_document);
   edit_state = null;
+  extra_selection = [];
   set_armed_tool(null);
   request_render();
 });
@@ -631,6 +636,7 @@ const docs_panel = document.getElementById("docs_panel") as HTMLDivElement;
 async function switch_to_document_and_rerender(name: string): Promise<void> {
   docs_panel.classList.remove("open");
   edit_state = null;
+  extra_selection = [];
   set_armed_tool(null);
   clear_history(history); // history is per-document (Q5)
   await switch_document(persistence, tablet_document, camera, name);

@@ -62,8 +62,7 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.vertex_pins.length = 0;
   tablet_document.smooth_knots.length = 0;
   tablet_document.strokes.length = 0;
-  tablet_document.lofts.length = 0;
-  tablet_document.coons.length = 0;
+  tablet_document.patches.length = 0;
 }
 
 // v1 stroke: d0 a free V3 defining the plane, d3 in the (u2 = p3 - p1, v)
@@ -158,10 +157,13 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
   // smooth_knots arrived within v4 — absent in earlier files and early v4 saves.
   tablet_document.smooth_knots.push(...(parsed.document.smooth_knots ?? []));
-  tablet_document.lofts.push(...parsed.document.lofts);
   // Files saved before revolve/inflate were removed still carry `revolves` /
-  // `inflates` arrays — ignored, dropped on the next save.
-  tablet_document.coons.push(...parsed.document.coons);
+  // `inflates` arrays — ignored, dropped on the next save. Files from before
+  // `patches` carry `lofts` (two rails) and `coons` (four sides) instead:
+  // both are just stroke sets now, migrated here and dropped on the next save.
+  tablet_document.patches.push(...(parsed.document.patches ?? []));
+  for (const loft of parsed.document.lofts ?? []) tablet_document.patches.push({ strokes: [loft.stroke_a, loft.stroke_b] });
+  for (const coons of parsed.document.coons ?? []) tablet_document.patches.push({ strokes: [...coons.strokes] });
   camera.pivot = parsed.camera.pivot;
   camera.yaw = parsed.camera.yaw;
   camera.pitch = parsed.camera.pitch;

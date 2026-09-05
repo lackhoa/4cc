@@ -10,7 +10,7 @@
 //
 // Stable ids (plan-tablet-stable-ids.md): every stroke and vertex carries an
 // id handed out by the document's counters and never reused, and every
-// cross-reference (endpoints, pins, lofts, patches, the selection) holds ids,
+// cross-reference (endpoints, pins, knots, patches, the selection) holds ids,
 // never array positions. Deleting is therefore a plain filter — nothing has
 // to be renumbered. Arrays (not Maps) so the document stays plain JSON for
 // snapshots and autosave; lookups are linear scans, fine at dozens of
@@ -33,12 +33,11 @@ export type Stroke = {
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
 };
 
-// Ruled surface between two strokes.
-export type Loft = { stroke_a: StrokeId; stroke_b: StrokeId };
-
-// Coons patch: four boundary strokes (tap order, chained into a loop at
-// tessellation time) filled with a bilinearly blended surface.
-export type Coons = { strokes: [StrokeId, StrokeId, StrokeId, StrokeId] };
+// A patch is the set of strokes selected when it was made — unordered,
+// undirected, two or more. How it's filled (loft, Coons, N-sided) is derived
+// every frame from the current strokes and smooth knots (patch.ts), never
+// stored, so reshaping a side or adding/removing a knot reshapes the fill.
+export type Patch = { strokes: StrokeId[] };
 
 // A vertex permanently constrained to ride a host stroke's curve
 // (plan-tablet-vertex-insert-and-normal.md Q7/Q10): its position is always
@@ -65,13 +64,12 @@ export type TabletDocument = {
   vertex_pins: VertexPin[];
   smooth_knots: SmoothKnot[];
   strokes: Stroke[]; // array order = draw order
-  lofts: Loft[];
-  coons: Coons[];
+  patches: Patch[];
 };
 
 export function empty_document(): TabletDocument {
   return {
-    next_vertex_id: 0, next_stroke_id: 0, vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], lofts: [], coons: [],
+    next_vertex_id: 0, next_stroke_id: 0, vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
   };
 }
 
@@ -125,9 +123,7 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_id: Stroke
   // its last position as a free vertex (Q9), kept only while something still
   // references it (the vertex GC below treats surviving pins as references).
   tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.host_stroke !== stroke_id);
-  tablet_document.lofts = tablet_document.lofts
-    .filter((loft) => loft.stroke_a !== stroke_id && loft.stroke_b !== stroke_id);
-  tablet_document.coons = tablet_document.coons.filter((coons) => !coons.strokes.includes(stroke_id));
+  tablet_document.patches = tablet_document.patches.filter((patch) => !patch.strokes.includes(stroke_id));
   // A knot with one stroke isn't a knot (Q7).
   tablet_document.smooth_knots = tablet_document.smooth_knots
     .filter((knot) => knot.stroke_a !== stroke_id && knot.stroke_b !== stroke_id);
@@ -139,7 +135,7 @@ const SPLIT_MIN_T_FROM_ENDS = 0.02;
 
 // Split a stroke at t into two strokes meeting at a smooth knot. Exact:
 // de Casteljau subdivision reproduces the original curve. The original
-// stroke keeps the [0, t] half (so lofts/patches built on it stay on it);
+// stroke keeps the [0, t] half; patches bounded by it gain the other half;
 // the new stroke takes [t, 1]. Pins on the original re-parameterize to
 // whichever half they land on. The knot is a new vertex, unless the cut is
 // at a vertex pinned to this stroke: then that vertex becomes the knot (its
@@ -181,6 +177,10 @@ export function split_stroke(
     }
   }
   tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
+  // A patch bounded by the split stroke is now bounded by both halves.
+  for (const patch of tablet_document.patches) {
+    if (patch.strokes.includes(stroke_id)) patch.strokes.push(second_stroke);
+  }
   return knot_vertex;
 }
 

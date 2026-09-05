@@ -20,13 +20,12 @@ assert.equal(doc.next_vertex_id, Math.max(-1, ...doc.vertices.map((vertex) => ve
 assert.equal(doc.next_stroke_id, Math.max(-1, ...doc.strokes.map((stroke) => stroke.id)) + 1);
 for (const stroke of doc.strokes) { vertex_by_id(doc, stroke.p0_vertex); vertex_by_id(doc, stroke.p3_vertex); }
 for (const pin of doc.vertex_pins) { vertex_by_id(doc, pin.vertex); stroke_by_id(doc, pin.host_stroke); }
-for (const loft of doc.lofts) { stroke_by_id(doc, loft.stroke_a); stroke_by_id(doc, loft.stroke_b); }
-for (const coons of doc.coons) for (const id of coons.strokes) stroke_by_id(doc, id);
+for (const patch of doc.patches) for (const id of patch.strokes) stroke_by_id(doc, id);
 
 const saved = serialize_document_state(doc, camera);
 assert.equal(JSON.parse(saved).version, 4);
 const doc2 = empty_document();
 assert.ok(apply_document_state(saved, doc2, default_camera()), "v4 output loads");
 assert.equal(JSON.stringify(doc2), JSON.stringify(doc), "round-trip stable");
-console.log(`ok: ${path} v${original_version} -> v4, ${doc.vertices.length} vertices, ${doc.strokes.length} strokes, ${doc.vertex_pins.length} pins, ${doc.lofts.length} lofts, ${doc.coons.length} patches`);
+console.log(`ok: ${path} v${original_version} -> v4, ${doc.vertices.length} vertices, ${doc.strokes.length} strokes, ${doc.vertex_pins.length} pins, ${doc.patches.length} patches`);
 if (write_back) { writeFileSync(path, saved); console.log("written", path); }

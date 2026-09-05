@@ -39,8 +39,7 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   tablet_document.vertex_pins.push(...parsed.vertex_pins);
   tablet_document.smooth_knots.push(...parsed.smooth_knots);
   tablet_document.strokes.push(...parsed.strokes);
-  tablet_document.lofts.push(...parsed.lofts);
-  tablet_document.coons.push(...parsed.coons);
+  tablet_document.patches.push(...parsed.patches);
 }
 
 export function begin_history_step(history: HistoryState, tablet_document: TabletDocument): void {
