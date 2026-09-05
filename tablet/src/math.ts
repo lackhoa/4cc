@@ -19,6 +19,16 @@ export function v3_normalize(a: V3): V3 {
   return len === 0 ? v3(0, 0, 0) : v3_scale(a, 1 / len);
 }
 
+// Rotate x by `angle` radians about the unit `axis` (Rodrigues, right-handed).
+export function v3_rotate_about_axis(x: V3, axis: V3, angle: number): V3 {
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  return v3_add(
+    v3_add(v3_scale(x, cosine), v3_scale(v3_cross(axis, x), sine)),
+    v3_scale(axis, v3_dot(axis, x) * (1 - cosine)),
+  );
+}
+
 // Rotate x by the minimal rotation that takes unit direction `from` to unit
 // direction `to` (Rodrigues). Parallel directions return x unchanged (exactly —
 // no float drift for the no-op case); antiparallel ones rotate 180° about

@@ -7,7 +7,7 @@
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_units_per_pixel, default_camera } from "./camera";
 import { bezier_point, delete_stroke, empty_document, stroke_control_points, update_pinned_vertex_positions } from "./document";
-import { EditState, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
+import { EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -53,9 +53,11 @@ let edit_state: EditState | null = null; // non-null = a stroke is selected
 // curve and creates a vertex pinned there.
 type ArmedTool = "line" | "loft" | "patch" | "join" | "pin";
 let armed_tool: ArmedTool | null = null;
-// Tilt is a sticky mode, not a tap tool: while on, handle drags roll the
-// stroke's plane (edit_pen_move). Off, they slide inside it.
-let tilt_mode = false;
+// Tilt is a sticky mode, not a tap tool. Two variants to compare, mutually
+// exclusive: "dial" — any drag rolls the selected stroke about its chord;
+// "swing" — a handle drag tilts the plane by swinging the other handle
+// (edit_pen_down/move).
+let handle_mode: HandleMode = "plane";
 const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
 let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
@@ -189,7 +191,7 @@ function rebuild_edit_overlay(): void {
   if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
     const stroke = tablet_document.strokes[edit_state.stroke_index];
     const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    const target_vertex = find_merge_target_vertex(tablet_document, camera, canvas, dragged_vertex);
+    const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
     if (target_vertex !== null) {
       append_billboard_square(
         tablet_document.vertices[target_vertex], anchor_half * 2, basis.right, basis.up,
@@ -233,8 +235,9 @@ function line_mode_pen_up(): void {
 function edit_mode_pen_up(position: V2): void {
   if (edit_state === null) return;
   const was_control_drag =
-    edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke;
-  edit_pen_up(edit_state, tablet_document, camera, canvas);
+    edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke ||
+    edit_state.tilting;
+  edit_pen_up(edit_state, tablet_document);
   const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
   if (!was_tap || was_control_drag) return;
   if (armed_tool === "pin") {
@@ -291,10 +294,14 @@ const patch_button = document.getElementById("patch_button") as HTMLButtonElemen
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
 const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
 const tilt_button = document.getElementById("tilt_button") as HTMLButtonElement;
-tilt_button.addEventListener("click", () => {
-  tilt_mode = !tilt_mode;
-  tilt_button.classList.toggle("armed", tilt_mode);
-});
+const swing_button = document.getElementById("swing_button") as HTMLButtonElement;
+function set_handle_mode(mode: HandleMode): void {
+  handle_mode = handle_mode === mode ? "plane" : mode;
+  tilt_button.classList.toggle("armed", handle_mode === "dial");
+  swing_button.classList.toggle("armed", handle_mode === "swing");
+}
+tilt_button.addEventListener("click", () => set_handle_mode("dial"));
+swing_button.addEventListener("click", () => set_handle_mode("swing"));
 // The pin button also lights up while a pinned vertex is selected — in that
 // state tapping it unpins (Q11). Re-checked every frame since pin selection
 // changes on pen gestures, not just button presses.
@@ -391,7 +398,7 @@ attach_gestures(canvas, camera, {
       update_preview_line();
     } else if (edit_state !== null && armed_tool === null) {
       // Consumed only when the pen lands on the selection; otherwise orbit.
-      if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
+      if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas, handle_mode)) {
         pen_orbit_last_screen = position;
       }
     } else {
@@ -415,7 +422,7 @@ attach_gestures(canvas, camera, {
     } else if (pen_orbit_last_screen !== null) {
       pen_orbit(position);
     } else if (edit_state !== null) {
-      edit_pen_move(edit_state, tablet_document, camera, position, canvas, tilt_mode);
+      edit_pen_move(edit_state, tablet_document, camera, position, canvas, handle_mode);
     }
     request_render();
   },

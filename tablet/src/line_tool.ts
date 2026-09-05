@@ -2,14 +2,13 @@
 // stroke on the camera-facing plane through the pivot (down = p0, up = p3);
 // the pen's path is shown live and least-squares-fitted to the stroke's
 // interior control points on pen-up, so the stroke resembles the drawn curve.
-// Endpoints snap to existing vertices within a screen radius, reusing them so
-// strokes join at shared vertices. A tap (no drag) exits the tool.
+// Endpoints snap to existing vertices within a world-space radius of the
+// pen's plane point, reusing them so strokes join at shared vertices. A tap
+// (no drag) exits the tool.
 
-import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen } from "./camera";
-import { Stroke, TabletDocument, stroke_handles_from_control_points } from "./document";
+import { OrbitCamera, camera_basis, camera_pen_ray } from "./camera";
+import { Stroke, TabletDocument, pick_vertex_near_world_point, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_dot, v3_length, v3_scale, v3_sub } from "./math";
-
-const VERTEX_SNAP_RADIUS_PIXELS = 20;
 
 // Both endpoints while the pen is down: the world position, plus the existing
 // vertex index it snapped to (null = a new vertex will be created on pen-up).
@@ -36,35 +35,16 @@ export function pen_point_on_camera_plane(
   return v3_add(ray.origin, v3_scale(ray.direction, t));
 }
 
-// Nearest existing vertex within snap range of a screen point, or null.
-export function pick_vertex(
-  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
-): number | null {
-  let best_index: number | null = null;
-  let best_distance = VERTEX_SNAP_RADIUS_PIXELS;
-  for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
-    const projected = camera_world_to_screen(
-      camera, tablet_document.vertices[vertex_index], canvas.clientWidth, canvas.clientHeight,
-    );
-    if (projected === null) continue;
-    const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
-    if (distance < best_distance) {
-      best_distance = distance;
-      best_index = vertex_index;
-    }
-  }
-  return best_index;
-}
-
 function resolve_endpoint(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
 ): { world: V3; snap_vertex: number | null } | null {
-  const snap_vertex = pick_vertex(tablet_document, camera, screen, canvas);
+  const world = pen_point_on_camera_plane(camera, screen, canvas);
+  if (world === null) return null;
+  const snap_vertex = pick_vertex_near_world_point(tablet_document, world, null);
   if (snap_vertex !== null) {
     return { world: tablet_document.vertices[snap_vertex], snap_vertex };
   }
-  const world = pen_point_on_camera_plane(camera, screen, canvas);
-  return world === null ? null : { world, snap_vertex: null };
+  return { world, snap_vertex: null };
 }
 
 export function line_pen_down(

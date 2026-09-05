@@ -4,8 +4,9 @@
 // Free-handle representation (plan-tablet-free-handles-coplanar.md): both
 // interior handles are free 3D offsets from the straight line's 1/3 and 2/3
 // points. Invariant: d0, d3 and the chord are coplanar — kept by
-// swing_offset_into_plane (a handle drag swings the other handle into the new
-// plane) and move_vertex (a chord change rotates both offsets with it).
+// swing_offset_into_plane (imported control points get d3 swung into d0's
+// plane), in-plane handle drags and the tilt dial (edit_mode.ts), and
+// move_vertex (a chord change rotates both offsets with it).
 
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
 
@@ -103,6 +104,28 @@ export function update_pinned_vertex_positions(tablet_document: TabletDocument):
     const points = stroke_control_points(host, tablet_document);
     move_vertex(tablet_document, pin.vertex, bezier_point(points, pin.t));
   }
+}
+
+// Vertex snapping is done in world space (not on screen): two vertices weld
+// only when they are actually close in 3D, however the camera lines them up.
+const VERTEX_SNAP_RADIUS_WORLD = 0.05;
+
+// Nearest vertex within world snap range of a point, or null. `exclude_vertex`
+// keeps a dragged vertex from snapping to itself.
+export function pick_vertex_near_world_point(
+  tablet_document: TabletDocument, point: V3, exclude_vertex: number | null,
+): number | null {
+  let best_index: number | null = null;
+  let best_distance = VERTEX_SNAP_RADIUS_WORLD;
+  for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
+    if (vertex_index === exclude_vertex) continue;
+    const distance = v3_length(v3_sub(tablet_document.vertices[vertex_index], point));
+    if (distance < best_distance) {
+      best_distance = distance;
+      best_index = vertex_index;
+    }
+  }
+  return best_index;
 }
 
 // Move one vertex, rotating the offsets of every stroke ending on it by the

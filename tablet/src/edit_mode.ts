@@ -2,9 +2,12 @@
 // points reshapes it — vertices (p0/p3) move in the camera plane and carry
 // every attached stroke with them; the p1/p2 handles slide inside the
 // stroke's plane (pen ray ∩ plane, plan-tablet-planar-handle-drags.html Q4),
-// so the other handle never moves — unless tilt mode is on, where the dragged
-// handle follows the pen in the camera plane and the other handle swings into
-// the new plane (Q8, plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
+// so the other handle never moves. Two experimental tilt modes (HandleMode):
+// "dial" picks nothing — any drag spins the whole stroke about its chord,
+// Procreate-dial style, horizontal pen travel mapping to the roll angle (Q8);
+// "swing" keeps picking, but a dragged handle follows the pen in the camera
+// plane and the other handle swings into the new plane
+// (plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
 // merges the two into one shared junction. Pinned vertices (vertex_pins) only
 // ever slide along their host curve, whichever way they're grabbed.
 // A drag starting ON the stroke body translates
@@ -12,8 +15,8 @@
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, TabletDocument, bezier_point, move_vertex, stroke_control_points, stroke_plane_normal, swing_offset_into_plane } from "./document";
-import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { Stroke, TabletDocument, bezier_point, move_vertex, pick_vertex_near_world_point, stroke_control_points, stroke_plane_normal, swing_offset_into_plane } from "./document";
+import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_rotate_about_axis, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
@@ -22,13 +25,18 @@ export const TAP_MAX_MOVEMENT_PIXELS = 12;
 
 export const STROKE_PICK_RADIUS_PIXELS = 24;
 const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
-const VERTEX_MERGE_RADIUS_PIXELS = 20;
 const PICK_SAMPLES_PER_STROKE = 16;
 const PIN_SLIDE_SAMPLES = 128; // t resolution when sliding a pinned vertex
 // Below this |cos| between the pen ray and the stroke plane's normal (plane
 // within ~9° of edge-on) the ray∩plane hit runs off to infinity: the handle
 // stays put instead (Q5).
 const EDGE_ON_PLANE_COSINE = 0.15;
+// Tilt dial: one full turn of the stroke about its chord per ~630 px of
+// horizontal pen travel.
+const TILT_RADIANS_PER_PIXEL = 0.01;
+
+// How p1/p2 handle drags behave — see the header comment.
+export type HandleMode = "plane" | "dial" | "swing";
 
 export type StrokePointKey = "p0" | "p1" | "p2" | "p3";
 
@@ -38,13 +46,14 @@ export type EditState = {
   dragging_pin: number | null; // index into vertex_pins; pen is down on a pinned vertex
   selected_pin: number | null; // last pin the pen landed on — the unpin button's target
   moving_whole_stroke: boolean; // pen is down on the stroke body
+  tilting: boolean; // pen is down in tilt mode — the drag rolls the stroke about its chord
   last_screen: V2 | null; // previous pen position while a drag is active
 };
 
 export function begin_edit_state(stroke_index: number): EditState {
   return {
     stroke_index, dragging: null, dragging_pin: null, selected_pin: null,
-    moving_whole_stroke: false, last_screen: null,
+    moving_whole_stroke: false, tilting: false, last_screen: null,
   };
 }
 
@@ -141,11 +150,18 @@ function pick_pin_on_stroke(
 }
 
 // Returns false when the pen landed on neither a control point nor the stroke
-// body — the caller should treat the drag as a camera orbit.
+// body — the caller should treat the drag as a camera orbit. In dial mode
+// every pen-down is consumed: the drag is the dial, wherever it starts.
 export function edit_pen_down(
   state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  handle_mode: HandleMode,
 ): boolean {
   const stroke = tablet_document.strokes[state.stroke_index];
+  if (handle_mode === "dial") {
+    state.tilting = true;
+    state.last_screen = screen;
+    return true;
+  }
   // Pins are checked before control points: a pin can sit right next to a
   // handle (it rides the curve), and the handle is still grabbable a bit
   // further out.
@@ -190,12 +206,25 @@ function camera_plane_drag(
 
 export function edit_pen_move(
   state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
-  tilt_mode: boolean,
+  handle_mode: HandleMode,
 ): void {
   if (state.last_screen === null) return;
+  const screen_dx = screen.x - state.last_screen.x;
   const world_delta = camera_plane_drag(camera, state.last_screen, screen, canvas);
   state.last_screen = screen;
   const stroke = tablet_document.strokes[state.stroke_index];
+  if (state.tilting) {
+    // Both handles rotate rigidly about the chord: the plane rolls, the
+    // curve's shape within it is untouched. Rightward drag = positive angle
+    // about the p0→p3 axis.
+    const chord = v3_sub(tablet_document.vertices[stroke.p3_vertex], tablet_document.vertices[stroke.p0_vertex]);
+    if (v3_length(chord) < 1e-9) return; // no chord, no axis
+    const axis = v3_normalize(chord);
+    const angle = screen_dx * TILT_RADIANS_PER_PIXEL;
+    stroke.d0 = v3_rotate_about_axis(stroke.d0, axis, angle);
+    stroke.d3 = v3_rotate_about_axis(stroke.d3, axis, angle);
+    return;
+  }
   if (state.moving_whole_stroke) {
     // d0/d3 are translation-invariant; moving both vertices moves the stroke
     // (and drags any strokes sharing those vertices — vertices connect).
@@ -222,10 +251,10 @@ export function edit_pen_move(
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
     const dragged_key = state.dragging === "p1" ? "d0" : "d3";
-    const other_key = state.dragging === "p1" ? "d3" : "d0";
-    if (tilt_mode) {
+    if (handle_mode === "swing") {
       // The dragged handle moves freely with the pen; the other one swings into
       // the plane the dragged handle now spans with the chord (Q2).
+      const other_key = state.dragging === "p1" ? "d3" : "d0";
       stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
       const chord = v3_sub(tablet_document.vertices[stroke.p3_vertex], tablet_document.vertices[stroke.p0_vertex]);
       if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
@@ -251,30 +280,13 @@ export function edit_pen_move(
 }
 
 // The vertex the dragged vertex would weld into on release: nearest other
-// vertex within screen-space snap range — null when none is in range, or when
+// vertex within world-space snap range — null when none is in range, or when
 // the merge would leave any stroke with both endpoints on the same vertex.
 // Also drives the drag-time highlight, so it must match the merge exactly.
-export function find_merge_target_vertex(
-  tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement, dragged_vertex: number,
-): number | null {
-  const dragged_screen = camera_world_to_screen(
-    camera, tablet_document.vertices[dragged_vertex], canvas.clientWidth, canvas.clientHeight,
+export function find_merge_target_vertex(tablet_document: TabletDocument, dragged_vertex: number): number | null {
+  const target_vertex = pick_vertex_near_world_point(
+    tablet_document, tablet_document.vertices[dragged_vertex], dragged_vertex,
   );
-  if (dragged_screen === null) return null;
-  let target_vertex: number | null = null;
-  let best_distance = VERTEX_MERGE_RADIUS_PIXELS;
-  for (let vertex_index = 0; vertex_index < tablet_document.vertices.length; vertex_index++) {
-    if (vertex_index === dragged_vertex) continue;
-    const projected = camera_world_to_screen(
-      camera, tablet_document.vertices[vertex_index], canvas.clientWidth, canvas.clientHeight,
-    );
-    if (projected === null) continue;
-    const distance = Math.hypot(projected.x - dragged_screen.x, projected.y - dragged_screen.y);
-    if (distance < best_distance) {
-      best_distance = distance;
-      target_vertex = vertex_index;
-    }
-  }
   if (target_vertex === null) return null;
   const remap = (vertex: number) => (vertex === dragged_vertex ? target_vertex! : vertex);
   for (const stroke of tablet_document.strokes) {
@@ -290,13 +302,11 @@ export function find_merge_target_vertex(
   return target_vertex;
 }
 
-// Merge the dragged vertex into another vertex within screen-space snap range
+// Merge the dragged vertex into another vertex within world-space snap range
 // (same feel as draw-time endpoint snapping): every stroke referencing it is
 // rewired to the target, welding the junction, and the vertex is removed.
-function merge_vertex_if_near_another(
-  tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement, dragged_vertex: number,
-): void {
-  const target_vertex = find_merge_target_vertex(tablet_document, camera, canvas, dragged_vertex);
+function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: number): void {
+  const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
   if (target_vertex === null) return;
   // Snap first so the strokes ending on the dragged vertex rotate their
   // offsets with the chord change (Q4), then rewire them to the target.
@@ -318,16 +328,15 @@ function merge_vertex_if_near_another(
   }
 }
 
-export function edit_pen_up(
-  state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement,
-): void {
+export function edit_pen_up(state: EditState, tablet_document: TabletDocument): void {
   if (state.dragging === "p0" || state.dragging === "p3") {
     const stroke = tablet_document.strokes[state.stroke_index];
     const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    merge_vertex_if_near_another(tablet_document, camera, canvas, dragged_vertex);
+    merge_vertex_if_near_another(tablet_document, dragged_vertex);
   }
   state.dragging = null;
   state.dragging_pin = null;
   state.moving_whole_stroke = false;
+  state.tilting = false;
   state.last_screen = null;
 }
