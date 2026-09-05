@@ -30,6 +30,9 @@ export type PenHandlers = {
   on_pen_down: (position: V2, event: PointerEvent) => void;
   on_pen_move: (position: V2, event: PointerEvent) => void;
   on_pen_up: (position: V2, event: PointerEvent) => void;
+  // Pen/mouse moving with no button down (a hovering pen counts); null when it
+  // leaves the canvas. Drives the "hot" item so the user sees what a tap hits.
+  on_pen_hover: (position: V2 | null) => void;
   on_undo_tap: () => void; // two-finger tap
   on_redo_tap: () => void; // three-finger tap
 };
@@ -108,6 +111,7 @@ export function attach_gestures(
         return;
       }
       if (e.buttons !== 0) pen.on_pen_move(position, e);
+      else pen.on_pen_hover(position);
       return;
     }
     if (!touch_positions.has(e.pointerId)) return;
@@ -140,6 +144,10 @@ export function attach_gestures(
       }
       on_camera_change();
     }
+  });
+
+  canvas.addEventListener("pointerleave", (e) => {
+    if (is_pen_pointer(e)) pen.on_pen_hover(null);
   });
 
   // Wheel zoom animation state: target distance, and whether the easing loop

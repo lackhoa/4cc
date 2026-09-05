@@ -7,7 +7,7 @@
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_position } from "./document";
-import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -21,6 +21,7 @@ import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_tria
 
 const STROKE_COLOR = { r: 0.85, g: 0.85, b: 0.9 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
+const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
@@ -30,6 +31,7 @@ const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 const ANCHOR_SIZE_PIXELS = 12;
 const HANDLE_SIZE_PIXELS = 9;
+const HOT_SIZE_SCALE = 1.5; // hot markers grow by this much
 
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const gl = canvas.getContext("webgl");
@@ -69,6 +71,29 @@ let frame_requested = false;
 // Displacement from the down point, not path length — pencil taps jitter.
 let pen_down_screen: V2 | null = null;
 let pen_max_displacement_pixels = 0;
+// Hot item: what a pen-down at the hovering pen's position would grab,
+// resolved every frame (the camera can move under a still pen) with the same
+// picks and priority as edit_pen_down / the tap handlers, and drawn in
+// HOT_COLOR so the user knows before committing.
+type HotItem =
+  | { kind: "stroke"; stroke_id: StrokeId }
+  | { kind: "point"; key: StrokePointKey } // control point of the selected stroke
+  | { kind: "pin"; vertex: VertexId }; // pin riding the selected stroke
+let hover_screen: V2 | null = null; // null while the pen is down or off the canvas
+let hot_item: HotItem | null = null;
+
+function resolve_hot_item(): HotItem | null {
+  if (hover_screen === null || armed_tool === "line") return null;
+  if (edit_state !== null && armed_tool === null && handle_mode !== "dial") {
+    const pin = pick_pin_on_stroke(edit_state.stroke_id, hover_screen);
+    if (pin !== null) return { kind: "pin", vertex: pin.vertex };
+    const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    const key = pick_stroke_point(stroke, tablet_document, camera, hover_screen, canvas);
+    if (key !== null) return { kind: "point", key };
+  }
+  const picked = pick_stroke(tablet_document, camera, hover_screen, canvas);
+  return picked === null ? null : { kind: "stroke", stroke_id: picked };
+}
 
 function request_render(): void {
   // Anything that changes what's on screen (strokes, surfaces, camera) goes
@@ -85,6 +110,7 @@ function request_render(): void {
   frame_requested = true;
   requestAnimationFrame(() => {
     frame_requested = false;
+    hot_item = resolve_hot_item();
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
     rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
     rebuild_surface_mesh();
@@ -139,7 +165,8 @@ function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_st
   const vertices: number[] = [];
   for (const stroke of tablet_document.strokes) {
     const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
-    const color = highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
+    const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
+    const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
     append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
   }
   set_stroke_mesh(renderer, new Float32Array(vertices));
@@ -201,8 +228,17 @@ function rebuild_edit_overlay(): void {
   };
   push_line(points.p0, points.p1);
   push_line(points.p3, points.p2);
-  append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
-  append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
+  // Hot control points / pins draw bigger and in HOT_COLOR.
+  const is_hot_point = (key: StrokePointKey) => hot_item !== null && hot_item.kind === "point" && hot_item.key === key;
+  const is_hot_pin = (vertex: VertexId) => hot_item !== null && hot_item.kind === "pin" && hot_item.vertex === vertex;
+  const push_marker = (center: V3, half_size: number, color: { r: number; g: number; b: number }, hot: boolean) => {
+    append_billboard_square(
+      center, hot ? half_size * HOT_SIZE_SCALE : half_size, basis.right, basis.up,
+      hot ? HOT_COLOR : color, triangle_vertices,
+    );
+  };
+  push_marker(points.p1, handle_half, HANDLE_COLOR, is_hot_point("p1"));
+  push_marker(points.p2, handle_half, HANDLE_COLOR, is_hot_point("p2"));
   // Endpoints that are pinned vertices (riding some other stroke) show in the
   // pin color so it's clear they'll slide, not translate, when grabbed; smooth
   // knots in the knot color so it's clear the neighbour's handle will follow.
@@ -211,16 +247,14 @@ function rebuild_edit_overlay(): void {
     if (smooth_knots_at_vertex(tablet_document, vertex).length > 0) return KNOT_COLOR;
     return ANCHOR_COLOR;
   };
-  append_billboard_square(points.p0, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p0_vertex), triangle_vertices);
-  append_billboard_square(points.p3, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p3_vertex), triangle_vertices);
+  push_marker(points.p0, anchor_half, anchor_color(selected_stroke.p0_vertex), is_hot_point("p0"));
+  push_marker(points.p3, anchor_half, anchor_color(selected_stroke.p3_vertex), is_hot_point("p3"));
   // Pinned vertices riding the selected stroke; the selected pin (the unpin
   // button's target) draws larger.
   for (const pin of tablet_document.vertex_pins) {
     if (pin.host_stroke !== edit_state.stroke_id) continue;
     const half_size = pin.vertex === edit_state.selected_pin ? anchor_half : handle_half;
-    append_billboard_square(
-      vertex_position(tablet_document, pin.vertex), half_size, basis.right, basis.up, PIN_COLOR, triangle_vertices,
-    );
+    push_marker(vertex_position(tablet_document, pin.vertex), half_size, PIN_COLOR, is_hot_pin(pin.vertex));
   }
   // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
   // vertex it would weld into on release so the merge is never a surprise.
@@ -484,6 +518,7 @@ attach_gestures(canvas, camera, {
     pen_down_screen = position;
     pen_max_displacement_pixels = 0;
     pen_orbit_last_screen = null;
+    hover_screen = null; // nothing is hot while the pen is down
     if (armed_tool === "line") {
       line_state = line_pen_down(tablet_document, camera, position, canvas);
       update_preview_line();
@@ -529,7 +564,12 @@ attach_gestures(canvas, camera, {
     }
     pen_down_screen = null;
     pen_orbit_last_screen = null;
+    hover_screen = position;
     end_history_step(history, tablet_document);
+    request_render();
+  },
+  on_pen_hover: (position) => {
+    hover_screen = position;
     request_render();
   },
   on_undo_tap: perform_undo,
