@@ -6,7 +6,11 @@
     "strict": true,
     "noUnusedLocals": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo"
   },
   "include": ["src"]
 }
