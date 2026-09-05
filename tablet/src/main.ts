@@ -5,16 +5,17 @@
 // drag starting on the selected stroke translates it; vertex/handle drags
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
-import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
+import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh } from "./patch";
+import { append_patch_mesh, patch_surface_grid } from "./patch";
+import { extract_contour_chains } from "./contour";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
-import { append_stroke_ribbon } from "./ribbon";
+import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { ReferenceMesh, append_reference_mesh, fetch_reference_mesh } from "./reference";
 import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
@@ -169,7 +170,19 @@ function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_st
     const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
     append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
   }
+  append_contour_ribbons(vertices);
   set_stroke_mesh(renderer, new Float32Array(vertices));
+}
+
+// Computed contours share the stroke mesh so they get the same depth bias
+// and draw order as drawn strokes; they are derived per frame, never stored.
+function append_contour_ribbons(vertices: number[]): void {
+  const eye = camera_eye(camera);
+  for (const patch of tablet_document.patches) {
+    const grid = patch_surface_grid(patch, tablet_document);
+    if (grid === null) continue;
+    for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, STROKE_COLOR, vertices);
+  }
 }
 
 function rebuild_surface_mesh(): void {

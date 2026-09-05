@@ -6,8 +6,8 @@
 // rebuild it whenever the camera moves.
 
 import { OrbitCamera, camera_basis } from "./camera";
-import { Stroke, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
-import { v3_add, v3_dot, v3_scale, V3 } from "./math";
+import { Stroke, StrokeControlPoints, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
+import { v3_add, v3_dot, v3_length, v3_scale, v3_sub, V3 } from "./math";
 
 const RIBBON_RADIUS = 0.02; // world units; grid cell = 1
 const RIBBON_SAMPLES = 24;
@@ -25,8 +25,18 @@ function taper_at(t: number): number {
 export function append_stroke_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: number[],
 ): void {
+  append_bezier_ribbon(stroke_control_points(stroke, tablet_document), { start: 0, end: 1 }, camera, color, out);
+}
+
+// Where this cubic sits in the taper of the whole curve it belongs to, as a
+// fraction range: a drawn stroke is one cubic covering 0..1; a computed
+// contour chain spreads one taper over all its cubics by arc length.
+export type TaperWindow = { start: number; end: number };
+
+export function append_bezier_ribbon(
+  points: StrokeControlPoints, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: number[],
+): void {
   const basis = camera_basis(camera);
-  const points = stroke_control_points(stroke, tablet_document);
   const centers: V3[] = [];
   const offsets: V3[] = [];
   for (let i = 0; i <= RIBBON_SAMPLES; i++) {
@@ -37,7 +47,7 @@ export function append_stroke_ribbon(
     const screen_x = v3_dot(tangent, basis.right);
     const screen_y = v3_dot(tangent, basis.up);
     const len = Math.hypot(screen_x, screen_y);
-    const radius = RIBBON_RADIUS * taper_at(t);
+    const radius = RIBBON_RADIUS * taper_at(taper_window.start + (taper_window.end - taper_window.start) * t);
     if (len < 1e-9) {
       // Tangent points straight at the camera; fall back to screen-right.
       offsets.push(v3_scale(basis.right, radius));
@@ -59,6 +69,20 @@ export function append_stroke_ribbon(
     push_vertex(out, b0, color);
     push_vertex(out, b1, color);
   }
+}
+
+// A chain of cubics rendered as one stroke: a single taper spread over the
+// chain by chord length (cubics here are short cell segments, chord ≈ arc).
+export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: number[]): void {
+  const chords = chain.map((points) => v3_length(v3_sub(points.p3, points.p0)));
+  const total = chords.reduce((sum, chord) => sum + chord, 0);
+  if (total < 1e-9) return;
+  let covered = 0;
+  chain.forEach((points, index) => {
+    const start = covered / total;
+    covered += chords[index];
+    append_bezier_ribbon(points, { start, end: covered / total }, camera, color, out);
+  });
 }
 
 function push_vertex(out: number[], position: V3, color: Rgb): void {

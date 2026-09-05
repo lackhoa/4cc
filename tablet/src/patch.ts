@@ -157,6 +157,11 @@ function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDoc
   }
 }
 
+// A patch surface sampled on a regular (u, v) grid: positions[i][j] is the
+// point at u = i / columns, v = j / rows. Shared by the mesh and the contour
+// extraction (contour.ts), so both see the exact same surface.
+export type SurfaceGrid = { columns: number; rows: number; positions: V3[][] };
+
 // Bilinearly blended Coons surface over four sides in loop order. Sample-based
 // (no bicubic fit): each side is presampled on the grid resolution and blended
 // directly, so the patch hugs the drawn boundaries exactly at the rims. Sides
@@ -164,7 +169,7 @@ function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDoc
 // Three sides: the left side is a constant point at the bottom-left corner,
 // which the blend degenerates into a triangle fan there (zero-area cells,
 // normal falls back to flat shading).
-function append_coons_mesh(sides: Side[], tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: number[]): void {
+function coons_surface_grid(sides: Side[], tablet_document: TabletDocument): SurfaceGrid {
   // Loop traversal order: bottom (s 0→1), right (t 0→1), top and left run
   // backwards along the loop, so index from the far end when reading them.
   const positions = (side: Side): V3[] => sample_side(side, tablet_document, COONS_GRID).map((sample) => sample.position);
@@ -190,17 +195,40 @@ function append_coons_mesh(sides: Side[], tablet_document: TabletDocument, camer
     return v3_sub(ruled, bilinear);
   };
 
+  const grid_positions: V3[][] = [];
+  for (let i = 0; i <= COONS_GRID; i++) {
+    const column: V3[] = [];
+    for (let j = 0; j <= COONS_GRID; j++) column.push(surface_point(i, j));
+    grid_positions.push(column);
+  }
+  return { columns: COONS_GRID, rows: COONS_GRID, positions: grid_positions };
+}
+
+// The loft as a grid: rows are the lerp steps between the two rails.
+function loft_surface_grid(side_a: Side, side_b: Side, tablet_document: TabletDocument): SurfaceGrid {
+  const samples_a = sample_side(side_a, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
+  const samples_b = sample_side(side_b, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
+  const grid_positions: V3[][] = [];
+  for (let u = 0; u <= LOFT_SAMPLES_ALONG_RAILS; u++) {
+    const column: V3[] = [];
+    for (let v = 0; v <= LOFT_ROWS_ACROSS; v++) column.push(v3_lerp(samples_a[u].position, samples_b[u].position, v / LOFT_ROWS_ACROSS));
+    grid_positions.push(column);
+  }
+  return { columns: LOFT_SAMPLES_ALONG_RAILS, rows: LOFT_ROWS_ACROSS, positions: grid_positions };
+}
+
+function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: Color, out: number[]): void {
   const camera_forward = camera_basis(camera).forward;
   const push_triangle = (a: V3, b: V3, c: V3) => {
     const brightness = brightness_of_normal(v3_cross(v3_sub(b, a), v3_sub(c, a)), camera_forward);
     for (const vertex of [a, b, c]) push_shaded_vertex(vertex, brightness, color, out);
   };
-  for (let j = 0; j < COONS_GRID; j++) {
-    for (let i = 0; i < COONS_GRID; i++) {
-      const point_00 = surface_point(i, j);
-      const point_10 = surface_point(i + 1, j);
-      const point_11 = surface_point(i + 1, j + 1);
-      const point_01 = surface_point(i, j + 1);
+  for (let j = 0; j < grid.rows; j++) {
+    for (let i = 0; i < grid.columns; i++) {
+      const point_00 = grid.positions[i][j];
+      const point_10 = grid.positions[i + 1][j];
+      const point_11 = grid.positions[i + 1][j + 1];
+      const point_01 = grid.positions[i][j + 1];
       push_triangle(point_00, point_10, point_11);
       push_triangle(point_00, point_11, point_01);
     }
@@ -227,9 +255,18 @@ export function resolve_patch_fill(patch: Patch, tablet_document: TabletDocument
   return null;
 }
 
+// Null when the patch has no drawable fill.
+export function patch_surface_grid(patch: Patch, tablet_document: TabletDocument): SurfaceGrid | null {
+  const fill = resolve_patch_fill(patch, tablet_document);
+  if (fill === null) return null;
+  if (fill.kind === "loft") return loft_surface_grid(fill.side_a, fill.side_b, tablet_document);
+  return coons_surface_grid(fill.sides, tablet_document);
+}
+
 export function append_patch_mesh(patch: Patch, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: number[]): void {
   const fill = resolve_patch_fill(patch, tablet_document);
   if (fill === null) return;
+  // The loft keeps its analytic-partial shading; Coons shades per triangle.
   if (fill.kind === "loft") append_loft_mesh(fill.side_a, fill.side_b, tablet_document, camera, color, out);
-  else append_coons_mesh(fill.sides, tablet_document, camera, color, out);
+  else append_grid_mesh(coons_surface_grid(fill.sides, tablet_document), camera, color, out);
 }
