@@ -67,6 +67,20 @@
       segments. Toggle the collapse and watch the corner. The remedy is to skip cells whose
       un-normalized normal is shorter than a threshold (the mask toggle); the contour then
       ends a cell short of the corner, which is what an artist's line would do anyway.</p>
+    <p><strong>Worked example, flat in <code>(u,v)</code>.</strong> Corner values of <code>f</code>
+      (<span class="dot" style="background:var(--pos)"></span>positive,
+      <span class="dot" style="background:var(--neg)"></span>negative), a crossing on every edge
+      whose ends differ in sign, labelled with its edge id: <code>h&lt;i&gt;,&lt;j&gt;</code> is the
+      horizontal edge starting at corner <code>(i,j)</code>, <code>v&lt;i&gt;,&lt;j&gt;</code> the
+      vertical one. Each cell emits one segment between its two crossings. Step through the walk:
+      take the current segment's far end, find the <em>other</em> segment that has the same edge id,
+      hop there.</p>
+    <canvas id="cv_walk" height="330"></canvas>
+    <div class="controls">
+      <button id="walk_step">step</button>
+      <button id="walk_reset">reset</button>
+      <span id="walk_text" class="hint">press step</span>
+    </div>
     <canvas id="cv3" height="380"></canvas>
     <div class="controls">
       <label><input type="checkbox" id="collapse"> collapse the left side (3-sided patch)</label>
@@ -225,6 +239,103 @@ function draw_stage2() {
   for (const uv of result.crossings) EX.fill_dot(ctx, view.project(surface(uv.u, uv.v)), 4, "#4dd4c0");
 }
 
+// ---------- stage 3 worked example: a flat grid, segments with edge ids, the walk ----------
+const WALK_GRID = { columns: 6, rows: 4 };
+// A made-up f with one open contour that wanders through several cells.
+const walk_f = (i, j) => j - 1.7 - 1.2 * Math.sin(i * 0.7 + 0.6) + 0.2 * i;
+const walk_edge_id = { h: (i, j) => `h${i},${j}`, v: (i, j) => `v${i},${j}` };
+function walk_segments() {
+  const { columns, rows } = WALK_GRID;
+  const crossing_on = (kind, i, j) => {
+    const [i1, j1] = kind === "h" ? [i + 1, j] : [i, j + 1];
+    const f0 = walk_f(i, j), f1 = walk_f(i1, j1);
+    const s = f0 / (f0 - f1);
+    return { id: walk_edge_id[kind](i, j), x: i + (i1 - i) * s, y: j + (j1 - j) * s };
+  };
+  const segments = [];
+  for (let j = 0; j < rows; j++) for (let i = 0; i < columns; i++) {
+    const flips = (a, b) => (walk_f(...a) < 0) !== (walk_f(...b) < 0);
+    const ends = [];
+    if (flips([i, j], [i + 1, j])) ends.push(crossing_on("h", i, j));
+    if (flips([i, j + 1], [i + 1, j + 1])) ends.push(crossing_on("h", i, j + 1));
+    if (flips([i, j], [i, j + 1])) ends.push(crossing_on("v", i, j));
+    if (flips([i + 1, j], [i + 1, j + 1])) ends.push(crossing_on("v", i + 1, j));
+    if (ends.length === 2) segments.push({ cell: { i, j }, a: ends[0], b: ends[1] });
+  }
+  return segments;
+}
+// The walk: start at a segment with an end nobody else shares (a border), then keep
+// hopping to the one other segment that has the current far end's id.
+function walk_order(segments) {
+  const holders = new Map();
+  segments.forEach((seg, index) => { for (const end of [seg.a, seg.b]) holders.set(end.id, [...(holders.get(end.id) || []), index]); });
+  const start = segments.findIndex((seg) => holders.get(seg.a.id).length === 1 || holders.get(seg.b.id).length === 1);
+  const steps = [];
+  const visited = new Set();
+  let index = start;
+  let entry_id = holders.get(segments[start].a.id).length === 1 ? segments[start].a.id : segments[start].b.id;
+  while (index >= 0 && !visited.has(index)) {
+    visited.add(index);
+    const seg = segments[index];
+    const far = seg.a.id === entry_id ? seg.b : seg.a;
+    const next = (holders.get(far.id) || []).find((other) => other !== index);
+    steps.push({ index, far_id: far.id, next });
+    entry_id = far.id;
+    index = next === undefined ? -1 : next;
+  }
+  return steps;
+}
+const walk_state = { step: 0 };
+function draw_walk() {
+  const canvas = document.getElementById("cv_walk"), { ctx, dpr } = EX.fit_canvas(canvas);
+  const { columns, rows } = WALK_GRID;
+  const margin = 44 * dpr, W = canvas.width - 2 * margin, H = canvas.height - 2 * margin;
+  const px = (x, y) => ({ x: margin + (x / columns) * W, y: canvas.height - margin - (y / rows) * H });
+  ctx.strokeStyle = "rgba(154,160,180,0.35)";
+  ctx.lineWidth = 1 * dpr;
+  for (let i = 0; i <= columns; i++) { const a = px(i, 0), b = px(i, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+  for (let j = 0; j <= rows; j++) { const a = px(0, j), b = px(columns, j); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+  ctx.font = `${11 * dpr}px system-ui`;
+  ctx.textAlign = "center";
+  for (let j = 0; j <= rows; j++) for (let i = 0; i <= columns; i++) {
+    const f = walk_f(i, j), p = px(i, j);
+    EX.fill_dot(ctx, p, 4, f >= 0 ? "#7ab8ff" : "#ff6b6b");
+    ctx.fillStyle = "#9aa0b4";
+    ctx.textAlign = "right";
+    ctx.fillText(f.toFixed(1), p.x - 6 * dpr, p.y - 6 * dpr);
+  }
+  const segments = walk_segments(), steps = walk_order(segments);
+  const shown = Math.min(walk_state.step, steps.length);
+  const highlighted = new Set(steps.slice(0, shown).map((s) => s.index));
+  segments.forEach((seg, index) => {
+    const a = px(seg.a.x, seg.a.y), b = px(seg.b.x, seg.b.y);
+    EX.stroke_polyline(ctx, [a, b], highlighted.has(index) ? "#ffd166" : "rgba(154,160,180,0.6)", highlighted.has(index) ? 4 : 2);
+  });
+  const current = shown > 0 ? steps[shown - 1] : null;
+  const labelled = new Set();
+  for (const seg of segments) for (const end of [seg.a, seg.b]) {
+    if (labelled.has(end.id)) continue;
+    labelled.add(end.id);
+    const p = px(end.x, end.y);
+    const is_hop = current && end.id === current.far_id;
+    EX.fill_dot(ctx, p, is_hop ? 7 : 4, is_hop ? "#ef6b9a" : "#4dd4c0");
+    ctx.fillStyle = is_hop ? "#ef6b9a" : "#4dd4c0";
+    ctx.textAlign = end.id[0] === "v" ? "left" : "center";
+    ctx.fillText(end.id, p.x + (end.id[0] === "v" ? 9 * dpr : 0), p.y + (end.id[0] === "v" ? 4 * dpr : 15 * dpr));
+  }
+  const text = document.getElementById("walk_text");
+  if (!current) text.textContent = `${segments.length} segments, unordered. Press step.`;
+  else {
+    const seg = segments[current.index];
+    const where = `cell (${seg.cell.i},${seg.cell.j})`;
+    text.textContent = current.next === undefined
+      ? `step ${shown}: segment in ${where} ends on ${current.far_id}; no other segment has it, the polyline ends. ${shown} segments joined in order.`
+      : `step ${shown}: segment in ${where} ends on ${current.far_id}; the other segment with ${current.far_id} is in cell (${segments[current.next].cell.i},${segments[current.next].cell.j}), hop there.`;
+  }
+}
+document.getElementById("walk_step").addEventListener("click", () => { walk_state.step++; draw_walk(); });
+document.getElementById("walk_reset").addEventListener("click", () => { walk_state.step = 0; draw_walk(); });
+
 const POLYLINE_COLORS = ["#ffd166", "#4dd4c0", "#7bd45c", "#ef6b9a", "#ffa94d", "#7ab8ff"];
 function draw_stage3() {
   const canvas = canvases[2], { ctx, dpr } = EX.fit_canvas(canvas);
@@ -370,6 +481,7 @@ function draw_all() {
   draw_stage1();
   draw_stage2();
   draw_stage3();
+  draw_walk();
   draw_stage_fit();
   draw_stage4();
   draw_stage5();
