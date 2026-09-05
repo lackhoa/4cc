@@ -76,7 +76,34 @@
   </section>
 
   <section>
-    <h2>4 · From polyline to contour stroke</h2>
+    <h2>4 · Coarse zeros, then fit a curve</h2>
+    <p>Instead of chasing accuracy with a finer grid or root-finding, keep the grid coarse and
+      fit a smooth curve through the crossings. The trick that makes a coarse fit good: the
+      contour's <em>tangent</em> at each crossing is free. In <code>(u,v)</code> the gradient of
+      <code>f</code> is perpendicular to the contour, so the tangent is the gradient rotated 90°
+      (two extra evaluations of <code>f</code> per crossing); map it to 3D with the surface
+      partials. Then every cell segment becomes one cubic Hermite through its two crossings with
+      those tangents, i.e. a <strong>bezier chain</strong>, the same object as a drawn stroke.</p>
+    <div class="formula">∇f = (∂f/∂u, ∂f/∂v) &nbsp;&nbsp; tangent_uv = (−∂f/∂v, ∂f/∂u) &nbsp;&nbsp; T = ∂S/∂u · tangent_u + ∂S/∂v · tangent_v</div>
+    <p>Below: <span class="swatch" style="background:#9aa0b4"></span>grey chords are stage 3's
+      polyline, <span class="swatch" style="background:#4dd4c0"></span>teal is the bezier chain
+      through the same crossings, <span class="swatch" style="background:#ffd166"></span>yellow
+      the dense reference. Drop the grid to 4 or 5: the chords are a polygon, the chain still
+      hugs the reference. What the fit can't fix is a crossing that sits off the true curve
+      (visible without root-find at very low grid counts); that error shrinks with the square of
+      the cell size.</p>
+    <canvas id="cv_fit" height="380"></canvas>
+    <div class="controls">
+      <label><input type="checkbox" id="fit_chords" checked> show chords</label>
+      <label><input type="checkbox" id="fit_tangents"> show tangents at crossings</label>
+      <label><input type="checkbox" id="fit_ref" checked> show dense reference</label>
+      <span class="hint">grid, root-find and mask settings from stages 2–3 apply</span>
+    </div>
+    <p class="hint">Sign checks miss an edge the contour crosses twice. Along one grid edge <code>f</code> is a polynomial (degree 8 with a perspective eye), so exact root isolation is possible there if a contour ever visibly breaks; not done here.</p>
+  </section>
+
+  <section>
+    <h2>5 · From polyline to contour stroke</h2>
     <p>A polyline is only a contour. A <strong>contour stroke</strong> is a contour with style: taper
       and color. Once the polyline exists it goes down the same path as any stroke: a camera-facing
       ribbon whose radius follows a taper. The taper here runs over the polyline's own arc length,
@@ -93,7 +120,7 @@
   </section>
 
   <section>
-    <h2>5 · Where the style comes from: Coons-blend the boundary strokes</h2>
+    <h2>6 · Where the style comes from: Coons-blend the boundary strokes</h2>
     <p>The patch's four boundary strokes each carry a style (here: a color and a base radius;
       in the desktop app, <code>radii</code> and <code>lightness_additions</code>). A contour point
       lives at some <code>(u,v)</code> on the patch, and the patch already knows how to blend
@@ -113,7 +140,7 @@
       <label><input type="checkbox" id="style_field" checked> tint the surface with the blended style</label>
       <label><input type="checkbox" id="style_radius" checked> blend the radius too</label>
     </div>
-    <p class="hint">Stage 4's arc-length taper still applies on top of the blended radius, so a contour ending mid-patch still fades out. Prerequisite in the tablet: strokes have no style yet; until they do, every side blends to the one fixed style and this stage is a no-op.</p>
+    <p class="hint">Stage 5's arc-length taper still applies on top of the blended radius, so a contour ending mid-patch still fades out. Prerequisite in the tablet: strokes have no style yet; until they do, every side blends to the one fixed style and this stage is a no-op.</p>
   </section>
 </main>
 
@@ -160,8 +187,8 @@ function extract_contour(grid, rootfind, mask) {
 }
 
 // ---------- drawing ----------
-const canvases = ["cv1", "cv2", "cv3", "cv4", "cv5"].map((id) => document.getElementById(id));
-const ui = EX.bind_controls(["bulge", "twist", "grid", "rootfind", "show_ref", "collapse", "mask", "radius", "taper", "hide_surface", "style_field", "style_radius"], draw_all);
+const canvases = ["cv1", "cv2", "cv3", "cv_fit", "cv4", "cv5"].map((id) => document.getElementById(id));
+const ui = EX.bind_controls(["bulge", "twist", "grid", "rootfind", "show_ref", "collapse", "mask", "fit_chords", "fit_tangents", "fit_ref", "radius", "taper", "hide_surface", "style_field", "style_radius"], draw_all);
 
 const PLAIN_QUAD = () => ({ fill: "rgba(92,100,128,0.9)" });
 function facing_quad(q) {
@@ -211,8 +238,68 @@ function draw_stage3() {
   ctx.fillText(`${result.segments.length} segments → ${result.polylines.length} polyline(s)`, 12 * dpr, 20 * dpr);
 }
 
-function draw_stage4() {
+// ---------- stage 4: bezier chain through the crossings ----------
+// Contour tangent at a crossing: the gradient of f in (u,v) is perpendicular to the
+// contour, so rotate it 90°; then push through the surface partials to get a 3D tangent.
+const GRADIENT_EPSILON = 1e-3;
+function contour_tangent_3d(uv, along_uv) {
+  const e = GRADIENT_EPSILON;
+  const f_u = (facing(uv.u + e, uv.v) - facing(uv.u - e, uv.v)) / (2 * e);
+  const f_v = (facing(uv.u, uv.v + e) - facing(uv.u, uv.v - e)) / (2 * e);
+  let tangent_uv = { u: -f_v, v: f_u };
+  if (tangent_uv.u * along_uv.u + tangent_uv.v * along_uv.v < 0) tangent_uv = { u: f_v, v: -f_u };
+  const S_u = scale(sub(surface(uv.u + e, uv.v), surface(uv.u - e, uv.v)), 1 / (2 * e));
+  const S_v = scale(sub(surface(uv.u, uv.v + e), surface(uv.u, uv.v - e)), 1 / (2 * e));
+  const tangent = add(scale(S_u, tangent_uv.u), scale(S_v, tangent_uv.v));
+  const len = length(tangent);
+  // Degenerate gradient (flat f, or the masked corner): fall back to the chord direction.
+  if (len < 1e-6) return normalize(add(scale(S_u, along_uv.u), scale(S_v, along_uv.v)));
+  return scale(tangent, 1 / len);
+}
+
+// One cubic Hermite per polyline segment, expressed as bezier control points in 3D.
+function fit_bezier_chain(poly_uv) {
+  const chain = [];
+  for (let k = 0; k + 1 < poly_uv.length; k++) {
+    const a = poly_uv[k], b = poly_uv[k + 1];
+    const along = { u: b.u - a.u, v: b.v - a.v };
+    const P0 = surface(a.u, a.v), P3 = surface(b.u, b.v);
+    const chord = length(sub(P3, P0));
+    const T0 = contour_tangent_3d(a, along), T3 = contour_tangent_3d(b, along);
+    chain.push([P0, add(P0, scale(T0, chord / 3)), sub(P3, scale(T3, chord / 3)), P3]);
+  }
+  return chain;
+}
+
+function draw_stage_fit() {
   const canvas = canvases[3], { ctx, dpr } = EX.fit_canvas(canvas);
+  const view = EX.viewer(camera, canvas);
+  const grid = Number(ui.grid.value);
+  EX.draw_surface(ctx, view, surface, grid, PLAIN_QUAD);
+  if (ui.fit_ref.checked) draw_reference(ctx, view, "rgba(255,209,102,0.55)", 2);
+  const result = extract_contour(grid, ui.rootfind.checked, ui.mask.checked);
+  let cubic_count = 0;
+  for (const poly of result.polylines) {
+    if (ui.fit_chords.checked) EX.stroke_polyline(ctx, uv_to_screen(view, poly), "rgba(154,160,180,0.8)", 2);
+    for (const control of fit_bezier_chain(poly)) {
+      cubic_count++;
+      const points = [];
+      for (let k = 0; k <= 10; k++) points.push(view.project(bezier(control, k / 10)));
+      EX.stroke_polyline(ctx, points, "#4dd4c0", 3);
+      if (ui.fit_tangents.checked) {
+        EX.stroke_polyline(ctx, [view.project(control[0]), view.project(control[1])], "#ef6b9a", 1.5);
+        EX.stroke_polyline(ctx, [view.project(control[3]), view.project(control[2])], "#ef6b9a", 1.5);
+      }
+    }
+    for (const uv of poly) EX.fill_dot(ctx, view.project(surface(uv.u, uv.v)), 3.5, "#4dd4c0");
+  }
+  ctx.fillStyle = "#9aa0b4";
+  ctx.font = `${13 * dpr}px system-ui`;
+  ctx.fillText(`${result.polylines.length} polyline(s) → ${cubic_count} cubic(s)`, 12 * dpr, 20 * dpr);
+}
+
+function draw_stage4() {
+  const canvas = canvases[4], { ctx, dpr } = EX.fit_canvas(canvas);
   const view = EX.viewer(camera, canvas);
   const grid = Number(ui.grid.value);
   if (!ui.hide_surface.checked) EX.draw_surface(ctx, view, surface, grid, PLAIN_QUAD);
@@ -260,7 +347,7 @@ function draw_side_strokes(ctx, view, dpr) {
 }
 
 function draw_stage5() {
-  const canvas = canvases[4], { ctx, dpr } = EX.fit_canvas(canvas);
+  const canvas = canvases[5], { ctx, dpr } = EX.fit_canvas(canvas);
   const view = EX.viewer(camera, canvas);
   const grid = Math.max(Number(ui.grid.value), 16);
   const tinted_quad = (q) => ({ fill: rgba(blend_style(q.u, q.v).color.map((c) => c * 0.35), 0.95), stroke: "rgba(20,22,28,0.5)" });
@@ -283,6 +370,7 @@ function draw_all() {
   draw_stage1();
   draw_stage2();
   draw_stage3();
+  draw_stage_fit();
   draw_stage4();
   draw_stage5();
 }
