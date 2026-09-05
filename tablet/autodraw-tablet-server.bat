@@ -14,9 +14,9 @@ for /f %%p in ('powershell -NoProfile -Command "$parent = (Get-CimInstance Win32
 title autodraw tablet server
 cd /d "%~dp0"
 echo Building dist/ ...
-rem Same steps as `npm run build`, but node called directly: every npm/npx
-rem launch costs ~4 s on Windows, more than the whole build.
-node node_modules\typescript\bin\tsc && node node_modules\vite\bin\vite.js build
+rem Same as `npm run build`, but node called directly: an npm/npx launch costs
+rem ~4 s on Windows, more than the whole build. No type check here (dev does).
+node node_modules\vite\bin\vite.js build
 if errorlevel 1 (
   echo.
   echo BUILD FAILED - not starting the server.

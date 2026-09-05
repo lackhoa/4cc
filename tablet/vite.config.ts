@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Plugin, defineConfig } from "vite";
+import checker from "vite-plugin-checker";
 
 const documents_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "documents");
 const reference_models_directory = path.join(os.homedir(), "personal-drive/autodraw/reference-models");
@@ -139,5 +140,7 @@ function tablet_server_plugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [tablet_server_plugin()],
+  // Type errors surface in dev (tsc --watch in the dev server: terminal +
+  // browser overlay); the build itself doesn't type-check, so it stays fast.
+  plugins: [tablet_server_plugin(), checker({ typescript: true, enableBuild: false })],
 });
