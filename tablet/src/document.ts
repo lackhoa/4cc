@@ -152,6 +152,18 @@ function perpendicular_to_chord(u: V3, offset: V3): V3 {
   return v3_sub(offset, v3_scale(u, v3_dot(offset, u)));
 }
 
+// Unit normal of the stroke's plane (plan-tablet-planar-handle-drags.html
+// Q6): cross(chord, d0), else cross(chord, d3), else — a straight stroke has
+// no plane of its own — the plane through the chord that faces the camera
+// (camera_forward with its along-chord part removed), else any perpendicular.
+export function stroke_plane_normal(stroke: Stroke, tablet_document: TabletDocument, camera_forward: V3): V3 {
+  const u = chord_direction(tablet_document.vertices[stroke.p0_vertex], tablet_document.vertices[stroke.p3_vertex]);
+  for (const candidate of [v3_cross(u, stroke.d0), v3_cross(u, stroke.d3), perpendicular_to_chord(u, camera_forward)]) {
+    if (v3_length(candidate) > COLLINEAR_EPSILON) return v3_normalize(candidate);
+  }
+  return fallback_perpendicular(u);
+}
+
 // With d0 = d3 = 0 the control points land at the 1/3 and 2/3 points of a
 // straight line.
 export function stroke_control_points(stroke: Stroke, tablet_document: TabletDocument): StrokeControlPoints {

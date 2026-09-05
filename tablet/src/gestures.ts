@@ -1,7 +1,7 @@
 // Finger gestures → camera (Q9: stylus draws, finger navigates).
 // 1-finger drag = orbit, 2-finger drag = pan, pinch = zoom. A multi-finger
 // *tap* (all fingers barely move and lift quickly) is undo (2 fingers) / redo
-// (3 fingers), Procreate-style. Pen events are forwarded to the caller
+// (3 fingers), Procreate-style. Pen (and mouse) events are forwarded to the caller
 // (drawing modes handle them in later steps).
 
 import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
@@ -23,6 +23,12 @@ export type PenHandlers = {
   on_undo_tap: () => void; // two-finger tap
   on_redo_tap: () => void; // three-finger tap
 };
+
+// A mouse acts as the pen so the prototype is testable on a desktop (drags on
+// empty space still orbit, via the caller's pen handlers). Fingers navigate.
+function is_pen_pointer(e: PointerEvent): boolean {
+  return e.pointerType === "pen" || e.pointerType === "mouse";
+}
 
 export function attach_gestures(
   canvas: HTMLCanvasElement,
@@ -53,7 +59,7 @@ export function attach_gestures(
     // guard so dispatched test strokes still reach the handlers below.
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     const position = { x: e.clientX, y: e.clientY };
-    if (e.pointerType === "pen") {
+    if (is_pen_pointer(e)) {
       pen.on_pen_down(position, e);
     } else {
       if (touch_positions.size === 0) {
@@ -71,7 +77,7 @@ export function attach_gestures(
   canvas.addEventListener("pointermove", (e) => {
     e.preventDefault();
     const position = { x: e.clientX, y: e.clientY };
-    if (e.pointerType === "pen") {
+    if (is_pen_pointer(e)) {
       if (e.buttons !== 0) pen.on_pen_move(position, e);
       return;
     }
@@ -111,7 +117,7 @@ export function attach_gestures(
     canvas.addEventListener(type, (e) => {
       e.preventDefault();
       const position = { x: e.clientX, y: e.clientY };
-      if (e.pointerType === "pen") {
+      if (is_pen_pointer(e)) {
         pen.on_pen_up(position, e);
       } else {
         touch_positions.delete(e.pointerId);

@@ -5,7 +5,7 @@
 // Endpoints snap to existing vertices within a screen radius, reusing them so
 // strokes join at shared vertices. A tap (no drag) exits the tool.
 
-import { OrbitCamera, camera_basis, camera_screen_ray, camera_world_to_screen } from "./camera";
+import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen } from "./camera";
 import { Stroke, TabletDocument, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_dot, v3_length, v3_scale, v3_sub } from "./math";
 
@@ -27,7 +27,7 @@ export type LineToolState = {
 export function pen_point_on_camera_plane(
   camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
 ): V3 | null {
-  const ray = camera_screen_ray(camera, screen, canvas.clientWidth, canvas.clientHeight);
+  const ray = camera_pen_ray(camera, screen, canvas.clientWidth, canvas.clientHeight);
   const normal = camera_basis(camera).forward;
   const denominator = v3_dot(ray.direction, normal);
   if (Math.abs(denominator) < 1e-9) return null;

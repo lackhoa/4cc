@@ -53,6 +53,9 @@ let edit_state: EditState | null = null; // non-null = a stroke is selected
 // curve and creates a vertex pinned there.
 type ArmedTool = "line" | "loft" | "patch" | "join" | "pin";
 let armed_tool: ArmedTool | null = null;
+// Tilt is a sticky mode, not a tap tool: while on, handle drags roll the
+// stroke's plane (edit_pen_move). Off, they slide inside it.
+let tilt_mode = false;
 const patch_picks: number[] = []; // stroke indices collected while "patch" is armed
 let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
 let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
@@ -287,6 +290,11 @@ const surface_button = document.getElementById("surface_button") as HTMLButtonEl
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
 const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
+const tilt_button = document.getElementById("tilt_button") as HTMLButtonElement;
+tilt_button.addEventListener("click", () => {
+  tilt_mode = !tilt_mode;
+  tilt_button.classList.toggle("armed", tilt_mode);
+});
 // The pin button also lights up while a pinned vertex is selected — in that
 // state tapping it unpins (Q11). Re-checked every frame since pin selection
 // changes on pen gestures, not just button presses.
@@ -407,7 +415,7 @@ attach_gestures(canvas, camera, {
     } else if (pen_orbit_last_screen !== null) {
       pen_orbit(position);
     } else if (edit_state !== null) {
-      edit_pen_move(edit_state, tablet_document, camera, position, canvas);
+      edit_pen_move(edit_state, tablet_document, camera, position, canvas, tilt_mode);
     }
     request_render();
   },

@@ -90,7 +90,7 @@ export function camera_snap_to_axis_view(camera: OrbitCamera, snap_state: Camera
 export type Ray = { origin: V3; direction: V3 };
 
 // Ray through a screen point given in CSS pixels.
-export function camera_screen_ray(camera: OrbitCamera, screen: { x: number; y: number }, viewport_width: number, viewport_height: number): Ray {
+export function camera_pen_ray(camera: OrbitCamera, screen: { x: number; y: number }, viewport_width: number, viewport_height: number): Ray {
   const ndc_x = (screen.x / viewport_width) * 2 - 1;
   const ndc_y = 1 - (screen.y / viewport_height) * 2;
   const half_height = Math.tan(FOV_Y / 2);

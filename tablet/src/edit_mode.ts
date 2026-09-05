@@ -1,17 +1,19 @@
 // Edit mode: pen-tap a stroke to select it. Dragging one of its four control
 // points reshapes it — vertices (p0/p3) move in the camera plane and carry
-// every attached stroke with them; the p1/p2 handles also move in the camera
-// plane, and the other handle swings into the dragged one's new plane
-// (plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
+// every attached stroke with them; the p1/p2 handles slide inside the
+// stroke's plane (pen ray ∩ plane, plan-tablet-planar-handle-drags.html Q4),
+// so the other handle never moves — unless tilt mode is on, where the dragged
+// handle follows the pen in the camera plane and the other handle swings into
+// the new plane (Q8, plan-tablet-free-handles-coplanar.md Q2/Q3). Releasing a vertex drag near another vertex
 // merges the two into one shared junction. Pinned vertices (vertex_pins) only
 // ever slide along their host curve, whichever way they're grabbed.
 // A drag starting ON the stroke body translates
 // the whole stroke (both vertices) in the camera plane; a drag starting on
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
-import { OrbitCamera, camera_basis, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, TabletDocument, bezier_point, move_vertex, stroke_control_points, swing_offset_into_plane } from "./document";
-import { V2, V3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
+import { Stroke, TabletDocument, bezier_point, move_vertex, stroke_control_points, stroke_plane_normal, swing_offset_into_plane } from "./document";
+import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
@@ -23,6 +25,10 @@ const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
 const VERTEX_MERGE_RADIUS_PIXELS = 20;
 const PICK_SAMPLES_PER_STROKE = 16;
 const PIN_SLIDE_SAMPLES = 128; // t resolution when sliding a pinned vertex
+// Below this |cos| between the pen ray and the stroke plane's normal (plane
+// within ~9° of edge-on) the ray∩plane hit runs off to infinity: the handle
+// stays put instead (Q5).
+const EDGE_ON_PLANE_COSINE = 0.15;
 
 export type StrokePointKey = "p0" | "p1" | "p2" | "p3";
 
@@ -184,6 +190,7 @@ function camera_plane_drag(
 
 export function edit_pen_move(
   state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  tilt_mode: boolean,
 ): void {
   if (state.last_screen === null) return;
   const world_delta = camera_plane_drag(camera, state.last_screen, screen, canvas);
@@ -214,14 +221,32 @@ export function edit_pen_move(
     return;
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
-    // The dragged handle moves freely with the pen; the other one swings into
-    // the plane the dragged handle now spans with the chord (Q2).
     const dragged_key = state.dragging === "p1" ? "d0" : "d3";
     const other_key = state.dragging === "p1" ? "d3" : "d0";
-    stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
-    const chord = v3_sub(tablet_document.vertices[stroke.p3_vertex], tablet_document.vertices[stroke.p0_vertex]);
-    if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
-    stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
+    if (tilt_mode) {
+      // The dragged handle moves freely with the pen; the other one swings into
+      // the plane the dragged handle now spans with the chord (Q2).
+      stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
+      const chord = v3_sub(tablet_document.vertices[stroke.p3_vertex], tablet_document.vertices[stroke.p0_vertex]);
+      if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
+      stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
+      return;
+    }
+    // The handle goes where the pen ray pierces the stroke's plane: glued to
+    // the pen on screen, the plane and the other handle untouched (Q4).
+    const p0 = tablet_document.vertices[stroke.p0_vertex];
+    const p3 = tablet_document.vertices[stroke.p3_vertex];
+    const normal = stroke_plane_normal(stroke, tablet_document, camera_basis(camera).forward);
+    const ray = camera_pen_ray(camera, screen, canvas.clientWidth, canvas.clientHeight);
+    const cosine = v3_dot(ray.direction, normal);
+    if (Math.abs(cosine) < EDGE_ON_PLANE_COSINE) return;
+    const distance_along_ray = v3_dot(v3_sub(p0, ray.origin), normal) / cosine;
+    if (distance_along_ray <= 0) return; // plane behind the eye
+    const hit = v3_add(ray.origin, v3_scale(ray.direction, distance_along_ray));
+    const third_point = state.dragging === "p1"
+      ? v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3)
+      : v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
+    stroke[dragged_key] = v3_sub(hit, third_point);
   }
 }
 

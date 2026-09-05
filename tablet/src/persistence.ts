@@ -29,8 +29,11 @@ export type PersistenceState = {
 
 // What sits in localStorage: the last autosaved snapshot plus whether the
 // server confirmed it. server_saved=false after a reload means the server
-// never got it — push it on reconnect.
-type CrashBuffer = { name: string; json: string; server_saved: boolean };
+// never got it — push it on reconnect, but only if it is newer than the
+// server's file (saved_at_ms vs the server mtime): a stale unconfirmed buffer
+// (e.g. an empty doc from a session with the server down) must never clobber
+// a document edited elsewhere since.
+type CrashBuffer = { name: string; json: string; server_saved: boolean; saved_at_ms: number };
 
 export function create_persistence_state(): PersistenceState {
   let name = DEFAULT_DOCUMENT_NAME;
@@ -173,10 +176,11 @@ async function save_now(state: PersistenceState, tablet_document: TabletDocument
   const json = serialize_document_state(tablet_document, camera);
   if (json === state.last_saved_json) return;
   const name = state.current_document_name;
-  write_crash_buffer({ name, json, server_saved: false });
+  const saved_at_ms = Date.now();
+  write_crash_buffer({ name, json, server_saved: false, saved_at_ms });
   const saved = await save_to_server(name, json);
   if (saved) {
-    write_crash_buffer({ name, json, server_saved: true });
+    write_crash_buffer({ name, json, server_saved: true, saved_at_ms });
     state.last_saved_json = json;
   }
   // Not saved: last_saved_json stays stale so the next autosave retries the server.
@@ -229,14 +233,20 @@ async function load_current_document_inner(
     if (buffer !== null && buffer.name === name) apply_document_state(buffer.json, tablet_document, camera);
     return;
   }
+  const server_entry = server_list.find((entry) => entry.name === name);
   if (buffer !== null && buffer.name === name && !buffer.server_saved) {
-    console.log(`restoring unsaved crash buffer for '${name}' and pushing to server`);
-    if (apply_document_state(buffer.json, tablet_document, camera)) {
-      await save_now(state, tablet_document, camera);
+    // Buffers written before saved_at_ms existed count as older than any server file.
+    const buffer_is_newer = server_entry === undefined || (buffer.saved_at_ms ?? 0) > server_entry.mtime_ms;
+    if (buffer_is_newer) {
+      console.log(`restoring unsaved crash buffer for '${name}' and pushing to server`);
+      if (apply_document_state(buffer.json, tablet_document, camera)) {
+        await save_now(state, tablet_document, camera);
+      }
+      return;
     }
-    return;
+    console.warn(`ignoring unsaved crash buffer for '${name}': older than the server copy`);
   }
-  if (server_list.some((entry) => entry.name === name)) {
+  if (server_entry !== undefined) {
     try {
       const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);
       const json = await response.text();
