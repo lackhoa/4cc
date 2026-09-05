@@ -24,8 +24,9 @@ import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_rotate_about_axis, 
 // path sum easily exceeds any threshold.
 export const TAP_MAX_MOVEMENT_PIXELS = 12;
 
-export const STROKE_PICK_RADIUS_PIXELS = 24;
-export const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
+// Pen/mouse-sized, not finger-sized (fingers never pick). CSS pixels.
+export const STROKE_PICK_RADIUS_PIXELS = 10;
+export const CONTROL_POINT_PICK_RADIUS_PIXELS = 10;
 const PICK_SAMPLES_PER_STROKE = 16;
 const PIN_SLIDE_SAMPLES = 128; // t resolution when sliding a pinned vertex
 // Below this |cos| between the pen ray and the stroke plane's normal (plane
