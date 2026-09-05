@@ -9,6 +9,7 @@ export function v3(x: number, y: number, z: number): V3 { return { x, y, z }; }
 export function v3_add(a: V3, b: V3): V3 { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
 export function v3_sub(a: V3, b: V3): V3 { return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }; }
 export function v3_scale(a: V3, s: number): V3 { return { x: a.x * s, y: a.y * s, z: a.z * s }; }
+export function v3_lerp(a: V3, b: V3, t: number): V3 { return v3_add(v3_scale(a, 1 - t), v3_scale(b, t)); }
 export function v3_dot(a: V3, b: V3): number { return a.x * b.x + a.y * b.y + a.z * b.z; }
 export function v3_cross(a: V3, b: V3): V3 {
   return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };

@@ -17,7 +17,7 @@
 // entries (put a derived Map behind the two lookup helpers if it ever shows
 // in a profile).
 
-import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
+import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
 
 export type StrokeId = number;
 export type VertexId = number;
@@ -48,18 +48,31 @@ export type Coons = { strokes: [StrokeId, StrokeId, StrokeId, StrokeId] };
 // vertex is pinned at most once, so a pin is identified by its vertex id.
 export type VertexPin = { vertex: VertexId; host_stroke: StrokeId; t: number };
 
+// Smooth knot (plan-tablet-partial-boundary-patches.md): a vertex where two
+// strokes meet end-to-end with their tangents locked, so a chain of strokes
+// reads as one curve. Made by split_stroke (exact de Casteljau) and kept by
+// enforce_smooth_knot at the edit choke points (Q3): the follower's handle at
+// the knot is re-aimed opposite the leader's, its length kept (or scaled with
+// the leader's on a handle drag — G1 with a locked ratio, Q2). A welded
+// crossing holds two independent knots at one vertex (Q4). Deleting either
+// stroke, or joining across the knot, drops the record (Q7).
+export type SmoothKnot = { vertex: VertexId; stroke_a: StrokeId; stroke_b: StrokeId };
+
 export type TabletDocument = {
   next_vertex_id: VertexId; // counters only ever grow — ids are never reused
   next_stroke_id: StrokeId;
   vertices: Vertex[]; // shared junctions; stroke endpoints reference these by id
   vertex_pins: VertexPin[];
+  smooth_knots: SmoothKnot[];
   strokes: Stroke[]; // array order = draw order
   lofts: Loft[];
   coons: Coons[];
 };
 
 export function empty_document(): TabletDocument {
-  return { next_vertex_id: 0, next_stroke_id: 0, vertices: [], vertex_pins: [], strokes: [], lofts: [], coons: [] };
+  return {
+    next_vertex_id: 0, next_stroke_id: 0, vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], lofts: [], coons: [],
+  };
 }
 
 // A dangling id is a bug in whoever stored it (delete_stroke drops every
@@ -82,6 +95,11 @@ export function vertex_position(tablet_document: TabletDocument, vertex_id: Vert
 
 export function pin_by_vertex(tablet_document: TabletDocument, vertex_id: VertexId): VertexPin | null {
   return tablet_document.vertex_pins.find((pin) => pin.vertex === vertex_id) ?? null;
+}
+
+// 0, 1 or (at a welded crossing) 2 knots.
+export function smooth_knots_at_vertex(tablet_document: TabletDocument, vertex_id: VertexId): SmoothKnot[] {
+  return tablet_document.smooth_knots.filter((knot) => knot.vertex === vertex_id);
 }
 
 export function add_vertex(tablet_document: TabletDocument, position: V3): VertexId {
@@ -110,7 +128,129 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_id: Stroke
   tablet_document.lofts = tablet_document.lofts
     .filter((loft) => loft.stroke_a !== stroke_id && loft.stroke_b !== stroke_id);
   tablet_document.coons = tablet_document.coons.filter((coons) => !coons.strokes.includes(stroke_id));
+  // A knot with one stroke isn't a knot (Q7).
+  tablet_document.smooth_knots = tablet_document.smooth_knots
+    .filter((knot) => knot.stroke_a !== stroke_id && knot.stroke_b !== stroke_id);
   garbage_collect_vertices(tablet_document);
+}
+
+// A cut this close to an end would leave a near-zero-length half.
+const SPLIT_MIN_T_FROM_ENDS = 0.02;
+
+// Split a stroke at t into two strokes meeting at a smooth knot. Exact:
+// de Casteljau subdivision reproduces the original curve. The original
+// stroke keeps the [0, t] half (so lofts/patches built on it stay on it);
+// the new stroke takes [t, 1]. Pins on the original re-parameterize to
+// whichever half they land on. The knot is a new vertex, unless the cut is
+// at a vertex pinned to this stroke: then that vertex becomes the knot (its
+// pin dropped — it's now a real junction), so a chain welded there stays
+// welded. Returns the knot vertex, or null for a cut too close to an end.
+export function split_stroke(
+  tablet_document: TabletDocument, stroke_id: StrokeId, t: number, pinned_vertex: VertexId | null = null,
+): VertexId | null {
+  if (t < SPLIT_MIN_T_FROM_ENDS || t > 1 - SPLIT_MIN_T_FROM_ENDS) return null;
+  const stroke = stroke_by_id(tablet_document, stroke_id);
+  const { p0, p1, p2, p3 } = stroke_control_points(stroke, tablet_document);
+  const p01 = v3_lerp(p0, p1, t), p12 = v3_lerp(p1, p2, t), p23 = v3_lerp(p2, p3, t);
+  const p012 = v3_lerp(p01, p12, t), p123 = v3_lerp(p12, p23, t);
+  const knot_position = v3_lerp(p012, p123, t);
+  let knot_vertex: VertexId;
+  if (pinned_vertex === null) {
+    knot_vertex = add_vertex(tablet_document, knot_position);
+  } else {
+    knot_vertex = pinned_vertex;
+    // Already on the curve (a pin rides bezier_point(host, t)); the caller
+    // passed that pin's t, so this is a no-op up to rounding.
+    vertex_by_id(tablet_document, knot_vertex).position = knot_position;
+    tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== pinned_vertex);
+  }
+  const far_vertex = stroke.p3_vertex;
+  const first_half = stroke_handles_from_control_points(p0, p01, p012, knot_position);
+  stroke.p3_vertex = knot_vertex;
+  stroke.d0 = first_half.d0;
+  stroke.d3 = first_half.d3;
+  const second_half = stroke_handles_from_control_points(knot_position, p123, p23, p3);
+  const second_stroke = add_stroke(tablet_document, knot_vertex, far_vertex, second_half.d0, second_half.d3);
+  for (const pin of tablet_document.vertex_pins) {
+    if (pin.host_stroke !== stroke_id) continue;
+    if (pin.t <= t) {
+      pin.t = pin.t / t;
+    } else {
+      pin.host_stroke = second_stroke;
+      pin.t = (pin.t - t) / (1 - t);
+    }
+  }
+  tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
+  return knot_vertex;
+}
+
+// The offset key of the handle next to `vertex_id` on a stroke ending there.
+export function handle_key_at_vertex(stroke: Stroke, vertex_id: VertexId): "d0" | "d3" {
+  return stroke.p0_vertex === vertex_id ? "d0" : "d3";
+}
+
+// World position of the handle next to `vertex_id`.
+function handle_point_at_vertex(stroke: Stroke, tablet_document: TabletDocument, vertex_id: VertexId): V3 {
+  const points = stroke_control_points(stroke, tablet_document);
+  return handle_key_at_vertex(stroke, vertex_id) === "d0" ? points.p1 : points.p2;
+}
+
+// Place the handle next to `vertex_id` at a world point, keeping the stroke's
+// other handle coplanar with the chord (swung into the new plane).
+function set_handle_point_at_vertex(stroke: Stroke, tablet_document: TabletDocument, vertex_id: VertexId, handle_point: V3): void {
+  const p0 = vertex_position(tablet_document, stroke.p0_vertex);
+  const p3 = vertex_position(tablet_document, stroke.p3_vertex);
+  const key = handle_key_at_vertex(stroke, vertex_id);
+  const third_point = key === "d0"
+    ? v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3)
+    : v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
+  stroke[key] = v3_sub(handle_point, third_point);
+  const other_key = key === "d0" ? "d3" : "d0";
+  stroke[other_key] = swing_offset_into_plane(chord_direction(p0, p3), stroke[key], stroke[other_key]);
+}
+
+// Re-aim the knot's follower handle opposite the leader's tangent. The
+// follower's handle length is kept, times `length_factor` (a leader handle
+// drag passes its own length ratio so the split ratio survives, Q2).
+// Make two strokes that share an endpoint vertex smooth there: a knot record
+// with `stroke_a` leading, and stroke_b's tangent re-aimed once to match.
+// Returns the knot vertex, or null if they share no endpoint (a stroke's own
+// two ends never count) or are already smooth at it.
+export function smooth_strokes(tablet_document: TabletDocument, stroke_a: StrokeId, stroke_b: StrokeId): VertexId | null {
+  if (stroke_a === stroke_b) return null;
+  const a = stroke_by_id(tablet_document, stroke_a);
+  const b = stroke_by_id(tablet_document, stroke_b);
+  const shared = [a.p0_vertex, a.p3_vertex].find((vertex) => vertex === b.p0_vertex || vertex === b.p3_vertex);
+  if (shared === undefined) return null;
+  const already_smooth = smooth_knots_at_vertex(tablet_document, shared).some(
+    (knot) => (knot.stroke_a === stroke_a && knot.stroke_b === stroke_b) || (knot.stroke_a === stroke_b && knot.stroke_b === stroke_a),
+  );
+  if (already_smooth) return null;
+  const knot: SmoothKnot = { vertex: shared, stroke_a, stroke_b };
+  tablet_document.smooth_knots.push(knot);
+  enforce_smooth_knot(tablet_document, knot, stroke_a);
+  return shared;
+}
+
+export function enforce_smooth_knot(
+  tablet_document: TabletDocument, knot: SmoothKnot, leader_stroke: StrokeId, length_factor: number = 1,
+): void {
+  const leader = stroke_by_id(tablet_document, leader_stroke);
+  const follower = stroke_by_id(tablet_document, leader_stroke === knot.stroke_a ? knot.stroke_b : knot.stroke_a);
+  const knot_position = vertex_position(tablet_document, knot.vertex);
+  const leader_outward = v3_sub(handle_point_at_vertex(leader, tablet_document, knot.vertex), knot_position);
+  if (v3_length(leader_outward) < COLLINEAR_EPSILON) return; // no tangent to follow
+  const follower_length = v3_length(v3_sub(handle_point_at_vertex(follower, tablet_document, knot.vertex), knot_position));
+  const follower_outward = v3_scale(v3_normalize(leader_outward), -follower_length * length_factor);
+  set_handle_point_at_vertex(follower, tablet_document, knot.vertex, v3_add(knot_position, follower_outward));
+}
+
+// Re-aim every knot the stroke takes part in, with the stroke as leader —
+// after a reshape of that stroke alone (tilt, swing, handle drag).
+export function enforce_smooth_knots_of_stroke(tablet_document: TabletDocument, stroke_id: StrokeId): void {
+  for (const knot of tablet_document.smooth_knots) {
+    if (knot.stroke_a === stroke_id || knot.stroke_b === stroke_id) enforce_smooth_knot(tablet_document, knot, stroke_id);
+  }
 }
 
 // Drop vertices that no stroke endpoint and no pin references.
@@ -233,6 +373,16 @@ export function move_vertex(tablet_document: TabletDocument, vertex_id: VertexId
     stroke.d3 = v3_rotate_between_directions(stroke.d3, from, to, flip_axis);
   }
   vertex.position = new_position;
+  // The chord rotations above changed the tangents at both ends of every
+  // attached stroke: re-aim the knots there, stroke_a leading (Q3).
+  const touched_vertices = new Set<VertexId>([vertex_id]);
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.p0_vertex === vertex_id) touched_vertices.add(stroke.p3_vertex);
+    if (stroke.p3_vertex === vertex_id) touched_vertices.add(stroke.p0_vertex);
+  }
+  for (const knot of tablet_document.smooth_knots) {
+    if (touched_vertices.has(knot.vertex)) enforce_smooth_knot(tablet_document, knot, knot.stroke_a);
+  }
 }
 
 // The four world-space bezier control points of a stroke.

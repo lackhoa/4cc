@@ -6,8 +6,8 @@
 // reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 
 import { CameraSnapState, camera_basis, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { StrokeId, VertexId, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, pin_by_vertex, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_position } from "./document";
-import { EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
+import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_position } from "./document";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -27,6 +27,7 @@ const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
 const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
 const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
+const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 const ANCHOR_SIZE_PIXELS = 12;
 const HANDLE_SIZE_PIXELS = 9;
@@ -50,8 +51,11 @@ let edit_state: EditState | null = null; // non-null = a stroke is selected
 // stroke the loft's second rail ("loft"), one of the Coons patch's remaining
 // boundary sides ("patch", collects until 4), or the adjacent stroke to merge
 // the selection with ("join"). "pin" waits for a tap on the selected stroke's
-// curve and creates a vertex pinned there.
-type ArmedTool = "line" | "loft" | "patch" | "join" | "pin";
+// curve and creates a vertex pinned there. "split" waits for a tap on the
+// selected curve and splits it there into two strokes joined by a smooth knot.
+// "smooth" makes the next tapped stroke smooth with the selection at their
+// shared endpoint (selection leads).
+type ArmedTool = "line" | "loft" | "patch" | "join" | "pin" | "split" | "smooth";
 let armed_tool: ArmedTool | null = null;
 // Tilt is a sticky mode, not a tap tool. Two variants to compare, mutually
 // exclusive: "dial" — any drag rolls the selected stroke about its chord;
@@ -203,9 +207,13 @@ function rebuild_edit_overlay(): void {
   append_billboard_square(points.p1, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   append_billboard_square(points.p2, handle_half, basis.right, basis.up, HANDLE_COLOR, triangle_vertices);
   // Endpoints that are pinned vertices (riding some other stroke) show in the
-  // pin color so it's clear they'll slide, not translate, when grabbed.
-  const anchor_color = (vertex: VertexId) =>
-    pin_by_vertex(tablet_document, vertex) !== null ? PIN_COLOR : ANCHOR_COLOR;
+  // pin color so it's clear they'll slide, not translate, when grabbed; smooth
+  // knots in the knot color so it's clear the neighbour's handle will follow.
+  const anchor_color = (vertex: VertexId) => {
+    if (pin_by_vertex(tablet_document, vertex) !== null) return PIN_COLOR;
+    if (smooth_knots_at_vertex(tablet_document, vertex).length > 0) return KNOT_COLOR;
+    return ANCHOR_COLOR;
+  };
   append_billboard_square(points.p0, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p0_vertex), triangle_vertices);
   append_billboard_square(points.p3, anchor_half, basis.right, basis.up, anchor_color(selected_stroke.p3_vertex), triangle_vertices);
   // Pinned vertices riding the selected stroke; the selected pin (the unpin
@@ -259,6 +267,24 @@ function line_mode_pen_up(): void {
   update_preview_line();
 }
 
+// The pin riding `host_stroke` under the pen (within control-point pick
+// range), or null.
+function pick_pin_on_stroke(host_stroke: StrokeId, screen: V2): VertexPin | null {
+  let best: VertexPin | null = null;
+  let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
+  for (const pin of tablet_document.vertex_pins) {
+    if (pin.host_stroke !== host_stroke) continue;
+    const projected = camera_world_to_screen(camera, vertex_position(tablet_document, pin.vertex), canvas.clientWidth, canvas.clientHeight);
+    if (projected === null) continue;
+    const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best = pin;
+    }
+  }
+  return best;
+}
+
 // Selected-stroke pen-up: a tap on another stroke switches the selection (or,
 // with a pick tool armed, feeds it); a tap on empty space deselects. Drags
 // (control point, whole-stroke move, or orbit) just end.
@@ -279,6 +305,22 @@ function edit_mode_pen_up(position: V2): void {
       const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t));
       tablet_document.vertex_pins.push({ vertex, host_stroke: edit_state.stroke_id, t: nearest.t });
       edit_state.selected_pin = vertex;
+    }
+    set_armed_tool(null); // tap off the curve = cancel, selection kept
+    return;
+  }
+  if (armed_tool === "split") {
+    // Split (Q4): the selected stroke is cut at the tapped point into two
+    // strokes joined by a smooth knot; the [0, t] half stays selected. Only
+    // the selection is a candidate so a tap at a junction is unambiguous. A
+    // tap on a vertex pinned to the selection cuts exactly there, reusing it.
+    const selected_id = edit_state.stroke_id;
+    const pinned = pick_pin_on_stroke(selected_id, position);
+    if (pinned !== null) {
+      split_stroke(tablet_document, selected_id, pinned.t, pinned.vertex);
+    } else {
+      const nearest = nearest_t_on_stroke_screen(tablet_document, selected_id, camera, position, canvas);
+      if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) split_stroke(tablet_document, selected_id, nearest.t);
     }
     set_armed_tool(null); // tap off the curve = cancel, selection kept
     return;
@@ -306,6 +348,8 @@ function edit_mode_pen_up(position: V2): void {
         const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, picked);
         // Not adjacent (or a closed loop): keep the selection, just disarm.
         if (merged_id !== null) edit_state = begin_edit_state(merged_id);
+      } else if (armed_tool === "smooth") {
+        smooth_strokes(tablet_document, edit_state.stroke_id, picked); // no shared vertex: nothing
       }
     }
     set_armed_tool(null); // tap empty (or the same stroke) = cancel, selection kept
@@ -318,6 +362,8 @@ const line_button = document.getElementById("line_button") as HTMLButtonElement;
 const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
 const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
 const join_button = document.getElementById("join_button") as HTMLButtonElement;
+const split_button = document.getElementById("split_button") as HTMLButtonElement;
+const smooth_button = document.getElementById("smooth_button") as HTMLButtonElement;
 const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
 const tilt_button = document.getElementById("tilt_button") as HTMLButtonElement;
 const swing_button = document.getElementById("swing_button") as HTMLButtonElement;
@@ -344,6 +390,8 @@ function set_armed_tool(tool: ArmedTool | null): void {
   surface_button.classList.toggle("armed", tool === "loft");
   patch_button.classList.toggle("armed", tool === "patch");
   join_button.classList.toggle("armed", tool === "join");
+  split_button.classList.toggle("armed", tool === "split");
+  smooth_button.classList.toggle("armed", tool === "smooth");
   refresh_pin_button_armed();
 }
 line_button.addEventListener("click", () => {
@@ -370,6 +418,20 @@ patch_button.addEventListener("click", () => {
 join_button.addEventListener("click", () => {
   if (edit_state === null) return; // needs a selected first stroke
   set_armed_tool(armed_tool === "join" ? null : "join");
+});
+
+// Split: the next tap on the selected curve cuts it there into two strokes
+// joined by a smooth knot.
+split_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  set_armed_tool(armed_tool === "split" ? null : "split");
+});
+
+// Smooth: the next tapped stroke becomes smooth with the selection at their
+// shared endpoint (the selection keeps its tangent, the other is re-aimed).
+smooth_button.addEventListener("click", () => {
+  if (edit_state === null) return;
+  set_armed_tool(armed_tool === "smooth" ? null : "smooth");
 });
 
 // Pin: with a pinned vertex selected, unpin it (frozen in place as a free

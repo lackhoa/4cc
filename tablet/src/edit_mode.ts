@@ -16,7 +16,7 @@
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, StrokeId, TabletDocument, VertexId, bezier_point, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_position } from "./document";
+import { Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, enforce_smooth_knots_of_stroke, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_rotate_about_axis, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -25,7 +25,7 @@ import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_rotate_about_axis, 
 export const TAP_MAX_MOVEMENT_PIXELS = 12;
 
 export const STROKE_PICK_RADIUS_PIXELS = 24;
-const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
+export const CONTROL_POINT_PICK_RADIUS_PIXELS = 20;
 const PICK_SAMPLES_PER_STROKE = 16;
 const PIN_SLIDE_SAMPLES = 128; // t resolution when sliding a pinned vertex
 // Below this |cos| between the pen ray and the stroke plane's normal (plane
@@ -224,6 +224,7 @@ export function edit_pen_move(
     const angle = screen_dx * TILT_RADIANS_PER_PIXEL;
     stroke.d0 = v3_rotate_about_axis(stroke.d0, axis, angle);
     stroke.d3 = v3_rotate_about_axis(stroke.d3, axis, angle);
+    enforce_smooth_knots_of_stroke(tablet_document, stroke.id);
     return;
   }
   if (state.moving_whole_stroke) {
@@ -251,6 +252,32 @@ export function edit_pen_move(
     return;
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
+    // A handle drag at a smooth knot leads the neighbour: same direction, both
+    // lengths scaled by the same factor (Q2) — so remember the length before.
+    const knot_vertex = state.dragging === "p1" ? stroke.p0_vertex : stroke.p3_vertex;
+    const knots = smooth_knots_at_vertex(tablet_document, knot_vertex)
+      .filter((knot) => knot.stroke_a === stroke.id || knot.stroke_b === stroke.id);
+    const old_length = dragged_handle_length(state, stroke, tablet_document);
+    drag_handle(state, stroke, tablet_document, camera, screen, canvas, handle_mode, world_delta);
+    const new_length = dragged_handle_length(state, stroke, tablet_document);
+    const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
+    for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
+  }
+}
+
+// Distance from the dragged handle (p1 or p2) to its own vertex.
+function dragged_handle_length(state: EditState, stroke: Stroke, tablet_document: TabletDocument): number {
+  const points = stroke_control_points(stroke, tablet_document);
+  return state.dragging === "p1" ? v3_length(v3_sub(points.p1, points.p0)) : v3_length(v3_sub(points.p2, points.p3));
+}
+
+// Move the dragged interior handle with the pen — see the header comment for
+// the HandleModes.
+function drag_handle(
+  state: EditState, stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2,
+  canvas: HTMLCanvasElement, handle_mode: HandleMode, world_delta: V3,
+): void {
+  {
     const dragged_key = state.dragging === "p1" ? "d0" : "d3";
     if (handle_mode === "swing") {
       // The dragged handle moves freely with the pen; the other one swings into
@@ -317,6 +344,8 @@ function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_v
     stroke.p0_vertex = remap(stroke.p0_vertex);
     stroke.p3_vertex = remap(stroke.p3_vertex);
   }
+  // A knot at the dragged vertex rides along (a crossing = two knots, Q4).
+  for (const knot of tablet_document.smooth_knots) knot.vertex = remap(knot.vertex);
   // The dragged vertex is never pinned (pin drags slide t and skip merging),
   // so no pin references it.
   tablet_document.vertices = tablet_document.vertices.filter((vertex) => vertex.id !== dragged_vertex);
