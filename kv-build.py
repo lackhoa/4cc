@@ -90,6 +90,37 @@ FCODER_ROOT=pjoin(HOME, '4ed')
 CODE=pjoin(FCODER_ROOT, "code")
 NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
 OS_WINDOWS = int(os.name== "nt")
+
+VCVARSALL = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat"
+VCVARS_CACHE = pjoin(OUTDIR, "vcvars.json")
+
+def setup_msvc_env():
+    """NOTE(kv) vcvarsall.bat costs ~2 s and only sets env vars, so run it once and
+    cache the result. Cache is refreshed when vcvarsall.bat itself is newer (VS update).
+    Skipped entirely when cl is already on PATH (launched from a dev shell)."""
+    if not OS_WINDOWS or shutil.which("cl"):
+        return
+    import json
+    cached = None
+    if (os.path.exists(VCVARS_CACHE) and
+        os.path.getmtime(VCVARS_CACHE) > os.path.getmtime(VCVARSALL)):
+        with open(VCVARS_CACHE, encoding="utf-8") as f:
+            cached = json.load(f)
+    if cached is None:
+        print("vcvars: cache miss, running vcvarsall.bat once")
+        marker = "__VCVARS_ENV__"
+        out = subprocess.run(f'"{VCVARSALL}" x86_amd64 >nul && echo {marker} && set',
+                             shell=True, capture_output=True, text=True, check=True).stdout
+        env_lines = out.split(marker, 1)[1].splitlines()
+        after = dict(line.split("=", 1) for line in env_lines if "=" in line)
+        # NOTE(kv) keep only what vcvarsall added/changed
+        cached = {k: v for k, v in after.items() if os.environ.get(k) != v}
+        with open(VCVARS_CACHE, "w", encoding="utf-8") as f:
+            json.dump(cached, f, indent=1)
+    os.environ.update(cached)
+    if not shutil.which("cl"):
+        raise Exception(f"vcvars: cl still not found after loading {VCVARS_CACHE}; delete it and retry")
+
 OS_MAC = int(not OS_WINDOWS)
 
 DOT_DLL=".dll" if OS_WINDOWS else ".so"
@@ -426,6 +457,7 @@ try:
         else:
             run(pjoin(OUTDIR, f'4ed{DOT_EXE}'))
     else:
+        setup_msvc_env()
         #-NOTE(kv): Compile the project---------------------------
 
         # NOTE(kv): remedy stop debugging
