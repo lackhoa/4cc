@@ -1095,8 +1095,12 @@ parse_statement_to_pointer(Klang_Parser *p, /*out*/Meta_Statement *ostatement)
   else if(ep_maybe_id(p, strlit("return")))
   {//-Return
    ostatement->kind = Statement_Kind_Return;
-   parse_expression_full(p, &ostatement->return0);
-   ep_char(p,';');
+   // NOTE(kv) Bare `return;` is allowed (return0 stays Expression_Kind_None, prints nothing).
+   if(not ep_maybe_char(p,';'))
+   {
+    parse_expression_full(p, &ostatement->return0);
+    ep_char(p,';');
+   }
   }
   else if(token0_string == strlit("continue") or
           token0_string == strlit("break"))

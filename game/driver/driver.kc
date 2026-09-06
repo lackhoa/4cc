@@ -2212,8 +2212,8 @@ render_character(Pose &pose)
 function void
 show_reference_images()
 {
- if(painter->reference_mode != Reference_Off)
- {// NOTE(kv) Off hides the hardcoded arm/back images too (klang has no early return)
+ // NOTE(kv) Off hides the hardcoded arm/back images too
+ if(painter->reference_mode == Reference_Off) { return; }
  BoneBlock(Bone_References);
  Reference_Scene scene = get_reference_scene();
  if(scene != Scene_None)
@@ -2314,7 +2314,6 @@ show_reference_images()
     }
    }
   }
- }
  }
 }
 //~

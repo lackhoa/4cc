@@ -754,8 +754,12 @@ print_statement_2(Printer &p, Source_Map *source_map, Meta_Statement &statement)
   
   case Statement_Kind_Return:
   {
-   print(p, "return ");
-   print_expression(p, statement.return0);
+   print(p, "return");
+   if(statement.return0.kind != Expression_Kind_None)
+   {
+    print(p, " ");
+    print_expression(p, statement.return0);
+   }
    print(p, ";");
   }break;
   
