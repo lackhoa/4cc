@@ -21,7 +21,7 @@
 //   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
 //   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
 //                        frame as the screenshot png); picking runs against it every frame
-//   mouse_down <x> <y> [shift|alt] / mouse_up -> press/release the virtual left button there
+//   mouse_down <x> <y> [shift|alt|middle] / mouse_up -> press/release the virtual left button there
 //                        (drives the same document_edit_* as the real mouse; shift =
 //                        toggle the hot document curve in the patch selection, no drag)
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
@@ -64,6 +64,7 @@ global b32  debug_channel_mouse_press_pending;  // one-frame edges
 global b32  debug_channel_mouse_release_pending;
 global b32  debug_channel_mouse_shift;           // shift held for the virtual press
 global b32  debug_channel_mouse_alt;             // alt held for the virtual press (camera pan drag)
+global b32  debug_channel_mouse_middle;          // virtual middle button held (camera pan drag)
 global Location debug_channel_last_hot;  // from the last frame's picking
 global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport under it
 // NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
@@ -191,7 +192,7 @@ debug_channel_dump_state(FILE *out, Game_State *state)
   fprintf(out, "camera current: theta=%.4f phi=%.4f distance=%.4f pivot=(%.4f %.4f %.4f)\n",
           c.theta, c.phi, c.distance, c.pivot.x, c.pivot.y, c.pivot.z);
   Camera_Drag &d = state->camera_drag;
-  fprintf(out, "camera_drag: active %d pan %d remainder (%.1f %.1f)\n", d.active, d.pan, d.remainder_px.x, d.remainder_px.y);
+  fprintf(out, "camera_drag: active %d pan %d middle %d remainder (%.1f %.1f)\n", d.active, d.pan, d.middle, d.remainder_px.x, d.remainder_px.y);
  }
  {
   Recording &doc = m->recordings.document;
@@ -761,16 +762,17 @@ debug_channel_update(Game_State *state, App *app)
   {
    debug_channel_mouse_active = true;
    debug_channel_mouse_p = {x, y};
-   debug_channel_mouse_left = true;
-   debug_channel_mouse_press_pending = true;
+   debug_channel_mouse_middle = (n == 3 and strcmp(mod, "middle") == 0);
+   debug_channel_mouse_left = not debug_channel_mouse_middle;
+   debug_channel_mouse_press_pending = debug_channel_mouse_left;
    debug_channel_mouse_shift = (n == 3 and strcmp(mod, "shift") == 0);
    debug_channel_mouse_alt   = (n == 3 and strcmp(mod, "alt") == 0);
    debug_channel_wants_animate = true;
-   fprintf(out, "mouse_down: at (%d %d)%s\n", x, y, debug_channel_mouse_shift ? " shift" : "");
+   fprintf(out, "mouse_down: at (%d %d) %s\n", x, y, n == 3 ? mod : "");
   }
   else
   {
-   fprintf(out, "error: usage: mouse_down <x> <y> [shift]\n");
+   fprintf(out, "error: usage: mouse_down <x> <y> [shift|alt|middle]\n");
   }
  }
  else if(strncmp(cmd, "make_patch ", 11) == 0)
@@ -849,6 +851,7 @@ debug_channel_update(Game_State *state, App *app)
   debug_channel_mouse_left = false;
   debug_channel_mouse_shift = false;
   debug_channel_mouse_alt = false;
+  debug_channel_mouse_middle = false;
   debug_channel_mouse_release_pending = true;
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_up\n");
@@ -857,6 +860,7 @@ debug_channel_update(Game_State *state, App *app)
  {
   debug_channel_mouse_active = false;
   debug_channel_mouse_left = false;
+  debug_channel_mouse_middle = false;
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_off\n");
  }

@@ -1116,14 +1116,16 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
 }
 function void update_pan(Camera_Data *cam, Game_Input *input);
 global v1 CAMERA_DRAG_PX_PER_STEP = 40.f;  // NOTE(kv) one 1/24-turn cell (or pan step) per this many px
+global v1 CAMERA_DRAG_PAN_STEP_SCALE = 0.25f;  // NOTE(kv) a drag pan step is this fraction of a keyboard pan step
 
 function void
-camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan)
+camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan, b32 middle)
 {
  Camera_Drag &drag = state->camera_drag;
  drag = {};
  drag.active = true;
  drag.pan = pan;
+ drag.middle = middle;
  drag.viewport_index = viewport_index;
  drag.last_px = mouse_px;
 }
@@ -1142,20 +1144,22 @@ camera_drag_move(Game_State *state, v2 mouse_px)
  v2 steps = {v1(i32(acc.x / CAMERA_DRAG_PX_PER_STEP)), v1(i32(acc.y / CAMERA_DRAG_PX_PER_STEP))};
  drag.remainder_px = acc - CAMERA_DRAG_PX_PER_STEP * steps;
  if(steps == v2{}){ return; }
- // NOTE(kv) Screen y grows downward; dragging up = pitch up / pan the world up,
- // dragging right = orbit like pressing L (content moves with the mouse for pan).
+ // NOTE(kv) Same convention as the tablet (gestures.ts): the content follows the mouse.
+ // Screen y grows downward. Pan: drag right = world moves right = pivot moves left.
+ // Orbit: drag right = yaw so the near side moves right (opposite of the L key),
+ // drag down = pitch so the near side moves down.
  Key_Direction dir = {};
  dir.new_keypress = true;
  if(drag.pan)
  {
-  dir.dir.xy = V2(-steps.x, steps.y);
+  dir.dir.xy = CAMERA_DRAG_PAN_STEP_SCALE * V2(-steps.x, steps.y);
   Game_Input input = {};
   input.direction = dir;
   update_pan(cam, &input);
  }
  else
  {
-  dir.dir.xy = V2(steps.x, -steps.y);
+  dir.dir.xy = V2(-steps.x, steps.y);
   update_orbit(cam, dir);
  }
 }
@@ -1852,6 +1856,7 @@ game_update(Game_Update_Params params)
    params.mouse.left = b8(debug_channel_mouse_left);
    params.mouse.press_left = b8(debug_channel_mouse_press_pending);
    params.mouse.release_left = b8(debug_channel_mouse_release_pending);
+   params.mouse.middle = b8(debug_channel_mouse_middle);
    debug_channel_mouse_press_pending = false;
    debug_channel_mouse_release_pending = false;
   }
@@ -1897,9 +1902,16 @@ game_update(Game_Update_Params params)
   if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
 
   if(state->camera_drag.active)
-  {// NOTE(kv) Mouse camera drag (orbit / alt-pan) owns the mouse until release.
+  {// NOTE(kv) Mouse camera drag (orbit / alt-pan / middle-pan) owns the mouse until release.
    camera_drag_move(state, V2(params.mouse.p));
-   if(params.mouse.release_left or not params.mouse.left){ camera_drag_release(state); }
+   b32 released = (state->camera_drag.middle ?
+                   not params.mouse.middle :
+                   (params.mouse.release_left or not params.mouse.left));
+   if(released){ camera_drag_release(state); }
+  }
+  else if(params.mouse.middle and mouse_viewport and not state->document_edit.active)
+  {// NOTE(kv) Middle button held: pan drag, regardless of what is hot.
+   camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true);
   }
 
   if(params.mouse.press_left and not state->document_edit.active and not state->camera_drag.active)
@@ -1908,7 +1920,7 @@ game_update(Game_Update_Params params)
    if(not is_valid(hot_location) and mouse_viewport)
    {
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
-    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt);
+    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false);
    }
    else if(is_document_location(hot_location))
    {

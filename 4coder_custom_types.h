@@ -75,6 +75,7 @@ struct Mouse_State
  b8 release_left;
  b8 release_right;
  b8 out_of_window;
+ b8 middle;  // NOTE(kv) held state only (fits the old padding: no ABI shift); edges are derived by the game
  i32 wheel;
  union {
   i2 p;

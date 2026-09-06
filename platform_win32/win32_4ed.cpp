@@ -135,6 +135,7 @@ struct Win32_Input_Chunk_Persistent{
     Input_Modifier_Set_Fixed modifiers;
     b8 mouse_l;
     b8 mouse_r;
+    b8 mouse_m;
 };
 
 struct Win32_Input_Chunk{
@@ -1397,6 +1398,8 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    case WM_RBUTTONDOWN:
    case WM_LBUTTONUP:
    case WM_RBUTTONUP:
+   case WM_MBUTTONDOWN:
+   case WM_MBUTTONUP:
    {
     win32vars.got_useful_event = true;
     if (imgui_want_capture_mouse) {
@@ -1451,6 +1454,18 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
        win32vars.input_chunk.trans.mouse_r_release = true;
        win32vars.input_chunk.pers.mouse_r = false;
       }break;
+      
+      case WM_MBUTTONDOWN:
+      {// NOTE(kv) Middle button = camera pan drag (game); held state only, no events.
+       SetCapture(hwnd);
+       win32vars.input_chunk.pers.mouse_m = true;
+      }break;
+      
+      case WM_MBUTTONUP:
+      {
+       ReleaseCapture();
+       win32vars.input_chunk.pers.mouse_m = false;
+      }break;
      }
     }
    }break;
@@ -1462,6 +1477,7 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     win32vars.got_useful_event = true;
     win32vars.input_chunk.pers.mouse_l = false;
     win32vars.input_chunk.pers.mouse_r = false;
+    win32vars.input_chunk.pers.mouse_m = false;
     block_zero_struct(&win32vars.input_chunk.pers.controls);
     block_zero_struct(&win32vars.input_chunk.pers.modifiers);
     win32vars.active_key_stroke = 0;
@@ -2277,6 +2293,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   input.mouse.right         = input_chunk.pers.mouse_r;
   input.mouse.press_right   = input_chunk.trans.mouse_r_press;
   input.mouse.release_right = input_chunk.trans.mouse_r_release;
+  input.mouse.middle        = input_chunk.pers.mouse_m;
   
   input.mouse.wheel = input_chunk.trans.mouse_wheel;
   input.mouse.p     = input_chunk.pers.mouse;

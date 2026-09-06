@@ -74,6 +74,7 @@ struct Camera_Drag
 {
  b32 active;
  b32 pan;            // else orbit; decided at press time
+ b32 middle;         // started by the middle button (ends on its release, not left's)
  i32 viewport_index;
  v2  last_px;
  v2  remainder_px;   // sub-step drag carried to the next frame
