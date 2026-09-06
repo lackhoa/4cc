@@ -408,6 +408,27 @@ is_valid(Location location)
 {
  return location.file.index != 0;
 }
+// NOTE(kv) Document variant (plan-document-mouse-editing Q1): a replayed document
+// primitive has no code range, so `file.is_driver` carries this sentinel and
+// `range.min` the primitive's index in recordings.document. Same 8 bytes, same block
+// compare -> the hot/active/handle plumbing works unchanged; only the code-jump sites
+// must check for it (resolve_location would index driver_data.files with -1).
+enum{ Location_File_Document = -1 };
+myinline Location
+document_location(i32 primitive_index)
+{
+ return {{i16(Location_File_Document), 1}, {i16(primitive_index), 0}};
+}
+myinline b32
+is_document_location(Location location)
+{
+ return location.file.is_driver == Location_File_Document;
+}
+myinline i32
+document_primitive_index(Location location)
+{
+ return location.range.min;
+}
 
 // NOTE(kv) The reason why we have @Unresolved_Location,
 // is because we don't know that the marker indexes are

@@ -19,6 +19,10 @@
 //   set_camera <theta> <phi> [distance [pivot_x y z]]
 //   screenshot [x y w h] -> optional crop in png pixels (top-left origin)
 //   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
+//   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
+//                        frame as the screenshot png); picking runs against it every frame
+//   mouse_off         -> release the virtual mouse
+//   hot               -> the hot location picked on the last frame (document prim / code range)
 //   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -44,6 +48,12 @@ global i32  debug_channel_pending_diff;
 global b32  debug_channel_wants_animate;
 global b32  debug_channel_request_exit;  // `quit` command, consumed by the custom layer
 global u32  debug_channel_ack_counter;   // sequence number on every out.txt
+// NOTE(kv) Virtual mouse (plan-document-mouse-editing Q9): the real mouse sits wherever
+// the user left it, so picking is off in agent mode; the channel parks this one instead
+// and game_update substitutes it for params.mouse.p.
+global b32  debug_channel_mouse_active;
+global i2   debug_channel_mouse_p;
+global Location debug_channel_last_hot;  // from the last frame's picking
 // NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
 // Every poll runs a full game_update + render (~150 ms at -Od), so 200 ms was ~15% CPU.
 #define DEBUG_CHANNEL_POLL_MS 500
@@ -703,6 +713,44 @@ debug_channel_update(Game_State *state, App *app)
   else
   {
    fprintf(out, "error: usage: set <field> <n>\n");
+  }
+ }
+ else if(strncmp(cmd, "mouse_move ", 11) == 0)
+ {
+  i32 x, y;
+  if(sscanf(cmd+11, "%d %d", &x, &y) == 2)
+  {
+   debug_channel_mouse_active = true;
+   debug_channel_mouse_p = {x, y};
+   debug_channel_wants_animate = true;
+   fprintf(out, "mouse_move: virtual mouse at (%d %d); query with `hot` next\n", x, y);
+  }
+  else
+  {
+   fprintf(out, "error: usage: mouse_move <x> <y>\n");
+  }
+ }
+ else if(strcmp(cmd, "mouse_off") == 0)
+ {
+  debug_channel_mouse_active = false;
+  debug_channel_wants_animate = true;
+  fprintf(out, "mouse_off\n");
+ }
+ else if(strcmp(cmd, "hot") == 0)
+ {
+  Location hot = debug_channel_last_hot;
+  if(is_document_location(hot))
+  {
+   fprintf(out, "hot: document primitive %d\n", document_primitive_index(hot));
+  }
+  else if(is_valid(hot))
+  {
+   fprintf(out, "hot: code file %d:%d range %d..%d\n",
+           hot.file.is_driver, hot.file.index, hot.range.min, hot.range.max);
+  }
+  else
+  {
+   fprintf(out, "hot: none\n");
   }
  }
  else if(strncmp(cmd, "set_camera", 10) == 0)

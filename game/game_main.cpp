@@ -536,13 +536,16 @@ convert_primitives_to_camera_space(Camera &camera)
   mat4 camera_from_bone = {};
   mat4 camera_from_world = camera.cam_from_world;
   
-  auto update_current_bone = [&](Bone_ID new_bone_id) -> void
+  b32 cur_is_right = false;
+  auto update_current_bone = [&](Bone_ID new_bone_id, b32 is_right=false) -> void
   {
-   if(new_bone_id != cur_bone)
+   if(new_bone_id != cur_bone or is_right != cur_is_right)
    {
-    // NOTE(kv) We only send primitives on the left (ref @should_send_model_data)
-    Bone *bone = get_bone(new_bone_id, /*left*/0);
+    // NOTE(kv) We only send primitives on the left (ref @should_send_model_data);
+    // the document is replayed on both sides.
+    Bone *bone = get_bone(new_bone_id, is_right);
     cur_bone = bone->id;
+    cur_is_right = is_right;
     camera_from_bone = matmul(camera_from_world, bone->world_from_bone);
    }
   };
@@ -558,12 +561,13 @@ convert_primitives_to_camera_space(Camera &camera)
   
   // NOTE(kv) Transform a copy into camera_primitives -- the recording itself
   // stays bone-space (it is the source of truth, never mutated by a camera).
-  init_dynamic(m->camera_primitives, m->frame_arena, m->primitives.count);
-  for_i32(iprim, 0, m->primitives.count)
+  Recording &document = m->recordings.document;
+  i32 document_count = document.captured ? 2*document.primitives.count : 0;
+  init_dynamic(m->camera_primitives, m->frame_arena, m->primitives.count + document_count);
+  auto convert_primitive = [&](Recorded_Primitive primitive, Bone_ID bone_id, b32 is_right)
   {
-   Recorded_Primitive primitive = m->primitives[iprim];
    apply_shape_key(primitive);  // NOTE(kv) picking/hot-test against what's on screen
-   update_current_bone(m->groups[primitive.group_index].bone_id);
+   update_current_bone(bone_id, is_right);
    switch(primitive.type)
    {
     case Primitive_Type_Curve:
@@ -602,6 +606,23 @@ convert_primitives_to_camera_space(Camera &camera)
     }break;
    }
    push(&m->camera_primitives, primitive);
+  };
+  for_i32(iprim, 0, m->primitives.count)
+  {
+   Recorded_Primitive &primitive = m->primitives[iprim];
+   convert_primitive(primitive, m->groups[primitive.group_index].bone_id, false);
+  }
+  // NOTE(kv) Document primitives are hit-testable too, on both sides (they're
+  // replayed left+right); their locations are the document variant so a hit
+  // highlights the replayed draw instead of jumping to code.
+  for_i32(iprim, 0, document.primitives.count * (document.captured ? 1 : 0))
+  {
+   Recorded_Primitive primitive = document.primitives[iprim];
+   Recorded_Group &group = document.groups[primitive.group_index];
+   resolve_vertices(document, primitive);
+   primitive.location = document_location(iprim);
+   convert_primitive(primitive, group.bone_id, false);
+   if(not group.one_sided){ convert_primitive(primitive, group.bone_id, true); }
   }
  }
 }
@@ -1752,6 +1773,10 @@ game_update(Game_Update_Params params)
    }
   }
   
+  if(debug_channel_mouse_active)
+  {// NOTE(kv) Agent mode: the channel's virtual mouse replaces the real one for picking.
+   params.mouse.p = debug_channel_mouse_p;
+  }
   Live_Viewport *mouse_viewport = 0;
   {// NOTE Get mouse viewport
    v2 mouse_px = V2(params.mouse.p);
@@ -1773,14 +1798,16 @@ game_update(Game_Update_Params params)
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
   // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
-  if(not debug_channel_enabled and not state->reference_edit.active)
+  if((not debug_channel_enabled or debug_channel_mouse_active) and not state->reference_edit.active)
   {
    hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
   }
+  debug_channel_last_hot = hot_location;
   
   if(params.mouse.press_left)
-  {// NOTE(kv) Jump to code location
-   if(is_valid(hot_location))
+  {// NOTE(kv) Jump to code location (document items have no code: step 2 of
+   // plan-document-mouse-editing turns this press into a drag)
+   if(is_valid(hot_location) and not is_document_location(hot_location))
    {
     g_jump_to_pos(app, resolve_location(hot_location).min);
    }
@@ -2065,7 +2092,7 @@ game_update(Game_Update_Params params)
       {
        if(0)
        {// NOTE(kv) OLD mouse cursor code
-        if(is_valid(hot_location))
+        if(is_valid(hot_location) and not is_document_location(hot_location))
         {
          g_jump_to_pos(app, resolve_location(hot_location).min);
         }
