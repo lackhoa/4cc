@@ -202,6 +202,13 @@ startup_panels_and_files(App_Cmd *app)
    collapse_bottom_view(app);
   }
   
+  // NOTE(kv) Game on at startup = no second panel, just the game + bottom view
+  // (Khoa, 2026-09-06). The 2-panel editor layout comes back with dev_disable_game_on_startup.
+  if(!def_get_config_b32(vars_intern_lit("dev_disable_game_on_startup")))
+  {
+   view_set_active(app, view1);
+  }
+  else
   {// NOTE: 2
    view_set_active(app, view1);
    open_panel_vsplit(app);
