@@ -605,6 +605,7 @@ X(Vis_Skeleton) \
 /* each frame from the main viewport's Preset_Settings row. */ \
 X(Vis_Eyeball) \
 X(Vis_Loomis_Ball) \
+X(Vis_Hair) \
 X(Vis_Ref_Arm_Medial_Right) \
 X(Vis_Ref_Arm_Back_Bone) \
 X(Vis_Ref_Arm_Profile_Left) \

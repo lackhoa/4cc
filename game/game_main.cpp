@@ -2502,7 +2502,7 @@ game_update(Game_Update_Params params)
     };
 #define X(field) \
 { preset_checkbox(get_member_index_by_name(preset_type, strlit(#field))); }
-    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(ignore_radii) X(ignore_alignment_min)
+    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(hide_hair) X(ignore_radii) X(ignore_alignment_min)
     ImGui::SeparatorText("Reference images");
     {// NOTE(kv) Scene combo from the enum's reflection, so new scenes show up for free.
      Type_Info *scene_type = &Type_Info_Reference_Scene;
@@ -2591,6 +2591,7 @@ game_update(Game_Update_Params params)
      Preset_Settings &row = m->recordings.preset_settings[state->viewports[0].preset];
      m->vis_live[Vis_Eyeball]              = row.show_eyeball;
      m->vis_live[Vis_Loomis_Ball]          = row.show_loomis_ball;
+     m->vis_live[Vis_Hair]                 = !row.hide_hair;
      m->vis_live[Vis_Ref_Arm_Medial_Right] = row.show_arm_medial_right;
      m->vis_live[Vis_Ref_Arm_Back_Bone]    = row.show_arm_back_bone;
      m->vis_live[Vis_Ref_Arm_Profile_Left] = row.show_arm_profile_left;

@@ -59,6 +59,16 @@ write_recording_block(Writer *writer, Recording &rec)
   write_lvalue(writer, rec.groups.count);
   write_size(writer, rec.groups.items,
              sizeof(Recorded_Group) * rec.groups.count);
+  for_i32(igroup, 0, rec.groups.count)
+  {// NOTE(kv) vis_tag by NAME (Version_GroupTagsByName): the raw block still holds the
+   // enum int, but inserting a tag in GroupVisList used to silently retag every saved
+   // group after it (the nose became Vis_Ref_Front_4). The name wins on load.
+   Group_Vis tag = rec.groups.items[igroup].vis_tag;
+   char const *name = (tag >= 0 and tag < Group_Vis_Count) ? group_vis_names[tag] : "Vis_None";
+   u32 name_len = cast(u32)strlen(name);
+   write_lvalue(writer, name_len);
+   write_size(writer, name, name_len);
+  }
   write_lvalue(writer, rec.vertices.count);
   write_size(writer, rec.vertices.items,
              sizeof(Recorded_Vertex) * rec.vertices.count);
@@ -215,6 +225,34 @@ read_recording_block(Binary_Reader *r, Recording &rec)
  init_dynamic(rec.groups, &rec.arena, maximum(1, group_count));
  set_count(&rec.groups, group_count);
  read_binary_size(r, sizeof(Recorded_Group) * group_count, rec.groups.items);
+ for_i32(igroup, 0, group_count)
+ {//-Resolve vis_tag
+  Recorded_Group &group = rec.groups.items[igroup];
+  if(r->read_version >= Version_GroupTagsByName)
+  {// NOTE(kv) The name after the raw block is authoritative (see write_recording_block).
+   u32 name_len = read_binary_u32(r);
+   if(not reader_can_take(r, cast(i32)name_len, 1)){ r->ok = false; return; }
+   char *name = cast(char *)push_size(&rec.arena, name_len + 1);
+   read_binary_size(r, name_len, name);
+   name[name_len] = 0;
+   Group_Vis resolved = Vis_None;
+   b32 found = false;
+   for_i32(itag, 0, Group_Vis_Count)
+   {
+    if(strcmp(name, group_vis_names[itag]) == 0){ resolved = cast(Group_Vis)itag; found = true; break; }
+   }
+   if(not found)
+   {
+    log_error("recording load: group %d has unknown vis tag \"%s\" (renamed/removed from GroupVisList?), using Vis_None", igroup, name);
+   }
+   group.vis_tag = resolved;
+  }
+  else if(group.vis_tag >= Vis_Hair)
+  {// NOTE(kv) Pre-name documents were written before Vis_Hair existed (2026-09-06), so
+   // every tag from that slot on is off by one. Re-saving upgrades the file to names.
+   group.vis_tag = cast(Group_Vis)(group.vis_tag + 1);
+  }
+ }
 
  i32 vertex_count = read_binary_i1(r);
  if(not reader_can_take(r, vertex_count, sizeof(Recorded_Vertex))){ r->ok = false; return; }

@@ -1452,6 +1452,7 @@ tvert b1627 = ReadSlider(207);
 tvert c1633 = ReadSlider(208);
 }
 {
+ShowGroup(Vis_Hair);
 PaintBlock;
 painter->params.nslice_per_meter = 1.5162f * 128.f;
 scale_line_radius(0.5489f);

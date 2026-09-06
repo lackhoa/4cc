@@ -641,6 +641,7 @@ Reference_Scene scene;
 b32 show_eyeball;
 b32 show_loomis_ball;
 b32 show_grid;
+b32 hide_hair;
 b32 ignore_radii;
 b32 ignore_alignment_min;
 b32 show_arm_medial_right;
@@ -656,7 +657,7 @@ Type_Info result = {};
 result.name = strlit("Preset_Settings");
 result.size = sizeof(Preset_Settings);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(13);
+result.members.set_count(14);
 {
 local_persist Type_Info member_type_value;
 Type_Info *member_type = &member_type_value;
@@ -694,27 +695,31 @@ result.members[6] = {.type=member_type, .name=strlit("show_grid"), .offset=offse
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[7] = {.type=member_type, .name=strlit("ignore_radii"), .offset=offsetof(Preset_Settings, ignore_radii)};
+result.members[7] = {.type=member_type, .name=strlit("hide_hair"), .offset=offsetof(Preset_Settings, hide_hair)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[8] = {.type=member_type, .name=strlit("ignore_alignment_min"), .offset=offsetof(Preset_Settings, ignore_alignment_min)};
+result.members[8] = {.type=member_type, .name=strlit("ignore_radii"), .offset=offsetof(Preset_Settings, ignore_radii)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[9] = {.type=member_type, .name=strlit("show_arm_medial_right"), .offset=offsetof(Preset_Settings, show_arm_medial_right)};
+result.members[9] = {.type=member_type, .name=strlit("ignore_alignment_min"), .offset=offsetof(Preset_Settings, ignore_alignment_min)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[10] = {.type=member_type, .name=strlit("show_arm_back_bone"), .offset=offsetof(Preset_Settings, show_arm_back_bone)};
+result.members[10] = {.type=member_type, .name=strlit("show_arm_medial_right"), .offset=offsetof(Preset_Settings, show_arm_medial_right)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[11] = {.type=member_type, .name=strlit("show_arm_profile_left"), .offset=offsetof(Preset_Settings, show_arm_profile_left)};
+result.members[11] = {.type=member_type, .name=strlit("show_arm_back_bone"), .offset=offsetof(Preset_Settings, show_arm_back_bone)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[12] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
+result.members[12] = {.type=member_type, .name=strlit("show_arm_profile_left"), .offset=offsetof(Preset_Settings, show_arm_profile_left)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[13] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
 }
 return result;
 }
@@ -774,6 +779,12 @@ b32 m_show_grid = {};
 read_binary_b32(r, &m_show_grid);
 }
 dst->show_grid = m_show_grid;
+
+b32 m_hide_hair = {};
+{
+read_binary_b32(r, &m_hide_hair);
+}
+dst->hide_hair = m_hide_hair;
 
 b32 m_ignore_radii = {};
 {

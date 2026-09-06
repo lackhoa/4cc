@@ -1998,6 +1998,7 @@ render_head(Pose &pose)
  }
  
  {//~NOTE: Hair omg
+  ShowGroup(Vis_Hair);
   PaintBlock;
   painter->params.nslice_per_meter = 1.5162f*128.f;
   scale_line_radius(0.5489f);

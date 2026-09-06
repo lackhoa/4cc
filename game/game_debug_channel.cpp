@@ -70,10 +70,6 @@ global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport unde
 // NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
 // Every poll runs a full game_update + render (~150 ms at -Od), so 200 ms was ~15% CPU.
 #define DEBUG_CHANNEL_POLL_MS 500
-// NOTE(kv) Fixed window size in agent mode so screenshot crops land on the same pixels
-// across launches (1200x900 outer -> 1174x829 png).
-#define DEBUG_CHANNEL_WINDOW_W 1200
-#define DEBUG_CHANNEL_WINDOW_H 900
 
 function BOOL CALLBACK
 debug_channel_find_own_window(HWND hwnd, LPARAM out_hwnd)
@@ -109,9 +105,11 @@ debug_channel_init()
  EnumWindows(debug_channel_find_own_window, (LPARAM)&window);
  if(window)
  {
-  ShowWindow(window, SW_SHOWNORMAL);  // un-minimize if needed, else a no-op
-  SetWindowPos(window, 0, 0, 0, DEBUG_CHANNEL_WINDOW_W, DEBUG_CHANNEL_WINDOW_H,
-               SWP_NOMOVE | SWP_NOZORDER);
+  // NOTE(kv) Maximized in agent mode: fills whatever monitor it lands on (the old fixed
+  // 1200x900 was a quarter of the 2880x1800 laptop screen), and the size is still
+  // stable across launches on one machine, so screenshot crops keep landing on the
+  // same pixels. Also un-minimizes if needed.
+  ShowWindow(window, SW_MAXIMIZE);
  }
 }
 
