@@ -893,7 +893,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
 
   {// NOTE: Load state
    state->data_load_arena = make_arena();
-   seed_preset_settings(state->model.recordings.preset_settings);
+   seed_preset_settings(&state->model.recordings);
    game_load(state, app, state->autosave_path);
    load_recording_file(state);
    load_document_file(state);
@@ -2149,8 +2149,8 @@ game_update(Game_Update_Params params)
       transient->pinned_locations.count = 0;
      }
      else if(MATCH("clear_preset"))
-     {
-      update_viewport->reference_preset = Preset_None;
+     {// NOTE(kv) Clears the active preset's reference scene (the preset itself stays).
+      state->model.recordings.preset_settings[update_viewport->preset].scene = Scene_None;
      }
      else
      {
@@ -2367,11 +2367,10 @@ game_update(Game_Update_Params params)
          Text_Object &object = get_fui_file(file).text_objects[it.entry->index_in_file];
          if(object.kind == Text_Object_Preset)
          {
-          Viewport &main_viewport = state->viewports[0];
-          main_viewport.reference_preset = object.preset;
+          active_preset_row(state).scene = object.preset;
 
-          Reference_Preset_Data preset_data =
-          driver->driver_get_reference_preset_data(object.preset);
+          Reference_Scene_Data preset_data =
+          driver->driver_get_scene_data(object.preset);
 
           // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
           update_target_camera_data->theta = preset_data.camera_theta2;
@@ -2610,16 +2609,67 @@ game_update(Game_Update_Params params)
   }
 
   if(not debug_channel_enabled)
-  {//-Preset settings panel (preset-rethink step 6): edits the ACTIVE preset's row.
-   Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
-   im_begin("Preset settings", 0, ImGuiWindowFlags_NoFocusOnAppearing);
-   im_text("preset %d", state->viewports[0].preset);
-   ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
-   ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
+  {//-Presets panel (plan-settings-ui): list on the left, the ACTIVE preset's fields on the right.
+   Model_Recordings &rec = state->model.recordings;
+   i32 active = state->viewports[0].preset;
+   im_begin("Presets", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+   {//-List
+    ImGui::BeginChild("preset_list", ImVec2(180, 260), true);
+    for_i32(index, 0, rec.preset_count)
+    {
+     Preset_Settings &it = rec.preset_settings[index];
+     char label[PRESET_NAME_CAP+16];
+     snprintf(label, sizeof(label), "%d %s##preset%d", index, it.name, index);
+     if(ImGui::Selectable(label, index == active)){ game_set_preset(state, 1, index); }
+    }
+    ImGui::EndChild();
+    if(ImGui::Button("add")){ preset_add(state, active); }
+    ImGui::SameLine();
+    if(ImGui::Button("delete")){ preset_delete(state, active); }
+    ImGui::SameLine();
+    if(ImGui::Button("up")){ preset_swap(state, active, active-1); }
+    ImGui::SameLine();
+    if(ImGui::Button("down")){ preset_swap(state, active, active+1); }
+   }
+   ImGui::SameLine();
+   {//-Active preset
+    active = state->viewports[0].preset;  // the buttons above may have moved it
+    Preset_Settings &row = rec.preset_settings[active];
+    ImGui::BeginGroup();
+    ImGui::InputText("name", row.name, sizeof(row.name));
+    ImGui::SeparatorText("Display");
+    ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
 #define X(field) \
 { bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
-   PRESET_BOOL_FIELDS(X)
+    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(ignore_radii) X(ignore_alignment_min)
+    ImGui::SeparatorText("Reference images");
+    {// NOTE(kv) Scene combo from the enum's reflection, so new scenes show up for free.
+     Type_Info *scene_type = &Type_Info_Reference_Scene;
+     const char *scene_name = "?";
+     for_i32(i, 0, scene_type->enum_members.count)
+     {
+      if(scene_type->enum_members[i].value == (i32)row.scene){ scene_name = (const char *)scene_type->enum_members[i].name.data; }
+     }
+     if(ImGui::BeginCombo("scene", scene_name))
+     {
+      for_i32(i, 0, scene_type->enum_members.count)
+      {
+       I_Enum_Member &member = scene_type->enum_members[i];
+       if(ImGui::Selectable((const char *)member.name.data, member.value == (i32)row.scene))
+       {
+        row.scene = cast(Reference_Scene)member.value;
+       }
+      }
+      ImGui::EndCombo();
+     }
+    }
+    ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
+    X(show_arm_medial_right) X(show_arm_back_bone) X(show_arm_profile_left)
+    ImGui::SeparatorText("Picking");
+    X(fill_only_picking)
 #undef X
+    ImGui::EndGroup();
+   }
    im_end();
   }
  }

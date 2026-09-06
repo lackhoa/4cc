@@ -680,7 +680,9 @@ struct Group_Scope_Stack
  // slots always hold valid indices. Operations live in game_draw.cpp.
  darray(Group_Scope_Slot) slots;
 };
-#define Game_Preset_Count 10  // digit-key presets (game_main.cpp key handler)
+#define Game_Preset_Count 10  // presets seeded on first run; digit keys select presets 0-9 (game_main.cpp key handler)
+#define PRESET_CAP 32         // fixed storage cap for Model_Recordings.preset_settings (panel enforces it)
+#define PRESET_NAME_CAP 32
 // NOTE(kv) The one list of Preset_Settings bool toggles: expands the struct fields,
 // the debug-channel `toggle` ladder, and the ImGui preset panel. Reordering or adding
 // entries changes the persisted raw block -- bump Data_Version.
@@ -695,11 +697,14 @@ struct Group_Scope_Stack
  X(ignore_radii) \
  X(ignore_alignment_min)
 struct Preset_Settings
-{// NOTE(kv) One digit-key preset = a bundle of small display settings over the ONE
- // model (Q57/Q61). Rows live in Model_Recordings (shared across TUs, survives
- // clear_model); seeded by seed_preset_settings, persisted in recording.ad.
+{// NOTE(kv) One preset ("draw preset") = a named bundle of small display settings over
+ // the ONE model (Q57/Q61, plan-settings-ui). Rows live in Model_Recordings (shared
+ // across TUs, survives clear_model); seeded by seed_preset_settings, persisted in
+ // recording.ad as count + rows.
+ char name[PRESET_NAME_CAP];
  i32 viz_level;             // 0/1/2
  i32 reference_image;       // front-camera reference selector: -1 = none, else ref-table index
+ Reference_Scene scene;     // compiled-in image+camera+pose bundle, Scene_None = none
 #define X(name) b32 name;
  PRESET_BOOL_FIELDS(X)
 #undef X
@@ -724,7 +729,8 @@ struct Model_Recordings
  // Q92). Loaded from game/driver/driver.document.ad at startup, never recaptured,
  // replayed every frame with rendering on. "Is it data?" == "is it in here".
  Recording document;
- Preset_Settings preset_settings[Game_Preset_Count];
+ i32 preset_count;  // rows in use, 1..PRESET_CAP
+ Preset_Settings preset_settings[PRESET_CAP];
 };
 struct Model
 {
@@ -844,8 +850,13 @@ global Model *the_model;  // see @clear_model
 
 myinline Preset_Settings &
 active_preset_settings()
-{// NOTE(kv) Settings row of the digit-key preset for the viewport being rendered.
+{// NOTE(kv) Settings row of the active preset for the viewport being rendered.
  return the_model->recordings.preset_settings[painter->viewport->preset];
+}
+myinline Reference_Scene
+get_reference_scene()
+{
+ return active_preset_settings().scene;
 }
 
 //myinline u32 get_hot_prim_id(){ return painter->hot_prim_id; }
@@ -973,7 +984,7 @@ struct Text_Object
  union {
   Image_Info image;
   // or
-  Reference_Preset preset;
+  Reference_Scene preset;  // NOTE(kv) fpreset(Scene_x) text object; sets the active preset's scene
  };
 };
 struct Vertex_Info

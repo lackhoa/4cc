@@ -558,6 +558,38 @@ debug_channel_update(Game_State *state, App *app)
  {
   debug_channel_dump_state(out, state);
  }
+ else if(strcmp(cmd, "preset_dump") == 0)
+ {// NOTE(kv) Every preset row; `*` marks the main viewport's active one.
+  Model_Recordings &rec = state->model.recordings;
+  fprintf(out, "presets: %d (last %d)\n", rec.preset_count, state->viewports[0].last_preset);
+  for_i32(index, 0, rec.preset_count)
+  {
+   Preset_Settings &row = rec.preset_settings[index];
+   fprintf(out, "%c%2d \"%s\" viz %d ref_image %d scene %d",
+           index == state->viewports[0].preset ? '*' : ' ',
+           index, row.name, row.viz_level, row.reference_image, (int)row.scene);
+#define X(name) if(row.name){ fprintf(out, " %s", #name); }
+   PRESET_BOOL_FIELDS(X)
+#undef X
+   fprintf(out, "\n");
+  }
+ }
+ else if(strncmp(cmd, "preset_add", 10) == 0)
+ {
+  b32 ok = preset_add(state, state->viewports[0].preset);
+  fprintf(out, "preset_add: %s (count %d)\n", ok ? "ok" : "FAILED", state->model.recordings.preset_count);
+ }
+ else if(strncmp(cmd, "preset_delete", 13) == 0)
+ {
+  b32 ok = preset_delete(state, state->viewports[0].preset);
+  fprintf(out, "preset_delete: %s (count %d)\n", ok ? "ok" : "FAILED", state->model.recordings.preset_count);
+ }
+ else if(strncmp(cmd, "preset_name ", 12) == 0)
+ {
+  Preset_Settings &row = active_preset_row(state);
+  snprintf(row.name, sizeof(row.name), "%s", cmd+12);
+  fprintf(out, "preset_name: \"%s\"\n", row.name);
+ }
  else if(strcmp(cmd, "save_recording") == 0)
  {
   b32 ok = save_recording_file(state);
@@ -694,11 +726,24 @@ debug_channel_update(Game_State *state, App *app)
     fprintf(out, "set viz_level: %d\n", row.viz_level);
     debug_channel_wants_animate = true;
    }
-   else if(strcmp(field, "reference_preset") == 0)
-   {
-    state->viewports[0].reference_preset = cast(Reference_Preset)value;
-    fprintf(out, "set reference_preset: %d\n", value);
+   else if(strcmp(field, "scene") == 0)
+   {// NOTE(kv) Reference scene of the active preset (Reference_Scene enum value).
+    row.scene = cast(Reference_Scene)value;
+    fprintf(out, "set scene: %d\n", value);
     debug_channel_wants_animate = true;
+   }
+   else if(strcmp(field, "preset") == 0)
+   {
+    if(0 <= value and value < state->model.recordings.preset_count)
+    {
+     game_set_preset(state, 1, value);
+     fprintf(out, "set preset: %d\n", value);
+     debug_channel_wants_animate = true;
+    }
+    else
+    {
+     fprintf(out, "error: preset %d out of range (count %d)\n", value, state->model.recordings.preset_count);
+    }
    }
    else if(strcmp(field, "reference_edit") == 0)
    {

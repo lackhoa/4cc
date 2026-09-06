@@ -69,7 +69,7 @@ driver_update_tweaks()
  }
  
  {//-driver
-  fpreset(Preset_None);
+  fpreset(Scene_None);
   show_skeleton = fbool(i1_9);
  }
 }
@@ -85,17 +85,17 @@ crappy_tests(v1 anim_time)
   
  }
 }
-function Reference_Preset_Data
-driver_get_reference_preset_data(Reference_Preset preset)
+function Reference_Scene_Data
+driver_get_scene_data(Reference_Scene scene)
 {// NOTE @driver_api
  // NOTE(kv) Should this be static data?
  // If it was, we'd have to update it every frame to read the sliders.
  // Which is ineffcient but maybe that's just what we... do?
- Reference_Preset_Data result = {};
+ Reference_Scene_Data result = {};
  result.image;
- switch(preset)
+ switch(scene)
  {
-  case Preset_Back:
+  case Scene_Back:
   {
    result.camera_phi2 = 0.5f;
    {
@@ -108,7 +108,7 @@ driver_get_reference_preset_data(Reference_Preset preset)
    result.pose.tarm_abduct = fv(v1_15);
   }break;
   
-  case Preset_Arm_Profile:
+  case Scene_Arm_Profile:
   {
    result.camera_phi2 = 0.25f;
    {
@@ -120,7 +120,7 @@ driver_get_reference_preset_data(Reference_Preset preset)
    }
   }break;
   
-  case Preset_Head_Profile:
+  case Scene_Head_Profile:
   {
    result.camera_phi2 = 0.25f;
    {
@@ -130,9 +130,9 @@ driver_get_reference_preset_data(Reference_Preset preset)
    }
   }break;
 
-  case Preset_Eco_Skeleton:
+  case Scene_Eco_Skeleton:
   {
-   fpreset(Preset_Eco_Skeleton);
+   fpreset(Scene_Eco_Skeleton);
    {
     Reference_Image &image = result.image;
     image.filename  = fimage(image_eco_skeleton);
@@ -211,7 +211,7 @@ defer(pop(&model->bone_stack);)
     v1 arm_ry = head_unit_world*(0.5302f);
     // ;armT Calculate upper arm transform, so we can draw attachments to it
     v1 scale = arm_ry / torso_scale; // NOTE Because it's multiplied by torsoT
-    fpreset(Preset_Arm_Profile);
+    fpreset(Scene_Arm_Profile);
     fimage(image_scapula_profile, fv(v2_26));
     tvec change = fv(v3_27);
     scap_sock_top = fv(tvert_28) + change;  // ;scap_sock_top
@@ -521,7 +521,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
  v1 tarm_bend = (pose.tarm_bend);
  vv0_overlay(arm_rotation_pivot);
  
- if(painter->show_grid or get_reference_preset() == Preset_Eco_Skeleton)
+ if(painter->show_grid or get_reference_scene() == Scene_Eco_Skeleton)
  {//-Diagramming
   hl_block_color(linear_argb_dark_blue);
   draw(bez_line(arm_rotation_pivot, arm_rotation_pivot + fv(v3_49)));
@@ -555,7 +555,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
   tvert v98 = sock+V3(0.0947f, 0.1683f, 0.2105f);
   tvert v99 = v98+V3(-0.f, -0.6114f, -0.0063f);
   {
-   fpreset(Preset_Arm_Profile);
+   fpreset(Scene_Arm_Profile);
    ShowAlignedSymIf(V3x(1.f), fv(v1_60));
    draw(bez_parabola(v98, fv(v3_61), v99));
    tvert v01 = v99 + fv(v3_62);
@@ -704,7 +704,7 @@ render_arm(Pose &pose, Torso torso, tvert elbow_up_out)
     fimage(image_triceps_long_head);
     fimage(image_arm_muscle_connection);
     ShowAlignedIf(V3z(-1), fv(v1_86));
-    fpreset(Preset_Back);
+    fpreset(Scene_Back);
     draw(bez_v3v2(torso.scap_sock_bot, fv(v3_87),
                   fv(v2_88), white_in),
          lp(I4(0,0,8,0)));
@@ -1166,7 +1166,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
   }
  }
  
- fpreset(Preset_Arm_Profile);
+ fpreset(Scene_Arm_Profile);
  fimage(image_scapula_profile, fv(v2_160));
  tvert scap_sock_bot = scap_sock_top + fv(v3_161);
  {// NOTE The back
@@ -1204,7 +1204,7 @@ render_torso(Pose &pose, Pelvis pelvis, Head head)
    fimage(image_scapula_profile);
    fimage(image_socket_and_ball);
    fimage(image_skeletal_meat_outline);
-   fpreset(Preset_Arm_Profile);
+   fpreset(Scene_Arm_Profile);
    set_skeleton_params();
    tvert scap_bot = scap_delt+V3(0.1134f, -0.7434f, 0.1812f);
    draw(bez_unit2(scap_delt,
@@ -1594,7 +1594,7 @@ render_grid()
 function Head
 render_head(Pose &pose)
 {// NOTE: The ;head + face
- fpreset(Preset_Head_Profile);
+ fpreset(Scene_Head_Profile);
  PaintBlock;
  painter->params.nslice_per_meter = 4.1128f * 100.f;
  //lp_block(nslice_per_meter, 4.1128f * 100.f);//NOTE: crank up the lod
@@ -2214,10 +2214,10 @@ show_reference_images()
 {
  b32 full_alpha = painter->references_full_alpha;
  BoneBlock(Bone_References);
- Reference_Preset reference_preset = get_reference_preset();
- if(reference_preset != 0)
- {//-New reference preset path
-  Reference_Preset_Data data = driver_get_reference_preset_data(reference_preset);
+ Reference_Scene scene = get_reference_scene();
+ if(scene != Scene_None)
+ {//-Reference scene path (image comes with the scene)
+  Reference_Scene_Data data = driver_get_scene_data(scene);
   draw_reference_image_from_data(data.image);
  }
  else

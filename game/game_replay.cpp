@@ -7,16 +7,26 @@
 // Default on = today's behavior; debug-channel `recapture 0` freezes the recording so
 // a loaded one survives frames (frozen recording, for testing cross-frame behavior).
 
+myinline Preset_Settings &
+active_preset_row(Game_State *state)
+{// NOTE(kv) The main viewport's active preset (game-side twin of active_preset_settings).
+ return state->model.recordings.preset_settings[state->viewports[0].preset];
+}
+
 function void
-seed_preset_settings(Preset_Settings settings[Game_Preset_Count])
+seed_preset_settings(Model_Recordings *recordings)
 {// NOTE(kv) Hardcoded defaults reproducing the digit-key behavior the presets had
  // when they were code branches (plan-preset-rethink Q57 inventory). First-run seed;
  // recording.ad overwrites these rows once the settings table persists.
- block_zero(settings, sizeof(Preset_Settings) * Game_Preset_Count);
+ Preset_Settings *settings = recordings->preset_settings;
+ block_zero(settings, sizeof(recordings->preset_settings));
+ recordings->preset_count = Game_Preset_Count;
  for_i32(preset, 0, Game_Preset_Count)
  {
   Preset_Settings &row = settings[preset];
+  snprintf(row.name, sizeof(row.name), "preset %d", preset);
   row.reference_image = -1;
+  row.scene = Scene_None;
   switch(preset)
   {
    case 1:

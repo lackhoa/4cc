@@ -4,8 +4,8 @@ test_slider_multiple_files()
 {
  DEBUG_VALUE(fv(i1_0));
 }
-function Reference_Preset_Data
-driver_get_reference_preset_data(Reference_Preset preset);
+function Reference_Scene_Data
+driver_get_scene_data(Reference_Scene scene);
 
 function void
 movie_shot_blinking(Movie_Shot *shot)
@@ -97,10 +97,10 @@ driver_animate(v1 anim_time)
  // NOTE(kv) Can't live without my blink animation, man!
  b32 do_blink = true;
  
- Reference_Preset preset = get_reference_preset();
- if(preset != 0)
- {//-Has preset -> fix the pose
-  shot->out_pose = driver_get_reference_preset_data(preset).pose;
+ Reference_Scene scene = get_reference_scene();
+ if(scene != Scene_None)
+ {//-Has a reference scene -> fix the pose
+  shot->out_pose = driver_get_scene_data(scene).pose;
  }
  else
  {// ;set_movie_shot

@@ -479,48 +479,48 @@ dst->fui_flags = m_fui_flags;
 ;
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:436:
-enum Reference_Preset{Preset_None = 0,
-Preset_Back = 1,
-Preset_Arm_Profile = 2,
-Preset_Eco_Skeleton = 3,
-Preset_Head_Profile = 4,};
+enum Reference_Scene{Scene_None = 0,
+Scene_Back = 1,
+Scene_Arm_Profile = 2,
+Scene_Eco_Skeleton = 3,
+Scene_Head_Profile = 4,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:454:
 function Type_Info
-get_type_info_Reference_Preset();// C:\Users\vodan\4ed\code\meta\meta_print.cpp:458:
+get_type_info_Reference_Scene();// C:\Users\vodan\4ed\code\meta\meta_print.cpp:458:
 function Type_Info
-get_type_info_Reference_Preset(){
+get_type_info_Reference_Scene(){
 Type_Info result = {};
-result.name = strlit("Reference_Preset");
-result.size = sizeof(Reference_Preset);
+result.name = strlit("Reference_Scene");
+result.size = sizeof(Reference_Scene);
 result.kind = I_Type_Kind_Enum;
 result.enum_members.set_count(5);
-result.enum_members[0] = {.name=strlit("Preset_None"), .value=Preset_None};
-result.enum_members[1] = {.name=strlit("Preset_Back"), .value=Preset_Back};
-result.enum_members[2] = {.name=strlit("Preset_Arm_Profile"), .value=Preset_Arm_Profile};
-result.enum_members[3] = {.name=strlit("Preset_Eco_Skeleton"), .value=Preset_Eco_Skeleton};
-result.enum_members[4] = {.name=strlit("Preset_Head_Profile"), .value=Preset_Head_Profile};
+result.enum_members[0] = {.name=strlit("Scene_None"), .value=Scene_None};
+result.enum_members[1] = {.name=strlit("Scene_Back"), .value=Scene_Back};
+result.enum_members[2] = {.name=strlit("Scene_Arm_Profile"), .value=Scene_Arm_Profile};
+result.enum_members[3] = {.name=strlit("Scene_Eco_Skeleton"), .value=Scene_Eco_Skeleton};
+result.enum_members[4] = {.name=strlit("Scene_Head_Profile"), .value=Scene_Head_Profile};
 return result;
 }
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:115:
-global Type_Info Type_Info_Reference_Preset;
+global Type_Info Type_Info_Reference_Scene;
 
-function Type_Info *type_info_from_pointer(Reference_Preset*pointer){
-return &Type_Info_Reference_Preset;
+function Type_Info *type_info_from_pointer(Reference_Scene*pointer){
+return &Type_Info_Reference_Scene;
 }
 #endif
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:482:
 function void
-read_binary_Reference_Preset(Binary_Reader *r, Reference_Preset *dst);
+read_binary_Reference_Scene(Binary_Reader *r, Reference_Scene *dst);
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:487:
 function void
-read_binary_Reference_Preset(Binary_Reader *r, Reference_Preset *dst){
+read_binary_Reference_Scene(Binary_Reader *r, Reference_Scene *dst){
 i32 integer;
 read_binary_i1(r, &integer);
-*dst = *(Reference_Preset*)(&integer);
+*dst = *(Reference_Scene*)(&integer);
 }
-static_assert( sizeof(Reference_Preset) <= sizeof(i32) );
+static_assert( sizeof(Reference_Scene) <= sizeof(i32) );
 
 #endif
 ;
@@ -556,7 +556,7 @@ Stringz filename;
 Reference_Placement placement;
 };
 ;
-struct Reference_Preset_Data{
+struct Reference_Scene_Data{
 v1 camera_phi2;
 v1 camera_theta2;
 Reference_Image image;
@@ -577,8 +577,8 @@ Pose pose;
  #define driver_update_tweaks__return void
 #define driver_update_tweaks__params 
   
- #define driver_get_reference_preset_data__return Reference_Preset_Data
-#define driver_get_reference_preset_data__params Reference_Preset preset
+ #define driver_get_scene_data__return Reference_Scene_Data
+#define driver_get_scene_data__params Reference_Scene scene
   
  
  
@@ -587,7 +587,7 @@ Pose pose;
    X(driver_update) \
    X(driver_shutdown) \
    X(driver_update_tweaks) \
-   X(driver_get_reference_preset_data) \
+   X(driver_get_scene_data) \
  
 
 
@@ -595,7 +595,7 @@ struct Saved_Viewport{
 Camera_Data target_camera;
 i32 preset;
 i32 last_preset;
-Reference_Preset reference_preset;
+Reference_Scene legacy_reference_preset;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:213:
@@ -619,8 +619,8 @@ Type_Info *member_type = & Type_Info_i32;
 result.members[2] = {.type=member_type, .name=strlit("last_preset"), .offset=offsetof(Saved_Viewport, last_preset)};
 }
 {
-Type_Info *member_type = & Type_Info_Reference_Preset;
-result.members[3] = {.type=member_type, .name=strlit("reference_preset"), .offset=offsetof(Saved_Viewport, reference_preset)};
+Type_Info *member_type = & Type_Info_Reference_Scene;
+result.members[3] = {.type=member_type, .name=strlit("legacy_reference_preset"), .offset=offsetof(Saved_Viewport, legacy_reference_preset)};
 }
 return result;
 }
@@ -655,11 +655,11 @@ read_binary_i32(r, &m_last_preset);
 }
 dst->last_preset = m_last_preset;
 
-Reference_Preset m_reference_preset = {};
+Reference_Scene m_legacy_reference_preset = {};
 if ( in_range_exclusive(r->read_version, Version_AddReferencePreset, Version_Inf) ){
-read_binary_Reference_Preset(r, &m_reference_preset);
+read_binary_Reference_Scene(r, &m_legacy_reference_preset);
 }
-dst->reference_preset = m_reference_preset;
+dst->legacy_reference_preset = m_legacy_reference_preset;
 
 
 }
@@ -671,7 +671,7 @@ dst->reference_preset = m_reference_preset;
 Camera_Data target_camera;\
 i32 preset;\
 i32 last_preset;\
-Reference_Preset reference_preset;\
+Reference_Scene legacy_reference_preset;\
 \
 };\
 ;

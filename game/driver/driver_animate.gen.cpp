@@ -5,8 +5,8 @@ function void
 test_slider_multiple_files(){
 DEBUG_VALUE(ReadSlider(0));
 }
-function Reference_Preset_Data
-driver_get_reference_preset_data(Reference_Preset preset);
+function Reference_Scene_Data
+driver_get_scene_data(Reference_Scene scene);
 
 function void
 movie_shot_blinking(Movie_Shot *shot){
@@ -86,9 +86,9 @@ Movie_Shot shot_value = {};
 Movie_Shot *shot = &shot_value;
 shot->anime_time = anim_time;
 b32 do_blink = true;
-Reference_Preset preset = get_reference_preset();
-if(preset != 0){
-shot->out_pose = driver_get_reference_preset_data(preset).pose;
+Reference_Scene scene = get_reference_scene();
+if(scene != Scene_None){
+shot->out_pose = driver_get_scene_data(scene).pose;
 }else {
 i32 sel = ReadSlider(1);
 if(0);

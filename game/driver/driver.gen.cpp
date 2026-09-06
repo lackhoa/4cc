@@ -80,12 +80,12 @@ tvert runtime = mkvert(V3(x, 0.4072f, 0.f));
 DEBUG_VALUE(a + runtime);
 }
 }
-function Reference_Preset_Data
-driver_get_reference_preset_data(Reference_Preset preset){
-Reference_Preset_Data result = {};
+function Reference_Scene_Data
+driver_get_scene_data(Reference_Scene scene){
+Reference_Scene_Data result = {};
 result.image;
-switch(preset){
-case Preset_Back: {
+switch(scene){
+case Scene_Back: {
 result.camera_phi2 = 0.5f;
 {
 Reference_Image &image = result.image;
@@ -96,7 +96,7 @@ image.placement.alpha = 0.3033f;
 }
 result.pose.tarm_abduct = ReadSlider(14);
 } break;
-case Preset_Arm_Profile: {
+case Scene_Arm_Profile: {
 result.camera_phi2 = 0.25f;
 {
 Reference_Image &image = result.image;
@@ -106,7 +106,7 @@ image.placement.x_axis = ReadSlider(16);
 image.placement.alpha = 0.299f;
 }
 } break;
-case Preset_Head_Profile: {
+case Scene_Head_Profile: {
 result.camera_phi2 = 0.25f;
 {
 Reference_Image &image = result.image;
@@ -114,7 +114,7 @@ image.filename = fimage(strlit("G:/My Drive/Art/loomis head profile.JPG"));
 image.placement = ReadSlider(17);
 }
 } break;
-case Preset_Eco_Skeleton: {
+case Scene_Eco_Skeleton: {
 ;
 {
 Reference_Image &image = result.image;
@@ -403,7 +403,7 @@ mat4i &ot = current_world_from_bone();
 import_vertices(torso, mk_bone_id(Bone_Torso));
 v1 tarm_bend = pose.tarm_bend;
 send_vert(5, arm_rotation_pivot);
-if(painter->show_grid or get_reference_preset() == Preset_Eco_Skeleton){
+if(painter->show_grid or get_reference_scene() == Scene_Eco_Skeleton){
 hl_block_color(linear_argb_dark_blue);
 (set_draw_location_unresolved({2,49}), draw(bez_line(arm_rotation_pivot, arm_rotation_pivot + ReadSlider(49))), clear_draw_location());
 }
@@ -1622,9 +1622,9 @@ function void
 show_reference_images(){
 b32 full_alpha = painter->references_full_alpha;
 BoneBlock(Bone_References);
-Reference_Preset reference_preset = get_reference_preset();
-if(reference_preset != 0){
-Reference_Preset_Data data = driver_get_reference_preset_data(reference_preset);
+Reference_Scene scene = get_reference_scene();
+if(scene != Scene_None){
+Reference_Scene_Data data = driver_get_scene_data(scene);
 (set_draw_location_unresolved({2,296}), draw_reference_image_from_data(data.image), clear_draw_location());
 }else {
 Preset_Settings &settings = active_preset_settings();

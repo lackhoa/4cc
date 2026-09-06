@@ -39,13 +39,13 @@ find_reference_placement_slider()
 function Reference_Placement *
 get_reference_placement(Game_State *state, Stringz *out_filename)
 {// NOTE(kv) Null unless the active preset actually draws a placement-slider reference.
- Viewport &viewport = state->viewports[0];
- if(viewport.reference_preset == Preset_None){ return 0; }
+ Reference_Scene scene = active_preset_row(state).scene;
+ if(scene == Scene_None){ return 0; }
  Driver_API *driver = &state->driver_api;
  if(not is_valid(driver)){ return 0; }
  Slider *slider = find_reference_placement_slider();
  if(slider == 0){ return 0; }
- Reference_Preset_Data data = driver->driver_get_reference_preset_data(viewport.reference_preset);
+ Reference_Scene_Data data = driver->driver_get_scene_data(scene);
  *out_filename = data.image.filename;
  return (Reference_Placement *)slider->value;
 }

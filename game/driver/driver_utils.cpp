@@ -151,11 +151,6 @@ myinline v3
 reflect_origin(v3 origin, v3 point){
  return origin-(point-origin);
 }
-myinline Reference_Preset
-get_reference_preset()
-{
- return painter->viewport->reference_preset;
-}
 myinline v3 get_camz() { return painter->camera.z; }
 
 function b32 camera_is_right() {

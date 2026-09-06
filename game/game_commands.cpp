@@ -4,8 +4,61 @@ game_set_preset(Game_State *state, i32 viewport_id, i32 preset)
  if(viewport_id <= 0){ viewport_id = 1; }
  i32 viewport_index = viewport_id - 1;
  Viewport *viewport = &state->viewports[viewport_index];
+ if(preset < 0 or preset >= state->model.recordings.preset_count){ return; }  // NOTE(kv) digit key past the list
  viewport->last_preset = viewport->preset;
  viewport->preset      = preset;
+}
+//-NOTE(kv) Preset list editing (plan-settings-ui). All viewports index the same
+// list, so every reorder/delete fixes up preset/last_preset on all of them.
+function void
+preset_index_moved(Game_State *state, i32 from, i32 to)
+{
+ for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+ {
+  Viewport &viewport = state->viewports[viewport_index];
+  if(viewport.preset      == from){ viewport.preset      = to; }
+  else if(viewport.preset == to)  { viewport.preset      = from; }
+  if(viewport.last_preset      == from){ viewport.last_preset = to; }
+  else if(viewport.last_preset == to)  { viewport.last_preset = from; }
+ }
+}
+function b32
+preset_add(Game_State *state, i32 copy_from)
+{// NOTE(kv) New preset = copy of `copy_from`, appended; becomes the active one.
+ Model_Recordings &rec = state->model.recordings;
+ if(rec.preset_count >= PRESET_CAP){ return false; }
+ i32 index = rec.preset_count++;
+ rec.preset_settings[index] = rec.preset_settings[copy_from];
+ Preset_Settings &row = rec.preset_settings[index];
+ snprintf(row.name, sizeof(row.name), "%.*s copy", (int)(sizeof(row.name)-6), rec.preset_settings[copy_from].name);
+ game_set_preset(state, 1, index);
+ return true;
+}
+function b32
+preset_delete(Game_State *state, i32 index)
+{
+ Model_Recordings &rec = state->model.recordings;
+ if(rec.preset_count <= 1 or index < 0 or index >= rec.preset_count){ return false; }
+ for_i32(i, index, rec.preset_count-1){ rec.preset_settings[i] = rec.preset_settings[i+1]; }
+ rec.preset_count--;
+ for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+ {
+  Viewport &viewport = state->viewports[viewport_index];
+  if(viewport.preset      > index){ viewport.preset--; }
+  if(viewport.last_preset > index){ viewport.last_preset--; }
+  viewport.preset      = clamp_between(0, viewport.preset,      rec.preset_count-1);
+  viewport.last_preset = clamp_between(0, viewport.last_preset, rec.preset_count-1);
+ }
+ return true;
+}
+function b32
+preset_swap(Game_State *state, i32 a, i32 b)
+{// NOTE(kv) Move up/down = swap with the neighbor.
+ Model_Recordings &rec = state->model.recordings;
+ if(a < 0 or b < 0 or a >= rec.preset_count or b >= rec.preset_count or a == b){ return false; }
+ macro_swap(rec.preset_settings[a], rec.preset_settings[b]);
+ preset_index_moved(state, a, b);
+ return true;
 }
 function void
 game_last_preset(Game_State *state, i32 viewport_id)

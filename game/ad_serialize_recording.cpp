@@ -91,9 +91,10 @@ write_recording_file(FILE *file, Game_State *state)
  Writer *writer = &writer_value;
  Model_Recordings &recordings = state->model.recordings;
  write_recording_header(writer);
- {//-Preset settings table (all rows, raw block)
+ {//-Preset table: count, then that many rows (raw block)
+  write_lvalue(writer, recordings.preset_count);
   write_size(writer, recordings.preset_settings,
-             sizeof(Preset_Settings) * Game_Preset_Count);
+             sizeof(Preset_Settings) * recordings.preset_count);
  }
  write_recording_block(writer, recordings.recording);
  write_eof_marker(writer);
@@ -254,14 +255,24 @@ load_recording_file(Game_State *state)
  Binary_Reader *r = &reader;
  if(not read_recording_header(r, "recording")){ return false; }
 
- {//-Preset settings table (overwrites the seeded rows)
-  if(not reader_can_take(r, Game_Preset_Count, sizeof(Preset_Settings)))
+ {//-Preset table (overwrites the seeded rows)
+  Model_Recordings &recordings = state->model.recordings;
+  i32 count = 0;
+  read_binary_i32(r, &count);
+  if(count < 1 or count > PRESET_CAP or
+     not reader_can_take(r, count, sizeof(Preset_Settings)))
   {
-   log_error("recording load: file too short for settings table, ignoring file (%S)", path);
+   log_error("recording load: bad preset table (count %d), ignoring file (%S)", count, path);
    return false;
   }
-  read_binary_size(r, sizeof(Preset_Settings) * Game_Preset_Count,
-                   state->model.recordings.preset_settings);
+  recordings.preset_count = count;
+  read_binary_size(r, sizeof(Preset_Settings) * count, recordings.preset_settings);
+  for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
+  {// NOTE(kv) autosave.ad loaded before us may point past a shorter list.
+   Viewport &viewport = state->viewports[viewport_index];
+   viewport.preset      = clamp_between(0, viewport.preset,      count-1);
+   viewport.last_preset = clamp_between(0, viewport.last_preset, count-1);
+  }
  }
 
  Recording &rec = state->model.recordings.recording;

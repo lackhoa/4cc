@@ -28,6 +28,7 @@ enum
  Version_ShapeKeys            = 26,  // Recorded_Curve / Dual_Bezier grow {key, deltas}
  Version_RecordedVertices     = 27,  // Recording.vertices table + Recorded_Primitive.corner_vertex
  Version_TvertPoly3Disk       = 28,  // Recorded_Poly3 / Disk.center become tvert (per-point bone)
+ Version_NamedPresets         = 29,  // Preset_Settings grows name + scene; table = count + rows; Saved_Viewport.reference_preset removed
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

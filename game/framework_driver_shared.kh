@@ -89,13 +89,16 @@ struct Curve
 };
 
 [info]
-enum Reference_Preset
+// NOTE(kv) A "reference scene" = compiled-in reference image + placement + camera + pose
+// (driver_get_scene_data). A preset (Preset_Settings row) points at one scene or none.
+// Was `Reference_Preset` until plan-settings-ui (2026-09-06).
+enum Reference_Scene
 {
- Preset_None = 0,
- Preset_Back = 1,
- Preset_Arm_Profile = 2,
- Preset_Eco_Skeleton = 3,
- Preset_Head_Profile = 4,
+ Scene_None = 0,
+ Scene_Back = 1,
+ Scene_Arm_Profile = 2,
+ Scene_Eco_Skeleton = 3,
+ Scene_Head_Profile = 4,
 };
 //~Framework api
 api_table framework_api_1
@@ -142,7 +145,7 @@ struct Reference_Image
  Stringz filename;
  Reference_Placement placement;
 };
-struct Reference_Preset_Data
+struct Reference_Scene_Data
 {
  // NOTE @Camera_Data
  v1 camera_phi2;
@@ -157,7 +160,7 @@ api_table driver_api
  void driver_update(Model *model, v1 anim_time);
  void driver_shutdown(void);
  void driver_update_tweaks();
- Reference_Preset_Data driver_get_reference_preset_data(Reference_Preset preset);
+ Reference_Scene_Data driver_get_scene_data(Reference_Scene scene);
 }
 
 generate
@@ -182,7 +185,11 @@ struct Saved_Viewport
  Camera_Data target_camera;
  i32 preset;
  i32 last_preset;
+ // NOTE(kv) DEAD since plan-settings-ui (2026-09-06): the reference scene lives on the
+ // preset row now (Preset_Settings.scene). Kept only so the autosave layout is
+ // unchanged -- the [info embed] reader is unversioned (meta_added/meta_removed are
+ // ignored on this path, see parse_struct_body in meta_klang.cpp). Nobody reads it.
  meta_added(added=Version_AddReferencePreset)
-  Reference_Preset reference_preset;
+  Reference_Scene legacy_reference_preset;
 };
 //-
