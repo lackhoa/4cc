@@ -1119,7 +1119,8 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
  }
 }
 function void update_pan(Camera_Data *cam, Game_Input *input);
-global v1 CAMERA_DRAG_PX_PER_STEP = 40.f;  // NOTE(kv) one 1/24-turn cell (or pan step) per this many px
+global v1 CAMERA_DRAG_ORBIT_PX_PER_STEP = 80.f;  // NOTE(kv) one 1/24-turn cell per this many px
+global v1 CAMERA_DRAG_PAN_PX_PER_STEP   = 40.f;  // NOTE(kv) one (scaled) pan step per this many px
 global v1 CAMERA_DRAG_PAN_STEP_SCALE = 0.25f;  // NOTE(kv) a drag pan step is this fraction of a keyboard pan step
 
 function void
@@ -1144,9 +1145,10 @@ camera_drag_move(Game_State *state, v2 mouse_px)
  Camera_Data *cam = get_target_camera(state, drag.viewport_index);
  v2 acc = drag.remainder_px + (mouse_px - drag.last_px);
  drag.last_px = mouse_px;
- // NOTE(kv) Truncate, not round: a step fires only after a full CAMERA_DRAG_PX_PER_STEP.
- v2 steps = {v1(i32(acc.x / CAMERA_DRAG_PX_PER_STEP)), v1(i32(acc.y / CAMERA_DRAG_PX_PER_STEP))};
- drag.remainder_px = acc - CAMERA_DRAG_PX_PER_STEP * steps;
+ // NOTE(kv) Truncate, not round: a step fires only after a full px_per_step.
+ v1 px_per_step = drag.pan ? CAMERA_DRAG_PAN_PX_PER_STEP : CAMERA_DRAG_ORBIT_PX_PER_STEP;
+ v2 steps = {v1(i32(acc.x / px_per_step)), v1(i32(acc.y / px_per_step))};
+ drag.remainder_px = acc - px_per_step * steps;
  if(steps == v2{}){ return; }
  // NOTE(kv) Same convention as the tablet (gestures.ts): the content follows the mouse.
  // Screen y grows downward. Pan: drag right = world moves right = pivot moves left.
