@@ -67,6 +67,17 @@ struct Document_Pick
 };
 // NOTE(kv) Shift-click curve selection for "Make patch from selection" (Q8), plus the
 // hot document item captured when the right-click menu opened (hot moves with the mouse).
+// NOTE(kv) Mouse camera drag (plan-mouse-camera-control.md): left-drag on empty space
+// orbits, alt+left-drag pans. Pixels accumulate and whole steps go to the target
+// camera, so the existing target->current animation does the smoothing.
+struct Camera_Drag
+{
+ b32 active;
+ b32 pan;            // else orbit; decided at press time
+ i32 viewport_index;
+ v2  last_px;
+ v2  remainder_px;   // sub-step drag carried to the next frame
+};
 struct Document_Selection
 {
  i32 count;
@@ -131,6 +142,7 @@ struct Game_State
  Reference_Edit_State reference_edit;
  Document_Edit_State document_edit;
  Document_Selection document_selection;
+ Camera_Drag camera_drag;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate
