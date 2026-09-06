@@ -135,7 +135,7 @@ animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
  v1 abs_delta = abs_difference * difference_multiplier;
  ClampBot(abs_delta, min_speed*dt);
  ClampTop(abs_delta, abs_difference);
- 
+
  v1 result = (end > start) ? (start+abs_delta) : (start-abs_delta);
  return result;
 }
@@ -165,10 +165,10 @@ current->FIELD = animate_value(current->FIELD, saved->FIELD, dt, 0.15f, MIN_SPEE
   ANIMATE(pivot.y,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
   ANIMATE(pivot.z,  CAMERA_PAN_STEP_PER_DISTANCE/3.0f);
 #undef ANIMATE
-  
+
   current->roll = saved->roll; // #Hack
  }
- 
+
  return animation_ended;
 }
 
@@ -188,9 +188,9 @@ print_data_union(Printer &p, Type_Info *type,
  kv_assert(type->kind == I_Type_Kind_Union);
  u8 *pointer = (u8*)pointer0;
  u8 *pvariant = (u8*)pvariant0;
- 
+
  i32 variant = read_enum(*type->discriminator_type, pvariant);
- 
+
  auto &union_members = type->union_members;
  for_i32(index,0,union_members.count){
   auto &union_member = union_members[index];
@@ -222,7 +222,7 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
     }
    }
   }break;
-  
+
   //-Integers
   case Basic_Type_i1:
   case Basic_Type_i2:
@@ -231,17 +231,17 @@ write_basic_type(Printer &p, Basic_Type type, void *value0)
   {
    i1 *v = (i1*)value0;
    i1 count = i1(get_basic_type_size(type) / 4);
-   
+
    for_i32(index,0,count) {
     if (index != 0) { print(p, " "); }
     print(p, v[index]);
    }
   }break;
-  
+
   //-
   case Basic_Type_String: { print(p, *(String*)value0); }break;
   case Basic_Type_u32:    { print(p, *(u32*)value0);    }break;
-  
+
   InvalidDefaultCase;
  }
 }
@@ -333,7 +333,7 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
   case I_Type_Kind_Basic:{
    write_basic_type(p, type->Basic_Type, pointer);
   }break;
-  
+
   case I_Type_Kind_Struct:{
    p << "{\n";
    for_i32(member_index, 0, type->members.count) {
@@ -345,15 +345,15 @@ pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
    }
    p << "}\n";
   }break;
-  
+
   case I_Type_Kind_Union:{
    p<<"<enum requires knowledge of the variant>";
   }break;
-  
+
   case I_Type_Kind_Enum:{
    p << enum_name_from_pointer(type, pointer);
   }break;
-  
+
   InvalidDefaultCase;
  }
 }
@@ -385,10 +385,10 @@ function b32
 game_load(Game_State *state, App *app, Stringz filename)
 {// IMPORTANT(kv) This function overwrites edit history.
  b32 ok = true;
- 
+
  Arena *load_arena = &state->data_load_arena;
  arena_free(load_arena);
- 
+
  String file_data = {};
  {//NOTE(kv) Read the whole file into memory, because we won't have large files.
   //  Plus it makes string handling more convenient.
@@ -398,12 +398,12 @@ game_load(Game_State *state, App *app, Stringz filename)
    log_error(strlit("Game load: can't read the file!"));
   }
  }
- 
+
  if(ok)
  {//-;deserialize
   Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
   Binary_Reader *r = &reader;
-  
+
   {
    u32 magic = read_binary_u32(r);
    if(magic != autodraw_data_magic){
@@ -412,22 +412,22 @@ game_load(Game_State *state, App *app, Stringz filename)
    r->read_version = read_binary_u32(r);
    log_string("read version: %u", r->read_version);
    u64 timestamp = read_binary_u64(r);
-   
+
    if(r->read_version < Version_AddViewport)
    {
     read_debug_string(r, strlit("cameras"));
-    
+
     i32 camera_count;
     read_binary_i1(r, &camera_count);
     ClampTop(camera_count, GAME_VIEWPORT_COUNT);
-    
+
     for_i32(cam_index, 0, camera_count)
     {
      Camera_Data *cam = &state->viewports[cam_index].target_camera;
      read_binary_Camera_Data(r, cam);
     }
    }
-   
+
    {
     read_debug_string(r, strlit("Serialized_State"));
     read_binary_Serialized_State(r, &state->serialized);
@@ -440,20 +440,20 @@ game_load(Game_State *state, App *app, Stringz filename)
      }
     }
    }
-   
+
    read_debug_string(r, strlit("EOF"));
   }
-  
+
   ok = r->ok;
   if(!ok){
    log_error(strlit("Game load: deserialization failed"));
   }
  }
- 
+
  if(ok){
   log_string(strlit("Game load succeeded"));
  }
- 
+
  state->load_failed = !ok;
  return ok;
 }
@@ -466,7 +466,7 @@ function Camera
 setup_camera(Camera_Data const &data)
 {
  Camera camera = {};
- 
+
  camera.near_clip    = 1*centimeter;
  camera.far_clip     = 20.f;
  camera.focal_length = tweaks->focal_length;
@@ -478,7 +478,7 @@ function mat4
 get_clip_from_camera(Camera const &camera, v2 clip_radius, b32 orthographic)
 {// NOTE(kv) We call this "clip space" by D3D terminology, opengl is probably the same
  // https://learn.microsoft.com/en-us/windows/win32/dxtecharts/the-direct3d-transformation-pipeline
- 
+
  // NOTE(kv) Revserse z, to get the depth
  mat4 result = mat4{{
    1,0, 0,0,
@@ -486,11 +486,11 @@ get_clip_from_camera(Camera const &camera, v2 clip_radius, b32 orthographic)
    0,0,-1,0,
    0,0, 0,1,
   }};
- 
+
  v1 focal = camera.focal_length;
  v1 n = camera.near_clip;
  v1 f = camera.far_clip;
- 
+
  v1 a = focal/clip_radius.x;
  v1 b = focal/clip_radius.y;
  if (orthographic)
@@ -531,11 +531,11 @@ convert_primitives_to_camera_space(Camera &camera)
  if(not m->primitives_are_in_camera_space)
  {
   m->primitives_are_in_camera_space = 1;
-  
+
   Bone_ID cur_bone = mk_bone_id(Bone_Invalid);
   mat4 camera_from_bone = {};
   mat4 camera_from_world = camera.cam_from_world;
-  
+
   b32 cur_is_right = false;
   auto update_current_bone = [&](Bone_ID new_bone_id, b32 is_right=false) -> void
   {
@@ -549,16 +549,16 @@ convert_primitives_to_camera_space(Camera &camera)
     camera_from_bone = matmul(camera_from_world, bone->world_from_bone);
    }
   };
-  
+
   update_current_bone(cur_bone);
-  
+
   for_i32(vi, 0, m->vertices.count)
   {
    Vertex &vertex = m->vertices[vi];
    update_current_bone(vertex.bone_id);
    mat4vert(camera_from_bone, &vertex.pos);
   }
-  
+
   // NOTE(kv) Transform a copy into camera_primitives -- the recording itself
   // stays bone-space (it is the source of truth, never mutated by a camera).
   Recording &document = m->recordings.document;
@@ -632,6 +632,7 @@ convert_primitives_to_camera_space(Camera &camera)
 }
 #include "game_reference_gizmo.cpp"
 #include "game_document_edit.cpp"
+#include "game_curve_patch.cpp"
 
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
@@ -644,15 +645,15 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   painter = &painter_value;
   draw_cycle_counter = 0;
   slider_cycle_counter = 0;
-  
+
   Scratch_Block tmp;
   Viewport *viewport = &state->viewports[viewport_id-1];
-  
+
   Camera camera = setup_camera(viewport->camera);
-  
+
   painter->looping_time = state->looping_time;
   painter->anim_time    = game_update_result.anim_time;
-  
+
   painter->show_grid = state->model.recordings.preset_settings[viewport->preset].show_grid;
   {
    b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
@@ -699,7 +700,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    config->background      = painter->background_color;
   }
   push_view_vector(tvert());
-  
+
   {//-Drawing the movie (+ replay, draw-as-data step 3)
    Replay_State &replay = state->replay;
    b32 do_diff = replay.diff_requested and viewport_id == 1;
@@ -772,7 +773,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    v3 cursor_camera = mat4vert(camera.cam_from_world, state->kb_cursor.pos);
    Bone *camera_bone = make_bone(mk_bone_id(Bone_Camera), camera.world_from_camera);
    BoneBlock(camera_bone->id);
-   
+
    sarray(Vertex) vertex_array = the_model->vertices;
    for_i32(array_index, 0, 1)
    {
@@ -780,7 +781,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     {
      vertex_array = the_model->persistent.vertices;
     }*/
-    
+
     for_i32(vi, 0, vertex_array.count)
     {// NOTE(kv) Having to loop through vertices here because
      // there are vertices that weren't submitted while rendering.
@@ -796,10 +797,10 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
        v1 cursor_dist = length_squared(pos - cursor_camera);
        cursor_near = cursor_dist < squared(3*centimeter);
       }
-      
+
       set_draw_location(info.location);
       b32 is_hot = current_location_is_hot();
-      
+
       b32 should_draw = (is_hot or
                          painter->viz_level >= info.indicator_level or
                          cursor_near);
@@ -813,7 +814,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
        {
         flags.v |= Poly_Overlay;
        }
-       
+
        if(is_hot)
        {
         color = (color == hot_color) ? hot_color2 : hot_color;
@@ -826,7 +827,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     }// vertex loop
    }// array loop
   }
-  
+
   i32 active_viewport_id = get_active_game_viewport_id(app);
   if(viewport_id == 1 and
      active_viewport_id == 1 and
@@ -876,7 +877,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
  state->permanent_arena = *bootstrap_arena;
  state->replay.recapture = true;
  thread_permanent_arena = make_arena(MB(1));
- 
+
  {// NOTE: Save/Load business load_game
   Arena *arena = &state->permanent_arena;
   String code_dir = get_code_directory(app);
@@ -885,7 +886,7 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   state->backup_dir       = pjoin(arena, state->save_dir, strlit("backups"));
   state->autosave_path    = pjoin(arena, state->save_dir, strlit("autosave.ad"));
   state->manual_save_path = pjoin(arena, state->save_dir, strlit("manual.ad"));
-  
+
   {// NOTE: Load state
    state->data_load_arena = make_arena();
    seed_preset_settings(state->model.recordings.preset_settings);
@@ -894,22 +895,22 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
    load_document_file(state);
   }
  }
- 
+
  for_i32(viewport_index,0,GAME_VIEWPORT_COUNT)
  {// ;frame_arena_init
   Viewport *viewport = &state->viewports[viewport_index];
   viewport->render_arena = make_arena();
   viewport->index = viewport_index;
  }
- 
+
  //-NOTE: Dear Imgui init
  state->imgui_state = imgui_state;
- 
+
  // NOTE(kv) IMPORTANT: Reload is a part of init
  game_reload(state, ed_api, ed_api_new, true);
- 
+
  init_dynamic(the_model->persistent.vertices, &state->permanent_arena, 128);
- 
+
  return state;
 }
 
@@ -925,31 +926,31 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
  the_model = &state->model;
  import_api_from_editor(ed_api, ed_api_new);
  state->sending_data = 1;
- 
+
  if(not first_time)
  {
   thread_permanent_arena = make_arena(MB(1));
  }
  Arena *dll_arena = &thread_permanent_arena;
- 
+
  {
   Game_Transient_State *transient = push_struct0(dll_arena, Game_Transient_State);
   state->transient = transient;
   init_dynamic(transient->pinned_locations, dll_arena);
   init_dynamic(transient->hot_locations, dll_arena);
  }
- 
+
  tweaks = push_struct(dll_arena, Tweak_Variables);
- 
+
  make_all_type_info();
- 
+
  {//-NOTE: Dear ImGui reload
   IMGUI_CHECKVERSION();
   auto &imgui = state->imgui_state;
   ImGui::SetCurrentContext(imgui.ctx);
   ImGui::SetAllocatorFunctions(imgui.alloc_func, imgui.free_func, imgui.user_data);
  }
- 
+
  init_sliders(type_info_pointers);
  build_location_maps(dll_arena, 0);
  load_slider_values_file(state, /*is_driver*/0);
@@ -975,7 +976,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
  Stringz outpath = (is_manual ? state->manual_save_path :
                     state->autosave_path);
  String backup_dir = state->backup_dir;
- 
+
  b32 ok = true;
  if(!state->has_done_backup &&
     gb_file_exists(to_cstring(outpath)))
@@ -994,7 +995,7 @@ game_save(Game_State *state, App *app, b32 is_manual)
    ok = copy_file(outpath, backup_path, true);
    state->has_done_backup = ok;
   }
-  
+
   if(ok)
   {// NOTE Cycle out old backup files
    // TODO Maybe treat manual backups differently? idk man!
@@ -1106,7 +1107,7 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
     theta += delta.x;
     phi   += delta.y;  // NOTE: pitch up when we go up
    }
-   
+
    cam->phi = theta * interval;
    cam->theta   = phi   * interval;
    macro_clamp(-0.25f, cam->theta, 0.25f);
@@ -1162,16 +1163,16 @@ snap_camera(Camera_Data *cam, Viewport *viewport)
 {
  v1 &prev    = viewport->previous_phi_snap;
  v1 &current = viewport->current_phi_snap;
- 
+
  if(prev == 0.f and current == 0.f)
  {// NOTE(kv) Initialize state
   prev = 0.25f;
  }
- 
+
  v1 phi4 = roundv1(cam->phi * 4.f);
  // NOTE Initial snapping effort, would be so simple if it was this easy!
  v1 new_phi = cycle01(phi4 * 0.25f);
- 
+
  if(cam->phi == new_phi)
  {// NOTE We're already at a snap point
   // NOTE -1.f is the sentinel written in @game_init
@@ -1183,7 +1184,7 @@ snap_camera(Camera_Data *cam, Viewport *viewport)
   v1 dir = signof(cam->phi - new_phi);
   new_phi = cycle01(new_phi + 0.25f * dir);
  }
- 
+
  prev = current;
  current = new_phi;
  cam->phi = new_phi;
@@ -1194,7 +1195,7 @@ function void
 do_work_after_loading_driver(Game_State *state, Driver_API *driver)
 {
  driver_data = *driver->data;
- 
+
  arena_clear(&state->driver_arena);
  build_location_maps(&state->driver_arena, 1);
  // NOTE(kv) The driver DLL's slider table is freshly zeroed: bring the values back.
@@ -1217,13 +1218,13 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
   framework_api.tweaks = tweaks;
   framework_api.types = type_info_pointers;
  }
- 
+
  b32 ok = true;
  b32 loaded = false;
  Scratch_Block tmp; 
 #define PJOIN(a, b) pjoin(tmp, a, b)
  String binary_dir = system_get_path(tmp, SystemPath_BinaryDirectory);
- 
+
  Stringz lock_file = PJOIN(binary_dir, strlit("driver.lock"));
  b32 lock_file_exists = file_exists(lock_file);
  if(not lock_file_exists)
@@ -1253,11 +1254,11 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
     String message = push_stringf(tmp, "failed to copy driver dll to temp file %S", temp_path);
     log_error(message);
    }
-   
+
    DLL_Handle new_library = gb_dll_load(to_cstring(temp_path));
    ok = ok and (new_library != 0);
    if(not ok){ log_error(strlit("failed to load dll")); }
-   
+
    if(ok)
    {
     if(dll->handle)
@@ -1266,11 +1267,11 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
      b32 unload_ok = gb_dll_unload(dll->handle);
      if(not unload_ok){ log_error(strlit("WARN: failed to unload old dll")); }
     }
-    
+
     typedef void Entry_Type(Driver_API *, Framework_API *);
     Entry_Type *driver_dll_entry = (Entry_Type *)gb_dll_proc_address(new_library, "driver_dll_entry");
     driver_dll_entry(driver, &framework_api);
-    
+
     *dll = {};
     dll->handle     = new_library;
     dll->mtime      = mtime_on_disk;
@@ -1278,12 +1279,12 @@ load_latest_driver_code(Game_State *state, App *app, Driver_API *driver,
    }
   }
  }
- 
+
  if(loaded) 
  {
   do_work_after_loading_driver(state, driver);
  }
- 
+
  *oloaded = loaded;
  return ok;
 #undef PJOIN
@@ -1305,7 +1306,7 @@ show_image_preview(Image_Info &image)
   ImGuiWindowFlags window_flags = (ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoFocusOnAppearing);
   im_begin("ImagePreview", 0, window_flags);
-  
+
   u64 texture_u64 = texture.v;  // NOTE(kv) pedantic compiler
   ImTextureID user_texture_id = ImTextureID(texture_u64);
   ImVec2 im_image_size(image_size.x, image_size.y);
@@ -1313,12 +1314,12 @@ show_image_preview(Image_Info &image)
   b32 has_marker = image.marker.type != 0;
   ImVec4 tint = has_marker ? ImVec4(1,1,0,0.5f) : ImVec4(1,1,1,1);
   ImGui::ImageWithBg(user_texture_id, im_image_size, ImVec2(0,1), ImVec2(1,0), V4(), tint);
-  
+
   if(has_marker)
   {
    ImDrawList* draw_list = ImGui::GetWindowDrawList();
    ImGuiCol marker_color = ImGui::GetColorU32(ImGuiCol_CheckMark);
-   
+
    switch(image.marker.type)
    {
     case Image_Marker_Point:
@@ -1328,7 +1329,7 @@ show_image_preview(Image_Info &image)
      ImVec2 marked_pos = get_imgui_image_position_from_uv(image_pos, image_size, marked_uv);
      draw_list->AddCircleFilled(marked_pos, radius, marker_color);
     }break;
-    
+
     case Image_Marker_Bezier:
     {
      Bez_v2 curve = image.marker.bezier;
@@ -1343,7 +1344,7 @@ show_image_preview(Image_Info &image)
     }break;
    }
   }
-  
+
   im_end();
  }
 }
@@ -1358,14 +1359,16 @@ hit_test_ray_triangle(v3 ray_P, v3 ray_dir,
                       v3 O, v3 A, v3 B)
 {
  v1 result = INFINITY;
- 
+
  A -= O;
  B -= O;
- 
+
  v3 h = cross(ray_dir, B);
  v1 det = dot(A, h);
- 
- if(absolute(det) < 1e-5f)
+
+ // NOTE(kv) Relative epsilon: det scales with |A||B| (ray_dir is unit), so an
+ // absolute 1e-5 threw away every triangle of a millimeter-sized fill (curve patches).
+ if(absolute(det) < 1e-5f * lengthof(A) * lengthof(B))
  {// NOTE(kv) This happens when "h" is perpendicular to "A",
   // which happens when "ray_dir" is perpendicular to the
   // normal of the plane containing the triangle "(O,A,B)".
@@ -1375,7 +1378,7 @@ hit_test_ray_triangle(v3 ray_P, v3 ray_dir,
   ray_P -= O;
   v1 det_inv = 1.f / det;
   v1 u = det_inv * dot(ray_P, h);
-  
+
   if(u < 0.f or u > 1.f)
   {
    // NOTE Outside
@@ -1384,7 +1387,7 @@ hit_test_ray_triangle(v3 ray_P, v3 ray_dir,
   {
    v3 q = cross(ray_P,A);
    v1 v = det_inv * dot(ray_dir, q);
-   
+
    if (v < 0.0 or u + v > 1.0)
    {
     // NOTE outside
@@ -1393,7 +1396,7 @@ hit_test_ray_triangle(v3 ray_P, v3 ray_dir,
    {// NOTE At this stage we can compute "t" to find out where
     // the intersection point is on the line.
     v1 t = det_inv * dot(B,q);
-    
+
     if(t > 1e-5f)  // ray intersection
     {
      result = t;
@@ -1422,7 +1425,7 @@ get_distance_squared_point_to_triangle(v3 test_point, Poly3 poly3)
   v1 d = -dot(poly3[0], n);
   v1 t = -(d + dot(n, test_point));
   v3 projection = test_point + t*n;  // NOTE this point is on the plane
-  
+
   // TODO(kv) #speed this math sucks tremendously
   v3 proj0 = projection - poly3[0];
   v3 proj1 = projection - poly3[1];
@@ -1459,21 +1462,21 @@ get_hit_triangles_from_vertex(Arena *arena, v3 pos)
  v2 radius_v2 = V2(radius, radius);
  v2 min = pos.xy - radius_v2;
  v2 max = pos.xy + radius_v2;
- 
+
  v2 pv2[4];
  pv2[0] = V2(min.x, min.y);
  pv2[1] = V2(max.x, min.y);
  pv2[2] = V2(max.x, max.y);
  pv2[3] = V2(min.x, max.y);
- 
+
  v3 pv3[4];
  for_i32(i, 0, 4)
  {// NOTE Copy the z of the vertex
   pv3[i] = V3(pv2[i], pos.z);
  }
- 
+
  sarray(Poly3) result = poly4_to_poly3(arena, pv3);
- 
+
  return result;
 }
 
@@ -1482,7 +1485,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
                            i2 params_mouse_p)
 {
  Location hot_location = {};
- 
+
  if(mouse_viewport)
  {
   v2 center = get_center(mouse_viewport->clip_box);
@@ -1491,18 +1494,18 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
   v1 mouse_z = -tweaks->focal_length;  // TODO #Hack
   v3 mouse_cam = V3(mouse_meter_, mouse_z);
   mouse_cam.y *= -1.f;
-  
+
   // TODO(kv) There are multiple cameras, so this is a no-win, huh?
   Camera camera = setup_camera(state->viewports[0].camera);
   convert_primitives_to_camera_space(camera);
   b32 fill_only = state->model.recordings.preset_settings[state->viewports[0].preset].fill_only_picking;
-  
+
   v1 min_t = INFINITY;
-  
+
   // NOTE(kv) in camera space
   v3 ray_P = V3();
   v3 ray_dir = noz(mouse_cam);
-  
+
   if(not fill_only)
   {// NOTE(kv) Vertices
    Scratch_Block tmp;
@@ -1510,10 +1513,10 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
    for_i32(vi, 0, vertices.count)
    {
     arena_clear(tmp);
-    
+
     Vertex &vertex = vertices.items[vi];
     sarray(Poly3) triangles = get_hit_triangles_from_vertex(tmp, vertex.pos);
-    
+
     for_i32(ti, 0, triangles.count)
     {// NOTE(kv) Hit test
      Poly3 triangle = triangles[ti];
@@ -1528,7 +1531,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     }
    }
   }
-  
+
   Scratch_Block tmp;
   for_i32(pi, 0, the_model->camera_primitives.count)
   {// NOTE(kv) Closest primitive
@@ -1536,7 +1539,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
    Recorded_Primitive &primitive = the_model->camera_primitives[pi];
    darray(Poly3) triangles;
    init_dynamic(triangles, tmp);
-   
+
    switch(primitive.type)
    {
     case Primitive_Type_Curve:
@@ -1548,48 +1551,60 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
       // NOTE(kv) We know the triangle count,
       // But just in case we mess up the code...
       set_cap_min(&triangles, 2*test_segment_count);
-      
+
       v1 test_t_interval = 1.0f / v1(test_segment_count);
       v3 A = curve[0];
-      
+
       for_i32(si, 0, test_segment_count)
       {
        v1 B_t = test_t_interval * v1(si+1);
        v3 B = bezier_sample(curve, B_t);
-       
+
        // NOTE(kv) We just assume that these two points are on the same plane.
        v2 u = B.xy - A.xy;
        v2 v_ = vertex_indicator_radius * noz(perp(u));
        v3 v = V3(v_);
-       
+
        v3 R[4];
        R[0] = A - v;
        R[1] = B - v;
        R[2] = B + v;
        R[3] = A + v;
-       
+
        sarray(Poly3) segment_triangles = poly4_to_poly3(tmp, R);
        for_i32(i, 0, 2)
        {
         push(&triangles, segment_triangles[i]);
        }
-       
+
        A = B;
       }
      }
     }break;
-    
+
     case Primitive_Type_Poly3:
     {//-Projection onto the curve
      tvert const (&p)[3] = primitive.poly3.points;
      push(&triangles, Poly3{p[0].v, p[1].v, p[2].v});
     }break;
-    
+
+    case Primitive_Type_Curve_Patch:
+    {// NOTE(kv) Document-only: evaluate the surface from the referenced curves.
+     if(is_document_location(primitive.location))
+     {
+      Recording &document = state->model.recordings.document;
+      push_curve_patch_hit_triangles(tmp, &triangles, document,
+                                     document.primitives[document_primitive_index(primitive.location)],
+                                     document_location_is_right(primitive.location),
+                                     camera.cam_from_world);
+     }
+    }break;
+
     case Primitive_Type_Dual_Bezier:
     {
      i32 const nslices = 8;
      set_cap_min(&triangles, nslices*2);
-     
+
      Bezier P = primitive.dual_bezier.P;
      Bezier Q = primitive.dual_bezier.Q;
      v1 inv_nslices = 1.f / (v1)nslices;
@@ -1600,16 +1615,16 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
       v1 u = inv_nslices * (v1)(sample_index+1);
       v3 A = bezier_sample(P,u);
       v3 B = bezier_sample(Q,u);
-      
+
       push(&triangles, {A0, A, B0});
       push(&triangles, {A, B, B0});
-      
+
       A0 = A;
       B0 = B;
      }
     }break;
    }
-   
+
    for_i32(ti, 0, triangles.count)
    {// NOTE Hit test #copypasta
     Poly3 triangle = triangles[ti];
@@ -1622,7 +1637,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
    }
   }// NOTE Loop over primitives
  }
- 
+
  return hot_location;
 }
 
@@ -1658,18 +1673,18 @@ game_update(Game_Update_Params params)
  // NOTE(kv) Never the frame arena: the editor stashes this in received_game_commands
  // and only walks it when the command lister opens, a frame or more later.
  sarray(String) game_commands = {};
- 
+
  Game_Input input_value = {};
  (Game_Input_0 &) input_value = params.input;
  Game_Input *input = &input_value;
  v1 dt = params.frame.animation_dt;
  v1 literal_dt = params.frame.literal_dt;
- 
+
  {
   state->looping_time += dt;
   if(state->looping_time >= 1000.0f){ state->looping_time -= 1000.0f; }
  }
- 
+
  {//-Compute key direction
   compute_direction_helper(input, Key_Code_L, 0, +1);
   compute_direction_helper(input, Key_Code_H, 0, -1);
@@ -1681,7 +1696,7 @@ game_update(Game_Update_Params params)
   compute_direction_helper(input, Key_Code_Comma,  3, -1);
  }
  v4 input_dir = input->direction.dir;
- 
+
  // NOTE(kv) Cheesy single keyboard event per-frame,
  // since we're not a fighting game, it'd probably work ok anyway.
  // but it's very dumb because we already had events.
@@ -1695,7 +1710,7 @@ game_update(Game_Update_Params params)
    push(&key_strokes, (Key_Code)code);
   }
  }
- 
+
  Driver_API *driver = &state->driver_api;
  if(DRIVER_ENABLED)
  {
@@ -1703,12 +1718,12 @@ game_update(Game_Update_Params params)
   load_latest_driver_code(state, app, driver, &loaded);
  }
  b32 driver_on = DRIVER_ENABLED and is_valid(driver);
- 
+
  {
   if(driver_on)
   {
    driver->driver_update_tweaks();
-   
+
    if(params.game_was_turned_on_this_frame)
    {
     View_ID view = get_active_view(app, Access_Always);
@@ -1719,7 +1734,7 @@ game_update(Game_Update_Params params)
     view_set_buffer(app, view, get_game_buffer(app, 1), 0);
    }
   }
-  
+
   b32 cursor_on = state->kb_cursor.on;
   i32 active_viewport_id = get_active_game_viewport_id(app);
   b32 viewport_focused = driver_on and active_viewport_id != 0;
@@ -1729,7 +1744,7 @@ game_update(Game_Update_Params params)
   {
    should_animate_next_frame = true;
   }
-  
+
   i32 update_viewport_id = (active_viewport_id ? active_viewport_id : 1);
   kv_assert(active_viewport_id <= GAME_VIEWPORT_COUNT);
   i32 update_viewport_index = update_viewport_id - 1;
@@ -1745,7 +1760,7 @@ game_update(Game_Update_Params params)
    v3 camera_world_pos = get_world_pos(update_target_camera);
    DEBUG_VALUE(camera_world_pos);
   }
-  
+
   // TODO(kv) Should we have like a "state diff"?
   // If we did, we could autosave much more confidently.
   v1 AUTOSAVE_PERIOD_SECONDS = 60.0f;
@@ -1768,7 +1783,7 @@ game_update(Game_Update_Params params)
     vim_set_bottom_text(strlit("game auto-saved!"));
    }
   }
-  
+
   Location hot_location = {};
   if(0)
   {// NOTE(kv) Mouse cursor disabled
@@ -1777,7 +1792,7 @@ game_update(Game_Update_Params params)
     // hot_location = find_primitive_closest_to_keyboard_cursor(state);
    }
   }
-  
+
   if(debug_channel_mouse_active)
   {// NOTE(kv) Agent mode: the channel's virtual mouse replaces the real one (position
    // and left button), so picking and document editing run the same code.
@@ -1803,9 +1818,9 @@ game_update(Game_Update_Params params)
     }
    }
   }
-  
+
   update_reference_edit(state, params.mouse, mouse_viewport);
-  
+
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
   // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
@@ -1828,27 +1843,55 @@ game_update(Game_Update_Params params)
   }
   debug_channel_last_hot = hot_location;
   if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
-  
+
   if(params.mouse.press_left and not state->document_edit.active)
   {// NOTE(kv) Hot code item: jump to code. Hot document item: start a drag (Q6).
    if(is_document_location(hot_location))
    {
-    document_edit_press(state, mouse_viewport, V2(params.mouse.p), hot_location);
+    b32 shift = ((params.input.active_mods & Key_Mod_Sft) != 0 or debug_channel_mouse_shift);
+    if(shift)
+    {// NOTE(kv) Q8: shift-click toggles the hot curve in the patch selection, no drag.
+     document_selection_toggle(state, document_primitive_index(hot_location));
+    }
+    else
+    {
+     state->document_selection.count = 0;
+     document_edit_press(state, mouse_viewport, V2(params.mouse.p), hot_location);
+    }
    }
    else if(is_valid(hot_location))
    {
     g_jump_to_pos(app, resolve_location(hot_location).min);
    }
   }
-  
+
   {// NOTE(kv) Right-click menu
    if(params.mouse.press_right)
    {
+    state->document_selection.menu_hot = hot_location;
     ImGui::OpenPopup("right_click_popup");
    }
-   
+
    if(ImGui::BeginPopup("right_click_popup"))
    {
+    {// NOTE(kv) Document patches (Q8): the selection was built by shift-clicks.
+     Document_Selection &sel = state->document_selection;
+     Recording &doc = state->model.recordings.document;
+     b32 menu_hot_is_patch = (is_document_location(sel.menu_hot) and
+                              document_primitive_index(sel.menu_hot) < doc.primitives.count and
+                              doc.primitives[document_primitive_index(sel.menu_hot)].type == Primitive_Type_Curve_Patch);
+     if(sel.count >= 2)
+     {
+      char label[64];
+      snprintf(label, sizeof(label), "Make patch from selection (%d curves)", sel.count);
+      if(ImGui::Selectable(label)){ document_make_patch(state, sel.prim_index, sel.count); }
+     }
+     if(menu_hot_is_patch)
+     {
+      if(ImGui::Selectable("Delete patch")){ document_delete_patch(state, document_primitive_index(sel.menu_hot)); }
+     }
+     if(sel.count >= 2 or menu_hot_is_patch){ ImGui::Separator(); }
+    }
     {// NOTE(kv) Reference edit mode lives here rather than on a key: placing a
      // reference is rare enough that a binding would never be remembered (plan Q6).
      Reference_Edit_State &edit = state->reference_edit;
@@ -1877,7 +1920,7 @@ game_update(Game_Update_Params params)
       ImGui::Separator();
      }
     }
-    
+
     // NOTE(kv) Drawing the menu
     i32 selected = 0;
     const char *menu_items[] = { "NONE", "Add Vertex" };
@@ -1889,7 +1932,7 @@ game_update(Game_Update_Params params)
       break;
      }
     }
-    
+
     // NOTE(kv) Handling selected items
     const i32 add_vertex_index = 1; // TODO #Hack
     switch(selected)
@@ -1899,7 +1942,7 @@ game_update(Game_Update_Params params)
       if(selected == add_vertex_index)
       {
        darray(Vertex) *vertices = &the_model->persistent.vertices;
-       
+
        Vertex vertex = {};
        vertex.ninfo_index = -1;
        vertex.bone_id = mk_bone_id(Bone_None);
@@ -1911,16 +1954,16 @@ game_update(Game_Update_Params params)
         }
         vertex.pos = pos;
        }
-       
+
        push(vertices, vertex);
       }
      }break;
     }
-    
+
     ImGui::EndPopup();
    }
   }
-  
+
   {//-Work based on editor cursor position
    View_ID view = get_active_view(app, Access_Always);
    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1940,7 +1983,7 @@ game_update(Game_Update_Params params)
       {//-Maybe make it hot
        maybe_make_it_hot = 1;
       }break;
-      
+
       case Location_Type_Text_Object:
       {//-images preview
        Text_Object &object = get_fui_file(file).text_objects[entry.index_in_file];
@@ -1950,7 +1993,7 @@ game_update(Game_Update_Params params)
         {
          maybe_make_it_hot = 1;
         }break;
-        
+
         case Text_Object_Image:
         {
          show_image_preview(object.image);
@@ -1958,7 +2001,7 @@ game_update(Game_Update_Params params)
        }
       }break;
      }
-     
+
      if(maybe_make_it_hot)
      {
       if(not is_valid(hot_location))
@@ -1969,7 +2012,7 @@ game_update(Game_Update_Params params)
     }
    }
   }
-  
+
   Game_Transient_State *transient = state->transient;
   transient->hot_locations.count = 0;
   for_i32(i, 0, transient->pinned_locations.count)
@@ -1977,10 +2020,18 @@ game_update(Game_Update_Params params)
    push(&transient->hot_locations, transient->pinned_locations[i]);
   }
   push_unique(&transient->hot_locations, hot_location);
-  
+  {// NOTE(kv) Selected curves render hot on both sides, like pins.
+   Document_Selection &sel = state->document_selection;
+   for_i32(i, 0, sel.count)
+   {
+    push_unique(&transient->hot_locations, document_location(sel.prim_index[i], false));
+    push_unique(&transient->hot_locations, document_location(sel.prim_index[i], true));
+   }
+  }
+
   {//-Game commands
    // NOTE(kv) Commands are things that the editor send to the game.
-   
+
    {//-Serve commands
     darray(Game_Command) &queue = state->command_queue;
     for_i32(command_index,0,queue.count)
@@ -2027,7 +2078,7 @@ game_update(Game_Update_Params params)
     }
     queue.count = 0;
    }
-   
+
    if(driver_on)
    {//-Fill command lister
     local_persist String names[] = {
@@ -2041,12 +2092,12 @@ game_update(Game_Update_Params params)
     game_commands = to_sarray(names);
    }
   }
-  
+
   if(key_strokes.count and viewport_focused)
   {
    seconds_since_last_keystroke_2 = 0;
   }
-  
+
   u32 mods = input->active_mods;
   for_i32(key_stroke_index, 0, key_strokes.count)
   {//-NOTE(kv) Key bindings
@@ -2079,18 +2130,18 @@ game_update(Game_Update_Params params)
         update_orbit(cam_data, input);
        }
       }break;
-      
+
       case Key_Code_0: case Key_Code_1: case Key_Code_2: case Key_Code_3: case Key_Code_4:
       case Key_Code_5: case Key_Code_6: case Key_Code_7: case Key_Code_8: case Key_Code_9:
       {
        i32 preset = code - Key_Code_0;
        game_set_preset(state, update_viewport_id, preset);
       }break;
-      
+
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
       case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
-      
+
       case C|Key_Code_Return:{ game_save(state, app, false); }break;
       case Key_Code_A:
       {
@@ -2106,16 +2157,16 @@ game_update(Game_Update_Params params)
       {
        revert_from_autosave(state, app);
       }break;
-      
+
       //NOTE(kv) Set camera to the left
       case C|M|Key_Code_H:{ cam_data->phi=-.25f; cam_data->theta=0; }break;
-      
+
       case Key_Code_I:
       case Key_Code_O:
       {
        update_orbit(cam_data, input);
       }break;
-      
+
       case Key_Code_Return:
       {
        if(0)
@@ -2126,7 +2177,7 @@ game_update(Game_Update_Params params)
         }
        }
       }break;
-      
+
       case Key_Code_Z:{
        v2 cursor_camera_xy = mat4vert(cam.cam_from_world, state->kb_cursor.pos).xy;
        cam_data->pivot += (cursor_camera_xy.x * cam.x +
@@ -2185,14 +2236,14 @@ game_update(Game_Update_Params params)
       {
        fui_cycle_active_member();
       }break;
-      
+
       case Key_Code_Return:
       {// NOTE Commit: the value is already live in the slider table; persist the
        // table to the values file (the source text only holds the id).
        save_slider_values_file(state, fui_active_slider.data->location.file.is_driver);
        fui_set_active_slider(0);
       }break;
-      
+
       case Key_Code_Escape:
       {
        fui_restore_value(fui_active_slider.data);
@@ -2210,7 +2261,7 @@ game_update(Game_Update_Params params)
       state->reference_edit.active = false;
       state->reference_edit.drag = Reference_Drag_None;
      }break;
-     
+
      case Key_Code_Return:
      {
       View_ID view = get_active_view(app, Access_Always);
@@ -2236,10 +2287,10 @@ game_update(Game_Update_Params params)
          {
           Viewport &main_viewport = state->viewports[0];
           main_viewport.reference_preset = object.preset;
-          
+
           Reference_Preset_Data preset_data =
           driver->driver_get_reference_preset_data(object.preset);
-          
+
           // NOTE(kv) We update the camera *once*, but still let it fly afterwards.
           update_target_camera_data->theta = preset_data.camera_theta2;
           update_target_camera_data->phi   = preset_data.camera_phi2;
@@ -2252,7 +2303,7 @@ game_update(Game_Update_Params params)
     }
    }
   }
-  
+
   if(input_dir != v4{} and
      fui_is_active() and active_slider_is_continuous())
   {//-Update continuous sliders
@@ -2284,7 +2335,7 @@ game_update(Game_Update_Params params)
      v4 delta = delta_scale * dt * input_dir;
      if(mods == Key_Mod_Sft){ delta *= 10.f; }
      value += delta;
-     
+
      if(flags & Slider_Clamp_X){value.x = 0;}
      if(flags & Slider_Clamp_Y){value.y = 0;}
      if(flags & Slider_Clamp_Z){value.z = 0;}
@@ -2297,7 +2348,7 @@ game_update(Game_Update_Params params)
    }
    block_copy(data.data, &value, data.size);
   }
-  
+
   if(mouse_viewport)
   {
    i32 wheel = signof(params.mouse.wheel);  // NOTE(kv) We have WEIRD +/-100 mouse wheel values!
@@ -2308,7 +2359,7 @@ game_update(Game_Update_Params params)
     distance = update_camera_distance(distance, wheel);
    }
   }
-  
+
   if(viewport_focused and cursor_on)
   {//-NOTE(kv) update cursor
    Camera &cam = update_target_camera;
@@ -2331,30 +2382,30 @@ game_update(Game_Update_Params params)
     v1 boost = 4.0f;
     if(shifted){ acc *= boost; }
     v1 new_vel = cursor.vel + dt*acc;
-    
+
     v1 max_vel = zoom*0.1f*2.f;
     if(shifted){ max_vel *= boost; }
     ClampTop(new_vel, max_vel);
-    
+
     v3 delta = 0.5f*(cursor.vel+new_vel)*dt*dir;
     cursor.pos += delta;
     cursor.vel = new_vel;
    }
-   
+
    {//NOTE(kv) Clamping screen and cursor position (Pretty Involved)
     //TODO(kv) #bug We assume orthographic mode
     v3 cursor_cam = mat4vert(cam.cam_from_world, cursor.pos);
-    
+
     Live_Viewport *update_viewport2 = &params.live_viewports[update_viewport_index];
-    
+
     v1 meter_to_pixel = default_meter_to_pixel;
     v1 pixel_to_meter = 1.f / meter_to_pixel;
     v2 clip_radius = pixel_to_meter*get_radius(update_viewport2->clip_box);
-    
+
     v2 radius_on_cam = 0.875f * clip_radius;
     v1 zoom_ratio = absolute(cursor_cam.z / cam.focal_length);
     v2 radius_at_cursor_z = zoom_ratio*radius_on_cam;
-    
+
     if(cursor_moved)
     {//-cursor dictates camera
      v2 delta_in_cam = {};
@@ -2366,49 +2417,49 @@ game_update(Game_Update_Params params)
        delta_in_cam[i] = signof(cursor_cam[i]) * diff;
       }
      }
-     
+
      cam_data->pivot += mat4vec(cam.world_from_cam, V3(delta_in_cam, 0));
     }
    }
   }
   //~
-  
+
   if(params.debug_camera_on)
   {
    Camera_Data &cam = *update_target_camera_data;
    DEBUG_NAME("camera(theta,phi,distance)", V3(cam.phi, cam.theta, cam.distance));
   }
-  
+
   for_i32(index, 0, GAME_VIEWPORT_COUNT)
   {// NOTE Set viewport presets to useful values
    Viewport *viewport = &state->viewports[index];
-   
+
    if(viewport->preset == viewport->last_preset){
     if(viewport->preset == 0){ viewport->last_preset = 2; }
     else{ viewport->last_preset = 0; }
    }
   }
-  
+
   {// TODO: Have a better error reporting story
    // Like, how do we turn these off? With a clear command?
    if (state->load_failed) { DEBUG_TEXT("Load failed!"); }
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
   }
-  
+
   if(0)
   {
    DEBUG_NAME("work cycles", params.frame.work_cycles);
    DEBUG_NAME("slider_cycle_counter", slider_cycle_counter);
    DEBUG_NAME("work us", params.frame.work_useconds);
   }
-  
+
   //show_image_preview(strlit("G:/My Drive/Art/arm medial.jpg"));
-  
+
   if(fui_is_active())
   {//-Show GUI for FUI (rolls right off the tongue)
    ImGuiWindowFlags flags = ImGuiWindowFlags_NoFocusOnAppearing;
    im_begin("FUI", 0, flags);
-   
+
    Slider &slider = *fui_active_slider.data;
    Type_Info *type = get_slider_type_info(slider);
    if(is_struct(type))
@@ -2421,7 +2472,7 @@ game_update(Game_Update_Params params)
     }
     i32 &active_index = fui_active_slider.active_member_index;
     ImGui::Combo("member", &active_index, items, member_count);
-    
+
     I_Struct_Member &active_member = type->members[active_index];
     Printer printer = make_printer_buffer(tmp, 128);
     print_code(printer, active_member.type, (u8 *)slider.value + active_member.offset, true);
@@ -2434,22 +2485,22 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
-  
+
   // NOTE(kv) Agent mode has no mouse user; the debug channel sets these knobs and
   // the panels would only clutter screenshots.
   if(not debug_channel_enabled)
   {//-Replay panel (draw-as-data step 3, Q23)
    Replay_State &replay = state->replay;
    im_begin("Replay", 0, ImGuiWindowFlags_NoFocusOnAppearing);
-   
+
    int mode = replay.display_replay ? 1 : 0;
    ImGui::RadioButton("code path", &mode, 0);
    ImGui::SameLine();
    ImGui::RadioButton("replay", &mode, 1);
    replay.display_replay = (mode == 1);
-   
+
    if(ImGui::Button("Diff now")){ replay.diff_requested = true; }
-   
+
    Replay_Diff_Result &diff = replay.last_diff;
    if(diff.valid)
    {
@@ -2475,7 +2526,7 @@ game_update(Game_Update_Params params)
    }
    im_end();
   }
-  
+
   if(not debug_channel_enabled)
   {//-Preset settings panel (preset-rethink step 6): edits the ACTIVE preset's row.
    Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
@@ -2490,29 +2541,29 @@ game_update(Game_Update_Params params)
    im_end();
   }
  }
- 
+
  if(driver_on)
  {
   {// NOTE(kv) Driver update
    {// ;clear_model
     Model *m = the_model;
-    
+
     Model_Persistent persistent = m->persistent;
     Model_Recordings recordings = m->recordings;
     zero_struct(m);
     m->persistent = persistent;
     m->recordings = recordings;
-    
+
     Arena *frame_arena = &state->frame_arena;
     //-
     m->frame_arena = frame_arena;
-    
+
     init_dynamic(m->bones, frame_arena, 128);
     Bone null_bone = {.world_from_bone=mat4i_identity};
     push(&m->bones, null_bone);
     init_dynamic(m->bone_stack, frame_arena, 16);
     push(&m->bone_stack, m->bones.items+0);
-    
+
     i32 vertex_cap = maximum(256, m->vertices.count);
     i32 entity_cap = maximum(256, m->primitives.count);
     init_dynamic(m->vertices, frame_arena, vertex_cap);
@@ -2543,7 +2594,7 @@ game_update(Game_Update_Params params)
       m->vis_live[Vis_Ref_Front_0 + ref_index] = (row.reference_image == ref_index);
      }
     }
-    
+
     {// NOTE(kv) Add persistent primitives to primitive list.
      // TODO(kv) We'll have to change this to support multiple viewports.
      set_count(&m->vertices, m->persistent.vertices.count);
@@ -2552,12 +2603,12 @@ game_update(Game_Update_Params params)
      block_copy(m->vertices.items, src, size);
     }
    }
-   
+
    v1 anim_time = state->looping_time;
    game_update_result.anim_time = anim_time;
    driver->driver_update(the_model, anim_time);
   }
-  
+
   for_i32(index, 0, params.live_viewports.count)
   {//-Rendering
    Live_Viewport live_viewport = params.live_viewports[index];
@@ -2571,17 +2622,17 @@ game_update(Game_Update_Params params)
      if(!animation_ended){ should_animate_next_frame = true; }
     }
    }
-   
+
    {
     rect2 clip_box = live_viewport.clip_box;
-    
+
     Render_Config *old_config = target_last_config(live_viewport.target);
     draw_set_clip(app, clip_box);
-    
+
     v1 meter_to_pixel = default_meter_to_pixel;
     v1 pixel_to_meter = 1.f / meter_to_pixel;
     v2 clip_radius = pixel_to_meter*get_radius(clip_box);
-    
+
     call_driver_render(state, app, live_viewport.target, live_viewport.id,
                        params.mouse, clip_radius);
     {
@@ -2591,11 +2642,11 @@ game_update(Game_Update_Params params)
    }
   }
  }
- 
+
 #if NOTEBOOK_MODE
  notebook_update(0);
 #endif
- 
+
  return{
   .should_animate_next_frame = should_animate_next_frame or state->replay.force_animate
                                or debug_channel_wants_animate,

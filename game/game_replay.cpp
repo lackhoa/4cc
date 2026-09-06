@@ -72,6 +72,9 @@ store_recording()
  rec.captured = true;
 }
 
+// NOTE(kv) Defined in game_curve_patch.cpp (included later in game_main.cpp).
+function void draw_curve_patch(Recording &doc, Recorded_Primitive &prim, b32 is_right);
+
 function void
 replay_recording(Recording &rec, b32 replay_is_right=false)
 {// NOTE(kv) Second consumer of a captured recording: bones/camera are live, the
@@ -179,6 +182,11 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
    case Primitive_Type_Disk:
    {
     fill_disk(prim.disk.center, {prim.disk.radius}, get_fill_params());
+   }break;
+
+   case Primitive_Type_Curve_Patch:
+   {
+    draw_curve_patch(rec, prim, replay_is_right);
    }break;
 
    case Primitive_Type_Image:

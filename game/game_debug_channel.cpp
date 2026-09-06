@@ -21,8 +21,12 @@
 //   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
 //   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
 //                        frame as the screenshot png); picking runs against it every frame
-//   mouse_down <x> <y> / mouse_up -> press/release the virtual left button there
-//                        (drives the same document_edit_* as the real mouse)
+//   mouse_down <x> <y> [shift] / mouse_up -> press/release the virtual left button there
+//                        (drives the same document_edit_* as the real mouse; shift =
+//                        toggle the hot document curve in the patch selection, no drag)
+//   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
+//   delete_patch <i>  -> remove a curve patch primitive
+//   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
 //   quit              -> exit this instance
@@ -58,6 +62,7 @@ global i2   debug_channel_mouse_p;
 global b32  debug_channel_mouse_left;           // held state
 global b32  debug_channel_mouse_press_pending;  // one-frame edges
 global b32  debug_channel_mouse_release_pending;
+global b32  debug_channel_mouse_shift;           // shift held for the virtual press
 global Location debug_channel_last_hot;  // from the last frame's picking
 global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport under it
 // NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
@@ -739,23 +744,98 @@ debug_channel_update(Game_State *state, App *app)
  else if(strncmp(cmd, "mouse_down ", 11) == 0)
  {
   i32 x, y;
-  if(sscanf(cmd+11, "%d %d", &x, &y) == 2)
+  char mod[16] = {};
+  i32 n = sscanf(cmd+11, "%d %d %15s", &x, &y, mod);
+  if(n >= 2)
   {
    debug_channel_mouse_active = true;
    debug_channel_mouse_p = {x, y};
    debug_channel_mouse_left = true;
    debug_channel_mouse_press_pending = true;
+   debug_channel_mouse_shift = (n == 3 and strcmp(mod, "shift") == 0);
    debug_channel_wants_animate = true;
-   fprintf(out, "mouse_down: at (%d %d)\n", x, y);
+   fprintf(out, "mouse_down: at (%d %d)%s\n", x, y, debug_channel_mouse_shift ? " shift" : "");
   }
   else
   {
-   fprintf(out, "error: usage: mouse_down <x> <y>\n");
+   fprintf(out, "error: usage: mouse_down <x> <y> [shift]\n");
   }
+ }
+ else if(strncmp(cmd, "make_patch ", 11) == 0)
+ {
+  i32 idx[4];
+  i32 count = sscanf(cmd+11, "%d %d %d %d", &idx[0], &idx[1], &idx[2], &idx[3]);
+  if(count >= 2)
+  {
+   b32 ok = document_make_patch(state, idx, count);
+   fprintf(out, "make_patch: %s, document now %d primitives\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: make_patch <i> <j> [k] [l]\n"); }
+ }
+ else if(strncmp(cmd, "patch_grid ", 11) == 0)
+ {// NOTE(kv) Evaluate a curve patch and print its grid corners/center in window px.
+  i32 idx;
+  Recording &doc = state->model.recordings.document;
+  if(sscanf(cmd+11, "%d", &idx) == 1 and idx >= 0 and idx < doc.primitives.count and
+     doc.primitives[idx].type == Primitive_Type_Curve_Patch)
+  {
+   Scratch_Block tmp;
+   Curve_Patch_Grid grid = {};
+   if(curve_patch_world_grid(tmp, doc, doc.primitives[idx], false, &grid))
+   {
+    Camera camera = setup_camera(state->viewports[0].camera);
+    v2 center = get_center(debug_channel_mouse_viewport_box);
+    i32 stride = grid.rows+1;
+    auto print_at = [&](char const *name, i32 i, i32 j)
+    {
+     v3 world = grid.positions[i*stride+j];
+     v2 px = document_edit_project(camera, center, world);
+     fprintf(out, "  %s: world (%.4f %.4f %.4f) px (%.0f %.0f)\n", name, world.x, world.y, world.z, px.x, px.y);
+    };
+    fprintf(out, "patch_grid %d: %dx%d (left side)\n", idx, grid.columns, grid.rows);
+    print_at("u0v0", 0, 0); print_at("u1v0", grid.columns, 0);
+    print_at("u0v1", 0, grid.rows); print_at("u1v1", grid.columns, grid.rows);
+    print_at("center", grid.columns/2, grid.rows/2);
+    {// NOTE(kv) Ray-test the hit triangles at the center px (same math as
+     // get_primitive_hit_by_mouse) so the pick path is verifiable even when
+     // another fill occludes the patch on screen.
+     v3 world = grid.positions[(grid.columns/2)*stride + grid.rows/2];
+     v2 px = document_edit_project(camera, center, world);
+     v2 mouse_meter = (px - center) / default_meter_to_pixel;
+     v3 ray_dir = noz(V3(mouse_meter.x, -mouse_meter.y, -tweaks->focal_length));
+     darray(Poly3) triangles; init_dynamic(triangles, tmp);
+     push_curve_patch_hit_triangles(tmp, &triangles, doc, doc.primitives[idx], false, camera.cam_from_world);
+     v1 min_t = INFINITY;
+     for_i32(ti, 0, triangles.count)
+     {
+      v1 t = hit_test_ray_triangle(V3(), ray_dir, expand3(triangles[ti]));
+      if(t < min_t){ min_t = t; }
+     }
+     fprintf(out, "  hit_test at center: %d triangles, t=%.4f\n", triangles.count, min_t);
+    }
+   }
+   else { fprintf(out, "patch_grid %d: no surface (curves don't chain into a loop)\n", idx); }
+  }
+  else { fprintf(out, "error: usage: patch_grid <curve patch index>\n"); }
+ }
+ else if(strncmp(cmd, "delete_patch ", 13) == 0)
+ {
+  i32 idx;
+  if(sscanf(cmd+13, "%d", &idx) == 1)
+  {
+   b32 ok = document_delete_patch(state, idx);
+   fprintf(out, "delete_patch: %s, document now %d primitives\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: delete_patch <i>\n"); }
  }
  else if(strcmp(cmd, "mouse_up") == 0)
  {
   debug_channel_mouse_left = false;
+  debug_channel_mouse_shift = false;
   debug_channel_mouse_release_pending = true;
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_up\n");
@@ -793,6 +873,12 @@ debug_channel_update(Game_State *state, App *app)
     print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 1});
     print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 2});
    }
+   if(prim.type == Primitive_Type_Curve_Patch)
+   {
+    fprintf(out, "  curve_patch: curves");
+    for_i32(i, 0, prim.curve_patch.curve_count){ fprintf(out, " %d", prim.curve_patch.curve_index[i]); }
+    fprintf(out, "\n");
+   }
   }
   else if(is_valid(hot))
   {
@@ -802,6 +888,12 @@ debug_channel_update(Game_State *state, App *app)
   else
   {
    fprintf(out, "hot: none\n");
+  }
+  {
+   Document_Selection &sel = state->document_selection;
+   fprintf(out, "selection:");
+   for_i32(i, 0, sel.count){ fprintf(out, " %d", sel.prim_index[i]); }
+   fprintf(out, "%s\n", sel.count ? "" : " (empty)");
   }
   Document_Edit_State &edit = state->document_edit;
   fprintf(out, "edit: active %d moved %d prim %d %s slot %d %s\n",

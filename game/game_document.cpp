@@ -93,10 +93,12 @@ export_group_to_document(Game_State *state, Group_Vis tag)
   }
   i32 *vertex_remap = push_array(tmp, i32, maximum(1, doc.vertices.count));
   for_i32(iv,0,doc.vertices.count){ vertex_remap[iv] = -1; }
+  i32 *prim_remap = push_array(tmp, i32, maximum(1, doc.primitives.count));
   for_i32(ip,0,doc.primitives.count)
   {
    Recorded_Primitive prim = doc.primitives.items[ip];
    i32 new_group = group_remap[prim.group_index];
+   prim_remap[ip] = -1;
    if(new_group != -1)
    {
     prim.group_index = new_group;
@@ -112,8 +114,22 @@ export_group_to_document(Game_State *state, Group_Vis tag)
      }
      prim.vertex_index[ic] = vertex_remap[old_vertex];
     }
+    prim_remap[ip] = primitives.count;
     push(&primitives, prim);
    }
+  }
+  for_i32(ip,0,primitives.count)
+  {// NOTE(kv) Curve patches reference primitives by index: follow the compaction.
+   // A side whose curve was dropped (re-exported region) is removed from the patch.
+   Recorded_Primitive &prim = primitives.items[ip];
+   if(prim.type != Primitive_Type_Curve_Patch){ continue; }
+   i32 kept = 0;
+   for_i32(ic,0,prim.curve_patch.curve_count)
+   {
+    i32 new_index = prim_remap[prim.curve_patch.curve_index[ic]];
+    if(new_index != -1){ prim.curve_patch.curve_index[kept++] = new_index; }
+   }
+   prim.curve_patch.curve_count = kept;
   }
  }
 

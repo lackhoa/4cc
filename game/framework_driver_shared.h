@@ -519,6 +519,15 @@ enum Primitive_Type
  Primitive_Type_Patch,
  Primitive_Type_Disk,
  Primitive_Type_Image,
+ Primitive_Type_Curve_Patch,  // NOTE(kv) appended: values are stored in driver.document.ad
+};
+// NOTE(kv) Document-only primitive referencing 2-4 CURVE primitives of the same
+// recording by index (game_curve_patch.cpp); no vertices of its own (vertex count 0),
+// the surface is re-evaluated from the curves at replay.
+struct Recorded_Curve_Patch
+{
+ i32 curve_count;
+ i32 curve_index[4];
 };
 struct Recorded_Curve
 {// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
@@ -564,6 +573,7 @@ struct Recorded_Primitive
   Patch  patch;
   Disk   disk;
   Recorded_Image image;
+  Recorded_Curve_Patch curve_patch;
  };
 };
 // NOTE(kv) Which Paint_Params fields a group overrides vs its parent (the "delta" view).

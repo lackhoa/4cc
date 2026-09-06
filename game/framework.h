@@ -65,6 +65,14 @@ struct Document_Pick
  b32 is_handle;     // false: table vertex `vertex_index[slot]`; true: curve handle e[slot]
  i32 slot;
 };
+// NOTE(kv) Shift-click curve selection for "Make patch from selection" (Q8), plus the
+// hot document item captured when the right-click menu opened (hot moves with the mouse).
+struct Document_Selection
+{
+ i32 count;
+ i32 prim_index[4];
+ Location menu_hot;
+};
 struct Document_Edit_State
 {// NOTE(kv) A live drag of one document control point (plan-document-mouse-editing).
  b32 active;
@@ -122,6 +130,7 @@ struct Game_State
  Replay_State replay;
  Reference_Edit_State reference_edit;
  Document_Edit_State document_edit;
+ Document_Selection document_selection;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate
