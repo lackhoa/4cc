@@ -108,15 +108,11 @@ struct Game_State
  //Arena model_frame_arena;
  Arena driver_arena;
  
- b32 has_done_backup;
  String code_dir;
- String save_dir;
- String backup_dir;
+ String save_dir;  // NOTE(kv) state.txt + recording.ad + driver.*.ad live here
  darray(Slider_Value_Row) orphan_slider_rows[2];  // NOTE(kv) [is_driver]
  u64 slider_values_mtime[2];  // NOTE(kv) [is_driver] mtime of the values file last loaded
- Stringz autosave_path;
- Stringz manual_save_path;
- 
+
  union
  {
   Serialized_State_Embed;

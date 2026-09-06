@@ -378,88 +378,14 @@ read_debug_string(Binary_Reader *r, Stringz string)
  }
 }
 #include "ad_serialize_recording.cpp"
+#include "ad_serialize_state.cpp"
 #include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
 
-function b32
-game_load(Game_State *state, App *app, Stringz filename)
-{// IMPORTANT(kv) This function overwrites edit history.
- b32 ok = true;
-
- Arena *load_arena = &state->data_load_arena;
- arena_free(load_arena);
-
- String file_data = {};
- {//NOTE(kv) Read the whole file into memory, because we won't have large files.
-  //  Plus it makes string handling more convenient.
-  file_data = read_entire_file(load_arena, filename);
-  ok = file_data.len > 0;
-  if(not ok){
-   log_error(strlit("Game load: can't read the file!"));
-  }
- }
-
- if(ok)
- {//-;deserialize
-  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
-  Binary_Reader *r = &reader;
-
-  {
-   u32 magic = read_binary_u32(r);
-   if(magic != autodraw_data_magic){
-    r->ok = false;
-   }
-   r->read_version = read_binary_u32(r);
-   log_string("read version: %u", r->read_version);
-   u64 timestamp = read_binary_u64(r);
-
-   if(r->read_version < Version_AddViewport)
-   {
-    read_debug_string(r, strlit("cameras"));
-
-    i32 camera_count;
-    read_binary_i1(r, &camera_count);
-    ClampTop(camera_count, GAME_VIEWPORT_COUNT);
-
-    for_i32(cam_index, 0, camera_count)
-    {
-     Camera_Data *cam = &state->viewports[cam_index].target_camera;
-     read_binary_Camera_Data(r, cam);
-    }
-   }
-
-   {
-    read_debug_string(r, strlit("Serialized_State"));
-    read_binary_Serialized_State(r, &state->serialized);
-    if(r->read_version >= Version_AddViewport)
-    {
-     for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
-     {
-      Saved_Viewport &saved = state->serialized.saved_viewports[viewport_index];
-      state->viewports[viewport_index].saved = saved;
-     }
-    }
-   }
-
-   read_debug_string(r, strlit("EOF"));
-  }
-
-  ok = r->ok;
-  if(!ok){
-   log_error(strlit("Game load: deserialization failed"));
-  }
- }
-
- if(ok){
-  log_string(strlit("Game load succeeded"));
- }
-
- state->load_failed = !ok;
- return ok;
-}
 function void
 revert_from_autosave(Game_State *state, App *app){
- game_load(state, app, state->autosave_path);
+ // IMPORTANT(kv) Overwrites edit history (state.txt is the periodic save).
+ load_state_file(state);
 }
 //~
 function Camera
@@ -662,7 +588,9 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   {
    b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
    b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
-   b32 orthographic = painter->show_grid and (camera_frontal or camera_profile);
+   // NOTE(kv) Q9: the global toggle (state.txt / presets panel) OR the grid rule.
+   b32 orthographic = (state->orthographic or
+                       (painter->show_grid and (camera_frontal or camera_profile)));
    painter->clip_from_world = get_clip_from_world(camera, clip_radius, orthographic);
   }
   painter->target       = target;
@@ -887,14 +815,17 @@ game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_a
   String code_dir = get_code_directory(app);
   state->code_dir         = push_string(arena, code_dir);
   state->save_dir         = pjoin(arena, code_dir, strlit("data"));
-  state->backup_dir       = pjoin(arena, state->save_dir, strlit("backups"));
-  state->autosave_path    = pjoin(arena, state->save_dir, strlit("autosave.ad"));
-  state->manual_save_path = pjoin(arena, state->save_dir, strlit("manual.ad"));
 
   {// NOTE: Load state
    state->data_load_arena = make_arena();
+   // NOTE(kv) The text state reader walks Type_Info, which game_reload (below) only
+   // sets up AFTER this point; the tables live in thread_permanent_arena (made above).
+   make_all_type_info();
    seed_preset_settings(&state->model.recordings);
-   game_load(state, app, state->autosave_path);
+   if(not load_state_file(state))
+   {// TODO(kv) One-off: pull autosave.ad + recording.ad presets into state.txt
+    migrate_state_from_binary_files(state);
+   }
    load_recording_file(state);
    load_document_file(state);
   }
@@ -974,102 +905,16 @@ game_shutdown(Game_State *state)
 }
 //~
 function b32
-game_save(Game_State *state, App *app, b32 is_manual)
-{// NOTE Save and backup logic
- Scratch_Scope tmp;
- Stringz outpath = (is_manual ? state->manual_save_path :
-                    state->autosave_path);
- String backup_dir = state->backup_dir;
-
- b32 ok = true;
- if(!state->has_done_backup &&
-    gb_file_exists(to_cstring(outpath)))
- {//-Backup situation
-  String time_string = time_format(tmp, "%d_%m_%Y_%H_%M_%S");
-  if(time_string.len == 0)
-  {
-   log_error("strftime failed... go figure that out!");
-   ok = false;
-  }
-  else
-  {
-   const char *filename_base = is_manual ? "manual" : "auto";
-   Stringz backup_path = push_stringf(tmp, "%S/%s_%S.ad",
-                                      backup_dir, filename_base, time_string);
-   ok = copy_file(outpath, backup_path, true);
-   state->has_done_backup = ok;
-  }
-
-  if(ok)
-  {// NOTE Cycle out old backup files
-   // TODO Maybe treat manual backups differently? idk man!
-   File_List backup_files = system_get_file_list(tmp, backup_dir);
-   u32 max_backup = 128;
-   if (backup_files.count > max_backup)
-   {
-    u64 oldest_mtime = u64_max;
-    Stringz file_to_delete = empty_string;
-    File_Info **opl = backup_files.infos + backup_files.count;
-    for (File_Info **backup = backup_files.infos;
-         backup < opl;
-         backup++)
-    {
-     File_Attributes attr = (*backup)->attributes;
-     if(attr.last_write_time < oldest_mtime)
-     {
-      oldest_mtime   = attr.last_write_time;
-      file_to_delete = pjoin(tmp, backup_dir, (*backup)->filename);
-     }
-    }
-    b32 delete_ok = remove_file(file_to_delete);
-    if(delete_ok){
-     log_string("deleted backup file %S because it's too old", file_to_delete);
-    }else{
-     log_error("failed to delete backup file %S", file_to_delete);
-    }
-   }
-  }
- }
- {
-  Stringz temp_path = pjoin(tmp, state->save_dir, strlit("temp_file.ad"));
-  Stringz old_path  = pjoin(tmp, state->save_dir, strlit("temp_old_file.ad"));
-  if(ok)
-  {//-serialize to temp file
-   FILE *temp_outfile = open_file(temp_path, "wb");
-   ok = serialize_state(temp_outfile, state);
-   if(not ok){
-    log_error("Failed to write to %.*s", strexpand(outpath));
-   }
-   close_file(temp_outfile);
-  }
-  b32 moved_to_old_path = false;
-  //TODO(kv) are we overdoing this? we already have backup logic, why do we care if this fails?
-  if(ok)
-  {//-fail-safe setup
-   if(file_exists(outpath)){
-    ok = move_file(outpath, old_path);
-    moved_to_old_path = ok;
-   }
-  }
-  if(ok)
-  {//-rename the file
-   ok = move_file(temp_path, outpath);
-  }
-  if(not ok and moved_to_old_path)
-  {
-   //-fail-safe recover
-   move_file(old_path, outpath);
-  }
-  remove_file(old_path);
-  if(not ok){
-   vim_set_bottom_text(strlit("failed to save state"));
-  }
- }
+game_save(Game_State *state, App *app)
+{// NOTE(kv) state.txt (text, git-friendly -- no backup ring anymore) + recording.ad.
+ b32 ok = save_state_file(state);
  if(ok){
   vim_set_bottom_text(strlit("Saved game state!"));
-  // NOTE(kv) Q51: recording.ad rides the same cadence as autosave.ad; its own
+  // NOTE(kv) Q51: recording.ad rides the same cadence as state.txt; its own
   // failure only logs -- the state save above already succeeded.
   save_recording_file(state);
+ }else{
+  vim_set_bottom_text(strlit("failed to save state"));
  }
  state->save_failed = not ok;
  return ok;
@@ -1841,7 +1686,7 @@ game_update(Game_Update_Params params)
    b32 should_autosave = seconds_since_last_autosave == 0 and not debug_channel_enabled;
    if(should_autosave)
    {
-    game_save(state, app, false);
+    game_save(state, app);
     vim_set_bottom_text(strlit("game auto-saved!"));
    }
   }
@@ -2121,18 +1966,6 @@ game_update(Game_Update_Params params)
      Game_Command command = queue[command_index];
 #define MATCH(NAME)    command.name == strlit(NAME)
      if(0);
-     else if(MATCH("save_manual"))
-     {
-      b32 ok = game_save(state, app, true);
-      if(ok)
-      {
-       copy_file(state->manual_save_path, state->autosave_path, false);
-      }
-     }
-     else if(MATCH("load_manual"))
-     {
-      game_load(state, app, state->manual_save_path);
-     }
      else if(MATCH("revert"))
      {
       revert_from_autosave(state, app);
@@ -2164,8 +1997,6 @@ game_update(Game_Update_Params params)
    if(driver_on)
    {//-Fill command lister
     local_persist String names[] = {
-     strlit("save_manual"),
-     strlit("load_manual"),
      strlit("revert"),
      strlit("pin"),
      strlit("clear_pin"),
@@ -2224,7 +2055,7 @@ game_update(Game_Update_Params params)
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
       case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
 
-      case C|Key_Code_Return:{ game_save(state, app, false); }break;
+      case C|Key_Code_Return:{ game_save(state, app); }break;
       case Key_Code_A:
       {
        snap_camera(cam_data, update_viewport);
@@ -2523,7 +2354,7 @@ game_update(Game_Update_Params params)
 
   {// TODO: Have a better error reporting story
    // Like, how do we turn these off? With a clear command?
-   if (state->load_failed) { DEBUG_TEXT("Load failed!"); }
+   if (state->load_failed) { DEBUG_TEXT("state.txt REJECTED (syntax) -- see log"); }
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
    if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
    if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
@@ -2615,6 +2446,13 @@ game_update(Game_Update_Params params)
    Model_Recordings &rec = state->model.recordings;
    i32 active = state->viewports[0].preset;
    im_begin("Presets", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+   {//-Global (state.txt flags that aren't per-preset)
+    ImGui::SeparatorText("Global");
+    { bool value = state->orthographic;         ImGui::Checkbox("orthographic",         &value); state->orthographic = value; }
+    ImGui::SameLine();
+    { bool value = state->references_full_alpha; ImGui::Checkbox("references_full_alpha (Q)", &value); state->references_full_alpha = value; }
+    ImGui::SeparatorText("Presets");
+   }
    {//-List
     ImGui::BeginChild("preset_list", ImVec2(180, 260), true);
     for_i32(index, 0, rec.preset_count)
@@ -2641,8 +2479,23 @@ game_update(Game_Update_Params params)
     ImGui::InputText("name", row.name, sizeof(row.name));
     ImGui::SeparatorText("Display");
     ImGui::SliderInt("viz_level", &row.viz_level, 0, 2);
+    // NOTE(kv) Checkboxes come from Preset_Settings' reflection: the groups below name
+    // the b32 members they want; whatever b32 member is left over lands in "Other", so
+    // a new flag in the .kh shows up here without touching this panel.
+    Type_Info *preset_type = &Type_Info_Preset_Settings;
+    b32 shown[64] = {};
+    kv_assert(preset_type->members.count <= alen(shown));
+    auto preset_checkbox = [&](i32 member_index)
+    {
+     I_Struct_Member &member = preset_type->members[member_index];
+     b32 *field = cast(b32 *)(cast(u8 *)&row + member.offset);
+     bool value = *field;
+     ImGui::Checkbox((const char *)member.name.data, &value);
+     *field = value;
+     shown[member_index] = true;
+    };
 #define X(field) \
-{ bool value = row.field; ImGui::Checkbox(#field, &value); row.field = value; }
+{ preset_checkbox(get_member_index_by_name(preset_type, strlit(#field))); }
     X(show_eyeball) X(show_loomis_ball) X(show_grid) X(ignore_radii) X(ignore_alignment_min)
     ImGui::SeparatorText("Reference images");
     {// NOTE(kv) Scene combo from the enum's reflection, so new scenes show up for free.
@@ -2670,6 +2523,18 @@ game_update(Game_Update_Params params)
     ImGui::SeparatorText("Picking");
     X(fill_only_picking)
 #undef X
+    {//-Other: b32 members no group above claimed
+     b32 header_done = false;
+     for_i32(mi, 0, preset_type->members.count)
+     {
+      I_Struct_Member &member = preset_type->members[mi];
+      if(member.type == &Type_Info_b32 and not shown[mi])
+      {
+       if(not header_done){ ImGui::SeparatorText("Other"); header_done = true; }
+       preset_checkbox(mi);
+      }
+     }
+    }
     ImGui::EndGroup();
    }
    im_end();

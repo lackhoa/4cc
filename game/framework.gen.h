@@ -70,10 +70,16 @@ dst->vel = m_vel;
 #endif
 ;
 
+
+
+
 struct Serialized_State{
 Keyboard_Cursor kb_cursor;
 b32 references_full_alpha;
+b32 orthographic;
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
+Preset_Settings presets[PRESET_CAP];
+i32 presets_count;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:213:
@@ -83,7 +89,7 @@ Type_Info result = {};
 result.name = strlit("Serialized_State");
 result.size = sizeof(Serialized_State);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(3);
+result.members.set_count(6);
 {
 Type_Info *member_type = & Type_Info_Keyboard_Cursor;
 result.members[0] = {.type=member_type, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
@@ -91,6 +97,10 @@ result.members[0] = {.type=member_type, .name=strlit("kb_cursor"), .offset=offse
 {
 Type_Info *member_type = & Type_Info_b32;
 result.members[1] = {.type=member_type, .name=strlit("references_full_alpha"), .offset=offsetof(Serialized_State, references_full_alpha)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[2] = {.type=member_type, .name=strlit("orthographic"), .offset=offsetof(Serialized_State, orthographic)};
 }
 {
 local_persist Type_Info member_type_value;
@@ -101,7 +111,22 @@ member_type->kind = I_Type_Kind_Array;
 member_type->size = GAME_VIEWPORT_COUNT * Type_Info_Saved_Viewport.size;
 member_type->array_item_type = & Type_Info_Saved_Viewport;
 member_type->count = GAME_VIEWPORT_COUNT;
-result.members[2] = {.type=member_type, .name=strlit("saved_viewports"), .offset=offsetof(Serialized_State, saved_viewports)};
+result.members[3] = {.type=member_type, .name=strlit("saved_viewports"), .offset=offsetof(Serialized_State, saved_viewports)};
+}
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
+member_type->name = strlit("Preset_Settings[PRESET_CAP]");
+member_type->kind = I_Type_Kind_Array;
+member_type->size = PRESET_CAP * Type_Info_Preset_Settings.size;
+member_type->array_item_type = & Type_Info_Preset_Settings;
+member_type->count = PRESET_CAP;
+result.members[4] = {.type=member_type, .name=strlit("presets"), .offset=offsetof(Serialized_State, presets)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[5] = {.type=member_type, .name=strlit("presets_count"), .offset=offsetof(Serialized_State, presets_count)};
 }
 return result;
 }
@@ -130,6 +155,12 @@ read_binary_b32(r, &m_references_full_alpha);
 }
 dst->references_full_alpha = m_references_full_alpha;
 
+b32 m_orthographic = {};
+{
+read_binary_b32(r, &m_orthographic);
+}
+dst->orthographic = m_orthographic;
+
 Saved_Viewport m_saved_viewports[GAME_VIEWPORT_COUNT] = {};
 {
 for_i32(i,0,GAME_VIEWPORT_COUNT){
@@ -137,6 +168,20 @@ read_binary_Saved_Viewport(r, &m_saved_viewports[i]);
 }
 }
 copy_array_dst(dst->saved_viewports, m_saved_viewports);
+
+Preset_Settings m_presets[PRESET_CAP] = {};
+{
+for_i32(i,0,PRESET_CAP){
+read_binary_Preset_Settings(r, &m_presets[i]);
+}
+}
+copy_array_dst(dst->presets, m_presets);
+
+i32 m_presets_count = {};
+{
+read_binary_i32(r, &m_presets_count);
+}
+dst->presets_count = m_presets_count;
 
 
 }
@@ -147,7 +192,10 @@ copy_array_dst(dst->saved_viewports, m_saved_viewports);
 {\
 Keyboard_Cursor kb_cursor;\
 b32 references_full_alpha;\
+b32 orthographic;\
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];\
+Preset_Settings presets[PRESET_CAP];\
+i32 presets_count;\
 \
 };\
 ;

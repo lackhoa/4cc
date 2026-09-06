@@ -2,12 +2,15 @@
 // NOTE(kv) "Basic types" are used to compose other introspected types.
 // For example, if you wanna print "struct Foo{ String name; v1 value; };"
 // you need only know how to print "String", "v1", same with serialization and reads.
+// `char` is here only for `char name[N]` array members; the text state file
+// (ad_serialize_text.cpp) writes such an array as one quoted string.
 //-
 meta_table(T) basic_types
 {
  v1, v2, v3, v4,
  i1, i2, i3, i4,
  String, u32, u64,
+ char,
 }
 
 generate

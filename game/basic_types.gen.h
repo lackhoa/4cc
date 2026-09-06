@@ -6,6 +6,8 @@
 
 
 
+
+
  enum Basic_Type
  {
   Basic_Type_None = 0,
@@ -20,6 +22,7 @@
      Basic_Type_String,
      Basic_Type_u32,
      Basic_Type_u64,
+     Basic_Type_char,
   
   Basic_Type_Count,
  };
@@ -78,6 +81,11 @@
    basic_type_from_pointer(u64 *pointer)
   {
    return Basic_Type_u64;
+  }
+   function Basic_Type
+   basic_type_from_pointer(char *pointer)
+  {
+   return Basic_Type_char;
   }
  
 

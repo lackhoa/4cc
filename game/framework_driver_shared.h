@@ -21,6 +21,9 @@ typedef v3 tvec;
 
 #include "game_colors.cpp"
 #include "game_debug.h"
+#define Game_Preset_Count 10  // presets seeded on first run; digit keys select presets 0-9 (game_main.cpp key handler)
+#define PRESET_CAP 32         // fixed storage cap for the preset rows (panel enforces it)
+#define PRESET_NAME_CAP 32    // Preset_Settings.name, in framework_driver_shared.kh
 #include "ad_file_formats.gen.h"
 #include "framework_driver_shared.gen.h"
 #include "4coder_kv_debug.h"
@@ -680,35 +683,9 @@ struct Group_Scope_Stack
  // slots always hold valid indices. Operations live in game_draw.cpp.
  darray(Group_Scope_Slot) slots;
 };
-#define Game_Preset_Count 10  // presets seeded on first run; digit keys select presets 0-9 (game_main.cpp key handler)
-#define PRESET_CAP 32         // fixed storage cap for Model_Recordings.preset_settings (panel enforces it)
-#define PRESET_NAME_CAP 32
-// NOTE(kv) The one list of Preset_Settings bool toggles: expands the struct fields,
-// the debug-channel `toggle` ladder, and the ImGui preset panel. Reordering or adding
-// entries changes the persisted raw block -- bump Data_Version.
-#define PRESET_BOOL_FIELDS(X) \
- X(show_eyeball) \
- X(show_loomis_ball) \
- X(show_grid) \
- X(fill_only_picking)     /* mouse-pick tests fills only, skipping curve vertices */ \
- X(show_arm_medial_right) /* right-camera reference image */ \
- X(show_arm_back_bone)    /* back-camera reference image */ \
- X(show_arm_profile_left) /* left-camera reference image */ \
- X(ignore_radii) \
- X(ignore_alignment_min)
-struct Preset_Settings
-{// NOTE(kv) One preset ("draw preset") = a named bundle of small display settings over
- // the ONE model (Q57/Q61, plan-settings-ui). Rows live in Model_Recordings (shared
- // across TUs, survives clear_model); seeded by seed_preset_settings, persisted in
- // recording.ad as count + rows.
- char name[PRESET_NAME_CAP];
- i32 viz_level;             // 0/1/2
- i32 reference_image;       // front-camera reference selector: -1 = none, else ref-table index
- Reference_Scene scene;     // compiled-in image+camera+pose bundle, Scene_None = none
-#define X(name) b32 name;
- PRESET_BOOL_FIELDS(X)
-#undef X
-};
+// NOTE(kv) Preset_Settings itself is an [info] struct in framework_driver_shared.kh
+// (reflected: the text state file, the panel checkboxes and the channel `toggle` walk
+// its Type_Info). The caps live above the .gen.h include at the top of this file.
 struct Recording
 {// NOTE(kv) The ONE captured tree over the one model (Q57: presets are settings
  // rows, not separate captures). The arena owns primitives+groups; recapture

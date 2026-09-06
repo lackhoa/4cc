@@ -75,8 +75,8 @@ is_struct(Type_Info *type)
  return type->kind == I_Type_Kind_Struct;
 }
 function i32
-get_member_index_by_name(Type_Info *type, String name)
-{
+find_member_index_by_name(Type_Info *type, String name)
+{// NOTE(kv) -1 when absent (for names coming from files / user input).
  kv_assert(type->kind == I_Type_Kind_Struct);
  for_i32(member_index, 0, type->members.count)
  {
@@ -86,8 +86,14 @@ get_member_index_by_name(Type_Info *type, String name)
    return member_index;
   }
  }
- InvalidCodePath;
- return 0;
+ return -1;
+}
+function i32
+get_member_index_by_name(Type_Info *type, String name)
+{// NOTE(kv) The member must exist (names coming from code).
+ i32 result = find_member_index_by_name(type, name);
+ kv_assert(result >= 0);
+ return result;
 }
 
 // NOTE we ensure that the member exists statically too!

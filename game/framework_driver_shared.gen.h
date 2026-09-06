@@ -591,11 +591,193 @@ Pose pose;
  
 
 
+struct Preset_Settings{
+char name[PRESET_NAME_CAP];
+i32 viz_level;
+i32 reference_image;
+Reference_Scene scene;
+b32 show_eyeball;
+b32 show_loomis_ball;
+b32 show_grid;
+b32 ignore_radii;
+b32 ignore_alignment_min;
+b32 show_arm_medial_right;
+b32 show_arm_back_bone;
+b32 show_arm_profile_left;
+b32 fill_only_picking;
+};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:213:
+function Type_Info
+get_type_info_Preset_Settings(){
+Type_Info result = {};
+result.name = strlit("Preset_Settings");
+result.size = sizeof(Preset_Settings);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(13);
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
+member_type->name = strlit("char[PRESET_NAME_CAP]");
+member_type->kind = I_Type_Kind_Array;
+member_type->size = PRESET_NAME_CAP * Type_Info_char.size;
+member_type->array_item_type = & Type_Info_char;
+member_type->count = PRESET_NAME_CAP;
+result.members[0] = {.type=member_type, .name=strlit("name"), .offset=offsetof(Preset_Settings, name)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[1] = {.type=member_type, .name=strlit("viz_level"), .offset=offsetof(Preset_Settings, viz_level)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[2] = {.type=member_type, .name=strlit("reference_image"), .offset=offsetof(Preset_Settings, reference_image)};
+}
+{
+Type_Info *member_type = & Type_Info_Reference_Scene;
+result.members[3] = {.type=member_type, .name=strlit("scene"), .offset=offsetof(Preset_Settings, scene)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[4] = {.type=member_type, .name=strlit("show_eyeball"), .offset=offsetof(Preset_Settings, show_eyeball)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[5] = {.type=member_type, .name=strlit("show_loomis_ball"), .offset=offsetof(Preset_Settings, show_loomis_ball)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[6] = {.type=member_type, .name=strlit("show_grid"), .offset=offsetof(Preset_Settings, show_grid)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[7] = {.type=member_type, .name=strlit("ignore_radii"), .offset=offsetof(Preset_Settings, ignore_radii)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[8] = {.type=member_type, .name=strlit("ignore_alignment_min"), .offset=offsetof(Preset_Settings, ignore_alignment_min)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[9] = {.type=member_type, .name=strlit("show_arm_medial_right"), .offset=offsetof(Preset_Settings, show_arm_medial_right)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[10] = {.type=member_type, .name=strlit("show_arm_back_bone"), .offset=offsetof(Preset_Settings, show_arm_back_bone)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[11] = {.type=member_type, .name=strlit("show_arm_profile_left"), .offset=offsetof(Preset_Settings, show_arm_profile_left)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[12] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
+}
+return result;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:115:
+global Type_Info Type_Info_Preset_Settings;
+
+function Type_Info *type_info_from_pointer(Preset_Settings*pointer){
+return &Type_Info_Preset_Settings;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:294:
+function void
+read_binary_Preset_Settings(Binary_Reader *r, Preset_Settings *dst){
+char m_name[PRESET_NAME_CAP] = {};
+{
+for_i32(i,0,PRESET_NAME_CAP){
+read_binary_char(r, &m_name[i]);
+}
+}
+copy_array_dst(dst->name, m_name);
+
+i32 m_viz_level = {};
+{
+read_binary_i32(r, &m_viz_level);
+}
+dst->viz_level = m_viz_level;
+
+i32 m_reference_image = {};
+{
+read_binary_i32(r, &m_reference_image);
+}
+dst->reference_image = m_reference_image;
+
+Reference_Scene m_scene = {};
+{
+read_binary_Reference_Scene(r, &m_scene);
+}
+dst->scene = m_scene;
+
+b32 m_show_eyeball = {};
+{
+read_binary_b32(r, &m_show_eyeball);
+}
+dst->show_eyeball = m_show_eyeball;
+
+b32 m_show_loomis_ball = {};
+{
+read_binary_b32(r, &m_show_loomis_ball);
+}
+dst->show_loomis_ball = m_show_loomis_ball;
+
+b32 m_show_grid = {};
+{
+read_binary_b32(r, &m_show_grid);
+}
+dst->show_grid = m_show_grid;
+
+b32 m_ignore_radii = {};
+{
+read_binary_b32(r, &m_ignore_radii);
+}
+dst->ignore_radii = m_ignore_radii;
+
+b32 m_ignore_alignment_min = {};
+{
+read_binary_b32(r, &m_ignore_alignment_min);
+}
+dst->ignore_alignment_min = m_ignore_alignment_min;
+
+b32 m_show_arm_medial_right = {};
+{
+read_binary_b32(r, &m_show_arm_medial_right);
+}
+dst->show_arm_medial_right = m_show_arm_medial_right;
+
+b32 m_show_arm_back_bone = {};
+{
+read_binary_b32(r, &m_show_arm_back_bone);
+}
+dst->show_arm_back_bone = m_show_arm_back_bone;
+
+b32 m_show_arm_profile_left = {};
+{
+read_binary_b32(r, &m_show_arm_profile_left);
+}
+dst->show_arm_profile_left = m_show_arm_profile_left;
+
+b32 m_fill_only_picking = {};
+{
+read_binary_b32(r, &m_fill_only_picking);
+}
+dst->fill_only_picking = m_fill_only_picking;
+
+
+}
+#endif
+;
+
 struct Saved_Viewport{
 Camera_Data target_camera;
 i32 preset;
 i32 last_preset;
-Reference_Scene legacy_reference_preset;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:213:
@@ -605,7 +787,7 @@ Type_Info result = {};
 result.name = strlit("Saved_Viewport");
 result.size = sizeof(Saved_Viewport);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(4);
+result.members.set_count(3);
 {
 Type_Info *member_type = & Type_Info_Camera_Data;
 result.members[0] = {.type=member_type, .name=strlit("target_camera"), .offset=offsetof(Saved_Viewport, target_camera)};
@@ -617,10 +799,6 @@ result.members[1] = {.type=member_type, .name=strlit("preset"), .offset=offsetof
 {
 Type_Info *member_type = & Type_Info_i32;
 result.members[2] = {.type=member_type, .name=strlit("last_preset"), .offset=offsetof(Saved_Viewport, last_preset)};
-}
-{
-Type_Info *member_type = & Type_Info_Reference_Scene;
-result.members[3] = {.type=member_type, .name=strlit("legacy_reference_preset"), .offset=offsetof(Saved_Viewport, legacy_reference_preset)};
 }
 return result;
 }
@@ -655,12 +833,6 @@ read_binary_i32(r, &m_last_preset);
 }
 dst->last_preset = m_last_preset;
 
-Reference_Scene m_legacy_reference_preset = {};
-if ( in_range_exclusive(r->read_version, Version_AddReferencePreset, Version_Inf) ){
-read_binary_Reference_Scene(r, &m_legacy_reference_preset);
-}
-dst->legacy_reference_preset = m_legacy_reference_preset;
-
 
 }
 #endif
@@ -671,7 +843,6 @@ dst->legacy_reference_preset = m_legacy_reference_preset;
 Camera_Data target_camera;\
 i32 preset;\
 i32 last_preset;\
-Reference_Scene legacy_reference_preset;\
 \
 };\
 ;

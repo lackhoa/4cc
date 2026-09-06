@@ -1,20 +1,19 @@
-//-NOTE(kv) Recording persistence (draw-as-data step 5): data/recording.ad, a sibling
-// of autosave.ad with the same magic+version framing. Written on the autosave cadence;
-// loaded once at startup. Any mismatch (magic, version, struct sizes, counts vs
-// remaining bytes) -> log + ignore the file; the seed keeps default settings and the
-// per-frame recapture repopulates the capture.
+//-NOTE(kv) Recording persistence (draw-as-data step 5): data/recording.ad, binary with
+// the magic+version framing. Written on the state.txt cadence; loaded once at startup.
+// Any mismatch (magic, version, struct sizes, counts vs remaining bytes) -> log + ignore
+// the file; the per-frame recapture repopulates the capture.
 // Plan: ~/notes/tasks/autodraw_draw_as_data/plan-preset-rethink.md
 //
-// NOTE(kv) File layout: header, all 10 Preset_Settings rows as one raw block, then the
-// ONE capture (Recorded_Primitive/Recorded_Group/Recorded_Vertex raw blocks). Every
-// field is flat POD except Recorded_Image.filename, whose bytes are appended after the
-// blocks and whose pointer is patched into the recording arena on load. sizeof() guards
-// in the header plus a Data_Version bump on any struct change keep stale files from
-// being misread.
+// NOTE(kv) File layout: header, then the ONE capture (Recorded_Primitive/Recorded_Group/
+// Recorded_Vertex raw blocks). Every field is flat POD except Recorded_Image.filename,
+// whose bytes are appended after the blocks and whose pointer is patched into the
+// recording arena on load. sizeof() guards in the header plus a Data_Version bump on any
+// struct change keep stale files from being misread. The preset table moved to
+// data/state.txt at Version_PresetsInStateFile (plan-presets-text-file).
 //
 // NOTE(kv) The *document* (game/driver/driver.document.ad, git-tracked) shares the
-// header and the recording block but carries no settings table -- it is drawing data,
-// not debug state. Plan: ~/notes/tasks/autodraw_draw_as_data/plan-data-only-region-poc.md
+// header and the recording block -- it is drawing data, not debug state.
+// Plan: ~/notes/tasks/autodraw_draw_as_data/plan-data-only-region-poc.md
 
 function Stringz
 recording_file_path(Arena *arena, Game_State *state)
@@ -42,11 +41,9 @@ write_recording_header(Writer *writer)
  {//-Struct-size guards
   u32 primitive_size = sizeof(Recorded_Primitive);
   u32 group_size     = sizeof(Recorded_Group);
-  u32 settings_size  = sizeof(Preset_Settings);
   u32 vertex_size    = sizeof(Recorded_Vertex);
   write_lvalue(writer, primitive_size);
   write_lvalue(writer, group_size);
-  write_lvalue(writer, settings_size);
   write_lvalue(writer, vertex_size);
  }
 }
@@ -91,11 +88,6 @@ write_recording_file(FILE *file, Game_State *state)
  Writer *writer = &writer_value;
  Model_Recordings &recordings = state->model.recordings;
  write_recording_header(writer);
- {//-Preset table: count, then that many rows (raw block)
-  write_lvalue(writer, recordings.preset_count);
-  write_size(writer, recordings.preset_settings,
-             sizeof(Preset_Settings) * recordings.preset_count);
- }
  write_recording_block(writer, recordings.recording);
  write_eof_marker(writer);
  return writer->ok;
@@ -164,9 +156,9 @@ reader_can_take(Binary_Reader *r, i32 count, usize item_size)
 function b32
 read_recording_header(Binary_Reader *r, char const *label, b32 is_document)
 {// NOTE(kv) false = ignore the file (already logged).
- // is_document: driver.document.ad has no settings table, so it survives version bumps
- // that only touch Preset_Settings (accept >= Version_DocumentLayout, skip the
- // settings-size guard). recording.ad needs the exact current version.
+ // is_document: driver.document.ad is drawing data, so it survives version bumps that
+ // don't touch the recording block (accept >= Version_DocumentLayout). recording.ad
+ // needs the exact current version.
  u32 magic = read_binary_u32(r);
  if(magic != autodraw_data_magic){ r->ok = false; }
  r->read_version = read_binary_u32(r);
@@ -184,18 +176,19 @@ read_recording_header(Binary_Reader *r, char const *label, b32 is_document)
  {//-Struct-size guards
   u32 primitive_size = read_binary_u32(r);
   u32 group_size     = read_binary_u32(r);
-  u32 settings_size  = read_binary_u32(r);
+  if(r->read_version < Version_PresetsInStateFile)
+  {// NOTE(kv) Older documents carried a Preset_Settings size guard; nothing to check now.
+   u32 settings_size = read_binary_u32(r); (void)settings_size;
+  }
   u32 vertex_size    = read_binary_u32(r);
-  if(is_document){ settings_size = sizeof(Preset_Settings); }
   if(r->ok and (primitive_size != sizeof(Recorded_Primitive) or
                 group_size     != sizeof(Recorded_Group) or
-                settings_size  != sizeof(Preset_Settings) or
                 vertex_size    != sizeof(Recorded_Vertex)))
   {
-   log_error("%s load: struct sizes %u/%u/%u/%u don't match code %u/%u/%u/%u (missing version bump?), ignoring file",
-             label, primitive_size, group_size, settings_size, vertex_size,
+   log_error("%s load: struct sizes %u/%u/%u don't match code %u/%u/%u (missing version bump?), ignoring file",
+             label, primitive_size, group_size, vertex_size,
              cast(u32)sizeof(Recorded_Primitive), cast(u32)sizeof(Recorded_Group),
-             cast(u32)sizeof(Preset_Settings), cast(u32)sizeof(Recorded_Vertex));
+             cast(u32)sizeof(Recorded_Vertex));
    return false;
   }
  }
@@ -263,33 +256,13 @@ load_recording_file(Game_State *state)
  Binary_Reader *r = &reader;
  if(not read_recording_header(r, "recording", false)){ return false; }
 
- {//-Preset table (overwrites the seeded rows)
-  Model_Recordings &recordings = state->model.recordings;
-  i32 count = 0;
-  read_binary_i32(r, &count);
-  if(count < 1 or count > PRESET_CAP or
-     not reader_can_take(r, count, sizeof(Preset_Settings)))
-  {
-   log_error("recording load: bad preset table (count %d), ignoring file (%S)", count, path);
-   return false;
-  }
-  recordings.preset_count = count;
-  read_binary_size(r, sizeof(Preset_Settings) * count, recordings.preset_settings);
-  for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
-  {// NOTE(kv) autosave.ad loaded before us may point past a shorter list.
-   Viewport &viewport = state->viewports[viewport_index];
-   viewport.preset      = clamp_between(0, viewport.preset,      count-1);
-   viewport.last_preset = clamp_between(0, viewport.last_preset, count-1);
-  }
- }
-
  Recording &rec = state->model.recordings.recording;
  read_recording_block(r, rec);
  read_debug_string(r, strlit("EOF"));
 
  if(r->ok){
   state->recording_load_failed = false;
-  log_string("recording load: settings table + %s from %S",
+  log_string("recording load: %s from %S",
              rec.captured ? "capture" : "no capture", path);
  }else{
   log_error("recording load: file corrupt, ignoring (%S)", path);

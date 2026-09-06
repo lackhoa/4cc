@@ -146,4 +146,17 @@
    read_binary_size(r, sizeof(u64), &dst);
    return dst;
   }
+   myinline void
+   read_binary_char(Binary_Reader *r, char *dst)
+  {
+   read_binary_size(r, sizeof(char), dst);
+  }
+  
+  myinline char
+   read_binary_char(Binary_Reader *r)
+  {
+   char dst;
+   read_binary_size(r, sizeof(char), &dst);
+   return dst;
+  }
  

@@ -70,39 +70,7 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
  }
 }
 //-
-function b32
-serialize_state(FILE *file, Game_State *state)
-{
- Writer writer_value = make_writer(file);
- Writer *writer = &writer_value;
- 
- //NOTE(kv) We also write the nil terminator, so that dumb tools can pick it up.
-#define write_debug_string(string) \
-write_size(writer, string, sizeof(string))
- 
- {//-Content
-  {//-Magic and version
-   write_lvalue(writer, autodraw_data_magic);
-   write_lvalue(writer, Version_Current);
-   {//-Time
-    time_t rawtime;
-    time(&rawtime);
-    static_assert(sizeof(time_t) <= 8);
-    u64 time64 = rawtime;
-    write_lvalue(writer, time64);
-   }
-  }
-  {//-Miscellaneous state
-   write_debug_string("Serialized_State");
-   for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
-   {
-    state->serialized.saved_viewports[viewport_index] =
-     state->viewports[viewport_index].saved;
-   }
-   write_binary(writer, &state->serialized);
-  }
-  write_debug_string("EOF");
- }
- return writer->ok;
-}
+// NOTE(kv) The binary writer above still serves driver.values.ad; the game state itself
+// is text now (state.txt, ad_serialize_state.cpp) via this walker:
+#include "ad_serialize_text.cpp"
 //-

@@ -179,17 +179,37 @@ gen_for(driver_api)
  }
 }
 
+[info]
+// NOTE(kv) One preset ("draw preset") = a named bundle of small display settings over
+// the ONE model (Q57/Q61, plan-settings-ui). Live rows sit in Model_Recordings (shared
+// across TUs, survives clear_model); seeded by seed_preset_settings, persisted as text
+// in data/state.txt (plan-presets-text-file). Every b32 member is a panel checkbox and
+// a channel `toggle` target for free; zero members are omitted from the file.
+struct Preset_Settings
+{
+ char name[PRESET_NAME_CAP];
+ i32 viz_level;             // 0/1/2
+ i32 reference_image;       // front-camera reference selector: -1 = none, else ref-table index
+ Reference_Scene scene;     // compiled-in image+camera+pose bundle, Scene_None = none
+ //-Display
+ b32 show_eyeball;
+ b32 show_loomis_ball;
+ b32 show_grid;
+ b32 ignore_radii;
+ b32 ignore_alignment_min;
+ //-Reference images (side cameras)
+ b32 show_arm_medial_right; // right-camera reference image
+ b32 show_arm_back_bone;    // back-camera reference image
+ b32 show_arm_profile_left; // left-camera reference image
+ //-Picking
+ b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
+};
+
 [info embed]
 struct Saved_Viewport
 {
  Camera_Data target_camera;
  i32 preset;
  i32 last_preset;
- // NOTE(kv) DEAD since plan-settings-ui (2026-09-06): the reference scene lives on the
- // preset row now (Preset_Settings.scene). Kept only so the autosave layout is
- // unchanged -- the [info embed] reader is unversioned (meta_added/meta_removed are
- // ignored on this path, see parse_struct_body in meta_klang.cpp). Nobody reads it.
- meta_added(added=Version_AddReferencePreset)
-  Reference_Scene legacy_reference_preset;
 };
 //-

@@ -12,14 +12,25 @@ struct Keyboard_Cursor
  v1 vel;
 };
 
+// NOTE(kv) Everything persisted beside the big model: written as struct-literal text to
+// data/state.txt by the Type_Info walker in ad_serialize_text.cpp (plan-presets-text-file).
+// Members are matched by NAME, so renaming one silently resets it in old files.
 [info embed]
 struct Serialized_State
 {
  Keyboard_Cursor kb_cursor;
  b32 references_full_alpha;
- 
+ b32 orthographic;  // global: force an orthographic camera (Q9: OR-ed with the grid rule)
+
  // NOTE(kv) Tbh we don't have to care about more than 3 viewports.
+ // ("saved_" because the _Embed macro puts these next to Game_State.viewports.)
  Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
+
+ // NOTE(kv) The preset rows, copied from/to Model_Recordings around save/load like the
+ // viewports. `presets_count` pairs with `presets` by the `<name>_count` convention:
+ // the walker writes only that many items and sets it to the number read back.
+ Preset_Settings presets[PRESET_CAP];
+ i32 presets_count;
 };
 
 //-

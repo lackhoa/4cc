@@ -78,6 +78,13 @@
    .kind=I_Type_Kind_Basic,
    .Basic_Type=Basic_Type_u64,
   };
+   global Type_Info Type_Info_char =
+  {
+   .name=strlit("char"),
+   .size=i1(sizeof(char)),
+   .kind=I_Type_Kind_Basic,
+   .Basic_Type=Basic_Type_char,
+  };
  
  
  global Type_Info dummy_type_info;
@@ -96,6 +103,7 @@
      &Type_Info_String,
      &Type_Info_u32,
      &Type_Info_u64,
+     &Type_Info_char,
   
  };
  

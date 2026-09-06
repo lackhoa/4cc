@@ -527,10 +527,11 @@ debug_channel_update(Game_State *state, App *app)
   fprintf(out, "quit: exiting\n");
  }
  else if(strcmp(cmd, "reload_autosave") == 0)
- {// NOTE(kv) See what the user sees: reload data/autosave.ad (the live instance's
-  // periodic save), camera included. Same as the revert command; overwrites this
-  // instance's edit history, which an agent instance does not care about.
-  b32 ok = game_load(state, app, state->autosave_path);
+ {// NOTE(kv) See what the user sees: reload data/state.txt (the live instance's
+  // periodic save), camera + presets included. Same as the revert command; overwrites
+  // this instance's edit history, which an agent instance does not care about.
+  // (Command name kept from the autosave.ad days.)
+  b32 ok = load_state_file(state);
   for_i32(viewport_index, 0, GAME_VIEWPORT_COUNT)
   {
    Viewport *viewport = &state->viewports[viewport_index];
@@ -568,9 +569,15 @@ debug_channel_update(Game_State *state, App *app)
    fprintf(out, "%c%2d \"%s\" viz %d ref_image %d scene %d",
            index == state->viewports[0].preset ? '*' : ' ',
            index, row.name, row.viz_level, row.reference_image, (int)row.scene);
-#define X(name) if(row.name){ fprintf(out, " %s", #name); }
-   PRESET_BOOL_FIELDS(X)
-#undef X
+   Type_Info *type = &Type_Info_Preset_Settings;
+   for_i32(mi, 0, type->members.count)
+   {// NOTE(kv) every b32 member that is on, by reflection
+    I_Struct_Member &member = type->members[mi];
+    if(member.type == &Type_Info_b32 and *cast(b32 *)(cast(u8 *)&row + member.offset))
+    {
+     fprintf(out, " %.*s", strexpand(member.name));
+    }
+   }
    fprintf(out, "\n");
   }
  }
@@ -686,17 +693,19 @@ debug_channel_update(Game_State *state, App *app)
  }
  else if(strncmp(cmd, "toggle ", 7) == 0)
  {// NOTE(kv) Preset-rethink step 6: flip a bool on the ACTIVE preset's settings row
-  // (viewport 0). Persisted via the settings table in recording.ad.
+  // (viewport 0). Persisted in state.txt. Field names come from the reflection.
   char field[64] = {};
   int value = 0;
   if(sscanf(cmd+7, "%63s %d", field, &value) == 2)
   {
    Preset_Settings &row = state->model.recordings.preset_settings[state->viewports[0].preset];
    b32 *target = 0;
-#define X(name) else if(strcmp(field, #name) == 0){ target = &row.name; }
-   if(0);
-   PRESET_BOOL_FIELDS(X)
-#undef X
+   Type_Info *type = &Type_Info_Preset_Settings;
+   i32 mi = find_member_index_by_name(type, SCu8(field));
+   if(mi >= 0 and type->members[mi].type == &Type_Info_b32)
+   {
+    target = cast(b32 *)(cast(u8 *)&row + type->members[mi].offset);
+   }
    if(target)
    {
     *target = (value != 0);
@@ -730,6 +739,12 @@ debug_channel_update(Game_State *state, App *app)
    {// NOTE(kv) Reference scene of the active preset (Reference_Scene enum value).
     row.scene = cast(Reference_Scene)value;
     fprintf(out, "set scene: %d\n", value);
+    debug_channel_wants_animate = true;
+   }
+   else if(strcmp(field, "orthographic") == 0)
+   {// NOTE(kv) Global (state.txt), not per-preset.
+    state->orthographic = (value != 0);
+    fprintf(out, "set orthographic: %d\n", state->orthographic);
     debug_channel_wants_animate = true;
    }
    else if(strcmp(field, "preset") == 0)
