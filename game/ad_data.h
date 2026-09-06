@@ -34,6 +34,11 @@ enum
  Version_Inf                 = 0xFFFF,
 };
 global Data_Version Version_Current = (Data_Version)(Version_OPL-1);
+// NOTE(kv) driver.document.ad (git-tracked drawing data, no settings table) must NOT be
+// dropped by bumps that don't touch the recording block. Move this forward on any
+// change to Recorded_Primitive/Recorded_Group/Recorded_Vertex (and what they embed);
+// the document accepts any version >= this. recording.ad still needs == current.
+global Data_Version Version_DocumentLayout = Version_TvertPoly3Disk;
 
 global Arena global_meta_arena_value;
 global Arena *global_meta_arena = &global_meta_arena_value;

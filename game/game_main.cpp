@@ -2525,6 +2525,8 @@ game_update(Game_Update_Params params)
    // Like, how do we turn these off? With a clear command?
    if (state->load_failed) { DEBUG_TEXT("Load failed!"); }
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
+   if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
+   if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
   }
 
   if(0)

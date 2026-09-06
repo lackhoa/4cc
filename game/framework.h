@@ -138,6 +138,10 @@ struct Game_State
  Viewport viewports[GAME_VIEWPORT_COUNT];
  b32 save_failed;
  b32 load_failed;
+ // NOTE(kv) File present but rejected (version/size/corrupt) -- shown on screen, a
+ // silently-dropped driver.document.ad cost a nose (2026-09-06). Missing file != failed.
+ b32 recording_load_failed;
+ b32 document_load_failed;
  Game_ImGui_State imgui_state;
  Replay_State replay;
  Reference_Edit_State reference_edit;

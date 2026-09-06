@@ -162,17 +162,23 @@ reader_can_take(Binary_Reader *r, i32 count, usize item_size)
 }
 
 function b32
-read_recording_header(Binary_Reader *r, char const *label)
+read_recording_header(Binary_Reader *r, char const *label, b32 is_document)
 {// NOTE(kv) false = ignore the file (already logged).
+ // is_document: driver.document.ad has no settings table, so it survives version bumps
+ // that only touch Preset_Settings (accept >= Version_DocumentLayout, skip the
+ // settings-size guard). recording.ad needs the exact current version.
  u32 magic = read_binary_u32(r);
  if(magic != autodraw_data_magic){ r->ok = false; }
  r->read_version = read_binary_u32(r);
  u64 timestamp = read_binary_u64(r);
  (void)timestamp;
- if(r->ok and r->read_version != Version_Current)
+ b32 version_ok = is_document ? (r->read_version >= Version_DocumentLayout and
+                                 r->read_version <= Version_Current)
+                              : (r->read_version == Version_Current);
+ if(r->ok and not version_ok)
  {// NOTE(kv) Q53: no migration -- ignore the file; the seed + recapture repopulate.
-  log_string("%s load: version %u != current %u, ignoring file",
-             label, r->read_version, Version_Current);
+  log_error("%s load: version %u not accepted (current %u, document layout %u), ignoring file",
+             label, r->read_version, Version_Current, Version_DocumentLayout);
   return false;
  }
  {//-Struct-size guards
@@ -180,6 +186,7 @@ read_recording_header(Binary_Reader *r, char const *label)
   u32 group_size     = read_binary_u32(r);
   u32 settings_size  = read_binary_u32(r);
   u32 vertex_size    = read_binary_u32(r);
+  if(is_document){ settings_size = sizeof(Preset_Settings); }
   if(r->ok and (primitive_size != sizeof(Recorded_Primitive) or
                 group_size     != sizeof(Recorded_Group) or
                 settings_size  != sizeof(Preset_Settings) or
@@ -251,9 +258,10 @@ load_recording_file(Game_State *state)
   log_string("recording load: no file at %S", path);
   return false;
  }
+ state->recording_load_failed = true;  // NOTE(kv) cleared on success below
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Binary_Reader *r = &reader;
- if(not read_recording_header(r, "recording")){ return false; }
+ if(not read_recording_header(r, "recording", false)){ return false; }
 
  {//-Preset table (overwrites the seeded rows)
   Model_Recordings &recordings = state->model.recordings;
@@ -280,6 +288,7 @@ load_recording_file(Game_State *state)
  read_debug_string(r, strlit("EOF"));
 
  if(r->ok){
+  state->recording_load_failed = false;
   log_string("recording load: settings table + %s from %S",
              rec.captured ? "capture" : "no capture", path);
  }else{
@@ -299,15 +308,17 @@ load_document_file(Game_State *state)
   log_string("document load: no file at %S", path);
   return false;
  }
+ state->document_load_failed = true;  // NOTE(kv) cleared on success below
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Binary_Reader *r = &reader;
- if(not read_recording_header(r, "document")){ return false; }
+ if(not read_recording_header(r, "document", true)){ return false; }
 
  Recording &doc = state->model.recordings.document;
  read_recording_block(r, doc);
  read_debug_string(r, strlit("EOF"));
 
  if(r->ok){
+  state->document_load_failed = false;
   log_string("document load: %d primitives, %d groups, %d vertices from %S",
              doc.primitives.count, doc.groups.count, doc.vertices.count, path);
  }else{
