@@ -21,6 +21,8 @@
 //   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
 //   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
 //                        frame as the screenshot png); picking runs against it every frame
+//   mouse_down <x> <y> / mouse_up -> press/release the virtual left button there
+//                        (drives the same document_edit_* as the real mouse)
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
 //   quit              -> exit this instance
@@ -53,7 +55,11 @@ global u32  debug_channel_ack_counter;   // sequence number on every out.txt
 // and game_update substitutes it for params.mouse.p.
 global b32  debug_channel_mouse_active;
 global i2   debug_channel_mouse_p;
+global b32  debug_channel_mouse_left;           // held state
+global b32  debug_channel_mouse_press_pending;  // one-frame edges
+global b32  debug_channel_mouse_release_pending;
 global Location debug_channel_last_hot;  // from the last frame's picking
+global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport under it
 // NOTE(kv) How often the agent instance wakes up to poll cmd.txt when nothing animates.
 // Every poll runs a full game_update + render (~150 ms at -Od), so 200 ms was ~15% CPU.
 #define DEBUG_CHANNEL_POLL_MS 500
@@ -730,9 +736,34 @@ debug_channel_update(Game_State *state, App *app)
    fprintf(out, "error: usage: mouse_move <x> <y>\n");
   }
  }
+ else if(strncmp(cmd, "mouse_down ", 11) == 0)
+ {
+  i32 x, y;
+  if(sscanf(cmd+11, "%d %d", &x, &y) == 2)
+  {
+   debug_channel_mouse_active = true;
+   debug_channel_mouse_p = {x, y};
+   debug_channel_mouse_left = true;
+   debug_channel_mouse_press_pending = true;
+   debug_channel_wants_animate = true;
+   fprintf(out, "mouse_down: at (%d %d)\n", x, y);
+  }
+  else
+  {
+   fprintf(out, "error: usage: mouse_down <x> <y>\n");
+  }
+ }
+ else if(strcmp(cmd, "mouse_up") == 0)
+ {
+  debug_channel_mouse_left = false;
+  debug_channel_mouse_release_pending = true;
+  debug_channel_wants_animate = true;
+  fprintf(out, "mouse_up\n");
+ }
  else if(strcmp(cmd, "mouse_off") == 0)
  {
   debug_channel_mouse_active = false;
+  debug_channel_mouse_left = false;
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_off\n");
  }
@@ -741,7 +772,27 @@ debug_channel_update(Game_State *state, App *app)
   Location hot = debug_channel_last_hot;
   if(is_document_location(hot))
   {
-   fprintf(out, "hot: document primitive %d\n", document_primitive_index(hot));
+   fprintf(out, "hot: document primitive %d (%s)\n", document_primitive_index(hot),
+           document_location_is_right(hot) ? "right" : "left");
+   // NOTE(kv) Where its control points are on screen, so a drag can aim at one.
+   Recording &doc = state->model.recordings.document;
+   Recorded_Primitive &prim = doc.primitives[document_primitive_index(hot)];
+   Camera camera = setup_camera(state->viewports[0].camera);
+   v2 center = get_center(debug_channel_mouse_viewport_box);
+   auto print_pick = [&](const char *label, Document_Pick pick)
+   {
+    v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, pick));
+    fprintf(out, "  %s slot %d: px (%.0f %.0f)\n", label, pick.slot, px.x, px.y);
+   };
+   for_i32(slot, 0, primitive_vertex_count(prim.type))
+   {
+    print_pick("vertex", {document_primitive_index(hot), document_location_is_right(hot), false, slot});
+   }
+   if(prim.type == Primitive_Type_Curve)
+   {
+    print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 1});
+    print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 2});
+   }
   }
   else if(is_valid(hot))
   {
@@ -752,6 +803,11 @@ debug_channel_update(Game_State *state, App *app)
   {
    fprintf(out, "hot: none\n");
   }
+  Document_Edit_State &edit = state->document_edit;
+  fprintf(out, "edit: active %d moved %d prim %d %s slot %d %s\n",
+          edit.active, edit.moved, edit.pick.prim_index,
+          edit.pick.is_right ? "right" : "left", edit.pick.slot,
+          edit.pick.is_handle ? "handle" : "vertex");
  }
  else if(strncmp(cmd, "set_camera", 10) == 0)
  {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport), optionally

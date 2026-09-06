@@ -57,6 +57,23 @@ struct Reference_Edit_State
  v1 grab_u;        // corner: u where the drag started
  v3 grab_x_axis;   // corner: x_axis at drag start
 };
+struct Document_Pick
+{// NOTE(kv) One control point of a document primitive, addressed for editing
+ // (game_document_edit.cpp).
+ i32 prim_index;
+ b32 is_right;      // which mirror pass it was picked on (bones differ)
+ b32 is_handle;     // false: table vertex `vertex_index[slot]`; true: curve handle e[slot]
+ i32 slot;
+};
+struct Document_Edit_State
+{// NOTE(kv) A live drag of one document control point (plan-document-mouse-editing).
+ b32 active;
+ b32 moved;           // anything written since press -> save on release
+ Document_Pick pick;
+ Location location;   // the hot document location being dragged (stays hot)
+ v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
+ v2 grab_offset_px;   // mouse minus projected point at press, held constant
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -104,6 +121,7 @@ struct Game_State
  Game_ImGui_State imgui_state;
  Replay_State replay;
  Reference_Edit_State reference_edit;
+ Document_Edit_State document_edit;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

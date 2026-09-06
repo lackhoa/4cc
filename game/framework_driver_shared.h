@@ -410,14 +410,21 @@ is_valid(Location location)
 }
 // NOTE(kv) Document variant (plan-document-mouse-editing Q1): a replayed document
 // primitive has no code range, so `file.is_driver` carries this sentinel and
-// `range.min` the primitive's index in recordings.document. Same 8 bytes, same block
-// compare -> the hot/active/handle plumbing works unchanged; only the code-jump sites
-// must check for it (resolve_location would index driver_data.files with -1).
+// `range.min` the primitive's index in recordings.document, `range.max` the mirror
+// side (Q94: the document is replayed left+right on different bones, and editing
+// needs to know which one was grabbed). Same 8 bytes, same block compare -> the
+// hot/active/handle plumbing works unchanged; only the code-jump sites must check for
+// it (resolve_location would index driver_data.files with -1).
 enum{ Location_File_Document = -1 };
 myinline Location
-document_location(i32 primitive_index)
+document_location(i32 primitive_index, b32 is_right)
 {
- return {{i16(Location_File_Document), 1}, {i16(primitive_index), 0}};
+ return {{i16(Location_File_Document), 1}, {i16(primitive_index), i16(is_right ? 1 : 0)}};
+}
+myinline b32
+document_location_is_right(Location location)
+{
+ return location.range.max != 0;
 }
 myinline b32
 is_document_location(Location location)

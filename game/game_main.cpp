@@ -620,13 +620,18 @@ convert_primitives_to_camera_space(Camera &camera)
    Recorded_Primitive primitive = document.primitives[iprim];
    Recorded_Group &group = document.groups[primitive.group_index];
    resolve_vertices(document, primitive);
-   primitive.location = document_location(iprim);
+   primitive.location = document_location(iprim, false);
    convert_primitive(primitive, group.bone_id, false);
-   if(not group.one_sided){ convert_primitive(primitive, group.bone_id, true); }
+   if(not group.one_sided)
+   {
+    primitive.location = document_location(iprim, true);
+    convert_primitive(primitive, group.bone_id, true);
+   }
   }
  }
 }
 #include "game_reference_gizmo.cpp"
+#include "game_document_edit.cpp"
 
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
@@ -1774,8 +1779,14 @@ game_update(Game_Update_Params params)
   }
   
   if(debug_channel_mouse_active)
-  {// NOTE(kv) Agent mode: the channel's virtual mouse replaces the real one for picking.
+  {// NOTE(kv) Agent mode: the channel's virtual mouse replaces the real one (position
+   // and left button), so picking and document editing run the same code.
    params.mouse.p = debug_channel_mouse_p;
+   params.mouse.left = b8(debug_channel_mouse_left);
+   params.mouse.press_left = b8(debug_channel_mouse_press_pending);
+   params.mouse.release_left = b8(debug_channel_mouse_release_pending);
+   debug_channel_mouse_press_pending = false;
+   debug_channel_mouse_release_pending = false;
   }
   Live_Viewport *mouse_viewport = 0;
   {// NOTE Get mouse viewport
@@ -1798,16 +1809,33 @@ game_update(Game_Update_Params params)
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
   // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
-  if((not debug_channel_enabled or debug_channel_mouse_active) and not state->reference_edit.active)
+  if(state->document_edit.active)
+  {// NOTE(kv) A document drag owns the mouse: keep the grabbed item hot, no re-picking.
+   hot_location = state->document_edit.location;
+   if(params.mouse.left)
+   {
+    document_edit_move(state, mouse_viewport, V2(params.mouse.p));
+    should_animate_next_frame = true;
+   }
+   if(params.mouse.release_left or not params.mouse.left)
+   {
+    document_edit_release(state);
+   }
+  }
+  else if((not debug_channel_enabled or debug_channel_mouse_active) and not state->reference_edit.active)
   {
    hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
   }
   debug_channel_last_hot = hot_location;
+  if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
   
-  if(params.mouse.press_left)
-  {// NOTE(kv) Jump to code location (document items have no code: step 2 of
-   // plan-document-mouse-editing turns this press into a drag)
-   if(is_valid(hot_location) and not is_document_location(hot_location))
+  if(params.mouse.press_left and not state->document_edit.active)
+  {// NOTE(kv) Hot code item: jump to code. Hot document item: start a drag (Q6).
+   if(is_document_location(hot_location))
+   {
+    document_edit_press(state, mouse_viewport, V2(params.mouse.p), hot_location);
+   }
+   else if(is_valid(hot_location))
    {
     g_jump_to_pos(app, resolve_location(hot_location).min);
    }

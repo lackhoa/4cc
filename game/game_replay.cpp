@@ -122,7 +122,8 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
   clear_draw_location();  // NOTE(kv) set_draw_location only ever raises the hot flag
   // NOTE(kv) Document primitives carry no code location (stripped at export); their
   // identity for hot/active is the document variant, same as the hit-test stamps.
-  set_draw_location(&rec == &m->recordings.document ? document_location(iprim) : prim.location);
+  set_draw_location(&rec == &m->recordings.document
+                    ? document_location(iprim, replay_is_right) : prim.location);
   p->params = group.params;
   // NOTE(kv) Q32 live visibility: AND the tag's live value (driver publishes
   // vis_live each frame) into the frozen `painting`. The freeze never includes the
