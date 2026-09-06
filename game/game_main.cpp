@@ -1121,7 +1121,7 @@ update_orbit(Camera_Data *cam, Key_Direction key_dir)
 function void update_pan(Camera_Data *cam, Game_Input *input);
 global v1 CAMERA_DRAG_ORBIT_PX_PER_STEP = 80.f;  // NOTE(kv) one 1/24-turn cell per this many px
 global v1 CAMERA_DRAG_PAN_PX_PER_STEP   = 40.f;  // NOTE(kv) one (scaled) pan step per this many px
-global v1 CAMERA_DRAG_PAN_STEP_SCALE = 0.25f;  // NOTE(kv) a drag pan step is this fraction of a keyboard pan step
+global v1 CAMERA_DRAG_PAN_STEP_SCALE = 0.5f;  // NOTE(kv) a drag pan step is this fraction of a keyboard pan step
 
 function void
 camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan, b32 middle)
