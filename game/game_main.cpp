@@ -528,6 +528,10 @@ function void
 convert_primitives_to_camera_space(Camera &camera)
 {
  Model *m = the_model;
+ // NOTE(kv) First frame with the mouse already over a viewport: the driver hasn't
+ // built the bones yet (init_dynamic(m->bones) runs at render), but the document is
+ // loaded, so get_bone would deref an empty array. Nothing to pick yet anyway.
+ if(m->bones.count == 0){ return; }
  if(not m->primitives_are_in_camera_space)
  {
   m->primitives_are_in_camera_space = 1;
