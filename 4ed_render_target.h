@@ -1,6 +1,8 @@
 #pragma once
 
-#define WINDOW_COUNT 2
+// NOTE(kv) Was 2 since e0f7d719 (2024-08-05, "multi-window situation"), but nothing ever
+// assigns a view a window_id other than 0, so the second window was always empty.
+#define WINDOW_COUNT 1
 
 struct Render_Free_Texture
 {
