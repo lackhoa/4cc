@@ -524,6 +524,48 @@ static_assert( sizeof(Reference_Scene) <= sizeof(i32) );
 
 #endif
 ;
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:436:
+enum Reference_Mode{Reference_Off = 0,
+Reference_Alpha = 1,
+Reference_Full = 2,};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:454:
+function Type_Info
+get_type_info_Reference_Mode();// C:\Users\vodan\4ed\code\meta\meta_print.cpp:458:
+function Type_Info
+get_type_info_Reference_Mode(){
+Type_Info result = {};
+result.name = strlit("Reference_Mode");
+result.size = sizeof(Reference_Mode);
+result.kind = I_Type_Kind_Enum;
+result.enum_members.set_count(3);
+result.enum_members[0] = {.name=strlit("Reference_Off"), .value=Reference_Off};
+result.enum_members[1] = {.name=strlit("Reference_Alpha"), .value=Reference_Alpha};
+result.enum_members[2] = {.name=strlit("Reference_Full"), .value=Reference_Full};
+return result;
+}
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:115:
+global Type_Info Type_Info_Reference_Mode;
+
+function Type_Info *type_info_from_pointer(Reference_Mode*pointer){
+return &Type_Info_Reference_Mode;
+}
+#endif
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:482:
+function void
+read_binary_Reference_Mode(Binary_Reader *r, Reference_Mode *dst);
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:487:
+function void
+read_binary_Reference_Mode(Binary_Reader *r, Reference_Mode *dst){
+i32 integer;
+read_binary_i1(r, &integer);
+*dst = *(Reference_Mode*)(&integer);
+}
+static_assert( sizeof(Reference_Mode) <= sizeof(i32) );
+
+#endif
+;
 
 
  #define poly3_inner__return void

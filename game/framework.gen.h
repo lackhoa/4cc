@@ -75,7 +75,7 @@ dst->vel = m_vel;
 
 struct Serialized_State{
 Keyboard_Cursor kb_cursor;
-b32 references_full_alpha;
+Reference_Mode reference_mode;
 b32 orthographic;
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
 Preset_Settings presets[PRESET_CAP];
@@ -95,8 +95,8 @@ Type_Info *member_type = & Type_Info_Keyboard_Cursor;
 result.members[0] = {.type=member_type, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
 }
 {
-Type_Info *member_type = & Type_Info_b32;
-result.members[1] = {.type=member_type, .name=strlit("references_full_alpha"), .offset=offsetof(Serialized_State, references_full_alpha)};
+Type_Info *member_type = & Type_Info_Reference_Mode;
+result.members[1] = {.type=member_type, .name=strlit("reference_mode"), .offset=offsetof(Serialized_State, reference_mode)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
@@ -149,11 +149,11 @@ read_binary_Keyboard_Cursor(r, &m_kb_cursor);
 }
 dst->kb_cursor = m_kb_cursor;
 
-b32 m_references_full_alpha = {};
+Reference_Mode m_reference_mode = {};
 {
-read_binary_b32(r, &m_references_full_alpha);
+read_binary_Reference_Mode(r, &m_reference_mode);
 }
-dst->references_full_alpha = m_references_full_alpha;
+dst->reference_mode = m_reference_mode;
 
 b32 m_orthographic = {};
 {
@@ -191,7 +191,7 @@ dst->presets_count = m_presets_count;
  struct\
 {\
 Keyboard_Cursor kb_cursor;\
-b32 references_full_alpha;\
+Reference_Mode reference_mode;\
 b32 orthographic;\
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];\
 Preset_Settings presets[PRESET_CAP];\

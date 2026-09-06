@@ -353,8 +353,9 @@ function void
 draw_reference_image_from_data(Reference_Image ref)
 {
  Reference_Placement &placement = ref.placement;
+ if(painter->reference_mode == Reference_Off) { return; }
  v1 alpha = placement.alpha;
- if(painter->references_full_alpha) { alpha = 1.0f; }
+ if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
  draw_image(ref.filename, placement.center, placement.x_axis, V3y(1.f), alpha);
 }
 

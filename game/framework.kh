@@ -19,7 +19,7 @@ struct Keyboard_Cursor
 struct Serialized_State
 {
  Keyboard_Cursor kb_cursor;
- b32 references_full_alpha;
+ Reference_Mode reference_mode;  // global: off -> alpha -> full (Q cycles)
  b32 orthographic;  // global: force an orthographic camera (Q9: OR-ed with the grid rule)
 
  // NOTE(kv) Tbh we don't have to care about more than 3 viewports.

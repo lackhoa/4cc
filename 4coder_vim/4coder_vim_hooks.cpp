@@ -104,7 +104,10 @@ vim_try_exit(App_Cmd *app)
   b32 do_exit = true;
   
 #if !KV_INTERNAL
-  b32 user_confirmed = false;
+  // NOTE(kv) The flag means "no prompts at all" (debug channel `quit`, kill_all_buffers):
+  // it must also skip the are-you-sure lister below, otherwise a repeated exit signal
+  // nests that lister inside itself until the stack overflows.
+  b32 user_confirmed = allow_immediate_close_without_checking_for_changes;
   View_ID view = get_active_view(app, Access_Always);
   if(!allow_immediate_close_without_checking_for_changes)
   {

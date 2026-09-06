@@ -13,6 +13,7 @@ Type_Info_FUI_Line_Params = get_type_info_FUI_Line_Params();
 Type_Info_Reference_Placement = get_type_info_Reference_Placement();
 Type_Info_Curve = get_type_info_Curve();
 Type_Info_Reference_Scene = get_type_info_Reference_Scene();
+Type_Info_Reference_Mode = get_type_info_Reference_Mode();
 Type_Info_Preset_Settings = get_type_info_Preset_Settings();
 Type_Info_Saved_Viewport = get_type_info_Saved_Viewport();
 Type_Info_Keyboard_Cursor = get_type_info_Keyboard_Cursor();

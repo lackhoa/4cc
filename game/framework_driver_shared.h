@@ -817,7 +817,7 @@ struct Painter
  b32 show_grid;
  argb shade_color;  // NOTE(kv) Useful enough to keep I guess.
  b32 sending_data;
- b32 references_full_alpha;
+ Reference_Mode reference_mode;
  argb background_color;
  u32 render_cycles;
 };

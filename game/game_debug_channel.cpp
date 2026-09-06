@@ -747,6 +747,12 @@ debug_channel_update(Game_State *state, App *app)
     fprintf(out, "set orthographic: %d\n", state->orthographic);
     debug_channel_wants_animate = true;
    }
+   else if(strcmp(field, "reference_mode") == 0)
+   {// NOTE(kv) Global (state.txt): 0 off, 1 alpha, 2 full.
+    state->reference_mode = cast(Reference_Mode)clamp_between(0, value, 2);
+    fprintf(out, "set reference_mode: %d\n", state->reference_mode);
+    debug_channel_wants_animate = true;
+   }
    else if(strcmp(field, "preset") == 0)
    {
     if(0 <= value and value < state->model.recordings.preset_count)

@@ -1620,7 +1620,7 @@ render_hand(forearm_obj);
 }
 function void
 show_reference_images(){
-b32 full_alpha = painter->references_full_alpha;
+if(painter->reference_mode != Reference_Off){
 BoneBlock(Bone_References);
 Reference_Scene scene = get_reference_scene();
 if(scene != Scene_None){
@@ -1661,10 +1661,11 @@ v1 width = 1.1454f;
 Stringz filename = fimage(image_arm_profile_full);
 v3 x = V3z(1);
 v1 alpha = 0.299f;
-if(full_alpha){
+if(painter->reference_mode == Reference_Full){
 alpha = 1.f;
 }
 (set_draw_location_unresolved({2,307}), draw_image(filename, center, -width * x, V3y(1.f), alpha), clear_draw_location());
+}
 }
 }
 }

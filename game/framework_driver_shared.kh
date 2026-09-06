@@ -100,6 +100,14 @@ enum Reference_Scene
  Scene_Eco_Skeleton = 3,
  Scene_Head_Profile = 4,
 };
+[info]
+// NOTE(kv) Global reference-image visibility (state.txt; Q cycles it).
+enum Reference_Mode
+{
+ Reference_Off   = 0,  // draw no reference images at all
+ Reference_Alpha = 1,  // each image at its own placement alpha
+ Reference_Full  = 2,  // every image opaque
+};
 //~Framework api
 api_table framework_api_1
 {

@@ -596,7 +596,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   painter->target       = target;
   painter->camera       = camera;
   painter->sending_data = state->sending_data;
-  painter->references_full_alpha = state->references_full_alpha;
+  painter->reference_mode = state->reference_mode;
   painter->hot_locations = state->transient->hot_locations;
   painter->active_shape_location = {};
   if(fui_is_active())
@@ -2060,7 +2060,7 @@ game_update(Game_Update_Params params)
       {
        snap_camera(cam_data, update_viewport);
       }break;
-      case Key_Code_Q:{ toggle_boolean(state->references_full_alpha); }break;
+      case Key_Code_Q:{ state->reference_mode = cast(Reference_Mode)((state->reference_mode + 1) % 3); }break;
       case Key_Code_X:{ cam_data->phi *= -1.f; }break;
       case S|Key_Code_Z:{ cam_data->phi = .5f - cam_data->phi; }break;
       case S|Key_Code_0:{ cam_data->roll = {}; }break;
@@ -2450,7 +2450,13 @@ game_update(Game_Update_Params params)
     ImGui::SeparatorText("Global");
     { bool value = state->orthographic;         ImGui::Checkbox("orthographic",         &value); state->orthographic = value; }
     ImGui::SameLine();
-    { bool value = state->references_full_alpha; ImGui::Checkbox("references_full_alpha (Q)", &value); state->references_full_alpha = value; }
+    {
+     const char *labels[] = {"off", "alpha", "full"};
+     int value = clamp_between(0, (int)state->reference_mode, 2);
+     ImGui::SetNextItemWidth(120);
+     ImGui::SliderInt("reference (Q)", &value, 0, 2, labels[value]);
+     state->reference_mode = cast(Reference_Mode)value;
+    }
     ImGui::SeparatorText("Presets");
    }
    {//-List
@@ -2646,11 +2652,15 @@ game_update(Game_Update_Params params)
  notebook_update(0);
 #endif
 
+ // NOTE(kv) One-shot: re-sending the exit signal every poll nested the exe's
+ // "are you sure?" lister inside itself until the stack overflowed (2026-09-06).
+ b32 request_exit = debug_channel_request_exit;
+ debug_channel_request_exit = false;
  return{
   .should_animate_next_frame = should_animate_next_frame or state->replay.force_animate
                                or debug_channel_wants_animate,
   .poll_again_in_ms          = debug_channel_enabled ? DEBUG_CHANNEL_POLL_MS : 0u,
-  .request_exit              = debug_channel_request_exit,
+  .request_exit              = request_exit,
   .game_commands             = game_commands,
  };
 }

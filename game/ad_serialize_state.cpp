@@ -132,7 +132,7 @@ migrate_read_autosave_v29(Game_State *state, Stringz path)
  if(r->ok)
  {
   state->kb_cursor = kb_cursor;
-  state->references_full_alpha = references_full_alpha;
+  state->reference_mode = references_full_alpha ? Reference_Full : Reference_Alpha;
   for_i32(index, 0, GAME_VIEWPORT_COUNT){ state->viewports[index].saved = viewports[index]; }
  }
  return r->ok;
