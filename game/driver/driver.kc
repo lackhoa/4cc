@@ -1757,26 +1757,16 @@ render_head(Pose &pose)
  // NOTE(kv) Ear (two lines) lives in the document (tag Vis_Ear).
  
  //-NOTE: The incredibly non-thrilling story of the head
+ // NOTE(kv) Derivations read outside the region (Head export, torso, hair) stay out here.
  tvert head_back_out = fv(tvert_200);
- Bezier head_top_out_line = bez_offset(foreheadL,
-                                       V3(0.1239f, 0.1894f, -0.2995f),
-                                       V3(-0.0634f, 0.3622f, 0.1935f),
-                                       head_back_out);
- {
-  ShowGroup(Vis_Level1);
-  draw(head_top_out_line);
- }
  tvert forehead_in = mkverty(foreheadY) + V3(0.1445f, 0.072f, 0.8969f);
- 
  Bezier hair_hline = bez_raw(foreheadL,
                              forehead_in,
                              negateX(forehead_in),
                              negateX(foreheadL));
- if(is_left()){
-  ShowGroup(Vis_Level1);
-  draw(hair_hline);
- }
- 
+ tvert behind_ear = (ear_center + (V3(-0.183f, -0.3342f, -0.1239f)));
+ // NOTE(kv) Head outline (top/back lines, patches, vertical line) lives in the document
+ // (tag Vis_Head_Outline). Only the level-2 guide lines below are still drawn here.
  tvert head_back_in = fv(tvert_201);
  Bezier head_top_in_line = bez_bezd_old(forehead_in,
                                         V3(0.f, 0.4276f, -0.1837f),
@@ -1785,53 +1775,22 @@ render_head(Pose &pose)
  if(level2){
   draw(head_top_in_line);
  }
- fill_patch( patch_symx(head_top_out_line, head_top_in_line));
- 
- tvert behind_ear = (ear_center + (V3(-0.183f, -0.3342f, -0.1239f)));
- Bezier head_back_out_line;
  {
   //TODO: omg why did you make it so confusing bro?
-  head_back_out_line = bez_offset(head_back_out,
-                                  (V3(0.f, 0.001f, -0.0779f)),
-                                  (V3(-0.0535f, 0.197f, -0.6398f)),
-                                  behind_ear);
+  Bezier head_back_out_line = bez_offset(head_back_out,
+                                         (V3(0.f, 0.001f, -0.0779f)),
+                                         (V3(-0.0535f, 0.197f, -0.6398f)),
+                                         behind_ear);
   if (level2) { draw(head_back_out_line); }
   tvert head_back_in2 = fv(tvert_202);//note: Notice the loomis side circle
-  
+
   Bezier head_back_in_line = bez_offset(head_back_in,
                                         (V3(-0.f, -0.3664f, -0.3108f)),
                                         (V3(0.f, -0.4228f, -1.1179f)),
                                         head_back_in2);
-  
-  Patch head_back = patch_symx(head_back_out_line, head_back_in_line);
   if (level2) { draw(head_back_in_line); }
-  fill_patch( head_back);
-  
-  {//NOTE: draw vertical line
-   PaintBlock;
-   painter->params.line.alignment_min = (0.9797f);
-   draw(get_uline(head_back, 0.5f), lp(I4(1,3,3,0)));
-  }
  }
- 
- fill_point_bez(ear_center, head_top_out_line);
- fill_line_bez(ear_center, head_back_out, head_back_out_line);
- 
- if(fbool(i1_203))
- {//NOTE The forehead
-  tvert hair_hline_center = bezier_sample(hair_hline, 0.5f);
-  tvert esuo = brow_out;
-  tvert control_point = mkvert(fv(tdim_204), -esuo.y/3.f, (4.f-esuo.z)/3.f);
-  // NOTE This line goes through the cross center!
-  Bez brow_hline = bez_raw(esuo,
-                           control_point,
-                           negateX(control_point),
-                           negateX(esuo));
-  if(is_left()){
-   fill_patch( brow_hline,  brow_hline,  hair_hline, hair_hline);
-  }
- }
- 
+
  {
   //~NOTE: Chin
   tvert chin_up_center = chinL + (V3(-0.1993f, 0.0993f, 0.0805f));

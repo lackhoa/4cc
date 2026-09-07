@@ -4,7 +4,7 @@ global i32 marked_positions_file_1[4] ={
 //-NOTE: driver_animate.kc 
 62,70,1870,1878,
 };
-global i32 marked_positions_file_2[1054] ={
+global i32 marked_positions_file_2[1034] ={
 //-NOTE: driver.kc 
 102,153,195,241,287,354,401,460,499,550,589,640,687,746,789,844,
 895,958,1007,1068,1116,1176,1217,1270,1304,1350,1397,1456,1497,1550,1591,1644,
@@ -61,17 +61,16 @@ global i32 marked_positions_file_2[1054] ={
 51745,51789,51941,51995,52148,52190,52271,52334,52354,52367,52651,52675,52782,52814,52896,52923,
 53316,53326,53732,53742,54241,54251,56145,56187,56210,56223,56257,56270,56361,56390,56818,56834,
 57338,57363,57570,57596,57725,57725,57756,57756,57768,57809,57941,57977,58140,58180,58188,58217,
-58263,58297,58452,58465,58744,58767,59072,59088,59117,59130,59385,59407,59413,59473,59873,59897,
-59925,59938,60323,60346,60352,60374,60478,60527,60539,60584,60587,60647,60655,60668,60809,60821,
-61095,61156,61399,61412,61504,61519,61642,61652,61807,61817,61824,61880,61899,61947,61994,62038,
-62597,62624,62638,62689,62694,62751,62957,62970,63098,63111,63129,63142,63160,63173,63479,63492,
-64425,64438,64755,64771,64811,64824,64840,64853,65306,65316,65348,65358,65559,65576,65580,65636,
-65730,65743,65938,65950,65960,65961,66231,66255,66265,66267,66509,66528,67008,67019,67098,67109,
-67319,67329,67688,67749,67840,67872,67944,67976,67993,68025,68600,68613,68760,68770,69295,69305,
-69988,70030,70258,70271,70320,70368,70374,70445,70579,70614,70657,70670,70807,70846,70889,70902,
-71010,71060,71103,71116,71225,71277,71320,71333,71441,71482,71524,71537,71899,71952,72091,72104,
-72181,72257,72366,72379,72431,72461,72625,72680,73513,73526,73786,73796,74130,74140,74622,74635,
-74842,74861,74866,74885,75059,75072,75077,75095,75524,75542,75547,75566,75571,75590,
+58263,58297,58543,58556,59079,59092,59347,59369,59700,59724,59752,59765,60074,60097,60337,60350,
+60442,60457,60580,60590,60745,60755,60762,60818,60837,60885,60932,60976,61535,61562,61576,61627,
+61632,61689,61895,61908,62036,62049,62067,62080,62098,62111,62417,62430,63363,63376,63693,63709,
+63749,63762,63778,63791,64244,64254,64286,64296,64497,64514,64518,64574,64668,64681,64876,64888,
+64898,64899,65169,65193,65203,65205,65447,65466,65946,65957,66036,66047,66257,66267,66626,66687,
+66778,66810,66882,66914,66931,66963,67538,67551,67698,67708,68233,68243,68926,68968,69196,69209,
+69258,69306,69312,69383,69517,69552,69595,69608,69745,69784,69827,69840,69948,69998,70041,70054,
+70163,70215,70258,70271,70379,70420,70462,70475,70837,70890,71029,71042,71119,71195,71304,71317,
+71369,71399,71563,71618,72451,72464,72724,72734,73068,73078,73560,73573,73780,73799,73804,73823,
+73997,74010,74015,74033,74462,74480,74485,74504,74509,74528,
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1036:
 global Vertex_Info vertices_info_[10] ={
@@ -83,12 +82,12 @@ global Vertex_Info vertices_info_[10] ={
 {{{1, 2}, {202, 203}}, 0,1,},
 {{{1, 2}, {630, 631}}, 0,},
 {{{1, 2}, {814, 815}}, 0,},
-{{{1, 2}, {1046, 1047}}, 0,1,},
-{{{1, 2}, {1048, 1049}}, 0,1,},};
+{{{1, 2}, {1026, 1027}}, 0,1,},
+{{{1, 2}, {1028, 1029}}, 0,1,},};
 //-
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:949:
-global Slider global_sliders[220];
+global Slider global_sliders[218];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:954:
 struct Slider_Values{
@@ -279,44 +278,40 @@ tvert v_183;
 tvert v_184;
 tvert v_185;
 i1 v_186;
-tdim v_187;
-i1 v_188;
-v3 v_189;
-v4 v_190;
+v3 v_187;
+v4 v_188;
+tvert v_189;
+tvert v_190;
 tvert v_191;
 tvert v_192;
 tvert v_193;
 tvert v_194;
 tvert v_195;
 tvert v_196;
-tvert v_197;
-tvert v_198;
-v3 v_199;
-v3 v_200;
-tvert v_201;
-v4 v_202;
-i2 v_203;
-i1 v_204;
-i1 v_205;
-v3 v_206;
+v3 v_197;
+v3 v_198;
+tvert v_199;
+v4 v_200;
+i2 v_201;
+i1 v_202;
+i1 v_203;
+v3 v_204;
+tvert v_205;
+tvert v_206;
 tvert v_207;
 tvert v_208;
 tvert v_209;
 tvert v_210;
 tvert v_211;
 tvert v_212;
-tvert v_213;
-tvert v_214;
-i1 v_215;
-v1 v_216;
-v1 v_217;
-i1 v_218;
-tvert v_219;
+i1 v_213;
+v1 v_214;
+v1 v_215;
+i1 v_216;
+tvert v_217;
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:966:
 global Slider_Values slider_values ={
-{},
-{},
 {},
 {},
 {},
@@ -725,46 +720,44 @@ sliders[180] = { .type=types.tvert, .location={{1, 2}, {856, 857}}, .options={},
 sliders[181] = { .type=types.tvert, .location={{1, 2}, {858, 859}}, .options={}, .id=strlit("tvert_195"), .value=&ReadSlider(181) };
 sliders[182] = { .type=types.Curve, .location={{1, 2}, {868, 870}}, .options={}, .id=strlit("Curve_4"), .value=&ReadSlider(182) };
 sliders[183] = { .type=types.tvert, .location={{1, 2}, {882, 883}}, .options={}, .id=strlit("tvert_200"), .value=&ReadSlider(183) };
-sliders[184] = { .type=types.tvert, .location={{1, 2}, {888, 889}}, .options={}, .id=strlit("tvert_201"), .value=&ReadSlider(184) };
-sliders[185] = { .type=types.tvert, .location={{1, 2}, {896, 897}}, .options={}, .id=strlit("tvert_202"), .value=&ReadSlider(185) };
-sliders[186] = { .type=types.i1, .location={{1, 2}, {908, 909}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_203"), .value=&ReadSlider(186) };
-sliders[187] = { .type=types.tdim, .location={{1, 2}, {910, 911}}, .options={}, .id=strlit("tdim_204"), .value=&ReadSlider(187) };
-sliders[188] = { .type=types.i1, .location={{1, 2}, {914, 915}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_205"), .value=&ReadSlider(188) };
-sliders[189] = { .type=types.v3, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("v3_206"), .value=&ReadSlider(189) };
-sliders[190] = { .type=types.v4, .location={{1, 2}, {920, 921}}, .options={}, .id=strlit("v4_207"), .value=&ReadSlider(190) };
-sliders[191] = { .type=types.tvert, .location={{1, 2}, {934, 935}}, .options={}, .id=strlit("tvert_208"), .value=&ReadSlider(191) };
-sliders[192] = { .type=types.tvert, .location={{1, 2}, {936, 937}}, .options={}, .id=strlit("tvert_210"), .value=&ReadSlider(192) };
-sliders[193] = { .type=types.tvert, .location={{1, 2}, {938, 939}}, .options={}, .id=strlit("tvert_211"), .value=&ReadSlider(193) };
-sliders[194] = { .type=types.tvert, .location={{1, 2}, {940, 941}}, .options={}, .id=strlit("tvert_212"), .value=&ReadSlider(194) };
-sliders[195] = { .type=types.tvert, .location={{1, 2}, {942, 943}}, .options={}, .id=strlit("tvert_213"), .value=&ReadSlider(195) };
-sliders[196] = { .type=types.tvert, .location={{1, 2}, {944, 945}}, .options={}, .id=strlit("tvert_214"), .value=&ReadSlider(196) };
-sliders[197] = { .type=types.tvert, .location={{1, 2}, {948, 949}}, .options={}, .id=strlit("tvert_215"), .value=&ReadSlider(197) };
-sliders[198] = { .type=types.tvert, .location={{1, 2}, {950, 951}}, .options={}, .id=strlit("tvert_216"), .value=&ReadSlider(198) };
-sliders[199] = { .type=types.v3, .location={{1, 2}, {952, 953}}, .options={}, .id=strlit("v3_217"), .value=&ReadSlider(199) };
-sliders[200] = { .type=types.v3, .location={{1, 2}, {954, 955}}, .options={}, .id=strlit("v3_218"), .value=&ReadSlider(200) };
-sliders[201] = { .type=types.tvert, .location={{1, 2}, {960, 961}}, .options={}, .id=strlit("tvert_219"), .value=&ReadSlider(201) };
-sliders[202] = { .type=types.v4, .location={{1, 2}, {963, 964}}, .options={}, .id=strlit("v4_220"), .value=&ReadSlider(202) };
-sliders[203] = { .type=types.i2, .location={{1, 2}, {967, 968}}, .options={}, .id=strlit("i2_221"), .value=&ReadSlider(203) };
-sliders[204] = { .type=types.i1, .location={{1, 2}, {986, 987}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(204) };
-sliders[205] = { .type=types.i1, .location={{1, 2}, {988, 989}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(205) };
-sliders[206] = { .type=types.v3, .location={{1, 2}, {990, 991}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(206) };
-sliders[207] = { .type=types.tvert, .location={{1, 2}, {994, 995}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(207) };
-sliders[208] = { .type=types.tvert, .location={{1, 2}, {1002, 1003}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(208) };
-sliders[209] = { .type=types.tvert, .location={{1, 2}, {1006, 1007}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(209) };
-sliders[210] = { .type=types.tvert, .location={{1, 2}, {1010, 1011}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(210) };
-sliders[211] = { .type=types.tvert, .location={{1, 2}, {1014, 1015}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(211) };
-sliders[212] = { .type=types.tvert, .location={{1, 2}, {1018, 1019}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(212) };
-sliders[213] = { .type=types.tvert, .location={{1, 2}, {1022, 1023}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(213) };
-sliders[214] = { .type=types.tvert, .location={{1, 2}, {1026, 1027}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(214) };
-sliders[215] = { .type=types.i1, .location={{1, 2}, {1032, 1033}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(215) };
-sliders[216] = { .type=types.v1, .location={{1, 2}, {1034, 1035}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(216) };
-sliders[217] = { .type=types.v1, .location={{1, 2}, {1036, 1037}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(217) };
-sliders[218] = { .type=types.i1, .location={{1, 2}, {1038, 1039}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(218) };
-sliders[219] = { .type=types.tvert, .location={{1, 2}, {1044, 1045}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(219) };
+sliders[184] = { .type=types.tvert, .location={{1, 2}, {884, 885}}, .options={}, .id=strlit("tvert_201"), .value=&ReadSlider(184) };
+sliders[185] = { .type=types.tvert, .location={{1, 2}, {890, 891}}, .options={}, .id=strlit("tvert_202"), .value=&ReadSlider(185) };
+sliders[186] = { .type=types.i1, .location={{1, 2}, {894, 895}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_205"), .value=&ReadSlider(186) };
+sliders[187] = { .type=types.v3, .location={{1, 2}, {898, 899}}, .options={}, .id=strlit("v3_206"), .value=&ReadSlider(187) };
+sliders[188] = { .type=types.v4, .location={{1, 2}, {900, 901}}, .options={}, .id=strlit("v4_207"), .value=&ReadSlider(188) };
+sliders[189] = { .type=types.tvert, .location={{1, 2}, {914, 915}}, .options={}, .id=strlit("tvert_208"), .value=&ReadSlider(189) };
+sliders[190] = { .type=types.tvert, .location={{1, 2}, {916, 917}}, .options={}, .id=strlit("tvert_210"), .value=&ReadSlider(190) };
+sliders[191] = { .type=types.tvert, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("tvert_211"), .value=&ReadSlider(191) };
+sliders[192] = { .type=types.tvert, .location={{1, 2}, {920, 921}}, .options={}, .id=strlit("tvert_212"), .value=&ReadSlider(192) };
+sliders[193] = { .type=types.tvert, .location={{1, 2}, {922, 923}}, .options={}, .id=strlit("tvert_213"), .value=&ReadSlider(193) };
+sliders[194] = { .type=types.tvert, .location={{1, 2}, {924, 925}}, .options={}, .id=strlit("tvert_214"), .value=&ReadSlider(194) };
+sliders[195] = { .type=types.tvert, .location={{1, 2}, {928, 929}}, .options={}, .id=strlit("tvert_215"), .value=&ReadSlider(195) };
+sliders[196] = { .type=types.tvert, .location={{1, 2}, {930, 931}}, .options={}, .id=strlit("tvert_216"), .value=&ReadSlider(196) };
+sliders[197] = { .type=types.v3, .location={{1, 2}, {932, 933}}, .options={}, .id=strlit("v3_217"), .value=&ReadSlider(197) };
+sliders[198] = { .type=types.v3, .location={{1, 2}, {934, 935}}, .options={}, .id=strlit("v3_218"), .value=&ReadSlider(198) };
+sliders[199] = { .type=types.tvert, .location={{1, 2}, {940, 941}}, .options={}, .id=strlit("tvert_219"), .value=&ReadSlider(199) };
+sliders[200] = { .type=types.v4, .location={{1, 2}, {943, 944}}, .options={}, .id=strlit("v4_220"), .value=&ReadSlider(200) };
+sliders[201] = { .type=types.i2, .location={{1, 2}, {947, 948}}, .options={}, .id=strlit("i2_221"), .value=&ReadSlider(201) };
+sliders[202] = { .type=types.i1, .location={{1, 2}, {966, 967}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(202) };
+sliders[203] = { .type=types.i1, .location={{1, 2}, {968, 969}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(203) };
+sliders[204] = { .type=types.v3, .location={{1, 2}, {970, 971}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(204) };
+sliders[205] = { .type=types.tvert, .location={{1, 2}, {974, 975}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(205) };
+sliders[206] = { .type=types.tvert, .location={{1, 2}, {982, 983}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(206) };
+sliders[207] = { .type=types.tvert, .location={{1, 2}, {986, 987}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(207) };
+sliders[208] = { .type=types.tvert, .location={{1, 2}, {990, 991}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(208) };
+sliders[209] = { .type=types.tvert, .location={{1, 2}, {994, 995}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(209) };
+sliders[210] = { .type=types.tvert, .location={{1, 2}, {998, 999}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(210) };
+sliders[211] = { .type=types.tvert, .location={{1, 2}, {1002, 1003}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(211) };
+sliders[212] = { .type=types.tvert, .location={{1, 2}, {1006, 1007}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(212) };
+sliders[213] = { .type=types.i1, .location={{1, 2}, {1012, 1013}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(213) };
+sliders[214] = { .type=types.v1, .location={{1, 2}, {1014, 1015}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(214) };
+sliders[215] = { .type=types.v1, .location={{1, 2}, {1016, 1017}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(215) };
+sliders[216] = { .type=types.i1, .location={{1, 2}, {1018, 1019}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(216) };
+sliders[217] = { .type=types.tvert, .location={{1, 2}, {1024, 1025}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(217) };
 }
 //-
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1192:
-global_decl Text_Object text_objects_[299];
+global_decl Text_Object text_objects_[291];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1197:
 global FUI_File_Data fui_files_[3] ={
@@ -781,8 +774,8 @@ global FUI_File_Data fui_files_[3] ={
  .index = 2,
  .name = strlit("driver.kc"),
  .marked_positions = {ArrayAndCount(marked_positions_file_2)},
- .text_objects = make_slice(text_objects_, {0,299}),
- .sliders = make_slice(global_sliders, {2,220}),
+ .text_objects = make_slice(text_objects_, {0,291}),
+ .sliders = make_slice(global_sliders, {2,218}),
  .vertices_info = make_slice(vertices_info_, {0,10}),
  },
 };
