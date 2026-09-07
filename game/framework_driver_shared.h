@@ -617,6 +617,9 @@ X(Vis_Ref_Front_0) X(Vis_Ref_Front_1) X(Vis_Ref_Front_2) X(Vis_Ref_Front_3) X(Vi
 /* NOTE(kv) Region tags: always visible; they exist to name an export region */ \
 /* (plan-data-only-region-poc Q97) and survive in the document as the region's identity. */ \
 X(Vis_Nose) \
+/* NOTE(kv) Head regions (plan-head-to-data): declared together so the Model layout */ \
+/* changes once -- a GroupVisList change crashes running instances on hot reload. */ \
+X(Vis_Mouth) X(Vis_Ear) X(Vis_Head_Outline) X(Vis_Chin) X(Vis_Cheek) X(Vis_Neck_Junction) \
 
 enum Group_Vis
 {

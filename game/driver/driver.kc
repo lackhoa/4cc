@@ -1655,88 +1655,9 @@ render_head(Pose &pose)
  tvert nose_wing_up = (nose_wing+V3(-0.011f, 0.1107f, 0.0069f));
  //-
  
- tvert lip_low_center;
- {
-  Bezier lip_up;
-  Bezier philtrum_line;
-  Bezier philtrum_line_mid;
-  Bezier lip_low_line;
-  v1 philtrumX = 0.0435f;
-  b32 nerf_mouth = false;
-  PaintBlock;
-  scale_line_radius(0.610978f);
-  
-  tvert philtrum_up = mkvert(0, nose_baseY, faceZ) + V3(0,0,0);
-  
-  tvert philtrum_low = mouth_base + fv(v3_185);
-  philtrum_line_mid = bez_offset(philtrum_up ,
-                                 (V3(0.f, -0.1241f, 0.0076f)),
-                                 (V3(0.f, 0.0481f, -0.0345f)),
-                                 philtrum_low);
-  
-  philtrum_line = philtrum_line_mid;
-  for_i32(index,0,4) { philtrum_line[index].x += philtrumX; }
-  
-  for_i32(index,0,4) { philtrum_line_mid[index].z -= (0.0065f); }
-  
-  if(is_left())
-  {// NOTE: philtrum
-   PaintBlock;
-   painter->params.line.alignment_min = (0.8284f);
-   draw(philtrum_line, lp(I4(0,0,3,0)));
-  }
-  
-  tvert philtrum_lowL = philtrum_low+V3x(philtrumX);
-  lip_up  = bez_v3v3(philtrum_lowL,
-                     V3(0.088f, 0.1234f, 0.2037f),
-                     V3(-0.0951f, 0.0104f, 0.3071f),
-                     mouth_corner);
-  {
-   PaintBlock;
-   if(fv(i1_186)){
-    set_line_color_lightness(fv(v1_187));
-   }
-   tvert lip_in = sety(philtrum_lowL + V3(-0.f, 0.f, -0.0527f),
-                       mouth_corner.y+fv(v1_188));
-   //NOTE: Main mouth line, looks wicked awesome!
-   {//;lip_up_bot
-    Line_Params params = lp();
-    params.radii = fv(v4_189);
-    if(fv(i1_190)){
-     params.lightness_additions = fv(v4_191);
-    }
-    Bezier lip_up_bot = bez_unit2(lip_in,
-                                  fv(v4_192),
-                                  V3(0.f, 0.2748f, 0.9615f),
-                                  mouth_corner);
-    draw(lip_up_bot, params);
-   }
-  }
-  {
-   //NOTE: Upper lip is smaller than lower lip
-   lip_low_center = mouth_base + (V3(0.f, -0.088f, -0.0133f));
-   lip_low_line = bez_unit2(lip_low_center,
-                            V4(0.f, 1.0473f, 0.f, -0.7242f),
-                            V3(0.f, -0.1848f, 0.9828f),
-                            mouth_corner);
-   if(!nerf_mouth)
-   {// NOTE This combines with @lip_up_bot to create the center part of the mouth.
-    // We must keep it centralized
-    Line_Params params = lp();
-    params.radii = V4(0.7f, -0.2807f, 0.f, 0.f);
-    params.lightness_additions = fv(v4_193);
-    draw(lip_low_line,params);
-   }
-  }
-  
-  tvert philtrum_offset_point = (nose_wing+(V3(-0.0499f, -0.0725f, -0.0489f)));
-  fill_point_bez(philtrum_offset_point, lip_up);
-  fill_point_bez(philtrum_offset_point, philtrum_line_mid);
-  fill3(philtrum_offset_point, nose_wing, philtrum_up+V3x(philtrumX));
-  fill3(philtrum_offset_point, mouth_corner, nose_wing);
-  
-  fill3(philtrum_lowL,philtrum_low,philtrum_offset_point);;
- }
+ // NOTE(kv) Mouth (philtrum, lips, fills) lives in the document (tag Vis_Mouth).
+ // Code twin kept for the chin: lip_low_center.
+ tvert lip_low_center = mouth_base + (V3(0.f, -0.088f, -0.0133f));
  
  //-NOTE: Nose
  // NOTE: nose_tip is the apex of the tip curve below (t=0.5 of a cubic whose controls
