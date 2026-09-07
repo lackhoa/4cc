@@ -1791,60 +1791,8 @@ render_head(Pose &pose)
   if (level2) { draw(head_back_in_line); }
  }
 
- {
-  //~NOTE: Chin
-  tvert chin_up_center = chinL + (V3(-0.1993f, 0.0993f, 0.0805f));
-  tvert chin_upL = chin_up_center + V3x(0.1274f);
-  tvert chin_upR = negateX(chin_upL);
-  tvert chinR = negateX(chinL);
-  if(is_left())
-  {
-   if(fbool(i1_205))
-   {
-    Bezier chin_line = bez_raw(chinL, chin_middle, chin_middle, negateX(chinL));
-    draw(chin_line);
-   }
-  }
-  
-  {//NOTE: chin fixes
-   PaintBlock;
-   scale_line_radius(0.25f);
-   tvert mouth_low_valley = lip_low_center+fv(v3_206);
-   {
-    ShowIf(is_left());
-    ShowAlignedSymIf(V3x(1.f), cosine(0.25f*0.73f));
-    {
-     Line_Params params = lp();
-     params.lightness_additions = fv(v4_207);
-     draw(bez_line(lip_low_center, mouth_low_valley), params);
-    }
-    {
-     draw(bez_line(chin_middle, setx(chin_upL, 0.f)));
-    }
-    {
-     ShowGroup(Vis_Level1);
-     draw(bez_line(mouth_low_valley,chin_middle));
-    }
-   }
-   // so we want to interpolate valley_under_lip
-   tvert chin_point0 = mouth_corner;
-   tvert control_point = mkvert(0.f, 
-                                (-chin_point0.y + 4*mouth_low_valley.y)/3.f,
-                                (-chin_point0.z + 4*mouth_low_valley.z)/3.f);
-   Bez mouth_low_valley_line = bez_raw(chin_point0,
-                                       control_point,
-                                       negateX(control_point),
-                                       negateX(chin_point0));
-   {
-    ShowGroup(Vis_Level1);
-    draw(mouth_low_valley_line);
-   }
-   
-   fill3(lip_low_center,mouth_corner,mouth_low_valley);
-   fill4(chin_middle, chinL, mouth_corner, mouth_low_valley);
-  }
- }
- 
+ // NOTE(kv) Chin (chin fixes lines, valley line, fills) lives in the document (tag Vis_Chin).
+
  // NOTE(kv) Neck junction (chin->junction line, two fills) lives in the document
  // (tag Vis_Neck_Junction). Code twin kept for the Head export: head_neck_junction.
  tvert head_neck_junction = fv(tvert_208);
