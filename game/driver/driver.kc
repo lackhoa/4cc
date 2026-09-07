@@ -1666,94 +1666,28 @@ render_head(Pose &pose)
  tvec nose_tip_control = V3(-0.0533f, 0.0283f, 0.0438f);
  tvert nose_tip_base = nose_tip - 0.75f*V3(0.f, nose_tip_control.y, nose_tip_control.z);
  tvert nose_tipL = (nose_tip_base+V3x(nose_sideX));
- tvert v1219 = nose_tipL;
- Bez nose_line_side = bez_unit2(nose_rootL,
-                                V4(),
-                                V3(0.f, 0.f, 1.f),
-                                v1219);
  // NOTE(kv) The nose lines/fills below this point live in the document
  // (game/driver/driver.document.ad, tag Vis_Nose) -- replayed, not drawn here.
  // Re-draw + `export_group Vis_Nose` to change them (plan-data-only-region-poc).
  
  //~NOTE: Cheek situation pretty complex!
+ // NOTE(kv) Globals read by the eyes + head outline are derived before the region block.
  cheek_low = mkvert(0,noseY,faceZ) + V3(0.6062f, 0.f, -0.4289f);
- 
- //TODO(kv) Adjust the jaw value here
- fill4(jaw, chinL, mouth_corner, cheek_low);
- 
  nose_root_backL = fv(tvert_194) + V3x(nose_sideX);
- 
  brow_out = fv(tvert_195);
  cheek_up = (brow_out+V3(0.f, -0.2935f, 0.f));
- {
-  ShowGroup(Vis_Level1);
-  hl_block;
-  draw_line(brow_out, cheek_up);  //NOTE: Literally a straight line
- }
- 
  // NOTE: brow_ridge is the neutral bone structure of the brow, as well as the eye socket
  // NOTE: I have few ideas what its shape should be, also very hard to draw right
  brow_ridge = bez_unit2(nose_rootL,
                         V4(0.f, 0.3208f, 0.f, 0.6236f),
                         V3(0.f, 0.6019f, 0.7986f),
                         brow_out);
- { ShowGroup(Vis_Level1); hl_block; draw(brow_ridge); }
- 
- {//-NOTE: Eyebrows
-  PaintBlock;
-  scale_line_radius(0.8053f);
-  tvert brow_in = (bezier_sample(brow_ridge, 0.1313f) +
-                   V3(0.0044f, -0.0566f, 0.0056f));
-  //NOTE: brow_mid is a really fuzzy point!
-  tvert brow_mid = (bezier_sample(brow_ridge, (0.593f)) + 
-                    V3(-0.0006f, 0.0008f, 0.0086f));
-  
-  Bezier brow_in_line = bez_line(brow_in, brow_mid);
-  v1 brow_joint_radius;
-  {
-   v4 radii = V4(0.3344f, 0.6654f, 0.61f, 1.f);
-   brow_joint_radius = radii.v[3];
-   draw(brow_in_line, radii);
-  }
-  {
-   Bezier brow_out_line = bez_unit(brow_mid, (V2(0.f, 0.5549f)), (V2(0.f, 0.4409f)), V3(0.f, 1.f, 0.f), brow_out);
-   v4 radii = V4(0.25f, 0.8f, 0.8f, 0.25f);
-   radii.v[0] = brow_joint_radius;
-   draw(brow_out_line, radii);
-  }
- }
- 
- {
-  tvert cj = (lerp(chinL, 0.5f, jaw));
-  {// TODO: This line (and "cj") is here because it happens to look good
-   fcurve(Curve_4, ear_center, cj);
-  }
- }
- 
- fill3(nose_wing, mouth_corner, cheek_low);
- 
- // TODO(kv): Extreme hackiness, maybe we could replace bezier_poly
- {
-  Bezier line = bez_line( nose_root_backL, nose_wing);
-  fill_dual_bez( nose_line_side, line);
- }
- 
  tvert foreheadL = (brow_out + V3(0.0477f, 0.7772f, -0.0232f));
  v1 foreheadY = foreheadL.y;
- 
- {
-  tvert verts[] = {jaw, cheek_up, brow_out, foreheadL};
-  fill_fan(ear_center, verts, alen(verts));
- }
- 
- fill3(cheek_up,jaw,cheek_low);
- 
- {
-  ShowGroup(Vis_Level1);
-  hl_block;
-  draw(bez_line(brow_out, cheek_up));
- }
- 
+ // NOTE(kv) Cheek + brows (cheek fills, eyebrows, jaw line, level-1 guides) live in the
+ // document (tag Vis_Cheek). Code twins kept above for the eyes / head outline:
+ // cheek_low, cheek_up, brow_out, brow_ridge, nose_root_backL, foreheadL.
+
  // NOTE(kv) Ear (two lines) lives in the document (tag Vis_Ear).
  
  //-NOTE: The incredibly non-thrilling story of the head
@@ -1797,14 +1731,6 @@ render_head(Pose &pose)
  // (tag Vis_Neck_Junction). Code twin kept for the Head export: head_neck_junction.
  tvert head_neck_junction = fv(tvert_208);
  
- {// NOTE: Some cheek line
-  PaintBlock;
-  scale_line_radius(0.3826f);
-  set_line_color_lightness(1.5096f);
-  tvert a1626 = fv(tvert_210);
-  tvert b1627 = fv(tvert_211);
-  tvert c1633 = fv(tvert_212);
- }
  
  {//~NOTE: Hair omg
   ShowGroup(Vis_Hair);
