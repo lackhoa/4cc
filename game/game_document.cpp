@@ -84,7 +84,11 @@ export_group_to_document(Game_State *state, Group_Vis tag)
   {
    Recorded_Group group = doc.groups.items[ig];
    group_remap[ig] = -1;
-   if(group.vis_tag != tag)
+   // NOTE(kv) A region is a subtree: drop the tagged group and everything under it
+   // (nested toggle groups like Vis_Level1 keep their own tag). Parents precede
+   // children, so "parent dropped" is already in the remap.
+   b32 parent_dropped = (group.parent_index != -1 && group_remap[group.parent_index] == -1);
+   if(group.vis_tag != tag && not parent_dropped)
    {
     if(group.parent_index != -1){ group.parent_index = group_remap[group.parent_index]; }
     group_remap[ig] = groups.count;
@@ -139,7 +143,11 @@ export_group_to_document(Game_State *state, Group_Vis tag)
   {
    Recorded_Group group = src.groups.items[ig];
    group_remap[ig] = -1;
-   if(group.vis_tag == tag)
+   // NOTE(kv) Take the group if it or any ancestor carries the region tag, so nested
+   // toggle groups (ShowGroup(Vis_Level1) inside a region) come along with their own
+   // tag intact (plan-head-to-data Q10).
+   b32 parent_taken = (group.parent_index != -1 && group_remap[group.parent_index] != -1);
+   if(group.vis_tag == tag || parent_taken)
    {// NOTE(kv) Subtree roots (parent not tagged) re-parent to the document root.
     i32 parent = (group.parent_index == -1 ? -1 : group_remap[group.parent_index]);
     group.parent_index = parent;
