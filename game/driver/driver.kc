@@ -1754,23 +1754,7 @@ render_head(Pose &pose)
   draw(bez_line(brow_out, cheek_up));
  }
  
- {//-;Ear
-  PaintBlock;
-  set_line_color_lightness(fv(v1_196));
-  scale_line_radius(0.5f);
-  tvert ear_back = ear_center + fv(v3_197);
-  tvert ear_low = ear_center + fv(v3_198);
-  v4 radii1 = fv(v4_199);
-  v4 radii2 = radii_c2(radii1, V2(-0.9383f, 0.f));
-  Bez ear1 = bez_unit(ear_center,
-                      V2(0.2792f, 3.5588f),
-                      V2(0.1526f, 0.3068f),
-                      V3(0.3587f, 0.692f, -0.6264f),
-                      ear_back);
-  draw(ear1, lp(radii1));
-  Bez ear2 = bez_c2(ear1, V3(), ear_low);
-  draw(ear2, lp(radii2));
- }
+ // NOTE(kv) Ear (two lines) lives in the document (tag Vis_Ear).
  
  //-NOTE: The incredibly non-thrilling story of the head
  tvert head_back_out = fv(tvert_200);
