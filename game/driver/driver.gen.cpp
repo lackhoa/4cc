@@ -1259,9 +1259,6 @@ if(!nerf_mouth){
 Line_Params params = lp();
 params.radii = V4(0.7f, -0.2807f, 0.f, 0.f);
 params.lightness_additions = ReadSlider(188);
-if(level1){
-params.radii = painter->params.line.radii;
-}
 (set_draw_location_unresolved({2,243}), draw(lip_low_line, params), clear_draw_location());
 }
 }
@@ -1282,12 +1279,14 @@ cheek_low = mkvert(0, noseY, faceZ) + V3(0.6062f, 0.f, -0.4289f);
 nose_root_backL = ReadSlider(189) + V3x(nose_sideX);
 brow_out = ReadSlider(190);
 cheek_up = brow_out + V3(0.f, -0.2935f, 0.f);
-if(level1){
+{
+ShowGroup(Vis_Level1);
 hl_block;
 (set_draw_location_unresolved({2,250}), draw_line(brow_out, cheek_up), clear_draw_location());
 }
 brow_ridge = bez_unit2(nose_rootL, V4(0.f, 0.3208f, 0.f, 0.6236f), V3(0.f, 0.6019f, 0.7986f), brow_out);
-if(level1){
+{
+ShowGroup(Vis_Level1);
 hl_block;
 (set_draw_location_unresolved({2,251}), draw(brow_ridge), clear_draw_location());
 }
@@ -1328,7 +1327,8 @@ tvert verts[] = {jaw, cheek_up, brow_out, foreheadL};
 (set_draw_location_unresolved({2,257}), fill_fan(ear_center, verts, alen(verts)), clear_draw_location());
 }
 (set_draw_location_unresolved({2,258}), fill3(cheek_up, jaw, cheek_low), clear_draw_location());
-if(level1){
+{
+ShowGroup(Vis_Level1);
 hl_block;
 (set_draw_location_unresolved({2,259}), draw(bez_line(brow_out, cheek_up)), clear_draw_location());
 }
@@ -1347,15 +1347,15 @@ Bez ear2 = bez_c2(ear1, V3(), ear_low);
 }
 tvert head_back_out = ReadSlider(196);
 Bezier head_top_out_line = bez_offset(foreheadL, V3(0.1239f, 0.1894f, -0.2995f), V3(-0.0634f, 0.3622f, 0.1935f), head_back_out);
-if(level1){
+{
+ShowGroup(Vis_Level1);
 (set_draw_location_unresolved({2,262}), draw(head_top_out_line), clear_draw_location());
 }
 tvert forehead_in = mkverty(foreheadY) + V3(0.1445f, 0.072f, 0.8969f);
 Bezier hair_hline = bez_raw(foreheadL, forehead_in, negateX(forehead_in), negateX(foreheadL));
 if(is_left()){
-if(level1){
+ShowGroup(Vis_Level1);
 (set_draw_location_unresolved({2,263}), draw(hair_hline), clear_draw_location());
-}
 }
 tvert head_back_in = ReadSlider(197);
 Bezier head_top_in_line = bez_bezd_old(forehead_in, V3(0.f, 0.4276f, -0.1837f), V2(0.3589f, 0.1402f), head_back_in);
@@ -1420,14 +1420,16 @@ params.lightness_additions = ReadSlider(203);
 {
 (set_draw_location_unresolved({2,275}), draw(bez_line(chin_middle, setx(chin_upL, 0.f))), clear_draw_location());
 }
-if(level1){
+{
+ShowGroup(Vis_Level1);
 (set_draw_location_unresolved({2,276}), draw(bez_line(mouth_low_valley, chin_middle)), clear_draw_location());
 }
 }
 tvert chin_point0 = mouth_corner;
 tvert control_point = mkvert(0.f, (-chin_point0.y + 4 * mouth_low_valley.y) / 3.f, (-chin_point0.z + 4 * mouth_low_valley.z) / 3.f);
 Bez mouth_low_valley_line = bez_raw(chin_point0, control_point, negateX(control_point), negateX(chin_point0));
-if(level1){
+{
+ShowGroup(Vis_Level1);
 (set_draw_location_unresolved({2,277}), draw(mouth_low_valley_line), clear_draw_location());
 }
 (set_draw_location_unresolved({2,278}), fill3(lip_low_center, mouth_corner, mouth_low_valley), clear_draw_location());
