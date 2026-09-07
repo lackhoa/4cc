@@ -1725,6 +1725,7 @@ render_head(Pose &pose)
     Line_Params params = lp();
     params.radii = V4(0.7f, -0.2807f, 0.f, 0.f);
     params.lightness_additions = fv(v4_193);
+    if(level1){params.radii = painter->params.line.radii;}
     draw(lip_low_line,params);
    }
   }
@@ -1764,8 +1765,7 @@ render_head(Pose &pose)
  
  brow_out = fv(tvert_195);
  cheek_up = (brow_out+V3(0.f, -0.2935f, 0.f));
- {
-  ShowGroup(Vis_Level1);
+ if(level1){
   hl_block;
   draw_line(brow_out, cheek_up);  //NOTE: Literally a straight line
  }
@@ -1776,7 +1776,7 @@ render_head(Pose &pose)
                         V4(0.f, 0.3208f, 0.f, 0.6236f),
                         V3(0.f, 0.6019f, 0.7986f),
                         brow_out);
- { ShowGroup(Vis_Level1); hl_block; draw(brow_ridge); }
+ if(level1){ hl_block; draw(brow_ridge); }
  
  {//-NOTE: Eyebrows
   PaintBlock;
@@ -1827,8 +1827,8 @@ render_head(Pose &pose)
  
  fill3(cheek_up,jaw,cheek_low);
  
+ if (level1)
  {
-  ShowGroup(Vis_Level1);
   hl_block;
   draw(bez_line(brow_out, cheek_up));
  }
@@ -1857,8 +1857,7 @@ render_head(Pose &pose)
                                        V3(0.1239f, 0.1894f, -0.2995f),
                                        V3(-0.0634f, 0.3622f, 0.1935f),
                                        head_back_out);
- {
-  ShowGroup(Vis_Level1);
+ if(level1){
   draw(head_top_out_line);
  }
  tvert forehead_in = mkverty(foreheadY) + V3(0.1445f, 0.072f, 0.8969f);
@@ -1868,8 +1867,7 @@ render_head(Pose &pose)
                              negateX(forehead_in),
                              negateX(foreheadL));
  if(is_left()){
-  ShowGroup(Vis_Level1);
-  draw(hair_hline);
+  if(level1){ draw(hair_hline); }
  }
  
  tvert head_back_in = fv(tvert_201);
@@ -1957,8 +1955,7 @@ render_head(Pose &pose)
     {
      draw(bez_line(chin_middle, setx(chin_upL, 0.f)));
     }
-    {
-     ShowGroup(Vis_Level1);
+    if(level1){
      draw(bez_line(mouth_low_valley,chin_middle));
     }
    }
@@ -1971,8 +1968,7 @@ render_head(Pose &pose)
                                        control_point,
                                        negateX(control_point),
                                        negateX(chin_point0));
-   {
-    ShowGroup(Vis_Level1);
+   if(level1){
     draw(mouth_low_valley_line);
    }
    

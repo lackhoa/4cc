@@ -2589,6 +2589,7 @@ game_update(Game_Update_Params params)
     {// NOTE(kv) Preset-toggle live visibility (plan-preset-rethink): published from
      // the main viewport's settings row, consumed by replay's vis_live re-AND.
      Preset_Settings &row = m->recordings.preset_settings[state->viewports[0].preset];
+     m->vis_live[Vis_Level1]               = (row.viz_level >= 1);
      m->vis_live[Vis_Eyeball]              = row.show_eyeball;
      m->vis_live[Vis_Loomis_Ball]          = row.show_loomis_ball;
      m->vis_live[Vis_Hair]                 = !row.hide_hair;

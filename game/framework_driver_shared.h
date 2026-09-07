@@ -601,6 +601,9 @@ enum
 #define GroupVisList(X) \
 X(Vis_None) \
 X(Vis_Skeleton) \
+/* NOTE(kv) Level-1 guide lines inside data regions (plan-head-to-data Q2): the */ \
+/* `if(level1)` gate becomes a live tag published from viz_level >= 1. */ \
+X(Vis_Level1) \
 /* NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published */ \
 /* each frame from the main viewport's Preset_Settings row. */ \
 X(Vis_Eyeball) \
