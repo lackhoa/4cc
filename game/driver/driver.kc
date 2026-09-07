@@ -1886,16 +1886,9 @@ render_head(Pose &pose)
   }
  }
  
+ // NOTE(kv) Neck junction (chin->junction line, two fills) lives in the document
+ // (tag Vis_Neck_Junction). Code twin kept for the Head export: head_neck_junction.
  tvert head_neck_junction = fv(tvert_208);
- if(is_left())
- {
-  {
-   ShowAlignedSymIf(V3x(1.f), fv(v1_209));
-   draw(bez_line(chin_middle, head_neck_junction));
-  }
-  fill3(head_neck_junction, chinL, jaw);
-  fill3(head_neck_junction, chinL, negateX(chinL));
- }
  
  {// NOTE: Some cheek line
   PaintBlock;
