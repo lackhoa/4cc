@@ -494,6 +494,18 @@ convert_primitives_to_camera_space(Camera &camera)
   Recording &document = m->recordings.document;
   i32 document_count = document.captured ? 2*document.primitives.count : 0;
   init_dynamic(m->camera_primitives, m->frame_arena, m->primitives.count + document_count);
+  // NOTE(kv) Don't pick what isn't drawn (Khoa 2026-09-11, the nose bridge line lost
+  // its hover to the Line_Invisible side curve next to it: closest-hit wins in the pick
+  // and the invisible strip sat nearer the camera). draw_bezier_rec keeps invisible
+  // curves *selectable* on purpose, but that is for the cursor-on-code path, not the
+  // mouse. Not covered: alignment_min culling (camera-dependent) and cam_vis groups.
+  auto is_pickable = [&](Recorded_Primitive const &primitive, Recorded_Group const &group) -> b32
+  {
+   if(not group.params.painting or not m->vis_live[group.vis_tag]){ return false; }
+   if(primitive.type == Primitive_Type_Curve and
+      HasFlag(group.params.line.flags, Line_Invisible)){ return false; }
+   return true;
+  };
   auto convert_primitive = [&](Recorded_Primitive primitive, Bone_ID bone_id, b32 is_right)
   {
    apply_shape_key(primitive);  // NOTE(kv) picking/hot-test against what's on screen
@@ -540,7 +552,9 @@ convert_primitives_to_camera_space(Camera &camera)
   for_i32(iprim, 0, m->primitives.count)
   {
    Recorded_Primitive &primitive = m->primitives[iprim];
-   convert_primitive(primitive, m->groups[primitive.group_index].bone_id, false);
+   Recorded_Group &group = m->groups[primitive.group_index];
+   if(not is_pickable(primitive, group)){ continue; }
+   convert_primitive(primitive, group.bone_id, false);
   }
   // NOTE(kv) Document primitives are hit-testable too, on both sides (they're
   // replayed left+right); their locations are the document variant so a hit
@@ -549,6 +563,7 @@ convert_primitives_to_camera_space(Camera &camera)
   {
    Recorded_Primitive primitive = document.primitives[iprim];
    Recorded_Group &group = document.groups[primitive.group_index];
+   if(not is_pickable(primitive, group)){ continue; }
    resolve_vertices(document, primitive);
    primitive.location = document_location(iprim, false);
    convert_primitive(primitive, group.bone_id, false);
