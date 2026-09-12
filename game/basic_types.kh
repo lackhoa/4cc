@@ -11,6 +11,7 @@ meta_table(T) basic_types
  i1, i2, i3, i4,
  String, u32, u64,
  char,
+ i16,  // Location (FUI_File, Range_i16) members
 }
 
 generate

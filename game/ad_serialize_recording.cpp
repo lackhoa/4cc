@@ -61,13 +61,12 @@ write_recording_block(Writer *writer, Recording &rec)
              sizeof(Recorded_Group) * rec.groups.count);
   for_i32(igroup, 0, rec.groups.count)
   {// NOTE(kv) vis_tag by NAME (Version_GroupTagsByName): the raw block still holds the
-   // enum int, but inserting a tag in GroupVisList used to silently retag every saved
+   // enum int, but inserting a tag in Group_Vis used to silently retag every saved
    // group after it (the nose became Vis_Ref_Front_4). The name wins on load.
-   Group_Vis tag = rec.groups.items[igroup].vis_tag;
-   char const *name = (tag >= 0 and tag < Group_Vis_Count) ? group_vis_names[tag] : "Vis_None";
-   u32 name_len = cast(u32)strlen(name);
+   String name = group_vis_name(rec.groups.items[igroup].vis_tag);
+   u32 name_len = cast(u32)name.len;
    write_lvalue(writer, name_len);
-   write_size(writer, name, name_len);
+   write_size(writer, name.str, name_len);
   }
   write_lvalue(writer, rec.vertices.count);
   write_size(writer, rec.vertices.items,
@@ -236,14 +235,10 @@ read_recording_block(Binary_Reader *r, Recording &rec)
    read_binary_size(r, name_len, name);
    name[name_len] = 0;
    Group_Vis resolved = Vis_None;
-   b32 found = false;
-   for_i32(itag, 0, Group_Vis_Count)
-   {
-    if(strcmp(name, group_vis_names[itag]) == 0){ resolved = cast(Group_Vis)itag; found = true; break; }
-   }
+   b32 found = group_vis_from_name(SCu8(name), &resolved);
    if(not found)
    {
-    log_error("recording load: group %d has unknown vis tag \"%s\" (renamed/removed from GroupVisList?), using Vis_None", igroup, name);
+    log_error("recording load: group %d has unknown vis tag \"%s\" (renamed/removed from Group_Vis?), using Vis_None", igroup, name);
    }
    group.vis_tag = resolved;
   }

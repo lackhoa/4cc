@@ -24,8 +24,12 @@ typedef v3 tvec;
 #define Game_Preset_Count 10  // presets seeded on first run; digit keys select presets 0-9 (game_main.cpp key handler)
 #define PRESET_CAP 32         // fixed storage cap for the preset rows (panel enforces it)
 #define PRESET_NAME_CAP 32    // Preset_Settings.name, in framework_driver_shared.kh
-#include "ad_file_formats.gen.h"
+// NOTE(kv) Recorded_Primitive.vertex_index cap (ad_file_formats.kh); see primitive_vertex_count.
+global i32 const recorded_vertex_cap = 4;
+// NOTE(kv) Order matters: ad_file_formats.kh holds the recorded-drawing structs, which
+// use tvert/Bezier/Bone_ID/Location from framework_driver_shared.kh.
 #include "framework_driver_shared.gen.h"
+#include "ad_file_formats.gen.h"
 #include "4coder_kv_debug.h"
 #include "meta_game_shared.h"
 //-
@@ -126,7 +130,7 @@ enum Poly_Flag
  Poly_Overlay  = 0x4,
 };
 
-struct Fill_Flags{ u32 v; };
+// NOTE(kv) Fill_Flags{u32 v} is an [info] struct in framework_driver_shared.kh.
 enum Fill_Flag
 {
  Fill_Culled   = 0x1,
@@ -141,39 +145,8 @@ to_poly_flags(Fill_Flags flags)
  return result;
 }
 
-struct Fill_Params
-{
- // NOTE(kv) Singular color fills still makes sense for debugging/highlighting.
- argb color;
- Fill_Flags flags;
-};
-struct Line_Params
-{
- v4 radii;
- // NOTE(kv) I want lightness changes to adapt to line color.
- // so we store the "x" in "rgb + x*rgb".
- v4 lightness_additions;
- Line_Flags flags;
- 
- // NOTE(kv) Most of the time we can specify normal-alignment by group,
- // but sometimes we want to infer the view vector automatically from the curve.
- v1 alignment_min;
-};
-struct Paint_Params
-{
- // NOTE(kv) "painting" is used f.ex for alignment checks,
- // it MUST NOT disable sending data, because cursor selection still needs them.
- b32 painting;
- 
- Line_Params line;
- Fill_Params fill;
- 
- v1 radius_mult;
- v1 nslice_per_meter;
- argb line_color;
- v1 line_depth_offset;
- v1 fill_depth_offset;
-};
+// NOTE(kv) Fill_Params / Line_Params / Paint_Params are [info] structs in
+// framework_driver_shared.kh (moved 2026-09-12).
 // NOTE(kv) Field table for Paint_Params: X(enum_suffix, member_path).
 // Single source for the PaintField_* bits and paint_params_diff_mask
 // (game_draw.cpp) -- extend HERE when Paint_Params grows.
@@ -191,12 +164,7 @@ X(line_color,        line_color)               \
 X(line_depth_offset, line_depth_offset)        \
 X(fill_depth_offset, fill_depth_offset)        \
 
-struct Bezier
-{
- tvert e[4];
- myinline operator tvert *(){ return e; };
- myinline tvert &operator[](i32 index){ return e[index]; }
-};
+// NOTE(kv) Bezier{tvert e[4]} is an [info] struct in framework_driver_shared.kh.
 typedef Bezier Bez;
 
 template<class TYPE>
@@ -269,11 +237,7 @@ operator *(mat4 const &mat, Bezier const &bez)
  return mat4bez(mat, bez);
 }
 
-struct Patch{
- tvert e[4][4];
- typedef tvert Array4x4[4][4];  // #stroustrup
- operator Array4x4&() { return e; }
-};
+// NOTE(kv) Patch{tvert e[4][4]} is an [info] struct in framework_driver_shared.kh.
 function Bezier
 get_column(Patch const&surface, i32 col)
 {
@@ -383,26 +347,12 @@ struct Bone
  v3      center;
 };
 
-struct Range_i16
-{
- union{ i16 min,begin; };
- union{ i16 max,end; };
-};
+// NOTE(kv) Range_i16, FUI_File, Location are [info] structs in framework_driver_shared.kh.
 myinline bool
 operator==(Range_i16 a, Range_i16 b)
 {
  return block_match(&a, &b, sizeof(a));
 }
-struct FUI_File
-{
- i16 is_driver;
- i16 index;
-};
-struct Location
-{
- FUI_File file;
- Range_i16 range;
-};
 // NOTE(kv) Take care of padding, so we can compare values with block comparison.
 static_assert(sizeof(Location) == 8);
 
@@ -477,108 +427,10 @@ mk_poly3(v3 points[3])
 {
  return Poly3{expand3(points)};
 }
-enum Weight_Key
-{// NOTE(kv) Shape-key weights (plan-pose-scalar-curves Q15/Q17): a keyed primitive
- // stores its rest shape plus a delta, and is drawn as `rest + w*delta` where
- // w = Model.weight_live[key], published by the driver each frame (like vis_live).
- // Weight_None slot stays 0, so an unkeyed primitive is unaffected.
- Weight_None,
- Weight_Blink,
- //
- Weight_Count,
-};
-struct Dual_Bezier
-{
- Bezier P;
- Bezier Q;
- // NOTE(kv) Shape key (see Weight_Key): both sides may carry a delta.
- Weight_Key key;
- tvec dP[4];
- tvec dQ[4];
-};
-struct Recorded_Poly3
-{// NOTE(kv) fill3 arguments; Poly3 (bare v3) stays the hit-test triangle type.
- tvert points[3];
-};
-struct Disk
-{// NOTE(kv) fill_disk arguments (the tessellation is camera-dependent, re-run at replay)
- tvert center;
- v1 radius;  // bone-space (tdim)
-};
-struct Recorded_Image
-{// NOTE(kv) draw_image arguments. color/alpha are PRE-tint -- hot highlighting is
- // per-frame (like culling), so it's re-applied at replay, not baked here.
- Stringz filename;  // pointer into static fimage storage; serializer writes the bytes
- v3 o, x, y;
- v3 color;
- v1 alpha;
-};
-enum Primitive_Type
-{
- Primitive_Type_None,
- Primitive_Type_Curve,
- Primitive_Type_Poly3,
- Primitive_Type_Dual_Bezier,
- Primitive_Type_Patch,
- Primitive_Type_Disk,
- Primitive_Type_Image,
- Primitive_Type_Curve_Patch,  // NOTE(kv) appended: values are stored in driver.document.ad
-};
-// NOTE(kv) Document-only primitive referencing 2-4 CURVE primitives of the same
-// recording by index (game_curve_patch.cpp); no vertices of its own (vertex count 0),
-// the surface is re-evaluated from the curves at replay.
-struct Recorded_Curve_Patch
-{
- i32 curve_count;
- i32 curve_index[4];
-};
-struct Recorded_Curve
-{// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
- // parameterization live with the geometry; all style folds down the group path.
- Bezier bezier;
- v4 radii;
- v4 lightness_additions;
- b32 straight;  // Line_Straight, set by the straight-line helper
- // NOTE(kv) Shape key: points AND radii blend (the blink changes stroke width too).
- Weight_Key key;
- tvec dbezier[4];
- v4 dradii;
-};
-// NOTE(kv) A junction point shared between primitives (plan-data-only-region-poc
-// Q95). `bone` is the owning bone of the point (Bone_None = the group's bone).
-// The vertex table is the authority for every primitive's VERTICES; the by-value
-// tverts inside the geometry union are a cache that resolve_vertices refreshes
-// before each replayed draw. Live capture pushes one fresh vertex per slot;
-// welding (sharing) happens at document export.
-struct Recorded_Vertex
-{
- v3 p;
- Bone_ID bone;
-};
-// NOTE(kv) "Vertex" = a point in the table = one that can be a junction: curve
-// endpoints, poly3 points, dual-bezier endpoints, patch corners, disk center.
-// Bezier HANDLES (P1/P2) are tverts too but per-curve shape, never shared, never
-// in the table.
-global i32 const recorded_vertex_cap = 4;
+// NOTE(kv) The recorded-drawing structs (Weight_Key, Dual_Bezier, Recorded_*, Disk,
+// Primitive_Type, Group_Vis, Group_Cam_Vis, Document_File) are [info] types in
+// ad_file_formats.kh (moved 2026-09-12).
 
-struct Recorded_Primitive
-{
- Primitive_Type type;
- Location location;
- i32 group_index;  // index into Model.groups
- i32 vertex_index[recorded_vertex_cap];  // indices into Recording.vertices, see primitive_vertex_count
-
- union
- {
-  Recorded_Curve curve;
-  Recorded_Poly3 poly3;
-  Dual_Bezier dual_bezier;
-  Patch  patch;
-  Disk   disk;
-  Recorded_Image image;
-  Recorded_Curve_Patch curve_patch;
- };
-};
 // NOTE(kv) Which Paint_Params fields a group overrides vs its parent (the "delta" view).
 // The group's "params" is always the FULL effective state; the mask is metadata.
 // Generated from PaintFieldList (next to Paint_Params).
@@ -593,82 +445,6 @@ enum
 #define X(name, path) PaintField_##name = (1 << PaintFieldIndex_##name),
  PaintFieldList(X)
 #undef X
-};
-// NOTE(kv) Live visibility binding (Q32): a tagged group's `painting` is re-ANDed at
-// replay with Model.vis_live[tag] (published by the driver each frame) instead of
-// trusting only the capture-time frozen value. Vis_None slot is always true.
-// X-macro so the tag names are greppable from the debug channel (`export_group <tag>`).
-#define GroupVisList(X) \
-X(Vis_None) \
-X(Vis_Skeleton) \
-/* NOTE(kv) Level-1 guide lines inside data regions (plan-head-to-data Q2): the */ \
-/* `if(level1)` gate becomes a live tag published from viz_level >= 1. */ \
-X(Vis_Level1) \
-/* NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published */ \
-/* each frame from the main viewport's Preset_Settings row. */ \
-X(Vis_Eyeball) \
-X(Vis_Loomis_Ball) \
-X(Vis_Hair) \
-X(Vis_Ref_Arm_Medial_Right) \
-X(Vis_Ref_Arm_Back_Bone) \
-X(Vis_Ref_Arm_Profile_Left) \
-/* NOTE(kv) 5 consecutive slots, one per front-camera reference image */ \
-X(Vis_Ref_Front_0) X(Vis_Ref_Front_1) X(Vis_Ref_Front_2) X(Vis_Ref_Front_3) X(Vis_Ref_Front_4) \
-/* NOTE(kv) Region tags: always visible; they exist to name an export region */ \
-/* (plan-data-only-region-poc Q97) and survive in the document as the region's identity. */ \
-X(Vis_Nose) \
-/* NOTE(kv) Head regions (plan-head-to-data): declared together so the Model layout */ \
-/* changes once -- a GroupVisList change crashes running instances on hot reload. */ \
-X(Vis_Mouth) X(Vis_Ear) X(Vis_Head_Outline) X(Vis_Chin) X(Vis_Cheek) X(Vis_Neck_Junction) \
-
-enum Group_Vis
-{
-#define X(NAME) NAME,
- GroupVisList(X)
-#undef X
- Group_Vis_Count,
- Vis_Ref_Front_Last = Vis_Ref_Front_4,
- Vis_Region_First   = Vis_Nose,  // NOTE(kv) [Vis_Region_First, Group_Vis_Count) = region tags
-};
-global char const *group_vis_names[Group_Vis_Count] = {
-#define X(NAME) #NAME,
- GroupVisList(X)
-#undef X
-};
-struct Group_Cam_Vis
-{// NOTE(kv) Camera-bound visibility condition (Q38): recorded parameters, not a
- // frozen verdict. Replay re-ANDs `dot(normal, live_view) > min_alignment` (absolute
- // value if symmetric) into painting, where live_view is derived from the group's
- // view scope and the current camera (Q42).
- b32 active;
- v3 normal;
- v1 min_alignment;
- b32 symmetric;
-};
-struct Recorded_Group
-{// NOTE(kv) One paint scope during the recording run (see Paint_Params_Block).
- // Groups form a forest: parent_index == -1 means top-level.
- i32 parent_index;
- Location location;   // first draw under this scope (best-effort name)
- Paint_Params params; // full effective paint state for leaves of this group
- u32 changed_mask;    // PaintField_* bits differing from the parent group
- Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
- Group_Cam_Vis cam_vis;  // zero-init = inactive; inherited like vis_tag
- // NOTE(kv) Q94 mirror: the capture is left-only, replay draws it twice (left bones,
- // then right bones). A `LeftOnly` scope (the data form of `if(is_left())`) marks its
- // group one-sided so the right pass skips it. Inherited like vis_tag.
- b32 one_sided;
- // NOTE(kv) Scoped context folded onto the group (Q43a/Q43b): exactly one bone per
- // group (mid-scope bone switch sibling-splits), and the view scope's center --
- // recorded as {center, the bone it was expressed in} so replay can derive the
- // view vector live from the current camera instead of a frozen snapshot.
- Bone_ID bone_id;
- v3 view_center;
- Bone_ID view_bone;
- // NOTE(kv) Params are only knowable after the scope body ran its mutations, so
- // they're snapshotted lazily ("frozen") at the first event that needs them --
- // first own primitive, a child scope opening, or scope close. Capture-time only.
- b32 params_frozen;
 };
 struct Model_Persistent
 {

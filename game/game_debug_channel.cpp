@@ -269,8 +269,8 @@ debug_channel_document_dump(FILE *out, Game_State *state)
  for_i32(igroup, 0, doc.groups.count)
  {
   Recorded_Group &g = doc.groups.items[igroup];
-  fprintf(out, "group %d: parent %d, tag %s, bone %d:%d, loc file %d range %d..%d%s\n",
-          igroup, g.parent_index, group_vis_names[g.vis_tag],
+  fprintf(out, "group %d: parent %d, tag %.*s, bone %d:%d, loc file %d range %d..%d%s\n",
+          igroup, g.parent_index, strexpand(group_vis_name(g.vis_tag)),
           g.bone_id.type, g.bone_id.id,
           g.location.file.index, g.location.range.min, g.location.range.max,
           g.one_sided ? ", one_sided" : "");
@@ -622,10 +622,7 @@ debug_channel_update(Game_State *state, App *app)
   // into the document (game_document.cpp), weld, save driver.document.ad.
   char const *name = cmd + 13;
   Group_Vis tag = Vis_None;
-  for_i32(vis, 1, Group_Vis_Count)
-  {
-   if(strcmp(name, group_vis_names[vis]) == 0){ tag = cast(Group_Vis)vis; break; }
-  }
+  group_vis_from_name(SCu8(name), &tag);
   if(tag == Vis_None)
   {
    fprintf(out, "export_group: unknown tag '%s'\n", name);
@@ -633,8 +630,8 @@ debug_channel_update(Game_State *state, App *app)
   else
   {
    Document_Export_Result r = export_group_to_document(state, tag);
-   fprintf(out, "export_group %s: %s, %d groups, %d primitives, %d vertices (%d welded)\n",
-           group_vis_names[tag], r.ok ? "ok" : "FAILED",
+   fprintf(out, "export_group %.*s: %s, %d groups, %d primitives, %d vertices (%d welded)\n",
+           strexpand(group_vis_name(tag)), r.ok ? "ok" : "FAILED",
            r.group_count, r.primitive_count, r.vertex_count, r.welded_count);
    debug_channel_wants_animate = true;
   }

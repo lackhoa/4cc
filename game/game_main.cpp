@@ -323,6 +323,37 @@ enum_index_from_pointer(type_info_from_pointer(&value), &value)
 #define enum_name_from_value(value) \
 enum_name_from_value(type_info_from_pointer(&value), &value)
 
+// NOTE(kv) Group_Vis names through Type_Info (replaced the GroupVisList X-macro and
+// the group_vis_names[] table on 2026-09-12). Files store tags by name; the debug
+// channel takes them by name (`export_group Vis_Nose`).
+function String
+group_vis_name(Group_Vis tag)
+{// NOTE(kv) The real member comes first in Type_Info_Group_Vis, aliases
+ // (Vis_Ref_Front_Last...) later, so the first value match is the canonical name.
+ Type_Info &type = Type_Info_Group_Vis;
+ for_i32(index, 0, type.enum_members.count)
+ {
+  I_Enum_Member &member = type.enum_members[index];
+  if(member.value == tag){ return member.name; }
+ }
+ return strlit("Vis_None");
+}
+function b32
+group_vis_from_name(String name, Group_Vis *out)
+{// NOTE(kv) Only real tags resolve ([0, Group_Vis_Count)); Group_Vis_Count itself does not.
+ Type_Info &type = Type_Info_Group_Vis;
+ for_i32(index, 0, type.enum_members.count)
+ {
+  I_Enum_Member &member = type.enum_members[index];
+  if(member.name == name and member.value >= 0 and member.value < Group_Vis_Count)
+  {
+   *out = cast(Group_Vis)member.value;
+   return true;
+  }
+ }
+ return false;
+}
+
 function void
 pretty_print_func(Printer &p, Type_Info *type, void *void_pointer)
 {

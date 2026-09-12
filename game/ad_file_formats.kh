@@ -1,16 +1,208 @@
 //-
-[info embed]
-struct Camera_Data
+// NOTE(kv) The recorded-drawing structs (plan-document-self-describing-format step 4):
+// everything driver.document.ad holds, rooted at Document_File. Moved here from
+// framework_driver_shared.h on 2026-09-12; the helpers (primitive_vertex_count, the
+// PaintField enums, GroupVisList replacement group_vis_name) stay in .h/.cpp files.
+// Included AFTER framework_driver_shared.gen.h (needs tvert, Bezier, Bone_ID, Location).
+//-
+
+[info]
+enum Weight_Key
+{// NOTE(kv) Shape-key weights (plan-pose-scalar-curves Q15/Q17): a keyed primitive
+ // stores its rest shape plus a delta, and is drawn as `rest + w*delta` where
+ // w = Model.weight_live[key], published by the driver each frame (like vis_live).
+ // Weight_None slot stays 0, so an unkeyed primitive is unaffected.
+ Weight_None,
+ Weight_Blink,
+ //
+ Weight_Count,
+};
+[info]
+struct Dual_Bezier
 {
- // NOTE(kv) Our spherical coordinates convention is kind of like 
- // the physics convention https://en.wikipedia.org/wiki/Spherical_coordinate_system
- // The similarity is that phi is the rotation in xy plane,
- // and theta is the angle to z axis.
- // But we interpret the numbers differently, view @setup_camera for details.
- v1 distance;
- v1 theta;
- v1 phi;
- v1 roll;
- v3 pivot;
+ Bezier P;
+ Bezier Q;
+ // NOTE(kv) Shape key (see Weight_Key): both sides may carry a delta.
+ Weight_Key key;
+ v3 dP[4];
+ v3 dQ[4];
+};
+[info]
+struct Recorded_Poly3
+{// NOTE(kv) fill3 arguments; Poly3 (bare v3) stays the hit-test triangle type.
+ tvert points[3];
+};
+[info]
+struct Disk
+{// NOTE(kv) fill_disk arguments (the tessellation is camera-dependent, re-run at replay)
+ tvert center;
+ v1 radius;  // bone-space (tdim)
+};
+[info]
+struct Recorded_Image
+{// NOTE(kv) draw_image arguments. color/alpha are PRE-tint -- hot highlighting is
+ // per-frame (like culling), so it's re-applied at replay, not baked here.
+ // filename points into static fimage storage (or the recording arena after a load);
+ // the bytes are null-terminated in practice, but it is a String, not a Stringz.
+ String filename;
+ v3 o;
+ v3 x;
+ v3 y;
+ v3 color;
+ v1 alpha;
+};
+[info]
+enum Primitive_Type
+{
+ Primitive_Type_None,
+ Primitive_Type_Curve,
+ Primitive_Type_Poly3,
+ Primitive_Type_Dual_Bezier,
+ Primitive_Type_Patch,
+ Primitive_Type_Disk,
+ Primitive_Type_Image,
+ Primitive_Type_Curve_Patch,  // NOTE(kv) appended: values are stored in driver.document.ad
+};
+[info]
+struct Recorded_Curve_Patch
+{// NOTE(kv) Document-only primitive referencing 2-4 CURVE primitives of the same
+ // recording by index (game_curve_patch.cpp); no vertices of its own (vertex count 0),
+ // the surface is re-evaluated from the curves at replay.
+ i32 curve_count;
+ i32 curve_index[4];
+};
+[info]
+struct Recorded_Curve
+{// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
+ // parameterization live with the geometry; all style folds down the group path.
+ Bezier bezier;
+ v4 radii;
+ v4 lightness_additions;
+ b32 straight;  // Line_Straight, set by the straight-line helper
+ // NOTE(kv) Shape key: points AND radii blend (the blink changes stroke width too).
+ Weight_Key key;
+ v3 dbezier[4];
+ v4 dradii;
+};
+[info]
+struct Recorded_Vertex
+{// NOTE(kv) A junction point shared between primitives (plan-data-only-region-poc
+ // Q95). `bone` is the owning bone of the point (Bone_None = the group's bone).
+ // The vertex table is the authority for every primitive's VERTICES; the by-value
+ // tverts inside the geometry union are a cache that resolve_vertices refreshes
+ // before each replayed draw. Live capture pushes one fresh vertex per slot;
+ // welding (sharing) happens at document export.
+ // "Vertex" = a point in the table = one that can be a junction: curve endpoints,
+ // poly3 points, dual-bezier endpoints, patch corners, disk center. Bezier HANDLES
+ // (P1/P2) are tverts too but per-curve shape, never shared, never in the table.
+ v3 p;
+ Bone_ID bone;
+};
+[info]
+struct Recorded_Primitive
+{
+ Primitive_Type type;
+ meta_unserialized Location location;  // code origin, capture-time only (Q4)
+ i32 group_index;  // index into Model.groups
+ i32 vertex_index[recorded_vertex_cap];  // indices into Recording.vertices, see primitive_vertex_count
+
+ tagged_by(type) union
+ {
+  Recorded_Curve curve = Primitive_Type_Curve;
+  Recorded_Poly3 poly3 = Primitive_Type_Poly3;
+  Dual_Bezier dual_bezier = Primitive_Type_Dual_Bezier;
+  Patch patch = Primitive_Type_Patch;
+  Disk disk = Primitive_Type_Disk;
+  Recorded_Image image = Primitive_Type_Image;
+  Recorded_Curve_Patch curve_patch = Primitive_Type_Curve_Patch;
+ };
+};
+[info]
+enum Group_Vis
+{// NOTE(kv) Live visibility binding (Q32): a tagged group's `painting` is re-ANDed at
+ // replay with Model.vis_live[tag] (published by the driver each frame) instead of
+ // trusting only the capture-time frozen value. Vis_None slot is always true.
+ // Names are reachable at runtime through Type_Info_Group_Vis (group_vis_name in
+ // game_main.cpp), which replaced the GroupVisList X-macro + group_vis_names[] table.
+ // Files store tags BY NAME, so reordering here is safe.
+ Vis_None,
+ Vis_Skeleton,
+ // NOTE(kv) Level-1 guide lines inside data regions (plan-head-to-data Q2): the
+ // `if(level1)` gate becomes a live tag published from viz_level >= 1.
+ Vis_Level1,
+ // NOTE(kv) Preset-settings toggles (plan-preset-rethink): live values published
+ // each frame from the main viewport's Preset_Settings row.
+ Vis_Eyeball,
+ Vis_Loomis_Ball,
+ Vis_Hair,
+ Vis_Ref_Arm_Medial_Right,
+ Vis_Ref_Arm_Back_Bone,
+ Vis_Ref_Arm_Profile_Left,
+ // NOTE(kv) 5 consecutive slots, one per front-camera reference image
+ Vis_Ref_Front_0,
+ Vis_Ref_Front_1,
+ Vis_Ref_Front_2,
+ Vis_Ref_Front_3,
+ Vis_Ref_Front_4,
+ // NOTE(kv) Region tags: always visible; they exist to name an export region
+ // (plan-data-only-region-poc Q97) and survive in the document as the region's identity.
+ Vis_Nose,
+ // NOTE(kv) Head regions (plan-head-to-data): declared together so the Model layout
+ // changes once -- a Group_Vis change crashes running instances on hot reload.
+ Vis_Mouth,
+ Vis_Ear,
+ Vis_Head_Outline,
+ Vis_Chin,
+ Vis_Cheek,
+ Vis_Neck_Junction,
+ //
+ Group_Vis_Count,
+ Vis_Ref_Front_Last = Vis_Ref_Front_4,
+ Vis_Region_First   = Vis_Nose,  // NOTE(kv) [Vis_Region_First, Group_Vis_Count) = region tags
+};
+[info]
+struct Group_Cam_Vis
+{// NOTE(kv) Camera-bound visibility condition (Q38): recorded parameters, not a
+ // frozen verdict. Replay re-ANDs `dot(normal, live_view) > min_alignment` (absolute
+ // value if symmetric) into painting, where live_view is derived from the group's
+ // view scope and the current camera (Q42).
+ b32 active;
+ v3 normal;
+ v1 min_alignment;
+ b32 symmetric;
+};
+[info]
+struct Recorded_Group
+{// NOTE(kv) One paint scope during the recording run (see Paint_Params_Block).
+ // Groups form a forest: parent_index == -1 means top-level.
+ i32 parent_index;
+ meta_unserialized Location location;   // first draw under this scope (best-effort name)
+ Paint_Params params; // full effective paint state for leaves of this group
+ u32 changed_mask;    // PaintField_* bits differing from the parent group
+ Group_Vis vis_tag;   // zero-init = Vis_None; inherited by child scopes + siblings
+ Group_Cam_Vis cam_vis;  // zero-init = inactive; inherited like vis_tag
+ // NOTE(kv) Q94 mirror: the capture is left-only, replay draws it twice (left bones,
+ // then right bones). A `LeftOnly` scope (the data form of `if(is_left())`) marks its
+ // group one-sided so the right pass skips it. Inherited like vis_tag.
+ b32 one_sided;
+ // NOTE(kv) Scoped context folded onto the group (Q43a/Q43b): exactly one bone per
+ // group (mid-scope bone switch sibling-splits), and the view scope's center --
+ // recorded as {center, the bone it was expressed in} so replay can derive the
+ // view vector live from the current camera instead of a frozen snapshot.
+ Bone_ID bone_id;
+ v3 view_center;
+ Bone_ID view_bone;
+ // NOTE(kv) Params are only knowable after the scope body ran its mutations, so
+ // they're snapshotted lazily ("frozen") at the first event that needs them --
+ // first own primitive, a child scope opening, or scope close. Capture-time only.
+ meta_unserialized b32 params_frozen;
+};
+[info]
+struct Document_File
+{// NOTE(kv) Root of driver.document.ad (step 5 writes magic + schema + one of these).
+ // Mirrors the darrays of Recording; the arena/captured flag are runtime-only.
+ darray(Recorded_Vertex) vertices;
+ darray(Recorded_Group) groups;
+ darray(Recorded_Primitive) primitives;
 };
 //-

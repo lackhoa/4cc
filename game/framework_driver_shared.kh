@@ -52,6 +52,108 @@ typedef u32 FLP_Flags;
 enum{
 };
 
+//-NOTE(kv) Structs moved here from framework_driver_shared.h on 2026-09-12
+// (plan-document-self-describing-format step 4) so Type_Info covers everything the
+// document file holds. Helpers/operators stay in the .h; `no_parse { }` blocks are
+// echoed verbatim (operators only, never data members).
+
+[info embed]
+struct Camera_Data
+{
+ // NOTE(kv) Our spherical coordinates convention is kind of like
+ // the physics convention https://en.wikipedia.org/wiki/Spherical_coordinate_system
+ // The similarity is that phi is the rotation in xy plane,
+ // and theta is the angle to z axis.
+ // But we interpret the numbers differently, view @setup_camera for details.
+ v1 distance;
+ v1 theta;
+ v1 phi;
+ v1 roll;
+ v3 pivot;
+};
+
+[info]
+struct Fill_Flags
+{// NOTE(kv) Bits: Fill_Flag enum in the .h (Fill_Culled, Fill_Inverted, Fill_Overlay).
+ u32 v;
+};
+[info]
+struct Fill_Params
+{
+ // NOTE(kv) Singular color fills still makes sense for debugging/highlighting.
+ argb color;
+ Fill_Flags flags;
+};
+[info]
+struct Line_Params
+{
+ v4 radii;
+ // NOTE(kv) I want lightness changes to adapt to line color.
+ // so we store the "x" in "rgb + x*rgb".
+ v4 lightness_additions;
+ Line_Flags flags;
+
+ // NOTE(kv) Most of the time we can specify normal-alignment by group,
+ // but sometimes we want to infer the view vector automatically from the curve.
+ v1 alignment_min;
+};
+[info]
+struct Paint_Params
+{// NOTE(kv) The PaintFieldList X-macro in the .h mirrors these members -- extend BOTH.
+ // NOTE(kv) "painting" is used f.ex for alignment checks,
+ // it MUST NOT disable sending data, because cursor selection still needs them.
+ b32 painting;
+
+ Line_Params line;
+ Fill_Params fill;
+
+ v1 radius_mult;
+ v1 nslice_per_meter;
+ argb line_color;
+ v1 line_depth_offset;
+ v1 fill_depth_offset;
+};
+
+[info]
+struct Bezier
+{
+ tvert e[4];
+ no_parse {
+  myinline operator tvert *(){ return e; };
+  myinline tvert &operator[](i32 index){ return e[index]; }
+ }
+};
+[info]
+struct Patch
+{
+ tvert e[4][4];
+ no_parse {
+  typedef tvert Array4x4[4][4];  // #stroustrup
+  operator Array4x4&() { return e; }
+ }
+};
+
+[info]
+struct Range_i16
+{// NOTE(kv) Was union{min,begin}/union{max,end}; the begin/end aliases had no users.
+ i16 min;
+ i16 max;
+};
+[info]
+struct FUI_File
+{
+ i16 is_driver;
+ i16 index;
+};
+[info]
+struct Location
+{// NOTE(kv) Code range a primitive/group came from; helpers + the document sentinel
+ // (Location_File_Document) live in the .h. Never serialized (meta_unserialized at the
+ // holders), but Type_Info still needs the type.
+ FUI_File file;
+ Range_i16 range;
+};
+
 [info]
 struct FUI_Line_Params
 {// Mirrors @Line_Params

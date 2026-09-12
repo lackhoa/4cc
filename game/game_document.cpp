@@ -202,7 +202,7 @@ export_group_to_document(Game_State *state, Group_Vis tag)
    Recorded_Primitive &prim = doc.primitives.items[ip];
    if(prim.type == Primitive_Type_Image)
    {
-    Stringz filename = prim.image.filename;
+    String filename = prim.image.filename;
     u8 *bytes = cast(u8 *)push_size(&doc.arena, filename.len + 1);
     block_copy(bytes, filename.str, filename.len);
     bytes[filename.len] = 0;
@@ -217,8 +217,8 @@ export_group_to_document(Game_State *state, Group_Vis tag)
  // separable; report the whole table (the PoC has one region anyway).
  result.vertex_count = doc.vertices.count;
 
- log_string("export_group %s: %d groups, %d primitives, %d vertices (%d welded); document now %d/%d/%d",
-            group_vis_names[tag], result.group_count, result.primitive_count,
+ log_string("export_group %.*s: %d groups, %d primitives, %d vertices (%d welded); document now %d/%d/%d",
+            strexpand(group_vis_name(tag)), result.group_count, result.primitive_count,
             result.vertex_count, result.welded_count,
             doc.groups.count, doc.primitives.count, doc.vertices.count);
  result.ok = save_document_file(state);

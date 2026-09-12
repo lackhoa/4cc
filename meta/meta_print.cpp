@@ -161,6 +161,7 @@ print_type_and_name(Printer &p, Parsed_Type const&type, String name)
   case Parsed_Type_Array:
   {
    p < type.name < " " < name < "[" < type.array_count < "]";
+   if(type.array_count2.len){ p < "[" < type.array_count2 < "]"; }
   }break;
   
   case Parsed_Type_Reference:{
@@ -228,6 +229,7 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
 function void
 print_struct_info_members(Printer &p, String type_name, M_Struct_Members &members)
 {// NOTE(kv) The `result.members[...]` lines of a get_type_info function (structs and wrapper_types).
+ Scratch_Block scratch;
  {
    // NOTE(kv) Computing member count
    i32 member_count = 0;
@@ -257,15 +259,26 @@ print_struct_info_members(Printer &p, String type_name, M_Struct_Members &member
         print(p, "Type_Info *member_type = &member_type_value;\n");
         print(p, "*member_type = {};\n");
         String item_type_info = get_type_global_info_name(member.type.name);
-        //NOTE(kv) Made-up array type name
+        String item_type_name = member.type.name;
         String array_count = member.type.array_count;
-        printf(p, "member_type->name = strlit(\"%.*s[%S]\");\n",
-               strexpand(member.type.name), array_count);
+        if(member.type.array_count2.len)
+        {// NOTE(kv) 2D: the outer array's item is itself an on-the-fly "T[c2]" array type.
+         String array_count2 = member.type.array_count2;
+         print(p, "local_persist Type_Info inner_type_value;\n");
+         print(p, "inner_type_value = {};\n");
+         printf(p, "inner_type_value.name = strlit(\"%S[%S]\");\n", item_type_name, array_count2);
+         printf(p, "inner_type_value.kind = I_Type_Kind_Array;\n");
+         printf(p, "inner_type_value.size = %S * %S.size;\n", array_count2, item_type_info);
+         printf(p, "inner_type_value.array_item_type = & %S;\n", item_type_info);
+         printf(p, "inner_type_value.count = %S;\n", array_count2);
+         item_type_info = strlit("inner_type_value");
+         item_type_name = push_stringf(scratch, "%S[%S]", item_type_name, array_count2);
+        }
+        //NOTE(kv) Made-up array type name
+        printf(p, "member_type->name = strlit(\"%S[%S]\");\n", item_type_name, array_count);
         printf(p, "member_type->kind = I_Type_Kind_Array;\n");
-        printf(p, "member_type->size = %S * %.*s.size;\n",
-               array_count, strexpand(item_type_info));
-        printf(p, "member_type->array_item_type = & %.*s;\n",
-               strexpand(item_type_info));
+        printf(p, "member_type->size = %S * %S.size;\n", array_count, item_type_info);
+        printf(p, "member_type->array_item_type = & %S;\n", item_type_info);
         printf(p, "member_type->count = %S;\n", array_count);
        }else if(member.type.kind == Parsed_Type_Darray){
         //NOTE(kv) darray(T) -> on the fly too; the count lives in the value, not the type.
@@ -383,7 +396,14 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
         {
          PrintBraces(p);
          print(p, "\n");
-         p < read_function < "(r, &" < varname < "[i]);\n";
+         if(member.type.array_count2.len){
+          printf(p, "for_i32(j,0,%S)", member.type.array_count2);
+          PrintBraces(p);
+          print(p, "\n");
+          p < read_function < "(r, &" < varname < "[i][j]);\n";
+         }else{
+          p < read_function < "(r, &" < varname < "[i]);\n";
+         }
         }
        }else{
         //-Read normal type
@@ -525,6 +545,23 @@ print_enum(Printer &p, String type_name,
   for_i32(ei,0,enum_names.count){
    if(ei!=0){ p <"\n"; }
    p <enum_names[ei] <" = " <enum_vals[ei] <",";
+  }
+ }
+ print(p, "\n");
+}
+function void
+print_enum(Printer &p, String type_name,
+           darray(String) &enum_names,
+           darray(String) &enum_vals){
+ // NOTE(kv) .kh enums: the value is text (int, alias name) or empty (auto-increment).
+ m_location;
+ p <"enum " <type_name;
+ m_braces_sm{
+  for_i32(ei,0,enum_names.count){
+   if(ei!=0){ p <"\n"; }
+   p <enum_names[ei];
+   if(enum_vals[ei].len){ p <" = " <enum_vals[ei]; }
+   p <",";
   }
  }
  print(p, "\n");
@@ -702,8 +739,18 @@ print_wrapper_type(Printer &p, String wrapper, String wrapped,
    print_struct_info_members(p, wrapper, members);
    p < "return result;";
   }
-  
+
   print_type_meta_shared(p, type_name);
+
+  {// NOTE(kv) Legacy per-type reader (state.txt migration only), so an [info] struct can
+   //  hold a wrapper_type. Raw bytes: that is what the old files stored.
+   m_location;
+   print_type_read_function_prototype(p, type_name);
+   m_braces_newline
+   {
+    printf(p, strcode(read_binary_size(r, sizeof(%S), dst);), type_name);
+   }
+  }
  }
 }
 //-

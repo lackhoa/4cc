@@ -147,6 +147,7 @@ write_text_value(Printer &p, Type_Info *type, void *void_pointer, i32 indent)
      print(p, '}');
     }break;
     case Basic_Type_i1:{ printf(p, "%d", *cast(i32 *)pointer); }break;
+    case Basic_Type_i16:{ printf(p, "%d", cast(i32)*cast(i16 *)pointer); }break;
     case Basic_Type_i2: case Basic_Type_i3: case Basic_Type_i4:
     {
      i32 *values = cast(i32 *)pointer;
@@ -510,7 +511,7 @@ read_text_value(Text_Reader *r, Type_Info *type, void *void_pointer)
   {
    switch(type->Basic_Type)
    {
-    case Basic_Type_v1: case Basic_Type_i1: case Basic_Type_u32: case Basic_Type_u64:
+    case Basic_Type_v1: case Basic_Type_i1: case Basic_Type_i16: case Basic_Type_u32: case Basic_Type_u64:
     {
      Text_Token token = text_next(r);
      if(token.kind != Text_Token_Word){ text_error(r, token.line, "expected a number"); break; }
@@ -520,6 +521,7 @@ read_text_value(Text_Reader *r, Type_Info *type, void *void_pointer)
      {
       case Basic_Type_v1: { *cast(v1 *)pointer  = cast(v1)strtod(cstring, 0); }break;
       case Basic_Type_i1: { *cast(i32 *)pointer = cast(i32)strtol(cstring, 0, 10); }break;
+      case Basic_Type_i16:{ *cast(i16 *)pointer = cast(i16)strtol(cstring, 0, 10); }break;
       case Basic_Type_u32:{ *cast(u32 *)pointer = cast(u32)strtoul(cstring, 0, 10); }break;
       case Basic_Type_u64:{ *cast(u64 *)pointer = cast(u64)strtoull(cstring, 0, 10); }break;
       default: break;

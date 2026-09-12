@@ -201,7 +201,12 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
 
    case Primitive_Type_Image:
    {
-    draw_image(prim.image.filename,
+    // NOTE(kv) Recorded_Image.filename is a String for Type_Info's sake; the bytes
+    // are null-terminated (capture stores a Stringz, export copies with a 0 byte).
+    Stringz filename = {};
+    filename.str = prim.image.filename.str;
+    filename.len = prim.image.filename.len;
+    draw_image(filename,
                prim.image.o, prim.image.x, prim.image.y,
                prim.image.alpha, prim.image.color);
    }break;

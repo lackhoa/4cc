@@ -937,8 +937,15 @@ parse_type_and_name(Klang_Parser *p)
     type.array_count = print_expression(p->arena, *count);
     // NOTE(kv) The int value might be invalid...
     type.array_count_int = (i32)string_to_u64(type.array_count, 10);
-    
+
     ep_char(p, ']');
+    if(ep_maybe_char(p, '['))
+    {// NOTE(kv) Second dimension (Patch.e[4][4]); more than two is not supported.
+     Meta_Expression *count2 = push_struct(p->arena, Meta_Expression);
+     parse_expression_full(p, count2);
+     type.array_count2 = print_expression(p->arena, *count2);
+     ep_char(p, ']');
+    }
    }
   }
   else if(ep_maybe_char(p, '('))
@@ -1387,16 +1394,23 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   {//-Enum
    darray(String) enum_names = {};
    init_dynamic(enum_names, tmp);
-   darray(i1) enum_vals      = {};
+   // NOTE(kv) Values are kept as TEXT: `= 3`, `= Vis_Nose` (alias) or empty (C auto-increment).
+   //  The Type_Info side lets the compiler fill the ints (print_enum_meta), so we never
+   //  need to evaluate them here.
+   darray(String) enum_vals  = {};
    init_dynamic(enum_vals, tmp);
    type_name = ep_maybe_id(p);
    m_brace_open(p);
-   
+
    while(p->ok_ && !m_maybe_brace_close(p))
    {//NOTE(kv) Enum value
     push(&enum_names, ep_id(p));
-    ep_char(p, '=');
-    push(&enum_vals, ep_i1(p));
+    String value = {};
+    if(ep_maybe_char(p, '='))
+    {
+     value = ep_capture_until_char(p, ',');
+    }
+    push(&enum_vals, value);
     ep_eat_until_char_simple(p, ',');  // NOTE(kv) The ending comma is optional, but I don't care.
    }
    

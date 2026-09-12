@@ -31,6 +31,9 @@ struct Parsed_Type
  // only problem is we don't actually compile, so sometimes we just... don't know.
  String array_count;
  i32 array_count_int;
+ // NOTE(kv) `T name[c1][c2]`: second dimension, empty for 1D. Type_Info nests two Array
+ //  types (outer item = "T[c2]"); the legacy reader loops twice.
+ String array_count2;
 
  String darray_item;
 };
