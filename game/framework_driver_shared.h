@@ -33,6 +33,11 @@ global i32 const recorded_vertex_cap = 4;
 #include "4coder_kv_debug.h"
 #include "meta_game_shared.h"
 //-
+myinline b32
+scene_has_mesh(Reference_Scene_Data &data)
+{// NOTE(kv) A scene carries a reference mesh (the skull) iff it names a file.
+ return data.mesh_filename.len > 0;
+}
 myinline tdim mkdim(v1 x){ return {x}; }
 
 myinline tvert mkvert(v1 x, v1 y, v1 z){ return {v3{x,y,z}}; }

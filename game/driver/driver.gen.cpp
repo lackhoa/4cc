@@ -1419,7 +1419,7 @@ show_reference_images(){
 Reference_Scene scene = get_reference_scene();
 if(scene != Scene_None){
 Reference_Scene_Data data = driver_get_scene_data(scene);
-if(data.mesh_filename.len){
+if(scene_has_mesh(data)){
 SetInBlock(the_model->is_right, 0);
 BoneBlock(mk_bone_id(Bone_Head));
 (set_draw_location_unresolved({2,257}), draw_reference_mesh(data.mesh_filename, data.mesh_placement), clear_draw_location());

@@ -1963,7 +1963,7 @@ show_reference_images()
  if(scene != Scene_None)
  {//-Reference scene path (image + optional mesh come with the scene)
   Reference_Scene_Data data = driver_get_scene_data(scene);
-  if(data.mesh_filename.len)
+  if(scene_has_mesh(data))
   {//-Reference skull (plan-reference-skull.md): follows the head bone, left side only
    // (the mesh is a whole skull; the right head bone is just the mirror). A plain if,
    // not ShowGroup: the mesh is pushed directly, vis_live can't gate it.

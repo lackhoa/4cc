@@ -92,7 +92,8 @@ get_reference_mesh_placement(Game_State *state)
  if(scene == Scene_None){ return 0; }
  Driver_API *driver = &state->driver_api;
  if(not is_valid(driver)){ return 0; }
- if(driver->driver_get_scene_data(scene).mesh_filename.len == 0){ return 0; }
+ Reference_Scene_Data data = driver->driver_get_scene_data(scene);
+ if(not scene_has_mesh(data)){ return 0; }
  sarray(FUI_File_Data) files = get_file_array({1, 0});
  for_i32(file_index, 1, files.count)
  {
