@@ -464,7 +464,12 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
  mat4i T = (mat4i_translate(placement.center) *
             mat4i_scale(scale) *
             mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
- argb argb_color = argb_pack(V4(color, alpha));
+ // NOTE(kv) Headlight shading, per triangle, same rule as the tablet's patches
+ // (tablet/src/patch.ts brightness_of_normal): ambient floor + |normal . view|, two-sided.
+ // Only the reference is shaded -- the drawing itself is deliberately flat, so this
+ // stays here and never goes through painter->shading_on.
+ v1 ambient = 0.35f;
+ v3 camera_obj = camera_object_position();
  Poly_Flags flags = to_poly_flags(Fill_Flags{});
  for(i32 i = 0; i+2 < mesh->indices.count; i += 3)
  {
@@ -475,6 +480,11 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
   v3 points[3] = {mat4vert(T, mesh->vertices[a]),
                   mat4vert(T, mesh->vertices[b]),
                   mat4vert(T, mesh->vertices[c])};
+  v3 normal = noz(cross(points[1]-points[0], points[2]-points[0]));
+  v3 centroid = (points[0]+points[1]+points[2]) / 3.f;
+  v3 view = noz(camera_obj - centroid);
+  v1 brightness = ambient + (1.f-ambient)*absolute(dot(normal, view));
+  argb argb_color = argb_pack(V4(color*brightness, alpha));
   poly3_inner(mk_poly3(points), repeat3(argb_color), flags);
  }
 }
