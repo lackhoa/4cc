@@ -36,7 +36,7 @@ api(ed) function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID bu
 api(ed) function Buffer_ID view_set_buffer_named(App* app, View_ID view, String8 name);
 api(ed) function Buffer_Seek seek_line_col(i64 line, i64 col);
 api(ed) function Buffer_Seek seek_pos(i64 pos);
-api(ed) function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color);
+api(ed) function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color, v1 depth_offset);
 api(ed) function Texture_Handle ed_load_image(Stringz filename, v2* out_dim);
 api(ed) function void switch_to_mouse_panel(App* app);
 api(ed) function b32 get_confirmation_from_user(App* app, String query);

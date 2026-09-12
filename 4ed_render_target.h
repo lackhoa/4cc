@@ -91,6 +91,7 @@ struct Render_Entry_Image
  Stringz filename;
  v3 o, x, y_info;  // "y_info" encodes both direction and scale
  argb  color;
+ v1 depth_offset;  // NOTE(kv) same meaning as Render_Vertex::depth_offset (camera-z units)
 };
 
 //

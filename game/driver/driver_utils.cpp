@@ -349,14 +349,27 @@ draw_curve(Curve c, v3 p0, v3 p3)
   draw_line(p3, p3+c.d3, handle);
  }
 }
+// NOTE(kv) Reference z-order (plan-reference-toggle-two-states, 2026-09-12): references
+// are always drawn opaque; reference_mode pulls them in front of the drawing (On) or
+// pushes them behind it (Off) by a depth offset along the camera z. Half a meter: bigger
+// than the drawing's depth extent around the head (~0.2 m), smaller than the camera
+// distance (~1 m) so nothing crosses the near plane. Depth-tested among themselves, so
+// the skull still occludes itself (an overlay pass wouldn't).
+global v1 reference_depth_offset_magnitude = 0.5f;
+function v1
+reference_depth_offset()
+{
+ return (painter->reference_mode == Reference_On ?
+         -reference_depth_offset_magnitude :
+         +reference_depth_offset_magnitude);
+}
 function void
 draw_reference_image_from_data(Reference_Image ref)
 {
  Reference_Placement &placement = ref.placement;
- if(painter->reference_mode == Reference_Off) { return; }
- v1 alpha = placement.alpha;
- if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
- draw_image(ref.filename, placement.center, placement.x_axis, V3y(1.f), alpha);
+ // NOTE(kv) placement.alpha is kept in the data but ignored (plan Q2): opaque, z-ordered.
+ draw_image(ref.filename, placement.center, placement.x_axis, V3y(1.f), 1.f, V3(1,1,1),
+            reference_depth_offset());
 }
 
 //-NOTE(kv) Reference meshes (@draw_reference_mesh): a triangle soup loaded from a
@@ -484,14 +497,12 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
                     v3 color=V3(0.85f, 0.8f, 0.7f))
 {// NOTE(kv) Drawn under whatever bone the caller pushed (the skull goes under Bone_Head so
  // it follows the head pose). Coordinates: bone = center + scale * rotate(obj).
- if(painter->reference_mode == Reference_Off) { return; }
  if(not is_fill_enabled()) { return; }
  Reference_Mesh *mesh = load_reference_mesh(filename);
  if(mesh->load_failed){ return; }
  painter->reference_mesh_obj_radius = mesh->bound_radius;  // NOTE(kv) for the gizmo
  painter->reference_mesh_obj_center = mesh->bound_center;
- v1 alpha = 0.35f;  // NOTE(kv) same ballpark as the images' Reference_Alpha values
- if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
+ v1 alpha = 1.0f;  // NOTE(kv) opaque, z-ordered by reference_mode (@reference_depth_offset)
  u64 cycle_start = __rdtsc();
  i32 triangle_count = mesh->indices.count / 3;
  if(not mesh->cache_valid or
@@ -540,7 +551,7 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
  argb hot = (current_location_is_hot() ? hot_color : 0);
  draw_shaded_mesh(painter->target, mesh->bone_vertices.items, mesh->indices.items,
                   mesh->face_normals.items, triangle_count, view, V4(color, alpha),
-                  painter->params.fill_depth_offset, hot);
+                  reference_depth_offset(), hot);
  painter->reference_mesh_cycles += u32(__rdtsc() - cycle_start);
 }
 

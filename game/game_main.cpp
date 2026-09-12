@@ -2194,7 +2194,9 @@ game_update(Game_Update_Params params)
       {
        snap_camera(cam_data, update_viewport);
       }break;
-      case Key_Code_Q:{ state->reference_mode = cast(Reference_Mode)((state->reference_mode + 1) % 3); }break;
+      // NOTE(kv) Independent of edit modes on purpose: Khoa flips it mid-drag to judge a
+      // skull placement against the drawing (plan-reference-toggle-two-states Q4).
+      case Key_Code_Q:{ state->reference_mode = (state->reference_mode == Reference_On ? Reference_Off : Reference_On); }break;
       case Key_Code_X:{ cam_data->phi *= -1.f; }break;
       case S|Key_Code_Z:{ cam_data->phi = .5f - cam_data->phi; }break;
       case S|Key_Code_0:{ cam_data->roll = {}; }break;
@@ -2597,11 +2599,9 @@ game_update(Game_Update_Params params)
     { bool value = state->orthographic;         ImGui::Checkbox("orthographic",         &value); state->orthographic = value; }
     ImGui::SameLine();
     {
-     const char *labels[] = {"off", "alpha", "full"};
-     int value = clamp_between(0, (int)state->reference_mode, 2);
-     ImGui::SetNextItemWidth(120);
-     ImGui::SliderInt("reference (Q)", &value, 0, 2, labels[value]);
-     state->reference_mode = cast(Reference_Mode)value;
+     bool value = (state->reference_mode == Reference_On);
+     ImGui::Checkbox("reference on top (Q)", &value);
+     state->reference_mode = (value ? Reference_On : Reference_Off);
     }
     ImGui::SeparatorText("Presets");
    }

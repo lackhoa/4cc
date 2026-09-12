@@ -86,7 +86,6 @@ get_reference_mesh_placement(Game_State *state)
  // the driver has drawn the mesh once (that's when its bounding radius gets published).
  // Reads state, not the painter: the painter is null outside call_driver_render.
  if(state->reference_mesh_obj_radius <= 0.f){ return 0; }
- if(state->reference_mode == Reference_Off){ return 0; }
  sarray(FUI_File_Data) files = get_file_array({1, 0});
  for_i32(file_index, 1, files.count)
  {

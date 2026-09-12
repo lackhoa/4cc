@@ -735,7 +735,8 @@ ogl__render_images(Render_Group *group, b32 render_primitive_id)
     Render_Vertex D = { .pos=d, .uv=V2(0,1) };
     Render_Vertex vertices[6] = { A,B,C, A,C,D };
     for_i32(index,0,alen(vertices)){
-     vertices[index].color = entry->color; 
+     vertices[index].color        = entry->color;
+     vertices[index].depth_offset = entry->depth_offset;
     }
     ogl__stream_draw(vertices, alen(vertices));
    }

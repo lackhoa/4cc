@@ -1411,9 +1411,6 @@ render_hand(forearm_obj);
 }
 function void
 show_reference_images(){
-if(painter->reference_mode == Reference_Off){
-return;
-}
 {
 SetInBlock(the_model->is_right, 0);
 BoneBlock(mk_bone_id(Bone_Head));
@@ -1459,11 +1456,7 @@ tvert center = ReadSlider(206);
 v1 width = 1.1454f;
 Stringz filename = fimage(image_arm_profile_full);
 v3 x = V3z(1);
-v1 alpha = 0.299f;
-if(painter->reference_mode == Reference_Full){
-alpha = 1.f;
-}
-(set_draw_location_unresolved({2,269}), draw_image(filename, center, -width * x, V3y(1.f), alpha), clear_draw_location());
+(set_draw_location_unresolved({2,269}), draw_image(filename, center, -width * x, V3y(1.f), 1.f, V3(1, 1, 1), reference_depth_offset()), clear_draw_location());
 }
 }
 }

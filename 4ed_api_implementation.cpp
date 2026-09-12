@@ -3596,11 +3596,11 @@ seek_pos(i64 pos)
 }
 
 api(ed) function void
-push_image(Render_Target *target, Stringz image_file, v3 o, v3 x, v3 y, argb color)
+push_image(Render_Target *target, Stringz image_file, v3 o, v3 x, v3 y, argb color, v1 depth_offset)
 {
  Render_Entry *entry = new_render_entry(RET_Image);
  entry->image = push_struct(&render_state.arena, Render_Entry_Image);
- *entry->image = {image_file, o,x,y, color};
+ *entry->image = {image_file, o,x,y, color, depth_offset};
 }
 
 //TODO(kv) Our API is leaky all over the place

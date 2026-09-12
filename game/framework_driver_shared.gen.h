@@ -1381,8 +1381,7 @@ static_assert( sizeof(Reference_Scene) <= sizeof(i32) );
 ;
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:559:
 enum Reference_Mode{Reference_Off = 0,
-Reference_Alpha = 1,
-Reference_Full = 2,};
+Reference_On = 1,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:579:
 function Type_Info
@@ -1393,10 +1392,9 @@ Type_Info result = {};
 result.name = strlit("Reference_Mode");
 result.size = sizeof(Reference_Mode);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(3);
+result.enum_members.set_count(2);
 result.enum_members[0] = {.name=strlit("Reference_Off"), .value=Reference_Off};
-result.enum_members[1] = {.name=strlit("Reference_Alpha"), .value=Reference_Alpha};
-result.enum_members[2] = {.name=strlit("Reference_Full"), .value=Reference_Full};
+result.enum_members[1] = {.name=strlit("Reference_On"), .value=Reference_On};
 return result;
 }
 #if WANT_TYPE_INFO

@@ -182,7 +182,7 @@ struct Reference_Mesh_Placement
 {// NOTE(kv) Where a reference mesh (the skull, @draw_reference_mesh) sits in the bone it's
  // drawn under: center = mesh origin, scale = uniform (obj units -> bone units; <= 0 is
  // treated as 1 so a fresh slider still shows something), rotation = (phi, theta, roll)
- // in turns, applied like the head's own mat4i_rotate_tpr. Alpha comes from
+ // in turns, applied like the head's own mat4i_rotate_tpr. Z-order comes from
  // reference_mode, like the images. Plan: plan-reference-skull.md.
  v3 center;
  v1 scale;
@@ -217,12 +217,14 @@ enum Reference_Scene
  Scene_Head_Profile = 4,
 };
 [info]
-// NOTE(kv) Global reference-image visibility (state.txt; Q cycles it).
+// NOTE(kv) Global reference z-order (state.txt; Q toggles it). References (images + the
+// skull) are always drawn, opaque; the mode only decides which layer wins the depth test
+// (@reference_depth_offset). Was off/alpha/full until plan-reference-toggle-two-states
+// (2026-09-12): alpha blending was too confusing to compare against, flipping is better.
 enum Reference_Mode
 {
- Reference_Off   = 0,  // draw no reference images at all
- Reference_Alpha = 1,  // each image at its own placement alpha
- Reference_Full  = 2,  // every image opaque
+ Reference_Off = 0,  // the drawing on top, references pushed behind it
+ Reference_On  = 1,  // references pulled in front of the drawing
 };
 //~Framework api
 api_table framework_api_1

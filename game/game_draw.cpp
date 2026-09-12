@@ -1209,8 +1209,9 @@ nduo_line( v3 array[3])
 function void
 draw_image(Stringz image_file,
            v3 o, v3 x, v3 y,
-           v1 alpha=1.f, v3 color={1,1,1})
-{
+           v1 alpha=1.f, v3 color={1,1,1}, v1 depth_offset=0.f)
+{// NOTE(kv) depth_offset: along the camera z like a poly's, for the reference z-order
+ // (@reference_depth_offset). Not recorded -- references aren't drawing data.
  {//-send data
   // NOTE(kv) pre-tint: hot highlighting is per-frame (re-applied at replay), so store
   // the raw color/alpha, not the tinted argb. See Recorded_Image.
@@ -1230,7 +1231,7 @@ draw_image(Stringz image_file,
  // primitive (required for ShowGroup-tagged reference images).
  if(is_fill_enabled() and not draw_is_muted(should_send_model_data()))
  {
-  push_image(painter->target, image_file, o,x,y,argb_color);
+  push_image(painter->target, image_file, o,x,y,argb_color, depth_offset);
  }
 }
 function Bezier

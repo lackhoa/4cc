@@ -36,7 +36,7 @@
 #define ed_view_set_buffer_named_sig() Buffer_ID ed_view_set_buffer_named(App* app, View_ID view, String8 name)
 #define ed_seek_line_col_sig() Buffer_Seek ed_seek_line_col(i64 line, i64 col)
 #define ed_seek_pos_sig() Buffer_Seek ed_seek_pos(i64 pos)
-#define ed_push_image_sig() void ed_push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color)
+#define ed_push_image_sig() void ed_push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color, v1 depth_offset)
 #define ed_ed_load_image_sig() Texture_Handle ed_ed_load_image(Stringz filename, v2* out_dim)
 #define ed_switch_to_mouse_panel_sig() void ed_switch_to_mouse_panel(App* app)
 #define ed_get_confirmation_from_user_sig() b32 ed_get_confirmation_from_user(App* app, String query)
@@ -131,7 +131,7 @@
 #define seek_pos__return Buffer_Seek
 #define seek_pos__params i64 pos
 #define push_image__return void
-#define push_image__params Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color
+#define push_image__params Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color, v1 depth_offset
 #define ed_load_image__return Texture_Handle
 #define ed_load_image__params Stringz filename, v2* out_dim
 #define switch_to_mouse_panel__return void
@@ -277,7 +277,7 @@ function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID buffer, i6
 function Buffer_ID view_set_buffer_named(App* app, View_ID view, String8 name);
 function Buffer_Seek seek_line_col(i64 line, i64 col);
 function Buffer_Seek seek_pos(i64 pos);
-function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color);
+function void push_image(Render_Target* target, Stringz image_file, v3 o, v3 x, v3 y, argb color, v1 depth_offset);
 function Texture_Handle ed_load_image(Stringz filename, v2* out_dim);
 function void switch_to_mouse_panel(App* app);
 function b32 get_confirmation_from_user(App* app, String query);

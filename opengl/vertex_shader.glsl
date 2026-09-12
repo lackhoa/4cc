@@ -46,7 +46,18 @@ void main(void)
  
 #else
  // NOTE: Blit image
- gl_Position.z = -gl_Position.w+1e-3;  //NOTE(kv) We want indicators to shine through, so there's an offset.
+ // NOTE(kv) Was pinned to the near plane (always on top, indicators shining through via
+ // a 1e-3 offset). Since plan-reference-toggle-two-states (2026-09-12) images are
+ // depth-tested like polys, offset along the camera z by vattr_depth_offset, so the
+ // reference z-order can put them behind or in front of the drawing. Clamped to the
+ // near plane so a big "in front" offset never gets clipped away.
+ {
+  v4 offsetted = world_pos;
+  v3 camz = uniform_camera_axes[2];
+  offsetted.xyz -= vattr_depth_offset * camz;
+  offsetted = uniform_clip_from_world * offsetted;
+  gl_Position.z = max(offsetted.z * gl_Position.w / offsetted.w, -gl_Position.w+1e-3);
+ }
 #  if WRITE_PRIM_ID
  vs_out.prim_id = vattr_prim_id;
 #  else
