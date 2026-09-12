@@ -11,9 +11,12 @@
 // struct change keep stale files from being misread. The preset table moved to
 // data/state.txt at Version_PresetsInStateFile (plan-presets-text-file).
 //
-// NOTE(kv) The *document* (game/driver/driver.document.ad, git-tracked) shares the
-// header and the recording block -- it is drawing data, not debug state.
-// Plan: ~/notes/tasks/autodraw_draw_as_data/plan-data-only-region-poc.md
+// NOTE(kv) The *document* (game/driver/driver.document.ad, git-tracked) is drawing data,
+// not debug state; it used to share this header and block, and is now written in the
+// self-describing schema form (ad_serialize_schema.cpp). The legacy reader below still
+// accepts the old header once.
+// Plans: ~/notes/tasks/autodraw_draw_as_data/plan-data-only-region-poc.md,
+//        ~/notes/tasks/autodraw_draw_as_data/plan-document-self-describing-format.md
 
 function Stringz
 recording_file_path(Arena *arena, Game_State *state)
@@ -101,16 +104,12 @@ write_recording_file(FILE *file, Game_State *state)
  write_eof_marker(writer);
  return writer->ok;
 }
-function b32
-write_document_file(FILE *file, Game_State *state)
-{
- Writer writer_value = make_writer(file);
- Writer *writer = &writer_value;
- write_recording_header(writer);
- write_recording_block(writer, state->model.recordings.document);
- write_eof_marker(writer);
- return writer->ok;
-}
+// NOTE(kv) The document is written in the self-describing schema form since 2026-09-12
+// (write_document_schema_file, ad_serialize_schema.cpp); the raw block above is
+// recording.ad only.
+function b32 write_document_schema_file(FILE *file, Game_State *state);
+function b32 is_schema_format_file(String file_data);
+function b32 load_document_schema_file(Game_State *state, Stringz path, String file_data);
 
 typedef b32 Recording_File_Writer(FILE *file, Game_State *state);
 function b32
@@ -151,7 +150,7 @@ save_document_file(Game_State *state)
  Scratch_Scope tmp;
  return save_file_via_temp(state, document_file_path(tmp, state),
                            pjoin(tmp, state->save_dir, strlit("document_temp.ad")),
-                           write_document_file, "document");
+                           write_document_schema_file, "document");
 }
 
 //~ Reading
@@ -315,21 +314,29 @@ load_document_file(Game_State *state)
   return false;
  }
  state->document_load_failed = true;  // NOTE(kv) cleared on success below
- Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
- Binary_Reader *r = &reader;
- if(not read_recording_header(r, "document", true)){ return false; }
-
- Recording &doc = state->model.recordings.document;
- read_recording_block(r, doc);
- read_debug_string(r, strlit("EOF"));
-
- if(r->ok){
-  state->document_load_failed = false;
-  log_string("document load: %d primitives, %d groups, %d vertices from %S",
-             doc.primitives.count, doc.groups.count, doc.vertices.count, path);
- }else{
-  log_error("document load: file corrupt, ignoring (%S)", path);
+ b32 ok = false;
+ if(is_schema_format_file(file_data))
+ {// NOTE(kv) Self-describing form (ad_serialize_schema.cpp): the file carries its layout.
+  ok = load_document_schema_file(state, path, file_data);
  }
- return r->ok;
+ else
+ {// NOTE(kv) Legacy raw-block form, accepted once: the next save writes the schema form.
+  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
+  Binary_Reader *r = &reader;
+  if(not read_recording_header(r, "document", true)){ return false; }
+
+  Recording &doc = state->model.recordings.document;
+  read_recording_block(r, doc);
+  read_debug_string(r, strlit("EOF"));
+  ok = r->ok;
+  if(ok){
+   log_string("document load: %d primitives, %d groups, %d vertices from %S (legacy raw form)",
+              doc.primitives.count, doc.groups.count, doc.vertices.count, path);
+  }else{
+   log_error("document load: file corrupt, ignoring (%S)", path);
+  }
+ }
+ if(ok){ state->document_load_failed = false; }
+ return ok;
 }
 //-EOF

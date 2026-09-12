@@ -617,24 +617,6 @@ debug_channel_update(Game_State *state, App *app)
   fprintf(out, "load_document: %s\n", ok ? "ok" : "FAILED");
   debug_channel_wants_animate = true;
  }
- else if(strcmp(cmd, "save_document_schema") == 0)
- {// NOTE(kv) Step 5 of plan-document-self-describing-format: the schema form goes to a
-  // side file until step 6 switches driver.document.ad over.
-  Scratch_Scope tmp;
-  Stringz path = pjoin(tmp, state->save_dir, strlit("document_schema_test.ad"));
-  b32 ok = save_file_via_temp(state, path,
-                              pjoin(tmp, state->save_dir, strlit("document_schema_temp.ad")),
-                              write_document_schema_file, "document (schema)");
-  fprintf(out, "save_document_schema: %s (%s)\n", ok ? "ok" : "FAILED", to_cstring(path));
- }
- else if(strcmp(cmd, "load_document_schema") == 0)
- {
-  Scratch_Scope tmp;
-  Stringz path = pjoin(tmp, state->save_dir, strlit("document_schema_test.ad"));
-  b32 ok = load_document_schema_file(state, path);
-  fprintf(out, "load_document_schema: %s\n", ok ? "ok" : "FAILED");
-  debug_channel_wants_animate = true;
- }
  else if(strncmp(cmd, "export_group ", 13) == 0)
  {// NOTE(kv) `export_group Vis_Nose`: move that tagged region from the live capture
   // into the document (game_document.cpp), weld, save driver.document.ad.

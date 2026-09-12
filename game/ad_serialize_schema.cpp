@@ -81,9 +81,7 @@ write_schema_string(Writer *writer, String string)
 {
  u32 len = cast(u32)string.len;
  write_lvalue(writer, len);
- // NOTE(kv) fwrite(_, 0, 1, _) returns 0, which write_size reads as failure: skip empties
- // (the discriminator name of a non-union member is empty).
- if(len > 0){ write_size(writer, string.str, len); }
+ write_size(writer, string.str, len);  // NOTE(kv) len 0 is a no-op (empty discriminator names)
 }
 function void
 write_schema_type_ref(Writer *writer, Type_Info *type)
@@ -797,16 +795,17 @@ read_document_schema_file(Binary_Reader *r, Arena *arena, Document_File *out, ch
 }
 
 function b32
-load_document_schema_file(Game_State *state, Stringz path)
+is_schema_format_file(String file_data)
+{// NOTE(kv) Old headers had a Data_Version (< 'adsc') where the tag now sits.
+ if(file_data.size < 8){ return false; }
+ u32 tag = 0;
+ block_copy(&tag, file_data.str + 4, sizeof(tag));
+ return tag == schema_format_tag;
+}
+function b32
+load_document_schema_file(Game_State *state, Stringz path, String file_data)
 {// NOTE(kv) Reads into a fresh arena and swaps it in only on success, so a rejected
  // file leaves the live document untouched (the banner says REJECTED).
- Scratch_Scope tmp;
- String file_data = read_entire_file(tmp, path);
- if(file_data.len == 0)
- {
-  log_string("document load: no file at %S", path);
-  return false;
- }
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Arena arena = make_arena();
  Document_File value = {};

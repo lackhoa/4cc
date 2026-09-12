@@ -2129,7 +2129,9 @@ make_writer(FILE *file)
 function void
 write_size(Writer *writer, void *data, usize size)
 {
- if(writer->ok)
+ // NOTE(kv) fwrite(_, 0, 1, _) returns 0 items, which is not a failure: an empty
+ // string (e.g. a schema member with no discriminator) writes only its length.
+ if(writer->ok && size > 0)
  {
   usize result = fwrite(data, size, 1, writer->file);
   writer->ok = (result != 0);
