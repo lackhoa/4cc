@@ -37,6 +37,12 @@ struct Type_And_Name
  String name;
 };
 //-
+struct M_Union_Variant
+{// NOTE(kv) One arm of an inline tagged union: `Recorded_Curve curve = Primitive_Type_Curve;`
+ String type_name;
+ String name;
+ String enum_name;
+};
 struct M_Struct_Member
 {
  union
@@ -53,6 +59,10 @@ struct M_Struct_Member
  String default_value;
  String discriminator;  //NOTE(kv) for union type only
  b32    unserialized;
+ // NOTE(kv) Non-empty = this member is `tagged_by(disc) union { ... };`: anonymous
+ //  union in the generated C++ (call sites keep `prim.curve`), a named
+ //  `<Struct>_Union` type in Type_Info. `type.name` holds that union type name.
+ darray(M_Union_Variant) union_variants;
 };
 typedef darray(M_Struct_Member) M_Struct_Members;
 myinline b32

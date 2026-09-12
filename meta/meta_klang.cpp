@@ -1271,6 +1271,29 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
 
     M_Struct_Member *member = push_zero(&members);
 
+    if(ep_maybe_id(p, "tagged_by"))
+    {//-Inline tagged union: tagged_by(type) union { Recorded_Curve curve = Primitive_Type_Curve; ... };
+     mpa_parens{ member->discriminator = ep_id(p); }
+     ep_id(p, strlit("union"));
+     init_dynamic(member->union_variants, tmp);
+     member->name = strlit("data");  // NOTE(kv) Type_Info / schema name of the anonymous union
+     // NOTE(kv) Permanent arena: the name outlives this top-level (type_info_list).
+     member->type.name = push_stringf(&thread_permanent_arena, "%S_Union", type_name);
+     ep_char(p, '{');
+     while(p->ok_ && !m_maybe_brace_close(p))
+     {
+      M_Union_Variant *variant = push_zero(&member->union_variants);
+      variant->type_name = ep_id(p);
+      variant->name      = ep_id(p);
+      ep_char(p, '=');
+      variant->enum_name = ep_id(p);
+      ep_skip_semicolons(p);
+     }
+     ep_skip_semicolons(p);
+     if(member->union_variants.count == 0){ p->fail(); }
+     continue;
+    }
+
     if(ep_maybe_id(p, "meta_removed"))
     {//-meta_removed
      ep_char(p, '(');
@@ -1318,6 +1341,25 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
     }
    }
    
+   for_i32(mi,0,members.count)
+   {// NOTE(kv) Inline tagged unions: the named `<Struct>_Union` type + its Type_Info
+    //  come first, the struct itself embeds the same arms anonymously.
+    M_Struct_Member &member = members[mi];
+    if(member.union_variants.count)
+    {
+     String discriminator_type = {};
+     for_i32(mj,0,members.count){
+      if(members[mj].name == member.discriminator){ discriminator_type = members[mj].type.name; }
+     }
+     if(discriminator_type.count == 0){ p->fail(); }  // NOTE(kv) tagged_by(x): x must be a member
+     print_inline_union(printer, member);
+     if(do_info)
+     {
+      print_inline_union_meta(printer, member, discriminator_type);
+      push(type_info_list, member.type.name);
+     }
+    }
+   }
    print_struct(printer, type_name, members, is_packed, &verbatims);
    if(do_info)
    {

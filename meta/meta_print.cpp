@@ -181,7 +181,19 @@ print_type_and_name(Printer &p, Type_And_Name const&type_and_name)
 function void
 print_struct_member(Printer &p, M_Struct_Member &member)
 {
- print_type_and_name(p, member.type, member.name);
+ if(member.union_variants.count)
+ {// NOTE(kv) Inline tagged union: anonymous in C++, one line so `_Embed` macros work too.
+  p<"union { ";
+  for_i32(vi,0,member.union_variants.count){
+   M_Union_Variant &variant = member.union_variants[vi];
+   p<variant.type_name<" "<variant.name<"; ";
+  }
+  p<"}";
+ }
+ else
+ {
+  print_type_and_name(p, member.type, member.name);
+ }
 }
 function void
 print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_packed=false,
@@ -272,10 +284,13 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
                strexpand(get_type_global_info_name(member.type.name)));
        }
       }
+      // NOTE(kv) Anonymous union: offsetof through its first arm (all arms share it).
+      String offset_member = member.name;
+      if(member.union_variants.count){ offset_member = member.union_variants[0].name; }
       p<"result.members["<member_index<"] = "<
       "{.type=member_type"<
       ", .name="<enclosed_in_strlit(member.name)<
-      ", .offset=offsetof("<type_name<", "<member.name<")";
+      ", .offset=offsetof("<type_name<", "<offset_member<")";
       if(member.discriminator.len){
        p<", .discriminator_offset=offsetof("<type_name<", "<member.discriminator<")";
       }
@@ -306,7 +321,9 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
    for_i32(member_index,0,members.count)
    {
     M_Struct_Member &member = members.get(member_index);
-    if(not member.unserialized)
+    // NOTE(kv) Inline tagged unions are only reached by the Type_Info walkers, never by
+    //  this legacy per-type reader (which only the state.txt migration still uses).
+    if(not member.unserialized and member.union_variants.count == 0)
     {
      String version_added = member.version_added;
      b32 has_version_added = version_added.len != 0;
@@ -436,6 +453,49 @@ print_union_meta(Printer &p, String type_name,
   }
  }
 #undef brace_block
+}
+function void
+print_inline_union(Printer &p, M_Struct_Member &member)
+{// NOTE(kv) The named twin of an inline `tagged_by(x) union { ... };` struct member:
+ // same arms, so sizeof/Type_Info can refer to it. The struct embeds the arms anonymously.
+ m_location;
+ p<"union "<member.type.name;
+ m_braces_sm{
+  for_i32(vi,0,member.union_variants.count){
+   M_Union_Variant &variant = member.union_variants[vi];
+   p<"\n"<variant.type_name<" "<variant.name<";";
+  }
+  p<"\n";
+ }
+ p<"\n";
+}
+function void
+print_inline_union_meta(Printer &p, M_Struct_Member &member, String discriminator_type)
+{
+ m_meta_only(p);
+ String type_name = member.type.name;
+ {//-Function to generate the type info
+  m_location;
+  print_type_info_function_prototype(p,type_name);
+  m_braces_newline{
+   p < "Type_Info result = {};\n" <
+    "result.name = "<enclosed_in_strlit(type_name)<";\n" <
+    "result.size = sizeof("<type_name<");\n"<
+    "result.kind = I_Type_Kind_Union;\n"<
+    "result.discriminator_type = &"<get_type_global_info_name(discriminator_type)<";\n";
+   p<"result.union_members.set_count("<member.union_variants.count<");\n";
+   for_i32(vi,0,member.union_variants.count){
+    M_Union_Variant &variant = member.union_variants[vi];
+    p<"result.union_members["<vi<"] = {"<
+     ".type=&"<get_type_global_info_name(variant.type_name)<", "<
+     ".name="<enclosed_in_strlit(variant.name)<", "<
+     ".variant="<variant.enum_name<
+     "};\n";
+   }
+   p<"return result;";
+  }
+ }
+ print_type_meta_shared(p, type_name);
 }
 function void
 print_enum(Printer &p, String type_name,
