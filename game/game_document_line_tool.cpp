@@ -272,8 +272,33 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Bone_ID bone_id = line_tool_group_bone(doc, tool.group_index);
  prim.vertex_index[1] = (snap >= 0) ? snap : tool.temp_end_vertex;
  doc.vertices[tool.temp_end_vertex].p = line_tool_world_to_bone(bone_id, tool.end_world);
+ // NOTE(kv) The pen path lies on the pivot plane, but a snapped endpoint can sit off
+ // it; fitting that raw path in 3D makes p1/p2 overshoot in depth to reach the plane
+ // (prim 48 "curving in x" from profile, 2026-09-12). So the path's camera depth is
+ // re-spread linearly from p0's depth to p3's along the chord parameter before the fit:
+ // the screen shape is untouched, the depth is a straight interpolation.
+ Camera camera = setup_camera(state->viewports[0].camera);
+ Scratch_Block scratch;
+ v3 *fit_path = push_array(scratch, v3, tool.path_count);
+ {
+  v1 z0 = mat4vert(camera.cam_from_world, tool.start_world).z;
+  v1 z3 = mat4vert(camera.cam_from_world, tool.end_world).z;
+  v1 total_length = 0;
+  for_i32(i, 1, tool.path_count){ total_length += lengthof(tool.path[i] - tool.path[i-1]); }
+  v1 length_so_far = 0;
+  for_i32(i, 0, tool.path_count)
+  {
+   if(i > 0){ length_so_far += lengthof(tool.path[i] - tool.path[i-1]); }
+   v1 t = (total_length > 1e-9f) ? length_so_far / total_length : 0.f;
+   v3 cam = mat4vert(camera.cam_from_world, tool.path[i]);
+   v1 z = lerp(z0, t, z3);
+   // NOTE(kv) Same screen point at the new depth: scale x,y by z/cam.z (perspective).
+   cam = V3(cam.x * z / cam.z, cam.y * z / cam.z, z);
+   fit_path[i] = mat4vert(camera.world_from_cam, cam);
+  }
+ }
  v3 p1, p2;
- line_tool_fit_handles(tool.path, tool.path_count, tool.start_world, tool.end_world, &p1, &p2);
+ line_tool_fit_handles(fit_path, tool.path_count, tool.start_world, tool.end_world, &p1, &p2);
  prim.curve.bezier.e[1].v = line_tool_world_to_bone(bone_id, p1);
  prim.curve.bezier.e[2].v = line_tool_world_to_bone(bone_id, p2);
 }

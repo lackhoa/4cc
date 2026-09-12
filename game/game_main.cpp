@@ -1913,11 +1913,18 @@ game_update(Game_Update_Params params)
       snprintf(label, sizeof(label), "Make patch from selection (%d curves)", sel.count);
       if(ImGui::Selectable(label)){ document_make_patch(state, sel.prim_index, sel.count); }
      }
+     b32 menu_hot_is_curve = (is_document_location(sel.menu_hot) and
+                              document_primitive_index(sel.menu_hot) < doc.primitives.count and
+                              doc.primitives[document_primitive_index(sel.menu_hot)].type == Primitive_Type_Curve);
      if(menu_hot_is_patch)
      {
       if(ImGui::Selectable("Delete patch")){ document_delete_patch(state, document_primitive_index(sel.menu_hot)); }
      }
-     if(sel.count >= 2 or menu_hot_is_patch){ ImGui::Separator(); }
+     if(menu_hot_is_curve)
+     {
+      if(ImGui::Selectable("Delete curve")){ document_delete_curve(state, document_primitive_index(sel.menu_hot)); }
+     }
+     if(sel.count >= 2 or menu_hot_is_patch or menu_hot_is_curve){ ImGui::Separator(); }
     }
     {// NOTE(kv) Line tool (game_document_line_tool.cpp): arm, then drag a curve; a
      // click without a drag disarms.

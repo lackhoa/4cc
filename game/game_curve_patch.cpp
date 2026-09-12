@@ -305,3 +305,53 @@ document_delete_patch(Game_State *state, i32 prim_index)
  history_commit(state);
  return save_document_file(state);
 }
+
+function b32
+document_delete_curve(Game_State *state, i32 prim_index)
+{// NOTE(kv) Removes one curve primitive. Patches that used it lose that entry (compacted);
+ // a patch left with fewer than 2 curves is removed too. Vertices stay: an unreferenced
+ // vertex is harmless, and the line tool re-snaps to it if a new curve goes there.
+ Recording &doc = state->model.recordings.document;
+ if(prim_index < 0 or prim_index >= doc.primitives.count or
+    doc.primitives[prim_index].type != Primitive_Type_Curve)
+ { log_error("delete_curve: %d is not a curve", prim_index); return false; }
+ Document_Action action = {};
+ action.kind       = Document_Action_Delete_Curve;
+ action.prim_index = prim_index;
+ history_begin(state, action);
+ for_i32(i, prim_index, doc.primitives.count-1){ doc.primitives[i] = doc.primitives[i+1]; }
+ doc.primitives.count--;
+ for(i32 i = 0; i < doc.primitives.count; )
+ {
+  Recorded_Primitive &other = doc.primitives[i];
+  if(other.type != Primitive_Type_Curve_Patch){ i++; continue; }
+  Recorded_Curve_Patch &patch = other.curve_patch;
+  i32 kept = 0;
+  for_i32(ic, 0, patch.curve_count)
+  {
+   i32 ref = patch.curve_index[ic];
+   if(ref == prim_index){ continue; }
+   patch.curve_index[kept++] = (ref > prim_index) ? ref-1 : ref;
+  }
+  patch.curve_count = kept;
+  if(kept < 2)
+  {// NOTE(kv) The patch is gone too; its own index is `i`, so later references shift
+   // once more.
+   for_i32(j, i, doc.primitives.count-1){ doc.primitives[j] = doc.primitives[j+1]; }
+   doc.primitives.count--;
+   for_i32(j, 0, doc.primitives.count)
+   {
+    Recorded_Primitive &p = doc.primitives[j];
+    if(p.type != Primitive_Type_Curve_Patch){ continue; }
+    for_i32(ic, 0, p.curve_patch.curve_count)
+    { if(p.curve_patch.curve_index[ic] > i){ p.curve_patch.curve_index[ic]--; } }
+   }
+   // NOTE(kv) Don't advance: doc.primitives[i] is now the next primitive.
+  }
+  else { i++; }
+ }
+ state->document_selection.count = 0;
+ state->document_edit = {};
+ history_commit(state);
+ return save_document_file(state);
+}

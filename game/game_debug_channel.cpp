@@ -26,11 +26,14 @@
 //                        toggle the hot document curve in the patch selection, no drag)
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
 //   delete_patch <i>  -> remove a curve patch primitive
+//   delete_curve <i>  -> remove a curve primitive (patches using it drop the entry; a patch
+//                        left with < 2 curves goes too)
 //   line_tool 0|1     -> arm/disarm the line tool (game_document_line_tool.cpp); then
 //                        mouse_down/mouse_move.../mouse_up draws one curve, `hot` shows the tool state
 //   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
+//   prim_px <i>       -> control-point px of document primitive i (same block as `hot`)
 //   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -237,6 +240,35 @@ function void
 debug_channel_print_tvert(FILE *out, tvert const &t)
 {
  fprintf(out, "(%g %g %g bone %d:%d)", t.x, t.y, t.z, t.bone_id.type, t.bone_id.id);
+}
+
+function void
+debug_channel_print_primitive_px(FILE *out, Game_State *state, i32 prim_index, b32 is_right)
+{// NOTE(kv) Where a primitive's control points are on screen, so a drag can aim at one.
+ Recording &doc = state->model.recordings.document;
+ Recorded_Primitive &prim = doc.primitives[prim_index];
+ Camera camera = setup_camera(state->viewports[0].camera);
+ v2 center = get_center(debug_channel_mouse_viewport_box);
+ auto print_pick = [&](const char *label, Document_Pick pick)
+ {
+  v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, pick));
+  fprintf(out, "  %s slot %d: px (%.0f %.0f)\n", label, pick.slot, px.x, px.y);
+ };
+ for_i32(slot, 0, primitive_vertex_count(prim.type))
+ {
+  print_pick("vertex", {prim_index, is_right, false, slot});
+ }
+ if(prim.type == Primitive_Type_Curve)
+ {
+  print_pick("handle", {prim_index, is_right, true, 1});
+  print_pick("handle", {prim_index, is_right, true, 2});
+ }
+ if(prim.type == Primitive_Type_Curve_Patch)
+ {
+  fprintf(out, "  curve_patch: curves");
+  for_i32(i, 0, prim.curve_patch.curve_count){ fprintf(out, " %d", prim.curve_patch.curve_index[i]); }
+  fprintf(out, "\n");
+ }
 }
 
 function void
@@ -933,6 +965,18 @@ debug_channel_update(Game_State *state, App *app)
   }
   else { fprintf(out, "error: usage: delete_patch <i>\n"); }
  }
+ else if(strncmp(cmd, "delete_curve ", 13) == 0)
+ {
+  i32 idx;
+  if(sscanf(cmd+13, "%d", &idx) == 1)
+  {
+   b32 ok = document_delete_curve(state, idx);
+   fprintf(out, "delete_curve: %s, document now %d primitives\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: delete_curve <i>\n"); }
+ }
  else if(strcmp(cmd, "mouse_up") == 0)
  {
   debug_channel_mouse_left = false;
@@ -958,6 +1002,18 @@ debug_channel_update(Game_State *state, App *app)
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_off\n");
  }
+ else if(strncmp(cmd, "prim_px ", 8) == 0)
+ {// NOTE(kv) Same control-point px block as `hot`, for any primitive index (so a test
+  // drag can aim at a vertex without hovering it first).
+  i32 idx;
+  Recording &doc = state->model.recordings.document;
+  if(sscanf(cmd+8, "%d", &idx) == 1 and idx >= 0 and idx < doc.primitives.count)
+  {
+   fprintf(out, "prim_px: document primitive %d\n", idx);
+   debug_channel_print_primitive_px(out, state, idx, false);
+  }
+  else { fprintf(out, "error: usage: prim_px <primitive index>\n"); }
+ }
  else if(strcmp(cmd, "hot") == 0)
  {
   Location hot = debug_channel_last_hot;
@@ -965,31 +1021,7 @@ debug_channel_update(Game_State *state, App *app)
   {
    fprintf(out, "hot: document primitive %d (%s)\n", document_primitive_index(hot),
            document_location_is_right(hot) ? "right" : "left");
-   // NOTE(kv) Where its control points are on screen, so a drag can aim at one.
-   Recording &doc = state->model.recordings.document;
-   Recorded_Primitive &prim = doc.primitives[document_primitive_index(hot)];
-   Camera camera = setup_camera(state->viewports[0].camera);
-   v2 center = get_center(debug_channel_mouse_viewport_box);
-   auto print_pick = [&](const char *label, Document_Pick pick)
-   {
-    v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, pick));
-    fprintf(out, "  %s slot %d: px (%.0f %.0f)\n", label, pick.slot, px.x, px.y);
-   };
-   for_i32(slot, 0, primitive_vertex_count(prim.type))
-   {
-    print_pick("vertex", {document_primitive_index(hot), document_location_is_right(hot), false, slot});
-   }
-   if(prim.type == Primitive_Type_Curve)
-   {
-    print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 1});
-    print_pick("handle", {document_primitive_index(hot), document_location_is_right(hot), true, 2});
-   }
-   if(prim.type == Primitive_Type_Curve_Patch)
-   {
-    fprintf(out, "  curve_patch: curves");
-    for_i32(i, 0, prim.curve_patch.curve_count){ fprintf(out, " %d", prim.curve_patch.curve_index[i]); }
-    fprintf(out, "\n");
-   }
+   debug_channel_print_primitive_px(out, state, document_primitive_index(hot), document_location_is_right(hot));
   }
   else if(is_valid(hot))
   {

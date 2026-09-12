@@ -114,6 +114,7 @@ enum Document_Action_Kind
  Document_Action_Delete_Patch,
  Document_Action_Export_Group,
  Document_Action_Add_Line,
+ Document_Action_Delete_Curve,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the
