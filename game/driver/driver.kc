@@ -1950,6 +1950,13 @@ show_reference_images()
 {
  // NOTE(kv) Off hides the hardcoded arm/back images too
  if(painter->reference_mode == Reference_Off) { return; }
+ {//-Reference skull (plan-reference-skull.md): follows the head bone, left side only
+  // (the mesh is a whole skull; the right head bone is just the mirror).
+  SetInBlock(the_model->is_right, 0);
+  BoneBlock(mk_bone_id(Bone_Head));
+  Stringz filename = fmesh(strlit("G:/My Drive/autodraw/reference-models/female-skull-hangar79-10k.obj"));
+  draw_reference_mesh(filename, fv(Reference_Mesh_Placement_0));
+ }
  BoneBlock(Bone_References);
  Reference_Scene scene = get_reference_scene();
  if(scene != Scene_None)

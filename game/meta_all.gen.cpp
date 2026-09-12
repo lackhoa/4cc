@@ -23,6 +23,7 @@ Type_Info_FUI_File = get_type_info_FUI_File();
 Type_Info_Location = get_type_info_Location();
 Type_Info_FUI_Line_Params = get_type_info_FUI_Line_Params();
 Type_Info_Reference_Placement = get_type_info_Reference_Placement();
+Type_Info_Reference_Mesh_Placement = get_type_info_Reference_Mesh_Placement();
 Type_Info_Curve = get_type_info_Curve();
 Type_Info_Reference_Scene = get_type_info_Reference_Scene();
 Type_Info_Reference_Mode = get_type_info_Reference_Mode();

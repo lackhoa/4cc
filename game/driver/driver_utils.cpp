@@ -359,4 +359,124 @@ draw_reference_image_from_data(Reference_Image ref)
  draw_image(ref.filename, placement.center, placement.x_axis, V3y(1.f), alpha);
 }
 
+//-NOTE(kv) Reference meshes (@draw_reference_mesh): a triangle soup loaded from a
+// Wavefront .obj (v / f lines only; quads and n-gons fan-split, normals/uvs/materials
+// ignored), drawn as flat translucent triangles under the current bone. Reference only --
+// not recorded drawing data, same treatment as the reference images.
+// Plan: ~/notes/tasks/autodraw_draw_as_data/plan-reference-skull.md
+#define fmesh(STRING, ...) STRING
+struct Reference_Mesh
+{
+ Stringz filename;
+ b32 load_failed;
+ sarray(v3)  vertices;
+ sarray(i32) indices;   // NOTE(kv) 3 per triangle, 0-based
+};
+global darray(Reference_Mesh) reference_meshes;  // NOTE(kv) cache, lives in driver_dll_arena
+
+function Reference_Mesh *
+load_reference_mesh(Stringz filename)
+{
+ for_each(mesh, reference_meshes)
+ {
+  // NOTE(kv) string_match lives in kv_extra.h, which the driver TU doesn't include.
+  if(mesh->filename.size == filename.size and
+     memcmp(mesh->filename.str, filename.str, filename.size) == 0){ return mesh; }
+ }
+ // NOTE(kv) arena null -> thread_permanent_arena (driver_dll_arena is declared after
+ // this file is included, and the mesh should outlive hot reloads anyway).
+ Arena *arena = 0;
+ Reference_Mesh mesh = {.filename = filename};
+ FILE *file = fopen((char*)filename.str, "rb");
+ if(file)
+ {
+  fseek(file, 0, SEEK_END);
+  i64 size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+  Scratch_Block tmp;
+  char *data = push_array(tmp, char, size+1);
+  fread(data, 1, size, file);
+  data[size] = 0;
+  fclose(file);
+
+  darray(v3)  vertices = {}; vertices.arena = arena;
+  darray(i32) indices  = {}; indices.arena  = arena;
+  char *at = data;
+  while(*at)
+  {
+   char *line_end = at;
+   while(*line_end and *line_end != '\n'){ line_end++; }
+   if(at[0] == 'v' and at[1] == ' ')
+   {
+    v3 p = {};
+    sscanf(at+2, "%f %f %f", &p.x, &p.y, &p.z);
+    push(&vertices, p);
+   }
+   else if(at[0] == 'f' and at[1] == ' ')
+   {// NOTE(kv) "f a/b/c d/e/f ..." -- only the vertex index before the first '/' matters
+    i32 face[16]; i32 face_count = 0;
+    char *cursor = at+2;
+    while(cursor < line_end and face_count < alen(face))
+    {
+     while(cursor < line_end and *cursor == ' '){ cursor++; }
+     if(cursor >= line_end){ break; }
+     i32 index = atoi(cursor);
+     if(index < 0){ index = vertices.count + index + 1; }  // NOTE(kv) obj negative = relative
+     face[face_count++] = index-1;
+     while(cursor < line_end and *cursor != ' '){ cursor++; }
+    }
+    for_i32(i, 1, face_count-1)
+    {// NOTE(kv) fan split
+     push(&indices, face[0]);
+     push(&indices, face[i]);
+     push(&indices, face[i+1]);
+    }
+   }
+   at = line_end;
+   if(*at){ at++; }
+  }
+  mesh.vertices = {vertices.items, vertices.count};
+  mesh.indices  = {indices.items,  indices.count};
+  mesh.load_failed = (vertices.count == 0 or indices.count == 0);
+ }
+ else
+ {
+  mesh.load_failed = true;
+ }
+ if(mesh.load_failed){ printf("reference mesh: failed to load %s\n", (char*)filename.str); }
+ push(&reference_meshes, mesh);
+ return &reference_meshes[reference_meshes.count-1];
+}
+
+function void
+draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
+                    v3 color=V3(0.85f, 0.8f, 0.7f))
+{// NOTE(kv) Drawn under whatever bone the caller pushed (the skull goes under Bone_Head so
+ // it follows the head pose). Coordinates: bone = center + scale * rotate(obj).
+ if(painter->reference_mode == Reference_Off) { return; }
+ if(not is_fill_enabled()) { return; }
+ Reference_Mesh *mesh = load_reference_mesh(filename);
+ if(mesh->load_failed){ return; }
+ v1 alpha = 0.35f;  // NOTE(kv) same ballpark as the images' Reference_Alpha values
+ if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
+ v1 scale = placement.scale;
+ if(scale <= 0.f){ scale = 1.f; }
+ mat4i T = (mat4i_translate(placement.center) *
+            mat4i_scale(scale) *
+            mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
+ argb argb_color = argb_pack(V4(color, alpha));
+ Poly_Flags flags = to_poly_flags(Fill_Flags{});
+ for(i32 i = 0; i+2 < mesh->indices.count; i += 3)
+ {
+  i32 a = mesh->indices[i], b = mesh->indices[i+1], c = mesh->indices[i+2];
+  if(a < 0 or b < 0 or c < 0 or
+     a >= mesh->vertices.count or b >= mesh->vertices.count or c >= mesh->vertices.count)
+  { continue; }
+  v3 points[3] = {mat4vert(T, mesh->vertices[a]),
+                  mat4vert(T, mesh->vertices[b]),
+                  mat4vert(T, mesh->vertices[c])};
+  poly3_inner(mk_poly3(points), repeat3(argb_color), flags);
+ }
+}
+
 //~ EOF

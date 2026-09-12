@@ -4,7 +4,7 @@ global i32 marked_positions_file_1[4] ={
 //-NOTE: driver_animate.kc 
 62,70,1870,1878,
 };
-global i32 marked_positions_file_2[984] ={
+global i32 marked_positions_file_2[988] ={
 //-NOTE: driver.kc 
 102,153,195,241,287,354,401,460,499,550,589,640,687,746,789,844,
 895,958,1007,1068,1116,1176,1217,1270,1304,1350,1397,1456,1497,1550,1591,1644,
@@ -63,11 +63,11 @@ global i32 marked_positions_file_2[984] ={
 58206,58230,58258,58271,58580,58603,58902,58915,59220,59233,60166,60179,60496,60512,60552,60565,
 60581,60594,61047,61057,61089,61099,61300,61317,61321,61377,61471,61484,61679,61691,61701,61702,
 61972,61996,62006,62008,62250,62269,62749,62760,62839,62850,63060,63070,63429,63490,63581,63613,
-63685,63717,63734,63766,64341,64354,64501,64511,65036,65046,65729,65771,65999,66012,66061,66109,
-66115,66186,66320,66355,66398,66411,66548,66587,66630,66643,66751,66801,66844,66857,66966,67018,
-67061,67074,67182,67223,67265,67278,67640,67693,67832,67845,67922,67998,68107,68120,68172,68202,
-68366,68421,69254,69267,69527,69537,69871,69881,70363,70376,70583,70602,70607,70626,70800,70813,
-70818,70836,71265,71283,71288,71307,71312,71331,
+63685,63717,63734,63766,64341,64354,64501,64511,65036,65046,65853,65883,65913,65914,66138,66180,
+66408,66421,66470,66518,66524,66595,66729,66764,66807,66820,66957,66996,67039,67052,67160,67210,
+67253,67266,67375,67427,67470,67483,67591,67632,67674,67687,68049,68102,68241,68254,68331,68407,
+68516,68529,68581,68611,68775,68830,69663,69676,69936,69946,70280,70290,70772,70785,70992,71011,
+71016,71035,71209,71222,71227,71245,71674,71692,71697,71716,71721,71740,
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1176:
 global Vertex_Info vertices_info_[10] ={
@@ -79,12 +79,12 @@ global Vertex_Info vertices_info_[10] ={
 {{{1, 2}, {202, 203}}, 0,1,},
 {{{1, 2}, {630, 631}}, 0,},
 {{{1, 2}, {814, 815}}, 0,},
-{{{1, 2}, {976, 977}}, 0,1,},
-{{{1, 2}, {978, 979}}, 0,1,},};
+{{{1, 2}, {980, 981}}, 0,1,},
+{{{1, 2}, {982, 983}}, 0,1,},};
 //-
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1089:
-global Slider global_sliders[211];
+global Slider global_sliders[212];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1094:
 struct Slider_Values{
@@ -286,7 +286,7 @@ i2 v_194;
 i1 v_195;
 i1 v_196;
 v3 v_197;
-tvert v_198;
+Reference_Mesh_Placement v_198;
 tvert v_199;
 tvert v_200;
 tvert v_201;
@@ -294,14 +294,16 @@ tvert v_202;
 tvert v_203;
 tvert v_204;
 tvert v_205;
-i1 v_206;
-v1 v_207;
+tvert v_206;
+i1 v_207;
 v1 v_208;
-i1 v_209;
-tvert v_210;
+v1 v_209;
+i1 v_210;
+tvert v_211;
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1106:
 global Slider_Values slider_values ={
+{},
 {},
 {},
 {},
@@ -717,23 +719,24 @@ sliders[194] = { .type=types.i2, .location={{1, 2}, {897, 898}}, .options={}, .i
 sliders[195] = { .type=types.i1, .location={{1, 2}, {916, 917}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(195) };
 sliders[196] = { .type=types.i1, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(196) };
 sliders[197] = { .type=types.v3, .location={{1, 2}, {920, 921}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(197) };
-sliders[198] = { .type=types.tvert, .location={{1, 2}, {924, 925}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(198) };
-sliders[199] = { .type=types.tvert, .location={{1, 2}, {932, 933}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(199) };
-sliders[200] = { .type=types.tvert, .location={{1, 2}, {936, 937}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(200) };
-sliders[201] = { .type=types.tvert, .location={{1, 2}, {940, 941}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(201) };
-sliders[202] = { .type=types.tvert, .location={{1, 2}, {944, 945}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(202) };
-sliders[203] = { .type=types.tvert, .location={{1, 2}, {948, 949}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(203) };
-sliders[204] = { .type=types.tvert, .location={{1, 2}, {952, 953}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(204) };
-sliders[205] = { .type=types.tvert, .location={{1, 2}, {956, 957}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(205) };
-sliders[206] = { .type=types.i1, .location={{1, 2}, {962, 963}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(206) };
-sliders[207] = { .type=types.v1, .location={{1, 2}, {964, 965}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(207) };
-sliders[208] = { .type=types.v1, .location={{1, 2}, {966, 967}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(208) };
-sliders[209] = { .type=types.i1, .location={{1, 2}, {968, 969}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(209) };
-sliders[210] = { .type=types.tvert, .location={{1, 2}, {974, 975}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(210) };
+sliders[198] = { .type=types.Reference_Mesh_Placement, .location={{1, 2}, {923, 924}}, .options={}, .id=strlit("Reference_Mesh_Placement_0"), .value=&ReadSlider(198) };
+sliders[199] = { .type=types.tvert, .location={{1, 2}, {928, 929}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(199) };
+sliders[200] = { .type=types.tvert, .location={{1, 2}, {936, 937}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(200) };
+sliders[201] = { .type=types.tvert, .location={{1, 2}, {940, 941}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(201) };
+sliders[202] = { .type=types.tvert, .location={{1, 2}, {944, 945}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(202) };
+sliders[203] = { .type=types.tvert, .location={{1, 2}, {948, 949}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(203) };
+sliders[204] = { .type=types.tvert, .location={{1, 2}, {952, 953}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(204) };
+sliders[205] = { .type=types.tvert, .location={{1, 2}, {956, 957}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(205) };
+sliders[206] = { .type=types.tvert, .location={{1, 2}, {960, 961}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(206) };
+sliders[207] = { .type=types.i1, .location={{1, 2}, {966, 967}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(207) };
+sliders[208] = { .type=types.v1, .location={{1, 2}, {968, 969}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(208) };
+sliders[209] = { .type=types.v1, .location={{1, 2}, {970, 971}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(209) };
+sliders[210] = { .type=types.i1, .location={{1, 2}, {972, 973}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(210) };
+sliders[211] = { .type=types.tvert, .location={{1, 2}, {978, 979}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(211) };
 }
 //-
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1332:
-global_decl Text_Object text_objects_[273];
+global_decl Text_Object text_objects_[274];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1337:
 global FUI_File_Data fui_files_[3] ={
@@ -750,8 +753,8 @@ global FUI_File_Data fui_files_[3] ={
  .index = 2,
  .name = strlit("driver.kc"),
  .marked_positions = {ArrayAndCount(marked_positions_file_2)},
- .text_objects = make_slice(text_objects_, {0,273}),
- .sliders = make_slice(global_sliders, {2,211}),
+ .text_objects = make_slice(text_objects_, {0,274}),
+ .sliders = make_slice(global_sliders, {2,212}),
  .vertices_info = make_slice(vertices_info_, {0,10}),
  },
 };

@@ -178,6 +178,18 @@ struct Reference_Placement
 };
 
 [info]
+struct Reference_Mesh_Placement
+{// NOTE(kv) Where a reference mesh (the skull, @draw_reference_mesh) sits in the bone it's
+ // drawn under: center = mesh origin, scale = uniform (obj units -> bone units; <= 0 is
+ // treated as 1 so a fresh slider still shows something), rotation = (phi, theta, roll)
+ // in turns, applied like the head's own mat4i_rotate_tpr. Alpha comes from
+ // reference_mode, like the images. Plan: plan-reference-skull.md.
+ v3 center;
+ v1 scale;
+ v3 rotation;
+};
+
+[info]
 struct Curve
 {// One stroke as data (@fcurve): the shape as @bez_offset control offsets from the
  // code-side anchors (p1 = p0+d0, p2 = p3+d3), then the line params (mirrors
