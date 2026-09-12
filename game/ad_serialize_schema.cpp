@@ -827,4 +827,103 @@ load_document_schema_file(Game_State *state, Stringz path, String file_data)
  }
  return ok;
 }
+
+//~ Schema dump (debug channel `document_schema_dump`)
+// NOTE(kv) Prints the type table of a schema-format file as text, so a saved file's
+// layout can be inspected without the app's Type_Info -- the tool for deciding whether
+// a struct change needs a manual conversion pass.
+function char const *
+schema_kind_name(I_Type_Kind kind)
+{
+ switch(kind)
+ {
+  case I_Type_Kind_None:    return "none";
+  case I_Type_Kind_Basic:   return "basic";
+  case I_Type_Kind_Struct:  return "struct";
+  case I_Type_Kind_Union:   return "union";
+  case I_Type_Kind_Enum:    return "enum";
+  case I_Type_Kind_Array:   return "array";
+  case I_Type_Kind_Wrapper: return "wrapper";
+  case I_Type_Kind_Darray:  return "darray";
+ }
+ return "?";
+}
+function void
+dump_schema_type_ref(FILE *out, Type_Info_In_File *type)
+{// NOTE(kv) named -> "Name"; array -> "Name[count]"; darray -> "darray(Name)"
+ if(not type){ fprintf(out, "<null>"); }
+ else if(type->kind == I_Type_Kind_Array)
+ {
+  dump_schema_type_ref(out, type->item);
+  fprintf(out, "[%d]", type->count);
+ }
+ else if(type->kind == I_Type_Kind_Darray)
+ {
+  fprintf(out, "darray(");
+  dump_schema_type_ref(out, type->item);
+  fprintf(out, ")");
+ }
+ else{ fprintf(out, "%.*s", strexpand(type->name)); }
+}
+function void
+dump_schema_in_file(FILE *out, Schema_In_File *schema)
+{
+ fprintf(out, "%d types, root %.*s\n", schema->types.count,
+         strexpand(schema->root ? schema->root->name : strlit("<none>")));
+ for_i32(itype, 0, schema->types.count)
+ {
+  Type_Info_In_File *type = schema->types.items[itype];
+  fprintf(out, "\n%s %.*s (size %d)\n", schema_kind_name(type->kind),
+          strexpand(type->name), type->size);
+  for_i32(imember, 0, type->members.count)
+  {
+   Member_In_File &member = type->members.items[imember];
+   fprintf(out, "  ");
+   dump_schema_type_ref(out, member.type);
+   fprintf(out, " %.*s", strexpand(member.name));
+   if(member.discriminator.len){ fprintf(out, "  (discriminator: %.*s)", strexpand(member.discriminator)); }
+   fprintf(out, "\n");
+  }
+  for_i32(imember, 0, type->enum_members.count)
+  {
+   Enum_Member_In_File &member = type->enum_members.items[imember];
+   fprintf(out, "  %.*s = %d\n", strexpand(member.name), member.value);
+  }
+  if(type->kind == I_Type_Kind_Union)
+  {
+   fprintf(out, "  discriminator type %.*s\n", strexpand(type->discriminator_type));
+   for_i32(imember, 0, type->union_members.count)
+   {
+    Union_Member_In_File &member = type->union_members.items[imember];
+    fprintf(out, "  ");
+    dump_schema_type_ref(out, member.type);
+    fprintf(out, " %.*s  (variant %d)\n", strexpand(member.name), member.variant);
+   }
+  }
+ }
+}
+function void
+dump_document_schema_file(FILE *out, Game_State *state)
+{
+ Scratch_Scope tmp;
+ Stringz path = document_file_path(tmp, state);
+ String file_data = read_entire_file(tmp, path);
+ if(file_data.len == 0){ fprintf(out, "document_schema_dump: no file at %.*s\n", strexpand(path)); return; }
+ Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
+ Binary_Reader *r = &reader;
+ u32 magic = read_binary_u32(r);
+ u32 tag   = read_binary_u32(r);
+ u64 timestamp = read_binary_u64(r); (void)timestamp;
+ if(not r->ok or magic != autodraw_data_magic or tag != schema_format_tag)
+ {
+  fprintf(out, "document_schema_dump: not a schema-format file (magic %08x tag %08x)\n", magic, tag);
+  return;
+ }
+ Schema_In_File schema = {};
+ schema.arena = tmp;
+ schema.label = "document_schema_dump";
+ if(not read_schema(r, &schema)){ fprintf(out, "document_schema_dump: schema unreadable (see log)\n"); return; }
+ fprintf(out, "schema of %.*s: ", strexpand(path));
+ dump_schema_in_file(out, &schema);
+}
 //-EOF

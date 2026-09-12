@@ -640,6 +640,10 @@ debug_channel_update(Game_State *state, App *app)
  {
   debug_channel_document_dump(out, state);
  }
+ else if(strcmp(cmd, "document_schema_dump") == 0)
+ {// NOTE(kv) The type table stored in driver.document.ad, as text (ad_serialize_schema.cpp).
+  dump_document_schema_file(out, state);
+ }
  else if(strncmp(cmd, "recapture", 9) == 0)
  {
   state->replay.recapture = (atoi(cmd+9) != 0);
