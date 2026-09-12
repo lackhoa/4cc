@@ -73,19 +73,6 @@ global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport unde
 // Every poll runs a full game_update + render (~150 ms at -Od), so 200 ms was ~15% CPU.
 #define DEBUG_CHANNEL_POLL_MS 500
 
-function BOOL CALLBACK
-debug_channel_find_own_window(HWND hwnd, LPARAM out_hwnd)
-{
- DWORD pid = 0;
- GetWindowThreadProcessId(hwnd, &pid);
- if(pid == GetCurrentProcessId() && IsWindowVisible(hwnd))
- {
-  *(HWND *)out_hwnd = hwnd;
-  return FALSE;
- }
- return TRUE;
-}
-
 function void
 debug_channel_init()
 {
@@ -103,16 +90,10 @@ debug_channel_init()
  snprintf(debug_channel_out_path, sizeof(debug_channel_out_path), "%s\\out.txt", debug_channel_dir);
  CreateDirectoryA(debug_channel_dir, 0);
 
- HWND window = 0;
- EnumWindows(debug_channel_find_own_window, (LPARAM)&window);
- if(window)
- {
-  // NOTE(kv) Maximized in agent mode: fills whatever monitor it lands on (the old fixed
-  // 1200x900 was a quarter of the 2880x1800 laptop screen), and the size is still
-  // stable across launches on one machine, so screenshot crops keep landing on the
-  // same pixels. Also un-minimizes if needed.
-  ShowWindow(window, SW_MAXIMIZE);
- }
+ // NOTE(kv) Window size/placement in agent mode is the exe's job now (win32_4ed.cpp,
+ // search agent_mode: work-area sized, shown without activating, bottom of the
+ // z-order). The ShowWindow(SW_MAXIMIZE) that used to live here always activated the
+ // window and stole the user's foreground on every launch (2026-09-12).
 }
 
 function FILE *

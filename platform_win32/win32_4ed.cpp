@@ -2111,13 +2111,38 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   win32_toggle_fullscreen();
  }
  
+ // NOTE(kv) Agent mode (-debug-cmd, see game_debug_channel.cpp): the window must never
+ // distract the user (2026-09-12: the maximize flash on launch did). Show it without
+ // activating, sized to the work area by hand (a real maximize always activates), and
+ // sink it to the bottom of the z-order. Not hidden/minimized: `screenshot` reads the
+ // GL back buffer, which needs a non-empty client rect.
+ b32 agent_mode = (strstr(GetCommandLineA(), "-debug-cmd") != 0);
  for_i32(index,0,WINDOW_COUNT)
  {// NOTE(kv) Main window starts maximized (the default size is tiny).
-  ShowWindow(win32vars.window_handles[index],
-             (index == 0) ? SW_SHOWMAXIMIZED : SW_SHOW);
+  HWND hwnd = win32vars.window_handles[index];
+  if(agent_mode)
+  {
+   RECT work_area = {};
+   SystemParametersInfoW(SPI_GETWORKAREA, 0, &work_area, 0);
+   // PITFALL: no ShowWindow here. The FIRST ShowWindow call of a process ignores its
+   // argument and uses STARTUPINFO.wShowWindow when the launcher set it -- ShellExecute
+   // (PowerShell Start-Process) always does, with SW_SHOWNORMAL, which activates. So
+   // SW_SHOWNOACTIVATE still stole the foreground (2026-09-12). SetWindowPos with
+   // SWP_SHOWWINDOW has no such override.
+   SetWindowPos(hwnd, HWND_BOTTOM, work_area.left, work_area.top,
+                work_area.right - work_area.left, work_area.bottom - work_area.top,
+                SWP_SHOWWINDOW|SWP_NOACTIVATE);
+  }
+  else
+  {
+   ShowWindow(hwnd, (index == 0) ? SW_SHOWMAXIMIZED : SW_SHOW);
+  }
  }
- SetForegroundWindow(win32vars.window_handles[0]);
- SetActiveWindow(win32vars.window_handles[0]);
+ if(not agent_mode)
+ {
+  SetForegroundWindow(win32vars.window_handles[0]);
+  SetActiveWindow(win32vars.window_handles[0]);
+ }
  
  win32vars.global_frame_mutex = system_mutex_make();
  system_acquire_global_frame_mutex(win32vars.tctx);
