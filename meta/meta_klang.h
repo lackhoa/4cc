@@ -7,6 +7,7 @@ enum Parsed_Type_Kind
  Parsed_Type_Array,
  Parsed_Type_Reference,
  Parsed_Type_Function,
+ Parsed_Type_Darray,  // NOTE(kv) darray(T): `name` is the whole "darray(T)", `darray_item` is T
 };
 typedef u32 Parsed_Type_Flags;
 enum
@@ -30,6 +31,8 @@ struct Parsed_Type
  // only problem is we don't actually compile, so sometimes we just... don't know.
  String array_count;
  i32 array_count_int;
+
+ String darray_item;
 };
 struct Type_And_Name
 {

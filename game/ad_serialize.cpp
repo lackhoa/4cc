@@ -38,6 +38,7 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
     write_size(writer, pointer, type->size);
    }
   }break;
+  case I_Type_Kind_Wrapper:  // NOTE(kv) wrapper_types carry their real members too
   case I_Type_Kind_Struct:{
    for_i32(member_index, 0, type->members.count){
     I_Struct_Member &member = type->members[member_index];
@@ -59,6 +60,16 @@ write_binary_func(Writer *writer, Type_Info *type, void *void_pointer)
    Type_Info *item_type = type->array_item_type;
    for_i32(item_index,0,type->count){
     write_binary_func(writer, item_type, pointer + item_type->size*item_index);
+   }
+  }break;
+  case I_Type_Kind_Darray:{
+   // NOTE(kv) Every darray(T) shares the Dynamic_Array header layout, so read it as u8.
+   darray(u8) *array = (darray(u8) *)pointer;
+   Type_Info *item_type = type->array_item_type;
+   u32 count = cast(u32)array->count;
+   write_lvalue(writer, count);
+   for_i32(item_index,0,array->count){
+    write_binary_func(writer, item_type, array->items + item_type->size*item_index);
    }
   }break;
   case I_Type_Kind_Enum:{

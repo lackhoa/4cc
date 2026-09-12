@@ -153,6 +153,7 @@ print_type_and_name(Printer &p, Parsed_Type const&type, String name)
  switch(type.kind)
  {
   case Parsed_Type_Pointer:
+  case Parsed_Type_Darray:
   {
    p < type.name < " " < repeated("*", type.pointer_count) < name;
   }break;
@@ -225,21 +226,9 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
  mline(p);
 }
 function void
-print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
-{
- Scratch_Block scratch;
+print_struct_info_members(Printer &p, String type_name, M_Struct_Members &members)
+{// NOTE(kv) The `result.members[...]` lines of a get_type_info function (structs and wrapper_types).
  {
-  m_meta_only(p);
-  m_location;
-  //-NOTE ("Function to generate the type info")
-  String function_name = get_type_info_function_name(type_name);
-  p<"function Type_Info\n"<function_name<"()";
-  m_braces_newline
-  {
-   p<"Type_Info result = {};\n";
-   p<"result.name = "<enclosed_in_strlit(type_name) < ";\n";
-   p<"result.size = sizeof("<type_name<");\n";
-   p<"result.kind = I_Type_Kind_Struct;\n";
    // NOTE(kv) Computing member count
    i32 member_count = 0;
    for_i32(raw_member_index,0,members.count)
@@ -278,6 +267,16 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
         printf(p, "member_type->array_item_type = & %.*s;\n",
                strexpand(item_type_info));
         printf(p, "member_type->count = %S;\n", array_count);
+       }else if(member.type.kind == Parsed_Type_Darray){
+        //NOTE(kv) darray(T) -> on the fly too; the count lives in the value, not the type.
+        print(p, "local_persist Type_Info member_type_value;\n");
+        print(p, "Type_Info *member_type = &member_type_value;\n");
+        print(p, "*member_type = {};\n");
+        String item_type_info = get_type_global_info_name(member.type.darray_item);
+        printf(p, "member_type->name = strlit(\"%S\");\n", member.type.name);
+        printf(p, "member_type->kind = I_Type_Kind_Darray;\n");
+        printf(p, "member_type->size = sizeof(%S);\n", member.type.name);
+        printf(p, "member_type->array_item_type = & %S;\n", item_type_info);
        }else{
         //NOTE(kv) Normal type
         printf(p, "Type_Info *member_type = & %.*s;\n",
@@ -302,11 +301,29 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
      member_index++;
     }
    }
-   
+ }
+}
+function void
+print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
+{
+ Scratch_Block scratch;
+ {
+  m_meta_only(p);
+  m_location;
+  //-NOTE ("Function to generate the type info")
+  String function_name = get_type_info_function_name(type_name);
+  p<"function Type_Info\n"<function_name<"()";
+  m_braces_newline
+  {
+   p<"Type_Info result = {};\n";
+   p<"result.name = "<enclosed_in_strlit(type_name) < ";\n";
+   p<"result.size = sizeof("<type_name<");\n";
+   p<"result.kind = I_Type_Kind_Struct;\n";
+   print_struct_info_members(p, type_name, members);
    p < "return result;";
   }
  }
- 
+
  print_type_meta_shared(p, type_name);
  
  {//-;meta_read_struct
@@ -321,9 +338,10 @@ print_struct_info(Printer &p, String type_name, M_Struct_Members &members)
    for_i32(member_index,0,members.count)
    {
     M_Struct_Member &member = members.get(member_index);
-    // NOTE(kv) Inline tagged unions are only reached by the Type_Info walkers, never by
-    //  this legacy per-type reader (which only the state.txt migration still uses).
-    if(not member.unserialized and member.union_variants.count == 0)
+    // NOTE(kv) Inline tagged unions and darrays are only reached by the Type_Info walkers,
+    //  never by this legacy per-type reader (which only the state.txt migration still uses).
+    if(not member.unserialized and member.union_variants.count == 0 and
+       member.type.kind != Parsed_Type_Darray)
     {
      String version_added = member.version_added;
      b32 has_version_added = version_added.len != 0;
@@ -630,11 +648,15 @@ print_wrapper_type(Printer &p, String wrapper, String wrapped,
                    String constructor, b32 do_info)
 {//@the_type_wrapper_debacle
  Scratch_Block tmp;
- Stringz struct_body = push_stringf(tmp, strcode({ %S v; }), wrapped);
+ b32 is_tvert = (wrapper == strcode(tvert));
+ // NOTE(kv) The members as Type_Info sees them; must match the C++ body printed below.
+ Stringz struct_body = (is_tvert ?
+                        push_stringf(tmp, strcode({ %S v; Bone_ID bone_id; }), wrapped) :
+                        push_stringf(tmp, strcode({ %S v; }), wrapped));
  M_Struct_Members members = parse_struct_body(tmp, struct_body);
- 
+
  // NOTE(kv) What we print to C++ is more involved...
- m_location; 
+ m_location;
  b32 is_v3 = (wrapped == strcode(v3));
  {//-The struct
   printf(p, strcode(struct %S\n), wrapper);
@@ -650,7 +672,7 @@ print_wrapper_type(Printer &p, String wrapper, String wrapped,
     print(p, strlit("};\n"));
    }
 
-   if(wrapper == strcode(tvert))
+   if(is_tvert)
    {// NOTE Per-control-point bone reference: Bone_None means "use the group's bone".
     print(p, strcode(Bone_ID bone_id;\n));
    }
@@ -675,6 +697,9 @@ print_wrapper_type(Printer &p, String wrapper, String wrapped,
    printf(p, strcode(result.kind = I_Type_Kind_Wrapper;\n));
    printf(p, strcode(result.constructor = strcode(%S);\n), constructor);
    printf(p, strcode(result.wrapped_type = type_info_of(%S);\n), wrapped);
+   // NOTE(kv) Real members too, so the serializers can walk a wrapper like a struct
+   //  (a tvert's bone_id would otherwise be dropped).
+   print_struct_info_members(p, wrapper, members);
    p < "return result;";
   }
   

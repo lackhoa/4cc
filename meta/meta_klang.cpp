@@ -886,8 +886,17 @@ parse_type_and_name(Klang_Parser *p)
  
  Token *type_token = ep_get_token(p);
  String type_name = ep_id(p);
- if(type_name == "sarray" or
-    type_name == "darray")
+ if(type_name == "darray")
+ {// NOTE(kv) darray(T): the item type matters to Type_Info (I_Type_Kind_Darray).
+  type.kind = Parsed_Type_Darray;
+  ep_char(p, '(');
+  type.darray_item = ep_id(p);
+  ep_char(p, ')');
+  // NOTE(kv) Chop: the span runs up to the next token, whitespace included, and this name
+  //  becomes the Type_Info name (schema).
+  type.name = string_chop_whitespace(k_string_from_token_to_current(p, type_token));
+ }
+ else if(type_name == "sarray")
  {// NOTE(kv) Generic array type
   ep_char(p, '(');
   k_eat_until_char(p, strlit(")"));

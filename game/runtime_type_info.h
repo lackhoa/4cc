@@ -26,6 +26,7 @@ enum I_Type_Kind
  I_Type_Kind_Enum,
  I_Type_Kind_Array,
  I_Type_Kind_Wrapper,
+ I_Type_Kind_Darray,  // NOTE(kv) darray(T): `array_item_type` = T, count is per value (on disk: u32 count + items)
 };
 
 #include "basic_types.gen.h"
@@ -36,17 +37,20 @@ struct Type_Info
  i32    size;
  I_Type_Kind kind;
  i32 count;
+ // NOTE(kv) Struct AND Wrapper: a wrapper_type lists its real members too (`{v, bone_id}` for
+ //  tvert), so the serializers can walk it like a struct; the code printers keep using
+ //  `constructor`/`wrapped_type` below.
+ darray(I_Struct_Member) members;
  union
  {
   Basic_Type Basic_Type;
-  darray(I_Struct_Member) members;
   struct
   {// NOTE Union
    Type_Info *discriminator_type;
    darray(I_Union_Member) union_members;
   };
   darray(I_Enum_Member) enum_members;
-  Type_Info *array_item_type;
+  Type_Info *array_item_type;  // NOTE Array and Darray
   struct
   {// NOTE Wrapper type
    String constructor;
