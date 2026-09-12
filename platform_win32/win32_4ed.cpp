@@ -2364,7 +2364,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Switch to New Cursor
-  Win32SetCursorFromUpdate(step_result.mouse_cursor_type);
+  // NOTE(kv) ImGui's win32 backend already SetCursor()s its own shape (resize arrows
+  // etc.) in ImGui_ImplWin32_NewFrame; overriding it here every frame made the cursor
+  // flicker between the two shapes on window edges (2026-09-12).
+  if (!(ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse))
+  {
+   Win32SetCursorFromUpdate(step_result.mouse_cursor_type);
+  }
   if (win32vars.cursor_show != win32vars.prev_cursor_show)
   {
    win32vars.prev_cursor_show = win32vars.cursor_show;
