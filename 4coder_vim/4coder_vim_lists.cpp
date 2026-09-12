@@ -538,34 +538,31 @@ vim_try_buffer_kill(App *app){
 	return result;
 }
 
+// NOTE(kv) 2026-09-12: the quit confirmations used to be in-editor listers, which
+// forced you to switch to the editor before you could answer (a taskbar close while
+// another app has focus just sat there). Now they are native modal boxes
+// (system_confirm_box, MB_SETFOREGROUND|MB_TOPMOST) with "quit" as the default button,
+// so Enter force-quits from wherever you are.
 function b32
 vim_do_4coder_close_user_check(App_Cmd *app, View_ID view){
-	Scratch_Block scratch(app);
-	Lister_Choice_List list = {};
-	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
-	lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
-	lister_choice(scratch, &list, "(S)ave all and close", "", Key_Code_S, SureToKill_Save);
-
-#define M "There are one or more buffers with unsave changes, close anyway?"
-	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
+#define M "There are one or more buffers with unsaved changes.\n\nYes = quit and discard, No = save all and quit, Cancel = keep editing."
+	i32 answer = system_confirm_box("Quit?", M, true);
 #undef M
 
 	b32 do_exit = false;
-	if(choice != 0){
-		switch(choice->user_data){
-			case SureToKill_No:{} break;
+	switch(answer){
+		case 0:{} break;
 
-			case SureToKill_Yes:{
-				allow_immediate_close_without_checking_for_changes = true;
-				do_exit = true;
-			} break;
+		case 1:{
+			allow_immediate_close_without_checking_for_changes = true;
+			do_exit = true;
+		} break;
 
-			case SureToKill_Save:{
-				save_all_dirty_buffers(app);
-				allow_immediate_close_without_checking_for_changes = true;
-				do_exit = true;
-			} break;
-		}
+		case 2:{
+			save_all_dirty_buffers(app);
+			allow_immediate_close_without_checking_for_changes = true;
+			do_exit = true;
+		} break;
 	}
 
 	return do_exit;
@@ -574,23 +571,8 @@ vim_do_4coder_close_user_check(App_Cmd *app, View_ID view){
 function b32
 vim_4coder_close_are_you_sure_check(App *app, View_ID view)
 {
-	Scratch_Block scratch(app);
-	Lister_Choice_List list = {};
-	lister_choice(scratch, &list, "(N)o"  , "", Key_Code_N, SureToKill_No);
-	lister_choice(scratch, &list, "(Y)es" , "", Key_Code_Y, SureToKill_Yes);
-
-#define M "Are you sure you want to close?"
-	Lister_Choice *choice = vim_get_choice_from_user(app, strlit(M), list);
-#undef M
-
-	if(choice != 0){
-		switch(choice->user_data){
-			case SureToKill_No:  return false;
-			case SureToKill_Yes: return true;
-		}
-	}
-
-	return false;
+	i32 answer = system_confirm_box("Quit?", "Are you sure you want to close?", false);
+	return (answer == 1);
 }
 
 function void

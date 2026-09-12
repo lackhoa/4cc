@@ -3,6 +3,7 @@
 //source: 4ed_system_api.cpp
 api(system) function b32 running(void);
 api(system) function void error_box(char* msg);
+api(system) function i32 confirm_box(char* title, char* message, b32 offer_save);
 api(system) function String get_path(Arena* arena, System_Path_Code path_code);
 api(system) function String get_canonical(Arena* arena, String name);
 api(system) function File_List get_file_list(Arena* arena, String directory);

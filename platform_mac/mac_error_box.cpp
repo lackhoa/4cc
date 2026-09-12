@@ -16,5 +16,11 @@ system_error_box(char *msg){
     exit(1);
 }
 
+// TODO(kv) No native dialog on mac yet: always confirm (matches the win32 default button).
+function i32
+system_confirm_box(char *title, char *message, b32 offer_save){
+    return(1);
+}
+
 // BOTTOM
 

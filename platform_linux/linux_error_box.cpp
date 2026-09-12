@@ -180,8 +180,15 @@ XDrawString(dpy, w, gc1, (x)  , (y)  , (str), (len))
         }
     }
 #undef DRAW_STR
-    
+
     exit(1);
+}
+
+// TODO(kv) No native dialog on linux yet: always confirm (matches the win32 default button).
+function i32
+system_confirm_box(char *title, char *message, b32 offer_save){
+    fprintf(stderr, "%s: %s\n", title, message);
+    return(1);
 }
 
 // BOTTOM

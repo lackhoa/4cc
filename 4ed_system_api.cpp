@@ -26,6 +26,17 @@ make_system_api(Arena *arena)
  }
  
  {
+  // NOTE(kv) Modal OS dialog that grabs the foreground, so a quit triggered while
+  // another app has focus (taskbar close, dbg channel) can be answered with Enter
+  // without switching to the editor first. Returns 0 = cancel, 1 = confirm,
+  // 2 = save-then-confirm (only offered when offer_save is set; Enter = confirm).
+  API_Call *call = api_call(arena, api, "confirm_box", "i32");
+  api_param(arena, call, "char*", "title");
+  api_param(arena, call, "char*", "message");
+  api_param(arena, call, "b32", "offer_save");
+ }
+
+ {
   API_Call *call = api_call(arena, api, "get_path", "String");
   api_param(arena, call, "Arena*", "arena");
   api_param(arena, call, "System_Path_Code", "path_code");

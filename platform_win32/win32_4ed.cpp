@@ -260,6 +260,32 @@ system_error_box(char *msg){
     ExitProcess(1);
 }
 
+// NOTE(kv) Quit confirmation as a native modal box (see 4ed_system_api.cpp), forced to
+// the foreground, so a close request that arrives while another app has focus (taskbar
+// "close window") can be answered with Enter right away: the default button is always
+// "quit".
+//   offer_save: Yes = quit discarding, No = save all then quit, Cancel = keep editing
+//   otherwise:  OK  = quit, Cancel = keep editing
+// PITFALL: NO owner window. The exit hook runs on a coroutine thread (4ed_coroutine.cpp)
+// while the main thread sits waiting for it; an owned MessageBox has to disable the
+// owner via a cross-thread SendMessage that the main thread never answers -> deadlock,
+// app "Not Responding" with no box on screen (hit 2026-09-12).
+function i32
+system_confirm_box(char *title, char *message, b32 offer_save){
+ HWND owner = 0;
+ UINT flags = MB_ICONWARNING | MB_SETFOREGROUND | MB_TOPMOST | MB_DEFBUTTON1;
+ flags |= (offer_save ? MB_YESNOCANCEL : MB_OKCANCEL);
+ int answer = MessageBoxA(owner, message, title, flags);
+ i32 result = 0;
+ switch (answer){
+  case IDOK:
+  case IDYES: { result = 1; } break;
+  case IDNO:  { result = 2; } break;
+  default:    { result = 0; } break;
+ }
+ return(result);
+}
+
 ////////////////////////////////
 
 function String

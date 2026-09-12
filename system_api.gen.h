@@ -3,6 +3,7 @@
 //source: 4ed_system_api.cpp
 #define system_running_sig() b32 system_running(void)
 #define system_error_box_sig() void system_error_box(char* msg)
+#define system_confirm_box_sig() i32 system_confirm_box(char* title, char* message, b32 offer_save)
 #define system_get_path_sig() String system_get_path(Arena* arena, System_Path_Code path_code)
 #define system_get_canonical_sig() String system_get_canonical(Arena* arena, String name)
 #define system_get_file_list_sig() File_List system_get_file_list(Arena* arena, String directory)
@@ -61,6 +62,8 @@
 #define system_running__params void
 #define system_error_box__return void
 #define system_error_box__params char* msg
+#define system_confirm_box__return i32
+#define system_confirm_box__params char* title, char* message, b32 offer_save
 #define system_get_path__return String
 #define system_get_path__params Arena* arena, System_Path_Code path_code
 #define system_get_canonical__return String
@@ -173,6 +176,7 @@
 struct API_VTable_system{
 wrap_function_pointer(system_running);
 wrap_function_pointer(system_error_box);
+wrap_function_pointer(system_confirm_box);
 wrap_function_pointer(system_get_path);
 wrap_function_pointer(system_get_canonical);
 wrap_function_pointer(system_get_file_list);
@@ -232,6 +236,7 @@ wrap_function_pointer(system_set_key_mode);
 #if defined(STATIC_LINK_API)
 function b32 system_running(void);
 function void system_error_box(char* msg);
+function i32 system_confirm_box(char* title, char* message, b32 offer_save);
 function String system_get_path(Arena* arena, System_Path_Code path_code);
 function String system_get_canonical(Arena* arena, String name);
 function File_List system_get_file_list(Arena* arena, String directory);
@@ -293,6 +298,7 @@ function void system_set_key_mode(Key_Mode mode);
 #endif
 STORAGE_CLASS wrap_function_pointer(system_running);
 STORAGE_CLASS wrap_function_pointer(system_error_box);
+STORAGE_CLASS wrap_function_pointer(system_confirm_box);
 STORAGE_CLASS wrap_function_pointer(system_get_path);
 STORAGE_CLASS wrap_function_pointer(system_get_canonical);
 STORAGE_CLASS wrap_function_pointer(system_get_file_list);

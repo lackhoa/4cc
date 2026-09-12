@@ -6,6 +6,7 @@ function void
 system_api_fill_vtable(API_VTable_system *vtable){
 vtable->system_running = system_running;
 vtable->system_error_box = system_error_box;
+vtable->system_confirm_box = system_confirm_box;
 vtable->system_get_path = system_get_path;
 vtable->system_get_canonical = system_get_canonical;
 vtable->system_get_file_list = system_get_file_list;
@@ -68,6 +69,7 @@ function void
 system_api_read_vtable(API_VTable_system *vtable){
 system_running = vtable->system_running;
 system_error_box = vtable->system_error_box;
+system_confirm_box = vtable->system_confirm_box;
 system_get_path = vtable->system_get_path;
 system_get_canonical = vtable->system_get_canonical;
 system_get_file_list = vtable->system_get_file_list;
