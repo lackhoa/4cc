@@ -29,6 +29,7 @@ api(ed) function void change_active_primary_view(App* app);
 api(ed) function String push_token_lexeme(App* app, Arena* arena, Buffer_ID buffer, Token* token);
 api(ed) function User_Input get_next_input(App* app, Event_Property use_flags, Event_Property abort_flags);
 api(ed) function void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
+api(ed) function void draw_shaded_mesh(Render_Target* target, v3* positions, i32* indices, v3* face_normals, i32 triangle_count, v3 view, v4 color, v1 depth_offset, argb hot_color);
 api(ed) function void push_object_transform_to_target(Render_Target* target, mat4* transform);
 api(ed) function Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
 api(ed) function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos);

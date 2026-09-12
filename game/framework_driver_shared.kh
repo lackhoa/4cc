@@ -235,6 +235,7 @@ meta_table(name) framework_api_2
  push_object_transform_to_target,
  DEBUG_send_entry,
  push_image,
+ draw_shaded_mesh,
 }
 
 generate

@@ -1440,6 +1440,7 @@ static_assert( sizeof(Reference_Mode) <= sizeof(i32) );
   X(push_object_transform_to_target) \
    X(DEBUG_send_entry) \
    X(push_image) \
+   X(draw_shaded_mesh) \
  
  
 #define framework_api_xlist(X) \

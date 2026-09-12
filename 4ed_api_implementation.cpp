@@ -3499,6 +3499,53 @@ draw__push_vertices(Render_Target *target, Render_Vertex *vertices, i1 count, Ve
  }
 }
 
+// NOTE(kv) Shaded triangle soup in one call (reference skull). Lives in the editor exe
+// because this is the only optimized binary: the game/driver DLLs are -Od for build
+// speed, and 10k per-triangle poly3_inner calls there cost ~15M cycles/frame. Bypasses
+// the game-side funnel on purpose -- reference meshes are never recorded, so tee/mute
+// don't apply; the caller passes hot_color != 0 to take over the hot highlight.
+// Headlight rule per triangle, same as the tablet's brightness_of_normal:
+// ambient + (1-ambient)*|normal . view|, two-sided. `positions` are already in the
+// current bone space, `face_normals` unit (zero = bad triangle, skipped).
+// Plan: ~/notes/tasks/autodraw_draw_as_data/plan-reference-skull-perf.md
+api(ed) function void
+draw_shaded_mesh(Render_Target *target, v3 *positions, i32 *indices, v3 *face_normals,
+                 i32 triangle_count, v3 view, v4 color, v1 depth_offset, argb hot_color)
+{
+ v1 ambient = 0.35f;
+ i32 const chunk_triangles = 128;
+ Render_Vertex chunk[3*chunk_triangles];
+ i32 chunk_count = 0;
+ Vertex_Type type = (hot_color ? Vertex_Overlay : Vertex_Poly);
+ for_i32(ti, 0, triangle_count)
+ {
+  v3 normal = face_normals[ti];
+  if(normal.x == 0 and normal.y == 0 and normal.z == 0){ continue; }
+  argb packed = hot_color;
+  if(not hot_color)
+  {
+   v1 brightness = ambient + (1.f-ambient)*absolute(dot(normal, view));
+   v4 shaded = color;
+   shaded.rgb *= brightness;
+   packed = argb_pack(shaded);
+  }
+  for_i32(k, 0, 3)
+  {
+   Render_Vertex *vertex = chunk + chunk_count++;
+   *vertex = {};
+   vertex->pos          = positions[indices[3*ti+k]];
+   vertex->color        = packed;
+   vertex->depth_offset = depth_offset;
+  }
+  if(chunk_count == alen(chunk))
+  {
+   draw__push_vertices(target, chunk, chunk_count, type);
+   chunk_count = 0;
+  }
+ }
+ draw__push_vertices(target, chunk, chunk_count, type);
+}
+
 //TODO(kv): Just pass the matrix, man...
 api(ed) function void
 push_object_transform_to_target(Render_Target *target, mat4 *transform)

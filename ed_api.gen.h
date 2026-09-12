@@ -29,6 +29,7 @@
 #define ed_push_token_lexeme_sig() String ed_push_token_lexeme(App* app, Arena* arena, Buffer_ID buffer, Token* token)
 #define ed_get_next_input_sig() User_Input ed_get_next_input(App* app, Event_Property use_flags, Event_Property abort_flags)
 #define ed_draw__push_vertices_sig() void ed_draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type)
+#define ed_draw_shaded_mesh_sig() void ed_draw_shaded_mesh(Render_Target* target, v3* positions, i32* indices, v3* face_normals, i32 triangle_count, v3 view, v4 color, v1 depth_offset, argb hot_color)
 #define ed_push_object_transform_to_target_sig() void ed_push_object_transform_to_target(Render_Target* target, mat4* transform)
 #define ed_get_token_it_on_current_line_sig() Token_Iterator_Array ed_get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos)
 #define ed_get_token_it_at_pos_sig() Token_Iterator_Array ed_get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos)
@@ -115,6 +116,8 @@
 #define get_next_input__params App* app, Event_Property use_flags, Event_Property abort_flags
 #define draw__push_vertices__return void
 #define draw__push_vertices__params Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type
+#define draw_shaded_mesh__return void
+#define draw_shaded_mesh__params Render_Target* target, v3* positions, i32* indices, v3* face_normals, i32 triangle_count, v3 view, v4 color, v1 depth_offset, argb hot_color
 #define push_object_transform_to_target__return void
 #define push_object_transform_to_target__params Render_Target* target, mat4* transform
 #define get_token_it_on_current_line__return Token_Iterator_Array
@@ -205,6 +208,7 @@ wrap_function_pointer(change_active_primary_view);
 wrap_function_pointer(push_token_lexeme);
 wrap_function_pointer(get_next_input);
 wrap_function_pointer(draw__push_vertices);
+wrap_function_pointer(draw_shaded_mesh);
 wrap_function_pointer(push_object_transform_to_target);
 wrap_function_pointer(get_token_it_on_current_line);
 wrap_function_pointer(get_token_it_at_pos);
@@ -266,6 +270,7 @@ function void change_active_primary_view(App* app);
 function String push_token_lexeme(App* app, Arena* arena, Buffer_ID buffer, Token* token);
 function User_Input get_next_input(App* app, Event_Property use_flags, Event_Property abort_flags);
 function void draw__push_vertices(Render_Target* target, Render_Vertex* vertices, i1 count, Vertex_Type type);
+function void draw_shaded_mesh(Render_Target* target, v3* positions, i32* indices, v3* face_normals, i32 triangle_count, v3 view, v4 color, v1 depth_offset, argb hot_color);
 function void push_object_transform_to_target(Render_Target* target, mat4* transform);
 function Token_Iterator_Array get_token_it_on_current_line(App* app, Buffer_ID buffer, i64* line_end_pos);
 function Token_Iterator_Array get_token_it_at_pos(App* app, Buffer_ID buffer, i64 pos);
@@ -329,6 +334,7 @@ STORAGE_CLASS wrap_function_pointer(change_active_primary_view);
 STORAGE_CLASS wrap_function_pointer(push_token_lexeme);
 STORAGE_CLASS wrap_function_pointer(get_next_input);
 STORAGE_CLASS wrap_function_pointer(draw__push_vertices);
+STORAGE_CLASS wrap_function_pointer(draw_shaded_mesh);
 STORAGE_CLASS wrap_function_pointer(push_object_transform_to_target);
 STORAGE_CLASS wrap_function_pointer(get_token_it_on_current_line);
 STORAGE_CLASS wrap_function_pointer(get_token_it_at_pos);

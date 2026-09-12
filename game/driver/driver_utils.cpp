@@ -504,24 +504,18 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
   mesh->cache_valid = true;
  }
 
- // NOTE(kv) Headlight shading, per triangle, same rule as the tablet's patches
- // (tablet/src/patch.ts brightness_of_normal): ambient floor + |normal . view|, two-sided.
- // Only the reference is shaded -- the drawing itself is deliberately flat, so this
- // stays here and never goes through painter->shading_on. One view vector for the
- // whole mesh (camera -> placement center): perspective variation over a head is nil.
- v1 ambient = 0.35f;
+ // NOTE(kv) Headlight shading happens in the editor exe (draw_shaded_mesh,
+ // 4ed_api_implementation.cpp): the only optimized binary, and one call instead of 10k
+ // poly3_inner calls through the -Od game DLL. Only the reference is shaded -- the
+ // drawing itself is deliberately flat, so this never goes through painter->shading_on.
+ // One view vector for the whole mesh (camera -> placement center): perspective
+ // variation over a head is nil. Hot (cursor on this call) = solid hot_color overlay,
+ // what poly3_inner would have done.
  v3 view = noz(camera_object_position() - placement.center);
- Poly_Flags flags = to_poly_flags(Fill_Flags{});
- for_i32(ti, 0, triangle_count)
- {
-  v3 normal = mesh->face_normals[ti];
-  if(normal == v3{}){ continue; }
-  i32 a = mesh->indices[3*ti], b = mesh->indices[3*ti+1], c = mesh->indices[3*ti+2];
-  v3 points[3] = {mesh->bone_vertices[a], mesh->bone_vertices[b], mesh->bone_vertices[c]};
-  v1 brightness = ambient + (1.f-ambient)*absolute(dot(normal, view));
-  argb argb_color = argb_pack(V4(color*brightness, alpha));
-  poly3_inner(mk_poly3(points), repeat3(argb_color), flags);
- }
+ argb hot = (current_location_is_hot() ? hot_color : 0);
+ draw_shaded_mesh(painter->target, mesh->bone_vertices.items, mesh->indices.items,
+                  mesh->face_normals.items, triangle_count, view, V4(color, alpha),
+                  painter->params.fill_depth_offset, hot);
  painter->reference_mesh_cycles += u32(__rdtsc() - cycle_start);
 }
 
