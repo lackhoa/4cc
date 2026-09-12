@@ -103,6 +103,29 @@ enum Document_Action_Kind
  Document_Action_Make_Patch,
  Document_Action_Delete_Patch,
  Document_Action_Export_Group,
+ Document_Action_Add_Line,
+};
+// NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
+// from the right-click menu; the next left-drag places one cubic curve on the
+// camera-facing plane through the pivot, fitted live to the pen path. Endpoints snap
+// to existing table vertices. A click without a drag disarms.
+#define LINE_TOOL_PATH_CAP 1024
+struct Line_Tool_State
+{
+ b32 armed;
+ b32 active;          // pen is down
+ b32 created;         // the curve primitive exists (pushed on the first real move)
+ i32 prim_index;      // the curve being drawn (== primitives.count-1 while active)
+ i32 group_index;     // group the curve was added to
+ i32 start_snap;      // existing vertex index snapped at press, -1 = new vertex
+ i32 end_snap;        // existing vertex index the pen currently snaps to, -1 = the temp end vertex
+ i32 temp_end_vertex; // table index of the end vertex that follows the pen (last in the table)
+ v3 start_world;
+ v3 end_world;
+ v1 plane_cam_z;      // camera-space depth of the drawing plane (the pivot's)
+ v2 press_px;
+ v3 path[LINE_TOOL_PATH_CAP];  // raw (unsnapped) plane samples, the fit's input
+ i32 path_count;
 };
 struct Document_Action
 {// NOTE(kv) Display only: the snapshot is what restores.
@@ -186,6 +209,7 @@ struct Game_State
  Document_Selection document_selection;
  Camera_Drag camera_drag;
  Document_History document_history;
+ Line_Tool_State line_tool;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

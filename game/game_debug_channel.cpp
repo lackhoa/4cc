@@ -26,6 +26,8 @@
 //                        toggle the hot document curve in the patch selection, no drag)
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
 //   delete_patch <i>  -> remove a curve patch primitive
+//   line_tool 0|1     -> arm/disarm the line tool (game_document_line_tool.cpp); then
+//                        mouse_down/mouse_move.../mouse_up draws one curve, `hot` shows the tool state
 //   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
@@ -935,6 +937,13 @@ debug_channel_update(Game_State *state, App *app)
   debug_channel_wants_animate = true;
   fprintf(out, "mouse_up\n");
  }
+ else if(strncmp(cmd, "line_tool ", 10) == 0)
+ {
+  i32 on = atoi(cmd+10);
+  line_tool_reset(state);
+  state->line_tool.armed = (on != 0);
+  fprintf(out, "line_tool: %s\n", on ? "armed" : "disarmed");
+ }
  else if(strcmp(cmd, "mouse_off") == 0)
  {
   debug_channel_mouse_active = false;
@@ -984,6 +993,16 @@ debug_channel_update(Game_State *state, App *app)
   else
   {
    fprintf(out, "hot: none\n");
+  }
+  {
+   Line_Tool_State &tool = state->line_tool;
+   fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
+   if(tool.created)
+   {
+    fprintf(out, " prim %d group %d start_snap %d end_snap %d path %d",
+            tool.prim_index, tool.group_index, tool.start_snap, tool.end_snap, tool.path_count);
+   }
+   fprintf(out, "\n");
   }
   {
    Document_Selection &sel = state->document_selection;

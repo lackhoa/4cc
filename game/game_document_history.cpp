@@ -183,6 +183,9 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
    return snprintf(buf, cap, "delete patch %d", action.prim_index);
   case Document_Action_Export_Group:
    return snprintf(buf, cap, "export group %.*s", strexpand(group_vis_name(action.tag)));
+  case Document_Action_Add_Line:
+   return snprintf(buf, cap, "add line %d (%.*s)", action.prim_index,
+                   strexpand(document_group_name(doc, action.prim_index)));
  }
  return snprintf(buf, cap, "?");
 }

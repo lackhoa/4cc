@@ -611,6 +611,7 @@ convert_primitives_to_camera_space(Camera &camera)
 #include "game_reference_gizmo.cpp"
 #include "game_document_edit.cpp"
 #include "game_curve_patch.cpp"
+#include "game_document_line_tool.cpp"
 
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
@@ -1780,7 +1781,19 @@ game_update(Game_Update_Params params)
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
   // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
-  if(state->document_edit.active)
+  if(state->line_tool.active)
+  {// NOTE(kv) A line-tool drag owns the mouse: nothing is hot, the curve follows the pen.
+   if(params.mouse.left)
+   {
+    line_tool_move(state, mouse_viewport, V2(params.mouse.p));
+    should_animate_next_frame = true;
+   }
+   if(params.mouse.release_left or not params.mouse.left)
+   {
+    line_tool_release(state);
+   }
+  }
+  else if(state->document_edit.active)
   {// NOTE(kv) A document drag owns the mouse: keep the grabbed item hot, no re-picking.
    hot_location = state->document_edit.location;
    if(params.mouse.left)
@@ -1808,15 +1821,20 @@ game_update(Game_Update_Params params)
                    (params.mouse.release_left or not params.mouse.left));
    if(released){ camera_drag_release(state); }
   }
-  else if(params.mouse.middle and mouse_viewport and not state->document_edit.active)
+  else if(params.mouse.middle and mouse_viewport and not state->document_edit.active and not state->line_tool.active)
   {// NOTE(kv) Middle button held: pan drag, regardless of what is hot.
    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true);
   }
 
   if(params.mouse.press_left and not state->document_edit.active and not state->camera_drag.active)
   {// NOTE(kv) Hot code item: jump to code. Hot document item: start a drag (Q6).
-   // Nothing hot: camera drag (orbit, alt = pan).
-   if(not is_valid(hot_location) and mouse_viewport)
+   // Nothing hot: camera drag (orbit, alt = pan). Line tool armed: the press starts
+   // a new curve whatever is hot (a hot vertex is a snap target, not a drag).
+   if(state->line_tool.armed and mouse_viewport)
+   {
+    line_tool_press(state, mouse_viewport, V2(params.mouse.p));
+   }
+   else if(not is_valid(hot_location) and mouse_viewport)
    {
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
     camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false);
@@ -1866,6 +1884,17 @@ game_update(Game_Update_Params params)
       if(ImGui::Selectable("Delete patch")){ document_delete_patch(state, document_primitive_index(sel.menu_hot)); }
      }
      if(sel.count >= 2 or menu_hot_is_patch){ ImGui::Separator(); }
+    }
+    {// NOTE(kv) Line tool (game_document_line_tool.cpp): arm, then drag a curve; a
+     // click without a drag disarms.
+     Line_Tool_State &tool = state->line_tool;
+     if(ImGui::Selectable(tool.armed ? "Cancel line tool" : "Add line"))
+     {
+      b32 arm = not tool.armed;
+      line_tool_reset(state);
+      tool.armed = arm;
+     }
+     ImGui::Separator();
     }
     {// NOTE(kv) Reference edit mode lives here rather than on a key: placing a
      // reference is rare enough that a binding would never be remembered (plan Q6).
@@ -2101,7 +2130,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); }break;
 
       case C|Key_Code_Return:{ game_save(state, app); }break;
       // NOTE(kv) Document undo/redo (plan-document-undo-redo Q5).
