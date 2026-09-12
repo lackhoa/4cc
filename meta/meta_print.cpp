@@ -184,7 +184,8 @@ print_struct_member(Printer &p, M_Struct_Member &member)
  print_type_and_name(p, member.type, member.name);
 }
 function void
-print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_packed=false)
+print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_packed=false,
+             darray(String) *verbatims=0)
 {
  if(is_packed) p<"PACK_BEGIN\n";
  p<"struct "<type_name;
@@ -199,6 +200,13 @@ print_struct(Printer &p, String type_name, M_Struct_Members &members, b32 is_pac
    }
   }
   mline(p);
+  if(verbatims){
+   // NOTE(kv) `no_parse { ... }` blocks (operators etc.), echoed after the members.
+   for_i32(i,0,verbatims->count){
+    p<verbatims->get(i);
+    mline(p);
+   }
+  }
  }
  if(is_packed) {mline(p); p<"PACK_END";}
  p<";";

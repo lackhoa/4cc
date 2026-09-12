@@ -1250,12 +1250,27 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
   {//-parse struct
    darray(M_Struct_Member) members = {};
    init_dynamic(members, tmp);
+   // NOTE(kv) `no_parse { ... }` blocks inside the body: echoed verbatim into the
+   //  generated struct (operators, conversions), invisible to Type_Info. Operators only,
+   //  never data members (the walker would not see them).
+   darray(String) verbatims = {};
+   init_dynamic(verbatims, tmp);
    type_name = ep_id(p);
    ep_char(p, '{');
    while(p->ok_ && !m_maybe_brace_close(p))
    {// NOTE: Field
+    if(ep_maybe_id(p, "no_parse"))
+    {//-no_parse
+     ep_char(p, '{');
+     // NOTE(kv) ep_capture_until_char skips nested groups, so method bodies are fine.
+     String code = ep_capture_until_char(p, '}');
+     ep_char(p, '}');
+     *push_zero(&verbatims) = code;
+     continue;
+    }
+
     M_Struct_Member *member = push_zero(&members);
-    
+
     if(ep_maybe_id(p, "meta_removed"))
     {//-meta_removed
      ep_char(p, '(');
@@ -1303,7 +1318,7 @@ k_process_top_level(Klang_Parser *p, Meta_Printer &printer,
     }
    }
    
-   print_struct(printer, type_name, members, is_packed);
+   print_struct(printer, type_name, members, is_packed, &verbatims);
    if(do_info)
    {
     print_struct_info(printer, type_name, members);

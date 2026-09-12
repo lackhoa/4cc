@@ -1,0 +1,22 @@
+{
+ "version": 4,
+ "camera": {
+  "pivot": {
+   "x": 0,
+   "y": 0,
+   "z": 0
+  },
+  "yaw": 0,
+  "pitch": 0.5,
+  "distance": 8
+ },
+ "document": {
+  "next_vertex_id": 0,
+  "next_stroke_id": 0,
+  "vertices": [],
+  "vertex_pins": [],
+  "smooth_knots": [],
+  "strokes": [],
+  "patches": []
+ }
+}
