@@ -1338,7 +1338,8 @@ enum Reference_Scene{Scene_None = 0,
 Scene_Back = 1,
 Scene_Arm_Profile = 2,
 Scene_Eco_Skeleton = 3,
-Scene_Head_Profile = 4,};
+Scene_Head_Profile = 4,
+Scene_Skull = 5,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:579:
 function Type_Info
@@ -1349,12 +1350,13 @@ Type_Info result = {};
 result.name = strlit("Reference_Scene");
 result.size = sizeof(Reference_Scene);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(5);
+result.enum_members.set_count(6);
 result.enum_members[0] = {.name=strlit("Scene_None"), .value=Scene_None};
 result.enum_members[1] = {.name=strlit("Scene_Back"), .value=Scene_Back};
 result.enum_members[2] = {.name=strlit("Scene_Arm_Profile"), .value=Scene_Arm_Profile};
 result.enum_members[3] = {.name=strlit("Scene_Eco_Skeleton"), .value=Scene_Eco_Skeleton};
 result.enum_members[4] = {.name=strlit("Scene_Head_Profile"), .value=Scene_Head_Profile};
+result.enum_members[5] = {.name=strlit("Scene_Skull"), .value=Scene_Skull};
 return result;
 }
 #if WANT_TYPE_INFO
@@ -1456,6 +1458,8 @@ struct Reference_Scene_Data{
 v1 camera_phi2;
 v1 camera_theta2;
 Reference_Image image;
+Stringz mesh_filename;
+Reference_Mesh_Placement mesh_placement;
 Pose pose;
 };
 ;

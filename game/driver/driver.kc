@@ -130,6 +130,13 @@ driver_get_scene_data(Reference_Scene scene)
    }
   }break;
 
+  case Scene_Skull:
+  {// NOTE(kv) plan-reference-skull-toggle: the skull is opt-in like any other reference.
+   result.camera_phi2 = 0.25f;
+   result.mesh_filename  = fmesh(strlit("G:/My Drive/autodraw/reference-models/female-skull-hangar79-10k.obj"));
+   result.mesh_placement = fv(Reference_Mesh_Placement_0);
+  }break;
+
   case Scene_Eco_Skeleton:
   {
    fpreset(Scene_Eco_Skeleton);
@@ -1952,22 +1959,24 @@ show_reference_images()
  // (@reference_depth_offset). The hardcoded arm/back images below still use their own
  // alpha and sit at the default image depth -- TODO(kv) route them through
  // draw_reference_image_from_data if they ever matter again.
- {//-Reference skull (plan-reference-skull.md): follows the head bone, left side only
-  // (the mesh is a whole skull; the right head bone is just the mirror).
-  SetInBlock(the_model->is_right, 0);
-  BoneBlock(mk_bone_id(Bone_Head));
-  Stringz filename = fmesh(strlit("G:/My Drive/autodraw/reference-models/female-skull-hangar79-10k.obj"));
-  draw_reference_mesh(filename, fv(Reference_Mesh_Placement_0));
- }
- BoneBlock(Bone_References);
  Reference_Scene scene = get_reference_scene();
  if(scene != Scene_None)
- {//-Reference scene path (image comes with the scene)
+ {//-Reference scene path (image + optional mesh come with the scene)
   Reference_Scene_Data data = driver_get_scene_data(scene);
+  if(data.mesh_filename.len)
+  {//-Reference skull (plan-reference-skull.md): follows the head bone, left side only
+   // (the mesh is a whole skull; the right head bone is just the mirror). A plain if,
+   // not ShowGroup: the mesh is pushed directly, vis_live can't gate it.
+   SetInBlock(the_model->is_right, 0);
+   BoneBlock(mk_bone_id(Bone_Head));
+   draw_reference_mesh(data.mesh_filename, data.mesh_placement);
+  }
+  BoneBlock(Bone_References);
   draw_reference_image_from_data(data.image);
  }
  else
  {//-Old render preset path
+  BoneBlock(Bone_References);
   Preset_Settings &settings = active_preset_settings();
   {// NOTE: The #ReferenceImage experience
    if(camera_is_right())

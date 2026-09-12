@@ -85,7 +85,14 @@ get_reference_mesh_placement(Game_State *state)
 {// NOTE(kv) The sole driver-side Reference_Mesh_Placement slider (the skull), null until
  // the driver has drawn the mesh once (that's when its bounding radius gets published).
  // Reads state, not the painter: the painter is null outside call_driver_render.
+ // Also null when the active scene carries no mesh (plan-reference-skull-toggle Q2): the
+ // radius stays set after one draw, so a hidden skull would otherwise stay pickable.
  if(state->reference_mesh_obj_radius <= 0.f){ return 0; }
+ Reference_Scene scene = active_preset_row(state).scene;
+ if(scene == Scene_None){ return 0; }
+ Driver_API *driver = &state->driver_api;
+ if(not is_valid(driver)){ return 0; }
+ if(driver->driver_get_scene_data(scene).mesh_filename.len == 0){ return 0; }
  sarray(FUI_File_Data) files = get_file_array({1, 0});
  for_i32(file_index, 1, files.count)
  {

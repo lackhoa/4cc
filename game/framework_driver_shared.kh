@@ -215,6 +215,7 @@ enum Reference_Scene
  Scene_Arm_Profile = 2,
  Scene_Eco_Skeleton = 3,
  Scene_Head_Profile = 4,
+ Scene_Skull = 5,  // NOTE(kv) the reference skull mesh, no image (plan-reference-skull-toggle)
 };
 [info]
 // NOTE(kv) Global reference z-order (state.txt; Q toggles it). References (images + the
@@ -278,6 +279,10 @@ struct Reference_Scene_Data
  v1 camera_phi2;
  v1 camera_theta2;
  Reference_Image image;
+ // NOTE(kv) Optional reference mesh (the skull): empty filename = the scene has none.
+ // Drawn under Bone_Head (unlike the image, which sits under Bone_References).
+ Stringz mesh_filename;
+ Reference_Mesh_Placement mesh_placement;
  Pose pose;
 };
 
