@@ -31,16 +31,14 @@ enum
  Version_NamedPresets         = 29,  // Preset_Settings grows name + scene; table = count + rows; Saved_Viewport.reference_preset removed
  Version_PresetsInStateFile   = 30,  // preset table + settings_size leave recording.ad (presets live in data/state.txt)
  Version_GroupTagsByName      = 31,  // Recorded_Group.vis_tag also written as its name after the raw block (enum order no longer matters)
+ Version_RecordingOnly        = 32,  // vis-tag names gone again: driver.document.ad is self-describing now (ad_serialize_schema.cpp), recording.ad is the only raw-block file
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,
 };
+// NOTE(kv) Only data/recording.ad (debug state) checks this; a bump just drops the old
+// file. driver.document.ad carries its own schema instead of a version.
 global Data_Version Version_Current = (Data_Version)(Version_OPL-1);
-// NOTE(kv) driver.document.ad (git-tracked drawing data, no settings table) must NOT be
-// dropped by bumps that don't touch the recording block. Move this forward on any
-// change to Recorded_Primitive/Recorded_Group/Recorded_Vertex (and what they embed);
-// the document accepts any version >= this. recording.ad still needs == current.
-global Data_Version Version_DocumentLayout = Version_TvertPoly3Disk;
 
 global Arena global_meta_arena_value;
 global Arena *global_meta_arena = &global_meta_arena_value;

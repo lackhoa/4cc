@@ -12,9 +12,9 @@
 // data/state.txt at Version_PresetsInStateFile (plan-presets-text-file).
 //
 // NOTE(kv) The *document* (game/driver/driver.document.ad, git-tracked) is drawing data,
-// not debug state; it used to share this header and block, and is now written in the
-// self-describing schema form (ad_serialize_schema.cpp). The legacy reader below still
-// accepts the old header once.
+// not debug state; it used to share this header and block, and since 2026-09-12 it is
+// written and read in the self-describing schema form (ad_serialize_schema.cpp). Only
+// the file path and the save/load entry points live here.
 // Plans: ~/notes/tasks/autodraw_draw_as_data/plan-data-only-region-poc.md,
 //        ~/notes/tasks/autodraw_draw_as_data/plan-document-self-describing-format.md
 
@@ -62,15 +62,6 @@ write_recording_block(Writer *writer, Recording &rec)
   write_lvalue(writer, rec.groups.count);
   write_size(writer, rec.groups.items,
              sizeof(Recorded_Group) * rec.groups.count);
-  for_i32(igroup, 0, rec.groups.count)
-  {// NOTE(kv) vis_tag by NAME (Version_GroupTagsByName): the raw block still holds the
-   // enum int, but inserting a tag in Group_Vis used to silently retag every saved
-   // group after it (the nose became Vis_Ref_Front_4). The name wins on load.
-   String name = group_vis_name(rec.groups.items[igroup].vis_tag);
-   u32 name_len = cast(u32)name.len;
-   write_lvalue(writer, name_len);
-   write_size(writer, name.str, name_len);
-  }
   write_lvalue(writer, rec.vertices.count);
   write_size(writer, rec.vertices.items,
              sizeof(Recorded_Vertex) * rec.vertices.count);
@@ -104,11 +95,8 @@ write_recording_file(FILE *file, Game_State *state)
  write_eof_marker(writer);
  return writer->ok;
 }
-// NOTE(kv) The document is written in the self-describing schema form since 2026-09-12
-// (write_document_schema_file, ad_serialize_schema.cpp); the raw block above is
-// recording.ad only.
+// NOTE(kv) Defined in ad_serialize_schema.cpp (included after this file).
 function b32 write_document_schema_file(FILE *file, Game_State *state);
-function b32 is_schema_format_file(String file_data);
 function b32 load_document_schema_file(Game_State *state, Stringz path, String file_data);
 
 typedef b32 Recording_File_Writer(FILE *file, Game_State *state);
@@ -162,32 +150,23 @@ reader_can_take(Binary_Reader *r, i32 count, usize item_size)
 }
 
 function b32
-read_recording_header(Binary_Reader *r, char const *label, b32 is_document)
-{// NOTE(kv) false = ignore the file (already logged).
- // is_document: driver.document.ad is drawing data, so it survives version bumps that
- // don't touch the recording block (accept >= Version_DocumentLayout). recording.ad
- // needs the exact current version.
+read_recording_header(Binary_Reader *r, char const *label)
+{// NOTE(kv) false = ignore the file (already logged). recording.ad needs the exact
+ // current version.
  u32 magic = read_binary_u32(r);
  if(magic != autodraw_data_magic){ r->ok = false; }
  r->read_version = read_binary_u32(r);
  u64 timestamp = read_binary_u64(r);
  (void)timestamp;
- b32 version_ok = is_document ? (r->read_version >= Version_DocumentLayout and
-                                 r->read_version <= Version_Current)
-                              : (r->read_version == Version_Current);
- if(r->ok and not version_ok)
+ if(r->ok and r->read_version != Version_Current)
  {// NOTE(kv) Q53: no migration -- ignore the file; the seed + recapture repopulate.
-  log_error("%s load: version %u not accepted (current %u, document layout %u), ignoring file",
-             label, r->read_version, Version_Current, Version_DocumentLayout);
+  log_error("%s load: version %u not accepted (current %u), ignoring file",
+             label, r->read_version, Version_Current);
   return false;
  }
  {//-Struct-size guards
   u32 primitive_size = read_binary_u32(r);
   u32 group_size     = read_binary_u32(r);
-  if(r->read_version < Version_PresetsInStateFile)
-  {// NOTE(kv) Older documents carried a Preset_Settings size guard; nothing to check now.
-   u32 settings_size = read_binary_u32(r); (void)settings_size;
-  }
   u32 vertex_size    = read_binary_u32(r);
   if(r->ok and (primitive_size != sizeof(Recorded_Primitive) or
                 group_size     != sizeof(Recorded_Group) or
@@ -223,30 +202,6 @@ read_recording_block(Binary_Reader *r, Recording &rec)
  init_dynamic(rec.groups, &rec.arena, maximum(1, group_count));
  set_count(&rec.groups, group_count);
  read_binary_size(r, sizeof(Recorded_Group) * group_count, rec.groups.items);
- for_i32(igroup, 0, group_count)
- {//-Resolve vis_tag
-  Recorded_Group &group = rec.groups.items[igroup];
-  if(r->read_version >= Version_GroupTagsByName)
-  {// NOTE(kv) The name after the raw block is authoritative (see write_recording_block).
-   u32 name_len = read_binary_u32(r);
-   if(not reader_can_take(r, cast(i32)name_len, 1)){ r->ok = false; return; }
-   char *name = cast(char *)push_size(&rec.arena, name_len + 1);
-   read_binary_size(r, name_len, name);
-   name[name_len] = 0;
-   Group_Vis resolved = Vis_None;
-   b32 found = group_vis_from_name(SCu8(name), &resolved);
-   if(not found)
-   {
-    log_error("recording load: group %d has unknown vis tag \"%s\" (renamed/removed from Group_Vis?), using Vis_None", igroup, name);
-   }
-   group.vis_tag = resolved;
-  }
-  else if(group.vis_tag >= Vis_Hair)
-  {// NOTE(kv) Pre-name documents were written before Vis_Hair existed (2026-09-06), so
-   // every tag from that slot on is off by one. Re-saving upgrades the file to names.
-   group.vis_tag = cast(Group_Vis)(group.vis_tag + 1);
-  }
- }
 
  i32 vertex_count = read_binary_i1(r);
  if(not reader_can_take(r, vertex_count, sizeof(Recorded_Vertex))){ r->ok = false; return; }
@@ -286,7 +241,7 @@ load_recording_file(Game_State *state)
  state->recording_load_failed = true;  // NOTE(kv) cleared on success below
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Binary_Reader *r = &reader;
- if(not read_recording_header(r, "recording", false)){ return false; }
+ if(not read_recording_header(r, "recording")){ return false; }
 
  Recording &rec = state->model.recordings.recording;
  read_recording_block(r, rec);
@@ -313,30 +268,10 @@ load_document_file(Game_State *state)
   log_string("document load: no file at %S", path);
   return false;
  }
- state->document_load_failed = true;  // NOTE(kv) cleared on success below
- b32 ok = false;
- if(is_schema_format_file(file_data))
- {// NOTE(kv) Self-describing form (ad_serialize_schema.cpp): the file carries its layout.
-  ok = load_document_schema_file(state, path, file_data);
- }
- else
- {// NOTE(kv) Legacy raw-block form, accepted once: the next save writes the schema form.
-  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
-  Binary_Reader *r = &reader;
-  if(not read_recording_header(r, "document", true)){ return false; }
-
-  Recording &doc = state->model.recordings.document;
-  read_recording_block(r, doc);
-  read_debug_string(r, strlit("EOF"));
-  ok = r->ok;
-  if(ok){
-   log_string("document load: %d primitives, %d groups, %d vertices from %S (legacy raw form)",
-              doc.primitives.count, doc.groups.count, doc.vertices.count, path);
-  }else{
-   log_error("document load: file corrupt, ignoring (%S)", path);
-  }
- }
- if(ok){ state->document_load_failed = false; }
+ // NOTE(kv) Self-describing form (ad_serialize_schema.cpp): the file carries its layout,
+ // so there is no version gate here. A rejected file leaves the live document untouched.
+ b32 ok = load_document_schema_file(state, path, file_data);
+ state->document_load_failed = not ok;
  return ok;
 }
 //-EOF
