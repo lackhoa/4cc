@@ -531,7 +531,7 @@ try:
         if not DEV_BUILD:
             OPENGL_OUTDIR = pjoin(OUTDIR, "opengl")
             mkdir_p(OPENGL_OUTDIR)
-            for filename in ["vertex_shader.glsl", "geometry_shader.glsl", "fragment_shader.glsl"]:
+            for filename in ["vertex_shader.glsl", "fragment_shader.glsl"]:
                 shutil.copy(pjoin(CODE, "opengl", filename), pjoin(OPENGL_OUTDIR, filename))
 
         if args.release:

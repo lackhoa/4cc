@@ -4,7 +4,7 @@ in Fragment_Data
 #if WRITE_PRIM_ID
  u32 prim_id;
 #else
-#  if IS_FIRST_PASS || IS_SECOND_PASS
+#  if IS_POLY
  v4 color;
 #  else
  flat v4 color;
@@ -13,7 +13,7 @@ in Fragment_Data
 #endif
 } fs_in;
 
-#if !(IS_FIRST_PASS || IS_SECOND_PASS)
+#if !IS_POLY
 layout(binding=0) uniform sampler2D image_texture;  // ;image_texture_binding
 #endif
 
@@ -26,8 +26,8 @@ layout(location=0) out V4 out_color;
 
 void main(void)
 {
-#if IS_FIRST_PASS || IS_SECOND_PASS
- 
+#if IS_POLY
+
 #  if WRITE_PRIM_ID
  //NOTE: Alpha testing: I don't think we even use alpha
  //if (fs_in.color.a == 0.0f) { discard; } // NOTE(kv): alpha testing

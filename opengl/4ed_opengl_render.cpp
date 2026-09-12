@@ -251,10 +251,11 @@ void main(void)
 
 enum OGL_Program_Type
 {
- OGL_First_Pass  = 1,
- OGL_Second_Pass = 2,
- OGL_Editor      = 3,
- OGL_Image       = 4,
+ // NOTE(kv) There used to be a "first pass" (points expanded to quads in
+ // geometry_shader.glsl) but no program was ever created for it; removed 2026-09-12.
+ OGL_Poly   = 2,
+ OGL_Editor = 3,
+ OGL_Image  = 4,
 };
 
 enum OGL_Program_Flag
@@ -268,12 +269,9 @@ function u32
 ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
 {
  // const GLubyte *version_confirm = glGetString(GL_VERSION);
- b32 is_game       = type != OGL_Editor;
- b32 is_first_pass = type == OGL_First_Pass;
- 
+ b32 is_game = type != OGL_Editor;
+
  GLuint vertex_shader   = glCreateShader(GL_VERTEX_SHADER);
- GLuint geometry_shader = 0;
- if (is_first_pass) { geometry_shader = glCreateShader(GL_GEOMETRY_SHADER); }
  GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
  {
   Scratch_Block scratch;
@@ -282,11 +280,9 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   char defines[256];
   snprintf(defines,
            alen(defines),
-           "#define IS_FIRST_PASS %d\n"
-           "#define IS_SECOND_PASS %d\n"
+           "#define IS_POLY %d\n"
            "#define WRITE_PRIM_ID %d\n",
-           is_first_pass,
-           (type == OGL_Second_Pass),
+           (type == OGL_Poly),
            (flags & OGL_Write_Primitive_ID));
   char *version_str = "#version 460\n";
   
@@ -305,13 +301,6 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
    glCompileShader(vertex_shader);
   }
   
-  if(is_first_pass){
-   char *geometry = to_cstring(read_entire_file(scratch, strlit(SHADER_DIR "geometry_shader.glsl")));
-   GLchar *array[] = { version_str, defines, header, geometry };
-   glShaderSource(geometry_shader, alen(array), array, 0);
-   glCompileShader(geometry_shader);
-  } 
-  
   {
    char *fragment;
    if(is_game){ fragment = to_cstring(read_entire_file(scratch, strlit(SHADER_DIR "fragment_shader.glsl"))); }
@@ -326,10 +315,6 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
  GLuint program = glCreateProgram();
  {
   glAttachShader(program, vertex_shader);
-  if (is_first_pass)
-  {
-   glAttachShader(program, geometry_shader);
-  }
   glAttachShader(program, fragment_shader);
   glLinkProgram(program);
   glValidateProgram(program);
@@ -342,14 +327,9 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
   {
    GLsizei ignore = 0;
    char vertex_errors  [KB(4)];
-   char geometry_errors[KB(4)];
    char fragment_errors[KB(4)];
    char program_errors [KB(4)];
    glGetShaderInfoLog(vertex_shader, sizeof(vertex_errors), &ignore, vertex_errors);
-   if (is_first_pass)
-   {
-    glGetShaderInfoLog(geometry_shader, sizeof(geometry_errors), &ignore, geometry_errors);
-   }
    glGetShaderInfoLog(fragment_shader, sizeof(fragment_errors), &ignore, fragment_errors);
    glGetProgramInfoLog(program, sizeof(program_errors), &ignore, program_errors);
 #if !KV_INTERNAL
@@ -360,7 +340,6 @@ ogl__create_program(OGL_Program_Type type, OGL_Program_Flags flags)
  }
  
  glDeleteShader(vertex_shader);
- glDeleteShader(geometry_shader);
  glDeleteShader(fragment_shader);
  
  return(program);
@@ -808,8 +787,8 @@ ogl_render(i2 mousep_ydown, i32 window_id)
   glDepthFunc(GL_LEQUAL);  // NOTE: "equal" because we want things drawn later to be on top, prolly doesn't matter
   glClearDepth(1.0f);
   
-  ogl_program_2             = ogl__create_program(OGL_Second_Pass, 0);
-  ogl_program_2_prim_id     = ogl__create_program(OGL_Second_Pass, OGL_Write_Primitive_ID);
+  ogl_program_2             = ogl__create_program(OGL_Poly, 0);
+  ogl_program_2_prim_id     = ogl__create_program(OGL_Poly, OGL_Write_Primitive_ID);
   ogl_program_image         = ogl__create_program(OGL_Image, 0);
   ogl_program_image_prim_id = ogl__create_program(OGL_Image, OGL_Write_Primitive_ID);
   ogl_program_editor        = ogl__create_program(OGL_Editor, 0);

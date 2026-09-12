@@ -10,7 +10,7 @@ out Fragment_Data
 #if WRITE_PRIM_ID
  u32 prim_id;
 #else
-#  if IS_FIRST_PASS || IS_SECOND_PASS
+#  if IS_POLY
  v4 color;
 #  else
  flat v4 color;
@@ -25,7 +25,7 @@ void main(void)
  
  gl_Position = uniform_clip_from_world * world_pos;
  
-#if IS_FIRST_PASS || IS_SECOND_PASS
+#if IS_POLY
  if(uniform_overlay)
  {
   gl_Position.z = -gl_Position.w;  //NOTE: z=-1 IS the near-clip plane, so the shader really is the right place to do this.
