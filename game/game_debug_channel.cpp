@@ -640,6 +640,20 @@ debug_channel_update(Game_State *state, App *app)
  {
   debug_channel_document_dump(out, state);
  }
+ else if(strcmp(cmd, "undo") == 0)
+ {
+  fprintf(out, "undo: %s\n", history_undo(state) ? "ok" : "nothing to undo");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "redo") == 0)
+ {
+  fprintf(out, "redo: %s\n", history_redo(state) ? "ok" : "nothing to redo");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "history_dump") == 0)
+ {
+  history_dump(out, state);
+ }
  else if(strcmp(cmd, "document_schema_dump") == 0)
  {// NOTE(kv) The type table stored in driver.document.ad, as text (ad_serialize_schema.cpp).
   dump_document_schema_file(out, state);

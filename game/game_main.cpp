@@ -411,6 +411,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
 #include "ad_serialize_recording.cpp"
 #include "ad_serialize_schema.cpp"
 #include "ad_serialize_state.cpp"
+#include "game_document_history.cpp"
 #include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
 
@@ -2103,6 +2104,9 @@ game_update(Game_Update_Params params)
       case Key_Code_Escape:{ state->kb_cursor.on = false; }break;
 
       case C|Key_Code_Return:{ game_save(state, app); }break;
+      // NOTE(kv) Document undo/redo (plan-document-undo-redo Q5).
+      case C|Key_Code_Z:{ history_undo(state); }break;
+      case C|S|Key_Code_Z: case C|Key_Code_Y:{ history_redo(state); }break;
       case Key_Code_A:
       {
        snap_camera(cam_data, update_viewport);
@@ -2405,6 +2409,11 @@ game_update(Game_Update_Params params)
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
    if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
    if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
+   if (state->document_history.status_frames > 0)
+   {// NOTE(kv) "undo: move vertex 12 (nose)" for a couple of seconds after Ctrl+Z.
+    state->document_history.status_frames--;
+    DEBUG_TEXT(state->document_history.status);
+   }
   }
 
   if(0)
@@ -2591,6 +2600,37 @@ game_update(Game_Update_Params params)
     ImGui::EndGroup();
    }
    im_end();
+
+   {//-History panel (plan-document-undo-redo Q2): one row per document edit, oldest
+    // first, `>` marks the state the document equals, rows past it are undone (grey);
+    // click a row = jump there.
+    Document_History &history = state->document_history;
+    im_begin("History", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+    ImGui::BeginDisabled(history.position <= 0);
+    if(ImGui::Button("undo (^Z)")){ history_undo(state); }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(history.position >= history.count - 1);
+    if(ImGui::Button("redo (^Y)")){ history_redo(state); }
+    ImGui::EndDisabled();
+    ImGui::BeginChild("history_list", ImVec2(300, 300), true);
+    i32 jump_to = -1;
+    for_i32(index, 0, history.count)
+    {
+     char text[128];
+     document_action_text(text, sizeof(text), history.entries[index].action,
+                          state->model.recordings.document);
+     char label[160];
+     snprintf(label, sizeof(label), "%c %s##history%d", (index == history.position) ? '>' : ' ', text, index);
+     bool undone = (index > history.position);
+     if(undone){ ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]); }
+     if(ImGui::Selectable(label, index == history.position)){ jump_to = index; }
+     if(undone){ ImGui::PopStyleColor(); }
+    }
+    ImGui::EndChild();
+    if(jump_to != -1){ history_jump(state, jump_to); }
+    im_end();
+   }
   }
  }
 

@@ -261,6 +261,11 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
    { log_error("make_patch: duplicate curve %d", curve_index[i]); return false; }
   }
  }
+ Document_Action action = {};
+ action.kind  = Document_Action_Make_Patch;
+ action.count = count;
+ for_i32(i, 0, count){ action.indices[i] = curve_index[i]; }
+ history_begin(state, action);
  Recorded_Primitive prim = {};
  prim.type = Primitive_Type_Curve_Patch;
  prim.group_index = doc.primitives[curve_index[0]].group_index;
@@ -269,6 +274,7 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
  push(&doc.primitives, prim);
  doc.captured = true;
  state->document_selection.count = 0;
+ history_commit(state);
  return save_document_file(state);
 }
 
@@ -279,6 +285,10 @@ document_delete_patch(Game_State *state, i32 prim_index)
  if(prim_index < 0 or prim_index >= doc.primitives.count or
     doc.primitives[prim_index].type != Primitive_Type_Curve_Patch)
  { log_error("delete_patch: %d is not a curve patch", prim_index); return false; }
+ Document_Action action = {};
+ action.kind       = Document_Action_Delete_Patch;
+ action.prim_index = prim_index;
+ history_begin(state, action);
  for_i32(i, prim_index, doc.primitives.count-1){ doc.primitives[i] = doc.primitives[i+1]; }
  doc.primitives.count--;
  for_i32(i, 0, doc.primitives.count)
@@ -292,5 +302,6 @@ document_delete_patch(Game_State *state, i32 prim_index)
  }
  state->document_selection.count = 0;
  state->document_edit = {};
+ history_commit(state);
  return save_document_file(state);
 }

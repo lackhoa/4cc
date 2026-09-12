@@ -98,6 +98,7 @@ write_recording_file(FILE *file, Game_State *state)
 // NOTE(kv) Defined in ad_serialize_schema.cpp (included after this file).
 function b32 write_document_schema_file(FILE *file, Game_State *state);
 function b32 load_document_schema_file(Game_State *state, Stringz path, String file_data);
+function void history_clear(Game_State *state);  // NOTE(kv) game_document_history.cpp
 
 typedef b32 Recording_File_Writer(FILE *file, Game_State *state);
 function b32
@@ -272,6 +273,9 @@ load_document_file(Game_State *state)
  // so there is no version gate here. A rejected file leaves the live document untouched.
  b32 ok = load_document_schema_file(state, path, file_data);
  state->document_load_failed = not ok;
+ // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
+ // different document now (plan-document-undo-redo Q6).
+ if(ok){ history_clear(state); }
  return ok;
 }
 //-EOF

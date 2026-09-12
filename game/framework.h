@@ -94,6 +94,47 @@ struct Document_Edit_State
  v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
  v2 grab_offset_px;   // mouse minus projected point at press, held constant
 };
+// NOTE(kv) Document undo/redo (game_document_history.cpp, plan-document-undo-redo.md).
+enum Document_Action_Kind
+{
+ Document_Action_None = 0,  // entry 0: the state before the first edit
+ Document_Action_Move_Vertex,
+ Document_Action_Move_Handle,
+ Document_Action_Make_Patch,
+ Document_Action_Delete_Patch,
+ Document_Action_Export_Group,
+};
+struct Document_Action
+{// NOTE(kv) Display only: the snapshot is what restores.
+ Document_Action_Kind kind;
+ i32 prim_index;   // the primitive edited (handle owner, deleted patch)
+ i32 index;        // vertex index (Move_Vertex) or handle slot (Move_Handle)
+ i32 count;        // Make_Patch: curves in `indices`
+ i32 indices[4];
+ Group_Vis tag;    // Export_Group
+};
+struct Document_Snapshot
+{// NOTE(kv) The document as it was after one edit; owns its arena.
+ Arena arena;
+ Recorded_Primitive *primitives;
+ Recorded_Group *groups;
+ Recorded_Vertex *vertices;
+ i32 primitive_count;
+ i32 group_count;
+ i32 vertex_count;
+ Document_Action action;
+};
+#define DOCUMENT_HISTORY_CAP 100
+struct Document_History
+{
+ Document_Snapshot entries[DOCUMENT_HISTORY_CAP];  // oldest first
+ i32 count;
+ i32 position;      // entry the document currently equals; -1 when empty
+ b32 pending;       // history_begin called, commit/discard not yet
+ Document_Action pending_action;
+ char status[160];  // "undo: move vertex 12 (nose)", shown on screen for status_frames
+ i32 status_frames;
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -144,6 +185,7 @@ struct Game_State
  Document_Edit_State document_edit;
  Document_Selection document_selection;
  Camera_Drag camera_drag;
+ Document_History document_history;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

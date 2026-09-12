@@ -97,6 +97,13 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Loc
  edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
  edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
  edit.location = hot;
+ {// NOTE(kv) Open the history entry now; release commits it only if something moved.
+  Document_Action action = {};
+  action.kind       = best.is_handle ? Document_Action_Move_Handle : Document_Action_Move_Vertex;
+  action.prim_index = prim_index;
+  action.index      = best.is_handle ? best.slot : prim.vertex_index[best.slot];
+  history_begin(state, action);
+ }
 }
 
 function void
@@ -156,8 +163,14 @@ document_edit_release(Game_State *state)
  Document_Edit_State &edit = state->document_edit;
  if(not edit.active){ return; }
  if(edit.moved)
- {// NOTE(kv) Q5: the file is the document; undo is git.
+ {// NOTE(kv) Q5: the file is the document (saved on every edit); undo/redo restore
+  // history snapshots (game_document_history.cpp).
+  history_commit(state);
   save_document_file(state);
+ }
+ else
+ {
+  history_discard(state);
  }
  edit = {};
 }

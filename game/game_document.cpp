@@ -67,6 +67,10 @@ export_group_to_document(Game_State *state, Group_Vis tag)
  Recording &src = m->recordings.recording;
  Recording &doc = m->recordings.document;
  if(not src.captured){ log_error("export_group: no live capture"); return result; }
+ Document_Action action = {};
+ action.kind = Document_Action_Export_Group;
+ action.tag  = tag;
+ history_begin(state, action);
 
  Scratch_Scope tmp;
  // NOTE(kv) Stage the merged document on the scratch arena (old document minus this
@@ -221,6 +225,7 @@ export_group_to_document(Game_State *state, Group_Vis tag)
             strexpand(group_vis_name(tag)), result.group_count, result.primitive_count,
             result.vertex_count, result.welded_count,
             doc.groups.count, doc.primitives.count, doc.vertices.count);
+ history_commit(state);
  result.ok = save_document_file(state);
  return result;
 }
