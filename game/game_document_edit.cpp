@@ -58,40 +58,138 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  return mat4vert(get_bone(bone_id, pick.is_right)->world_from_bone, bone_p);
 }
 
+function i32
+document_pick_list(Recording &doc, Location hot, Document_Pick out[6])
+{// NOTE(kv) Every control point of the hot document primitive: its table vertices,
+ // plus the two handles if it's a curve. Returns the count (0 if `hot` isn't a
+ // document item).
+ if(not is_document_location(hot)){ return 0; }
+ i32 prim_index = document_primitive_index(hot);
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return 0; }
+ Recorded_Primitive &prim = doc.primitives[prim_index];
+ b32 is_right = document_location_is_right(hot);
+ i32 count = 0;
+ for_i32(slot, 0, primitive_vertex_count(prim.type))
+ {
+  out[count++] = {prim_index, is_right, false, slot};
+ }
+ if(prim.type == Primitive_Type_Curve)
+ {
+  out[count++] = {prim_index, is_right, true, 1};
+  out[count++] = {prim_index, is_right, true, 2};
+ }
+ return count;
+}
+function b32
+document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot,
+                      Document_Pick *best_out)
+{// NOTE(kv) The control point of the hot document primitive nearest the mouse (in
+ // pixels) -- what a press would grab, and what the hover highlight shows.
+ Recording &doc = state->model.recordings.document;
+ if(not viewport){ return false; }
+ Document_Pick picks[6];
+ i32 pick_count = document_pick_list(doc, hot, picks);
+ if(pick_count == 0){ return false; }
+ Camera camera = setup_camera(state->viewports[0].camera);
+ v2 center = get_center(viewport->clip_box);
+ v1 best_dist = INFINITY;
+ for_i32(i, 0, pick_count)
+ {
+  v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, picks[i]));
+  v1 dist = lengthof(V3(px - mouse_px, 0));
+  if(dist < best_dist){ best_dist = dist; *best_out = picks[i]; }
+ }
+ return true;
+}
+
+// NOTE(kv) Hover highlight (Khoa, 2026-09-12: "highlight hot vertices that I hover
+// mouse over" + show the vertex id). Per frame, not saved: the hot document
+// primitive's control points draw as disks, the one a press would grab (or the one
+// being dragged) bigger and in hot_color2, and its id goes to the debug text line.
+// Globals, not Game_State: purely transient, and a DLL reload recomputes them next frame.
+global b32           document_hover_valid;
+global Location      document_hover_hot;   // the hot document item the picks belong to
+global Document_Pick document_hover_pick;
+
+function void
+document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot)
+{
+ document_hover_valid = false;
+ Document_Edit_State &edit = state->document_edit;
+ if(edit.active)
+ {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
+  document_hover_valid = true;
+  document_hover_hot   = edit.location;
+  document_hover_pick  = edit.pick;
+ }
+ else if(document_pick_nearest(state, viewport, mouse_px, hot, &document_hover_pick))
+ {
+  document_hover_valid = true;
+  document_hover_hot   = hot;
+ }
+}
+function i32
+document_hover_label(char *buf, i32 cap, Recording &doc)
+{// NOTE(kv) "vertex 43 (Vis_Cheek) -- slot 0 of curve 48" / "handle e[1] of curve 48".
+ if(not document_hover_valid){ return 0; }
+ Document_Pick &pick = document_hover_pick;
+ Recorded_Primitive &prim = doc.primitives[pick.prim_index];
+ String group_name = document_group_name(doc, pick.prim_index);
+ if(pick.is_handle)
+ {
+  return snprintf(buf, cap, "handle e[%d] of prim %d (%.*s)", pick.slot, pick.prim_index,
+                  strexpand(group_name));
+ }
+ return snprintf(buf, cap, "vertex %d (%.*s) -- slot %d of prim %d",
+                 prim.vertex_index[pick.slot], strexpand(group_name), pick.slot, pick.prim_index);
+}
+function void
+document_hover_draw(Game_State *state, Camera &camera)
+{// NOTE(kv) World-space disks facing the camera, overlaid (they mark positions, depth
+ // would hide the ones behind a fill). Same depth-scaled sizing as the kb cursor.
+ if(not document_hover_valid){ return; }
+ Recording &doc = state->model.recordings.document;
+ Document_Pick picks[6];
+ i32 pick_count = document_pick_list(doc, document_hover_hot, picks);
+ for_i32(i, 0, pick_count)
+ {
+  Document_Pick &pick = picks[i];
+  b32 is_hovered = (pick.is_handle == document_hover_pick.is_handle and
+                    pick.slot      == document_hover_pick.slot);
+  v3 center = document_pick_world_pos(doc, pick);
+  v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
+  v1 radius = (is_hovered ? 4.5f : 3.f)*millimeter * dist / camera.focal_length;
+  argb color = (is_hovered ? hot_color2 : pick.is_handle ? linear_argb_blue : linear_argb_silver);
+  const i32 nslice = 12;
+  v3 last = {};
+  for_i32(k, 0, nslice+1)
+  {
+   v2 arm = radius*arm2(v1(k) / v1(nslice));
+   v3 sample = center + arm.x*camera.x + arm.y*camera.y;
+   if(k != 0)
+   {
+    v3 points[3] = {center, last, sample};
+    poly3_inner(mk_poly3(points), repeat3(color), {Poly_Overlay});
+   }
+   last = sample;
+  }
+ }
+}
+
 function void
 document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot)
 {// NOTE(kv) Grab the control point of the hot document primitive nearest the mouse
  // (in pixels): its table vertices, plus the handles if it's a curve.
  Document_Edit_State &edit = state->document_edit;
  Recording &doc = state->model.recordings.document;
- if(not viewport or not is_document_location(hot)){ return; }
- i32 prim_index = document_primitive_index(hot);
- if(prim_index < 0 or prim_index >= doc.primitives.count){ return; }
+ Document_Pick best = {};
+ if(not document_pick_nearest(state, viewport, mouse_px, hot, &best)){ return; }
+ i32 prim_index = best.prim_index;
  Recorded_Primitive &prim = doc.primitives[prim_index];
 
+ v3 world = document_pick_world_pos(doc, best);
  Camera camera = setup_camera(state->viewports[0].camera);
  v2 center = get_center(viewport->clip_box);
- Document_Pick best = {};
- v1 best_dist = INFINITY;
- auto consider = [&](Document_Pick pick)
- {
-  v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, pick));
-  v1 dist = lengthof(V3(px - mouse_px, 0));
-  if(dist < best_dist){ best_dist = dist; best = pick; }
- };
- i32 vertex_count = primitive_vertex_count(prim.type);
- for_i32(slot, 0, vertex_count)
- {
-  consider({prim_index, document_location_is_right(hot), false, slot});
- }
- if(prim.type == Primitive_Type_Curve)
- {
-  consider({prim_index, document_location_is_right(hot), true, 1});
-  consider({prim_index, document_location_is_right(hot), true, 2});
- }
- if(best_dist == INFINITY){ return; }
-
- v3 world = document_pick_world_pos(doc, best);
  edit.active = true;
  edit.pick = best;
  edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;

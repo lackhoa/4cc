@@ -996,6 +996,12 @@ debug_channel_update(Game_State *state, App *app)
           edit.active, edit.moved, edit.pick.prim_index,
           edit.pick.is_right ? "right" : "left", edit.pick.slot,
           edit.pick.is_handle ? "handle" : "vertex");
+  {// NOTE(kv) The same label the debug text overlay shows for the hovered control point.
+   char hover_label[128];
+   if(document_hover_label(hover_label, sizeof(hover_label), state->model.recordings.document) > 0)
+   { fprintf(out, "hover: %s\n", hover_label); }
+   else { fprintf(out, "hover: none\n"); }
+  }
  }
  else if(strncmp(cmd, "set_camera", 10) == 0)
  {// NOTE(kv) Q55: absolute theta/phi on viewport 0 (the main viewport), optionally

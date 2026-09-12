@@ -828,6 +828,8 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    poly3_inner(mk_poly3(points), repeat3(linear_argb_blue), {Poly_Overlay});
   }
 
+  document_hover_draw(state, camera);  // NOTE(kv) control points of the hovered document item (every viewport)
+
   if(viewport_id == 1)
   {
    draw_reference_edit_gizmo(state, camera);
@@ -1811,6 +1813,7 @@ game_update(Game_Update_Params params)
    hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
   }
   debug_channel_last_hot = hot_location;
+  document_hover_update(state, mouse_viewport, V2(params.mouse.p), hot_location);
   if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
 
   if(state->camera_drag.active)
@@ -2442,6 +2445,13 @@ game_update(Game_Update_Params params)
    {// NOTE(kv) "undo: move vertex 12 (nose)" for a couple of seconds after Ctrl+Z.
     state->document_history.status_frames--;
     DEBUG_TEXT(state->document_history.status);
+   }
+   {// NOTE(kv) Which document control point the mouse is on: "vertex 43 (Vis_Cheek) ..."
+    local_persist char hover_label[128];
+    if(document_hover_label(hover_label, sizeof(hover_label), state->model.recordings.document) > 0)
+    {
+     DEBUG_TEXT(hover_label);
+    }
    }
   }
 
