@@ -603,6 +603,7 @@ struct Painter
  Reference_Mode reference_mode;
  argb background_color;
  u32 render_cycles;
+ u32 reference_mesh_cycles;  // NOTE(kv) time spent in draw_reference_mesh this render (perf probe)
 };
 
 global Painter *painter;  // see @init_painter

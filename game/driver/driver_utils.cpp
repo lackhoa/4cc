@@ -371,6 +371,14 @@ struct Reference_Mesh
  b32 load_failed;
  sarray(v3)  vertices;
  sarray(i32) indices;   // NOTE(kv) 3 per triangle, 0-based
+ // NOTE(kv) Placement cache (perf): the -Od build spent ~4000 cycles per triangle on
+ // the per-frame transform + normal math (16 ms/frame for the 10k-tri skull), so the
+ // bone-space vertices and face normals are computed once per placement change and the
+ // per-frame work is one dot product + the push. Storage is reused across placements.
+ Reference_Mesh_Placement cached_placement;
+ b32 cache_valid;
+ sarray(v3) bone_vertices;  // vertices.count entries
+ sarray(v3) face_normals;   // indices.count/3 entries, unit, bone space
 };
 global darray(Reference_Mesh) reference_meshes;  // NOTE(kv) cache, lives in driver_dll_arena
 
@@ -459,34 +467,62 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
  if(mesh->load_failed){ return; }
  v1 alpha = 0.35f;  // NOTE(kv) same ballpark as the images' Reference_Alpha values
  if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
- v1 scale = placement.scale;
- if(scale <= 0.f){ scale = 1.f; }
- mat4i T = (mat4i_translate(placement.center) *
-            mat4i_scale(scale) *
-            mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
+ u64 cycle_start = __rdtsc();
+ i32 triangle_count = mesh->indices.count / 3;
+ if(not mesh->cache_valid or
+    not block_match(&mesh->cached_placement, &placement, sizeof(placement)))
+ {// NOTE(kv) Placement changed (or first draw): transform once, in bone space.
+  if(mesh->bone_vertices.items == 0)
+  {
+   mesh->bone_vertices = {push_array(&thread_permanent_arena, v3, mesh->vertices.count),
+                          mesh->vertices.count};
+   mesh->face_normals  = {push_array(&thread_permanent_arena, v3, triangle_count),
+                          triangle_count};
+  }
+  v1 scale = placement.scale;
+  if(scale <= 0.f){ scale = 1.f; }
+  mat4i T = (mat4i_translate(placement.center) *
+             mat4i_scale(scale) *
+             mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
+  for_i32(vi, 0, mesh->vertices.count)
+  {
+   mesh->bone_vertices[vi] = mat4vert(T, mesh->vertices[vi]);
+  }
+  for_i32(ti, 0, triangle_count)
+  {
+   i32 a = mesh->indices[3*ti], b = mesh->indices[3*ti+1], c = mesh->indices[3*ti+2];
+   v3 normal = {};
+   if(a >= 0 and b >= 0 and c >= 0 and
+      a < mesh->vertices.count and b < mesh->vertices.count and c < mesh->vertices.count)
+   {
+    v3 p0 = mesh->bone_vertices[a], p1 = mesh->bone_vertices[b], p2 = mesh->bone_vertices[c];
+    normal = noz(cross(p1-p0, p2-p0));
+   }
+   mesh->face_normals[ti] = normal;  // NOTE(kv) zero normal = bad triangle, skipped below
+  }
+  mesh->cached_placement = placement;
+  mesh->cache_valid = true;
+ }
+
  // NOTE(kv) Headlight shading, per triangle, same rule as the tablet's patches
  // (tablet/src/patch.ts brightness_of_normal): ambient floor + |normal . view|, two-sided.
  // Only the reference is shaded -- the drawing itself is deliberately flat, so this
- // stays here and never goes through painter->shading_on.
+ // stays here and never goes through painter->shading_on. One view vector for the
+ // whole mesh (camera -> placement center): perspective variation over a head is nil.
  v1 ambient = 0.35f;
- v3 camera_obj = camera_object_position();
+ v3 view = noz(camera_object_position() - placement.center);
  Poly_Flags flags = to_poly_flags(Fill_Flags{});
- for(i32 i = 0; i+2 < mesh->indices.count; i += 3)
+ for_i32(ti, 0, triangle_count)
  {
-  i32 a = mesh->indices[i], b = mesh->indices[i+1], c = mesh->indices[i+2];
-  if(a < 0 or b < 0 or c < 0 or
-     a >= mesh->vertices.count or b >= mesh->vertices.count or c >= mesh->vertices.count)
-  { continue; }
-  v3 points[3] = {mat4vert(T, mesh->vertices[a]),
-                  mat4vert(T, mesh->vertices[b]),
-                  mat4vert(T, mesh->vertices[c])};
-  v3 normal = noz(cross(points[1]-points[0], points[2]-points[0]));
-  v3 centroid = (points[0]+points[1]+points[2]) / 3.f;
-  v3 view = noz(camera_obj - centroid);
+  v3 normal = mesh->face_normals[ti];
+  if(normal == v3{}){ continue; }
+  i32 a = mesh->indices[3*ti], b = mesh->indices[3*ti+1], c = mesh->indices[3*ti+2];
+  v3 points[3] = {mesh->bone_vertices[a], mesh->bone_vertices[b], mesh->bone_vertices[c]};
   v1 brightness = ambient + (1.f-ambient)*absolute(dot(normal, view));
   argb argb_color = argb_pack(V4(color*brightness, alpha));
   poly3_inner(mk_poly3(points), repeat3(argb_color), flags);
  }
+ painter->reference_mesh_cycles += u32(__rdtsc() - cycle_start);
 }
 
 //~ EOF

@@ -188,6 +188,9 @@ debug_channel_dump_state(FILE *out, Game_State *state)
  fprintf(out, "force_animate: %d\n",  replay.force_animate);
  fprintf(out, "recapture: %d\n",      replay.recapture);
  fprintf(out, "weight_blink: %f\n",   m->weight_live[Weight_Blink]);
+ fprintf(out, "cycles: frame %u, driver_render %u (x%u), render_character %u, reference_mesh %u\n",
+         debug_cycles.frame, debug_cycles.driver_render, debug_cycles.driver_render_calls,
+         debug_cycles.render_character, debug_cycles.reference_mesh);
  debug_channel_write_diff_result(out, replay.last_diff);
 }
 

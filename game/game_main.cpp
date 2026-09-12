@@ -141,6 +141,16 @@ animate_value(v1 start, v1 end, v1 dt, v1 difference_multiplier, v1 min_speed)
 }
 
 global Vertices global_vertices_p;
+// NOTE(kv) Perf probe (rdtsc cycles of the last frame), printed by dump_state.
+struct Debug_Cycles
+{
+ u32 frame;             // whole game_update
+ u32 driver_render;     // one driver_render call (last viewport rendered)
+ u32 render_character;  // painter->render_cycles
+ u32 reference_mesh;    // painter->reference_mesh_cycles
+ u32 driver_render_calls;  // renders per frame
+};
+global Debug_Cycles debug_cycles;
 
 global v1 CAMERA_DISTANCE_STEP         = 5.f * centimeter;
 global v1 CAMERA_PAN_STEP_PER_DISTANCE = 2.f * centimeter;
@@ -702,7 +712,14 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    // NOTE(kv) Mode B mute only applies to the code path's recorded scope --
    // scoped tightly around driver_render so cursor/indicator drawing stays live.
    global_replay_display = replay.display_replay;
-   driver->driver_render(tmp, painter);
+   {
+    u64 cycle_start = __rdtsc();
+    driver->driver_render(tmp, painter);
+    debug_cycles.driver_render    = u32(__rdtsc() - cycle_start);
+    debug_cycles.render_character = painter->render_cycles;
+    debug_cycles.reference_mesh   = painter->reference_mesh_cycles;
+    debug_cycles.driver_render_calls++;
+   }
    global_replay_display = false;
    global_vertex_tee = 0;
 
@@ -1619,6 +1636,8 @@ get_live_viewport_by_id(sarray(Live_Viewport) viewports, Viewport_ID id)
 function Game_Update_Return
 game_update(Game_Update_Params params)
 {// @game_api, see also @maybe_update_game
+ u64 frame_cycle_start = __rdtsc();
+ debug_cycles.driver_render_calls = 0;
  Scratch_Block tmp;
  update_game_config();
  Game_State *state = params.state;
@@ -2784,6 +2803,7 @@ game_update(Game_Update_Params params)
  // "are you sure?" lister inside itself until the stack overflowed (2026-09-06).
  b32 request_exit = debug_channel_request_exit;
  debug_channel_request_exit = false;
+ debug_cycles.frame = u32(__rdtsc() - frame_cycle_start);
  return{
   .should_animate_next_frame = should_animate_next_frame or state->replay.force_animate
                                or debug_channel_wants_animate,
