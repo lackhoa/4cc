@@ -129,7 +129,6 @@ struct Line_Tool_State
  i32 prim_index;      // the curve being drawn (== primitives.count-1 while active)
  i32 group_index;     // group the curve was added to
  i32 start_snap;      // existing vertex index snapped at press, -1 = new vertex
- i32 end_snap;        // existing vertex index the pen currently snaps to, -1 = the temp end vertex
  i32 temp_end_vertex; // table index of the end vertex that follows the pen (last in the table)
  v3 start_world;
  v3 end_world;

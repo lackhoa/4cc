@@ -3,17 +3,17 @@
 // armed, a left-drag places one cubic curve on a camera-facing plane (press = p0,
 // release = p3). The raw pen path is least-squares-fitted to the two interior control
 // points on every move, so the curve follows the drawn shape live (it is a real
-// document primitive from the first move on, drawn by the normal replay). Endpoints
-// snap to existing table vertices so curves join at shared vertices. A click without a
-// drag disarms the tool.
+// document primitive from the first move on, drawn by the normal replay). The start
+// snaps to an existing table vertex so curves can continue from a shared vertex. A
+// click without a drag disarms the tool.
 //
-// The stroke plane (plan-line-tool-snapping.html, Q1/Q4 2026-09-12): the press snaps
-// to any vertex under the cursor (pixels); the stroke then lives on the camera-facing
+// The stroke plane (plan-line-tool-snapping.html, Q1 2026-09-12): the press snaps to
+// any vertex under the cursor (pixels); the stroke then lives on the camera-facing
 // plane THROUGH THAT VERTEX (through the camera pivot when nothing snapped), so a curve
-// started on a vertex stays flat at that vertex's depth. The end joins a vertex only
-// if it is within line_tool_snap_plane_bone of that plane (and under the cursor);
-// otherwise a new vertex is made on the plane. So the fitted curve never leaves its
-// plane (prim 48 "curving in x" from profile was the old screen-only end snap).
+// started on a vertex stays flat at that vertex's depth. The END NEVER SNAPS: it is
+// always a new vertex on the plane (Khoa 2026-09-12: "I don't need end snapping"; the
+// old screen-only end snap was what made prim 48 curve in x from profile). Join curves
+// end-to-end by starting the next one on the previous end vertex.
 //
 // Desktop deviations from the tablet: the tablet snaps both ends by a world radius
 // around the pen point on the pivot plane; handles here are stored as absolute
@@ -22,17 +22,6 @@
 // and the debug channel's virtual mouse (`line_tool 1` + mouse_down/move/up).
 
 global v1 const line_tool_snap_px = 12.f;
-// NOTE(kv) End snap: max distance from the stroke plane, in the vertex's BONE units
-// (= the tablet's document units, VERTEX_SNAP_RADIUS_WORLD). Not world meters: the head
-// bone is a 9.2 cm uniform scale, so 0.05 world would be half the head.
-global v1 const line_tool_snap_plane_bone = 0.05f;
-
-function v1
-line_tool_bone_scale(Bone_ID bone_id)
-{// NOTE(kv) World length of one bone unit (bones are uniform scale * rotation * translate).
- mat4 const &world_from_bone = get_bone(bone_id, false)->world_from_bone.forward;
- return lengthof(mat4vert(world_from_bone, V3(1,0,0)) - mat4vert(world_from_bone, V3(0,0,0)));
-}
 global v1 const line_tool_tap_px  = 3.f;   // press->release travel below this = a tap
 
 function Bone_ID
@@ -59,13 +48,10 @@ line_tool_plane_point(Game_State *state, Live_Viewport *viewport, v2 px)
 
 // NOTE(kv) Nearest table vertex to the mouse within line_tool_snap_px, found through
 // the primitives that reference it (a vertex's bone may be "the group's", which only
-// a primitive knows). Skips the curve being drawn and its temp end vertex. With
-// on_stroke_plane, only vertices within line_tool_snap_plane_bone (in their bone's
-// units) of the stroke plane (tool.plane_cam_z) count -- the end snap; the start snap
-// takes any depth.
+// a primitive knows). Skips the curve being drawn and its temp end vertex. Any depth
+// counts: this is the start snap (the end never snaps).
 function i32
-line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
-                      b32 on_stroke_plane, v3 *world_out)
+line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px, v3 *world_out)
 {
  Line_Tool_State &tool = state->line_tool;
  Recording &doc = state->model.recordings.document;
@@ -83,13 +69,6 @@ line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
    if(tool.created and vertex_index == tool.temp_end_vertex){ continue; }
    Document_Pick pick = {iprim, false, false, slot};
    v3 world = document_pick_world_pos(doc, pick);
-   if(on_stroke_plane)
-   {
-    v1 cam_z = mat4vert(camera.cam_from_world, world).z;
-    Bone_ID bone_id = document_vertex_bone(doc, prim, doc.vertices[vertex_index]);
-    v1 max_world = line_tool_snap_plane_bone * line_tool_bone_scale(bone_id);
-    if(absolute(cam_z - tool.plane_cam_z) > max_world){ continue; }
-   }
    v2 px = document_edit_project(camera, center, world);
    v1 dist = lengthof(V3(px - mouse_px, 0));
    if(dist < best_dist){ best_dist = dist; best = vertex_index; *world_out = world; }
@@ -205,7 +184,7 @@ line_tool_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
   return;
  }
  v3 snap_world = {};
- i32 snap = line_tool_snap_vertex(state, viewport, mouse_px, false, &snap_world);
+ i32 snap = line_tool_snap_vertex(state, viewport, mouse_px, &snap_world);
  if(snap >= 0)
  {// NOTE(kv) The stroke plane moves to the snapped vertex's depth (Q1: a curve started
   // on a vertex stays flat at that vertex's depth, whatever the pivot).
@@ -217,7 +196,6 @@ line_tool_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  tool.press_px    = mouse_px;
  tool.start_snap  = snap;
  tool.start_world = (snap >= 0) ? snap_world : plane_point;
- tool.end_snap    = snap;
  tool.end_world   = tool.start_world;
  tool.path_count  = 0;
  tool.path[tool.path_count++] = plane_point;
@@ -302,17 +280,14 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
                      length_squared(plane_point - tool.path[tool.path_count-1]) < 1e-12f);
  if(not same_as_last and tool.path_count < LINE_TOOL_PATH_CAP){ tool.path[tool.path_count++] = plane_point; }
 
- v3 snap_world = {};
- i32 snap = line_tool_snap_vertex(state, viewport, mouse_px, true, &snap_world);
- tool.end_snap  = snap;
- tool.end_world = (snap >= 0) ? snap_world : plane_point;
+ // NOTE(kv) No end snap: the end vertex follows the pen on the stroke plane.
+ tool.end_world = plane_point;
 
  Recorded_Primitive &prim = doc.primitives[tool.prim_index];
  Bone_ID bone_id = line_tool_group_bone(doc, tool.group_index);
- prim.vertex_index[1] = (snap >= 0) ? snap : tool.temp_end_vertex;
  doc.vertices[tool.temp_end_vertex].p = line_tool_world_to_bone(bone_id, tool.end_world);
- // NOTE(kv) Path and both endpoints lie on the stroke plane (the end snap is
- // plane-filtered, the start defines the plane), so the raw 3D fit stays flat.
+ // NOTE(kv) Path and both endpoints lie on the stroke plane (the start defines the
+ // plane, the end is unprojected onto it), so the raw 3D fit stays flat.
  v3 p1, p2;
  line_tool_fit_handles(tool.path, tool.path_count, tool.start_world, tool.end_world, &p1, &p2);
  prim.curve.bezier.e[1].v = line_tool_world_to_bone(bone_id, p1);
@@ -323,28 +298,14 @@ function void
 line_tool_release(Game_State *state)
 {
  Line_Tool_State &tool = state->line_tool;
- Recording &doc = state->model.recordings.document;
  if(not tool.active){ return; }
  if(not tool.created)
  {// NOTE(kv) A tap: exit the tool (tablet Q27).
   line_tool_reset(state);
   return;
  }
- Recorded_Primitive &prim = doc.primitives[tool.prim_index];
- b32 collapsed = (tool.end_snap >= 0 and tool.end_snap == prim.vertex_index[0]);
- if(collapsed)
- {// NOTE(kv) Both ends on the same vertex: no curve. The curve and its temp end
-  // vertex are the last entries, so popping undoes the creation exactly.
-  doc.primitives.count--;
-  doc.vertices.count = tool.temp_end_vertex;
-  history_discard(state);
-  line_tool_reset(state);
-  return;
- }
- if(tool.end_snap >= 0)
- {// NOTE(kv) The end joined an existing vertex; the temp one (last in the table) goes.
-  doc.vertices.count = tool.temp_end_vertex;
- }
+ // NOTE(kv) The end never snaps, so the temp end vertex is always the real one and
+ // the curve can't collapse onto its start vertex (a tap never gets here: `created`).
  history_commit(state);
  save_document_file(state);
  line_tool_reset(state);

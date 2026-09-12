@@ -1040,8 +1040,8 @@ debug_channel_update(Game_State *state, App *app)
    fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
    if(tool.created)
    {
-    fprintf(out, " prim %d group %d start_snap %d end_snap %d path %d plane_cam_z %.4f",
-            tool.prim_index, tool.group_index, tool.start_snap, tool.end_snap, tool.path_count,
+    fprintf(out, " prim %d group %d start_snap %d path %d plane_cam_z %.4f",
+            tool.prim_index, tool.group_index, tool.start_snap, tool.path_count,
             tool.plane_cam_z);
    }
    fprintf(out, "\n");
