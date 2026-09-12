@@ -314,7 +314,7 @@ build_editor(Thread_Info info, void *arg)
  add_include(params, s.imgui_dir);
  add_include(params, pjoin(tmp, NON_SOURCE, strlit("foreign/freetype2")));
  
- String WINDOWS_LIBS = strlit("user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib");
+ String WINDOWS_LIBS = strlit("user32.lib winmm.lib gdi32.lib comdlg32.lib userenv.lib shell32.lib");  // NOTE(kv) shell32: SetCurrentProcessExplicitAppUserModelID
  String FREETYPE_LIB = pjoin(tmp, NON_SOURCE, strlit("foreign/x64/freetype.lib"));
  //For MacOS: LINKED_LIBS=f"{NON_SOURCE}/foreign/x64/libfreetype-mac.a -framework Cocoa -framework QuartzCore -framework CoreServices -framework OpenGL -framework IOKit -framework Metal -framework MetalKit"
  add_linker_arg(params, WINDOWS_LIBS);

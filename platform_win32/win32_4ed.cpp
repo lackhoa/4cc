@@ -63,6 +63,7 @@ unlerp(f32 a, Range_f32 x, f32 b)
 #include <Windows.h>
 #include <windowsx.h>  // NOTE(kv): needed to get mouse location
 #include "timeapi.h"
+#include <shobjidl_core.h>  // NOTE(kv) SetCurrentProcessExplicitAppUserModelID (agent instance taskbar group)
 #define function static
 
 #include "win32_utf8.h"
@@ -1864,7 +1865,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // so that our Sleep() can be more granular.
  UINT desired_scheduler_ms = 1;
  b32 sleep_is_granular = (timeBeginPeriod(desired_scheduler_ms) == TIMERR_NOERROR);
- 
+
+ if(strstr(GetCommandLineA(), "-debug-cmd"))
+ {// NOTE(kv) Agent instance: its own taskbar group (otherwise the taskbar merges both
+  // instances of the exe under one button with one icon). Must run before any window
+  // is created. Icon/title/z-order live further down, search agent_mode.
+  SetCurrentProcessExplicitAppUserModelID(L"kv.4ed.agent");
+ }
+
  win32vars = {};
  
  {
@@ -2132,6 +2140,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
    SetWindowPos(hwnd, HWND_BOTTOM, work_area.left, work_area.top,
                 work_area.right - work_area.left, work_area.bottom - work_area.top,
                 SWP_SHOWWINDOW|SWP_NOACTIVATE);
+   // NOTE(kv) Orange "4" so the agent instance is telling apart from Khoa's own
+   // editor in the title bar / alt-tab / taskbar (icon.rc `agent`, 2026-09-12).
+   HICON agent_icon = LoadIconW(GetModuleHandle(0), L"agent");
+   SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)agent_icon);
+   SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)agent_icon);
   }
   else
   {
@@ -2385,7 +2398,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   // NOTE(allen): Switch to New Title
   if (step_result.has_new_title) {
-   SetWindowTextA(win32vars.window_handles[0], cast(char*)step_result.title_string);
+   char *title = cast(char*)step_result.title_string;
+   char agent_title[512];
+   if(agent_mode)  // NOTE(kv) set at WinMain startup, search agent_mode
+   {// NOTE(kv) "[agent] <title>" so the two instances read differently in alt-tab too.
+    snprintf(agent_title, sizeof(agent_title), "[agent] %s", title);
+    title = agent_title;
+   }
+   SetWindowTextA(win32vars.window_handles[0], title);
   }
   
   // NOTE(allen): Switch to New Cursor
