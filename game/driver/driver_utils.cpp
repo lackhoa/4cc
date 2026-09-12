@@ -371,6 +371,8 @@ struct Reference_Mesh
  b32 load_failed;
  sarray(v3)  vertices;
  sarray(i32) indices;   // NOTE(kv) 3 per triangle, 0-based
+ v3 bound_center;       // NOTE(kv) bbox center in obj units (the obj origin is NOT the skull's center)
+ v1 bound_radius;       // NOTE(kv) max |vertex - bound_center| in obj units, for the gizmo's handle
  // NOTE(kv) Placement cache (perf): the -Od build spent ~4000 cycles per triangle on
  // the per-frame transform + normal math (16 ms/frame for the 10k-tri skull), so the
  // bone-space vertices and face normals are computed once per placement change and the
@@ -446,6 +448,27 @@ load_reference_mesh(Stringz filename)
   mesh.vertices = {vertices.items, vertices.count};
   mesh.indices  = {indices.items,  indices.count};
   mesh.load_failed = (vertices.count == 0 or indices.count == 0);
+  // NOTE(kv) The obj isn't centered on its origin (the skull sits ~250 units off it),
+  // so the gizmo needs the bbox center too, not just a radius about the origin.
+  v3 bound_min = {}, bound_max = {};
+  for_i32(vi, 0, mesh.vertices.count)
+  {
+   v3 v = mesh.vertices[vi];
+   if(vi == 0){ bound_min = v; bound_max = v; }
+   else
+   {
+    bound_min = v3{minimum(bound_min.x, v.x), minimum(bound_min.y, v.y), minimum(bound_min.z, v.z)};
+    bound_max = v3{maximum(bound_max.x, v.x), maximum(bound_max.y, v.y), maximum(bound_max.z, v.z)};
+   }
+  }
+  mesh.bound_center = 0.5f * (bound_min + bound_max);
+  v1 radius_squared = 0.f;
+  for_each(vertex, mesh.vertices)
+  {
+   v3 d = *vertex - mesh.bound_center;
+   radius_squared = maximum(radius_squared, dot(d, d));
+  }
+  mesh.bound_radius = square_root(radius_squared);
  }
  else
  {
@@ -465,6 +488,8 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
  if(not is_fill_enabled()) { return; }
  Reference_Mesh *mesh = load_reference_mesh(filename);
  if(mesh->load_failed){ return; }
+ painter->reference_mesh_obj_radius = mesh->bound_radius;  // NOTE(kv) for the gizmo
+ painter->reference_mesh_obj_center = mesh->bound_center;
  v1 alpha = 0.35f;  // NOTE(kv) same ballpark as the images' Reference_Alpha values
  if(painter->reference_mode == Reference_Full) { alpha = 1.0f; }
  u64 cycle_start = __rdtsc();

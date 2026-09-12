@@ -46,16 +46,26 @@ enum Reference_Drag_Kind
  Reference_Drag_None   = 0,
  Reference_Drag_Body   = 1,
  Reference_Drag_Corner = 2,
+ // NOTE(kv) The reference skull (@Reference_Mesh_Placement, plan-reference-skull Q7):
+ // same body/corner gestures on a camera-facing square around the mesh, plus Shift-drag
+ // for yaw/pitch. Roll is a right-click menu item.
+ Reference_Drag_Mesh_Body   = 3,
+ Reference_Drag_Mesh_Corner = 4,
+ Reference_Drag_Mesh_Rotate = 5,
 };
 struct Reference_Edit_State
 {// NOTE(kv) Reference edit mode (game_reference_gizmo.cpp): while it's on, the active
- // preset's reference image is draggable and nothing else is pickable.
+ // preset's reference image and the reference skull are draggable and nothing else is
+ // pickable.
  b32 active;
  Reference_Drag_Kind drag;
- // NOTE(kv) Drag anchors, in the image quad's own (u,v) frame -- see @Reference_Plane.
+ // NOTE(kv) Drag anchors, in the grabbed quad's own (u,v) frame -- see @Reference_Plane.
  v2 grab_offset;   // body: mouse-to-center offset, held constant for the drag
  v1 grab_u;        // corner: u where the drag started
- v3 grab_x_axis;   // corner: x_axis at drag start
+ v3 grab_x_axis;   // corner (image): x_axis at drag start
+ v1 grab_scale;    // corner (mesh): effective scale at drag start
+ v2 grab_px;       // rotate (mesh): mouse pixel where the drag started
+ v3 grab_rotation; // rotate (mesh): rotation at drag start
 };
 struct Document_Pick
 {// NOTE(kv) One control point of a document primitive, addressed for editing
@@ -205,6 +215,10 @@ struct Game_State
  Game_ImGui_State imgui_state;
  Replay_State replay;
  Reference_Edit_State reference_edit;
+ // NOTE(kv) Copy of Painter::reference_mesh_obj_radius from the last driver render (the
+ // painter only lives during call_driver_render). 0 = the skull has never been drawn.
+ v1 reference_mesh_obj_radius;
+ v3 reference_mesh_obj_center;
  Document_Edit_State document_edit;
  Document_Selection document_selection;
  Camera_Drag camera_drag;

@@ -785,6 +785,28 @@ debug_channel_update(Game_State *state, App *app)
              plane.u_axis.x, plane.u_axis.y, plane.u_axis.z,
              plane.half_u, plane.half_v);
     }
+    {// NOTE(kv) The skull's camera-facing square (game_reference_gizmo.cpp), plus its
+     // center in png pixels so mouse_down can aim at it.
+     Reference_Mesh_Placement *mesh = get_reference_mesh_placement(state);
+     Reference_Plane mesh_plane = {};
+     Camera camera = setup_camera(state->viewports[0].camera);
+     b32 has_mesh = (mesh and get_reference_mesh_plane(state, *mesh, camera, &mesh_plane));
+     fprintf(out, "  skull: placement %s, plane %s\n",
+             mesh ? "found" : "MISSING", has_mesh ? "ok" : "FAILED");
+     if(has_mesh)
+     {
+      fprintf(out, "  skull center=(%.3f %.3f %.3f) radius=%.3f scale=%.3f rotation=(%.3f %.3f %.3f)\n",
+              mesh_plane.center.x, mesh_plane.center.y, mesh_plane.center.z,
+              mesh_plane.half_u, mesh->scale, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z);
+      v2 viewport_center = get_center(debug_channel_mouse_viewport_box);
+      v2 center_px = document_edit_project(camera, viewport_center, mesh_plane.center);
+      v3 corner = mesh_plane.center + mesh_plane.half_u*mesh_plane.u_axis
+                                    + mesh_plane.half_v*mesh_plane.v_axis;
+      v2 corner_px = document_edit_project(camera, viewport_center, corner);
+      fprintf(out, "  skull px: center (%.0f %.0f) +u+v corner (%.0f %.0f)\n",
+              center_px.x, center_px.y, corner_px.x, corner_px.y);
+     }
+    }
     debug_channel_wants_animate = true;
    }
    else if(strcmp(field, "reference_image") == 0)

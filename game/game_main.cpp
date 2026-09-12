@@ -719,6 +719,13 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     debug_cycles.render_character = painter->render_cycles;
     debug_cycles.reference_mesh   = painter->reference_mesh_cycles;
     debug_cycles.driver_render_calls++;
+    // NOTE(kv) The painter is a stack local of this function; the gizmo's hit test and
+    // the debug channel run outside it, so the skull radius is kept on the state.
+    if(painter->reference_mesh_obj_radius > 0.f)
+    {
+     state->reference_mesh_obj_radius = painter->reference_mesh_obj_radius;
+     state->reference_mesh_obj_center = painter->reference_mesh_obj_center;
+    }
    }
    global_replay_display = false;
    global_vertex_tee = 0;
@@ -1797,7 +1804,10 @@ game_update(Game_Update_Params params)
    }
   }
 
-  update_reference_edit(state, params.mouse, mouse_viewport);
+  {
+   b32 shift = ((params.input.active_mods & Key_Mod_Sft) != 0 or debug_channel_mouse_shift);
+   update_reference_edit(state, params.mouse, shift, mouse_viewport);
+  }
 
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
@@ -1856,8 +1866,10 @@ game_update(Game_Update_Params params)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
    }
-   else if(not is_valid(hot_location) and mouse_viewport)
-   {
+   else if(not is_valid(hot_location) and mouse_viewport and
+           state->reference_edit.drag == Reference_Drag_None)
+   {// NOTE(kv) A reference drag (image or skull) that started this frame owns the press;
+    // without this check the orbit ran under the gizmo drag (found 2026-09-12).
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
     camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false);
    }
@@ -1923,14 +1935,15 @@ game_update(Game_Update_Params params)
      Reference_Edit_State &edit = state->reference_edit;
      Stringz reference_filename = {};
      Reference_Placement *placement = get_reference_placement(state, &reference_filename);
-     if(placement)
+     Reference_Mesh_Placement *mesh_placement = get_reference_mesh_placement(state);
+     if(placement or mesh_placement)
      {
       if(ImGui::Selectable(edit.active ? "Stop editing reference" : "Edit reference"))
       {
        edit.active = not edit.active;
        edit.drag = Reference_Drag_None;
       }
-      if(edit.active)
+      if(edit.active and placement)
       {
        if(ImGui::Selectable("Mirror reference"))
        {
@@ -1940,6 +1953,25 @@ game_update(Game_Update_Params params)
        ImGui::SetNextItemWidth(120.f);
        if(ImGui::SliderFloat("Alpha", &placement->alpha, 0.f, 1.f))
        {
+        save_slider_values_file(state, /*is_driver*/1);
+       }
+      }
+      if(edit.active and mesh_placement)
+      {// NOTE(kv) Skull roll (plan-reference-skull Q7): no drag gesture left for it, so
+       // it's a pair of menu nudges. rotation is in turns.
+       const v1 roll_step = 5.f / 360.f;
+       if(ImGui::Selectable("Roll skull +5 deg"))
+       {
+        v3 rotation = mesh_placement->rotation;
+        rotation.z += roll_step;
+        set_reference_mesh_scale_rotation(state, *mesh_placement, mesh_placement->scale, rotation);
+        save_slider_values_file(state, /*is_driver*/1);
+       }
+       if(ImGui::Selectable("Roll skull -5 deg"))
+       {
+        v3 rotation = mesh_placement->rotation;
+        rotation.z -= roll_step;
+        set_reference_mesh_scale_rotation(state, *mesh_placement, mesh_placement->scale, rotation);
         save_slider_values_file(state, /*is_driver*/1);
        }
       }

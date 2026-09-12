@@ -604,6 +604,12 @@ struct Painter
  argb background_color;
  u32 render_cycles;
  u32 reference_mesh_cycles;  // NOTE(kv) time spent in draw_reference_mesh this render (perf probe)
+ // NOTE(kv) Bounding radius of the reference skull in its own .obj units (max vertex
+ // distance from the obj origin), published by draw_reference_mesh so the gizmo
+ // (game_reference_gizmo.cpp) can size its handle without seeing the mesh. 0 = no mesh
+ // drawn yet.
+ v1 reference_mesh_obj_radius;
+ v3 reference_mesh_obj_center;  // NOTE(kv) bbox center in obj units, the sphere's center
 };
 
 global Painter *painter;  // see @init_painter
