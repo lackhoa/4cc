@@ -409,6 +409,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
  }
 }
 #include "ad_serialize_recording.cpp"
+#include "ad_serialize_schema.cpp"
 #include "ad_serialize_state.cpp"
 #include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
