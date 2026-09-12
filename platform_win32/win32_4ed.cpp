@@ -1719,7 +1719,7 @@ win32_gl_create_windows(DWORD style, RECT rect, HWND *window_handles) {
  WNDCLASSW wndclass = {};
  wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
  wndclass.lpfnWndProc = win32_proc;
- wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
+ wndclass.hIcon = LoadIconW(GetModuleHandle(0), MAKEINTRESOURCEW(1));  // NOTE(kv) icon.rc: 1 = main
  wndclass.hInstance = this_instance;
  wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
  ok = RegisterClassW(&wndclass) != 0;
@@ -2167,8 +2167,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 work_area.right - work_area.left, work_area.bottom - work_area.top,
                 SWP_SHOWWINDOW|SWP_NOACTIVATE);
    // NOTE(kv) Orange "4" so the agent instance is telling apart from Khoa's own
-   // editor in the title bar / alt-tab / taskbar (icon.rc `agent`, 2026-09-12).
-   HICON agent_icon = LoadIconW(GetModuleHandle(0), L"agent");
+   // editor in the title bar / alt-tab / taskbar (icon.rc id 2, 2026-09-12).
+   HICON agent_icon = LoadIconW(GetModuleHandle(0), MAKEINTRESOURCEW(2));
    SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)agent_icon);
    SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)agent_icon);
   }

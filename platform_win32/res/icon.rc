@@ -1,2 +1,5 @@
-main ICON 4coder_icon.ico
-agent ICON agent_icon.ico
+// NOTE(kv) Explorer/taskbar shows the FIRST icon group in the resource directory, and
+// named resources are sorted alphabetically -- "agent" < "main" made the stable exe
+// look orange (2026-09-12). Numeric ids keep the order explicit: 1 = main.
+1 ICON 4coder_icon.ico
+2 ICON agent_icon.ico
