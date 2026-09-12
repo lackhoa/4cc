@@ -794,6 +794,12 @@ draw_bezier_rec(tvert P_rec[4], Line_Params params)
   {
    argb color = (is_hot ? hot_color
                  : painter->params.line_color);
+   if(painter->ignore_radii)
+   {// NOTE(kv) Preset knob: uniform default radii so every line reads clearly (the
+    // tapered ends of real radii hide where a line actually goes). Lost in a3875d75
+    // when draw_cparams went away; restored here so live, keyed and replay share it.
+    params.radii = painter->params.line.radii;
+   }
    draw_bezier_inner(P_draw, params, color);
   }
   
