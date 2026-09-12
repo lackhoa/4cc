@@ -320,7 +320,7 @@ build_editor(Thread_Info info, void *arg)
  add_linker_arg(params, WINDOWS_LIBS);
  add_linker_arg(params, FREETYPE_LIB);
  add_linker_arg(params, strlit("opengl32.lib"));
- add_linker_arg(params, pjoin(tmp, NON_SOURCE, strlit("res/icon.res")));
+ add_linker_arg(params, strlit("icon.res"));  // NOTE(kv) built by kv-build.py from platform_win32/res/icon.rc into the build dir
  //NOTE(kv) incremental linking doesn't really help?
  
  params.output = binary_name;

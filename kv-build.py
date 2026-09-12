@@ -421,6 +421,10 @@ def build_and_run_metaprogram():
                      debug_symbol=1)
     meta_config = ""
     if do_build_editor:
+        # NOTE(kv) Window icons (green "4" main, orange "4" for the -debug-cmd agent
+        # instance) live in the code repo, not 4coder-non-source; rc.exe is on PATH
+        # from the cached vcvars env. Output icon.res in OUTDIR, linked by meta_build.cpp.
+        run(f'rc -nologo -fo icon.res {CODE}/platform_win32/res/icon.rc')
         meta_config += " --build-editor"
     if do_build_game:
         meta_config += " --build-game"
