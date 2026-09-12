@@ -133,7 +133,7 @@ struct Line_Tool_State
  i32 temp_end_vertex; // table index of the end vertex that follows the pen (last in the table)
  v3 start_world;
  v3 end_world;
- v1 plane_cam_z;      // camera-space depth of the drawing plane (the pivot's)
+ v1 plane_cam_z;      // camera-space depth of the drawing plane (the snapped start vertex's, else the pivot's)
  v2 press_px;
  v3 path[LINE_TOOL_PATH_CAP];  // raw (unsnapped) plane samples, the fit's input
  i32 path_count;

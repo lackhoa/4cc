@@ -251,8 +251,11 @@ debug_channel_print_primitive_px(FILE *out, Game_State *state, i32 prim_index, b
  v2 center = get_center(debug_channel_mouse_viewport_box);
  auto print_pick = [&](const char *label, Document_Pick pick)
  {
-  v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, pick));
-  fprintf(out, "  %s slot %d: px (%.0f %.0f)\n", label, pick.slot, px.x, px.y);
+  v3 world = document_pick_world_pos(doc, pick);
+  v2 px = document_edit_project(camera, center, world);
+  // NOTE(kv) cam_z = camera-space depth (negative in front), the line tool's stroke-plane test.
+  fprintf(out, "  %s slot %d: px (%.0f %.0f) cam_z %.4f\n", label, pick.slot, px.x, px.y,
+          mat4vert(camera.cam_from_world, world).z);
  };
  for_i32(slot, 0, primitive_vertex_count(prim.type))
  {
@@ -1037,8 +1040,9 @@ debug_channel_update(Game_State *state, App *app)
    fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
    if(tool.created)
    {
-    fprintf(out, " prim %d group %d start_snap %d end_snap %d path %d",
-            tool.prim_index, tool.group_index, tool.start_snap, tool.end_snap, tool.path_count);
+    fprintf(out, " prim %d group %d start_snap %d end_snap %d path %d plane_cam_z %.4f",
+            tool.prim_index, tool.group_index, tool.start_snap, tool.end_snap, tool.path_count,
+            tool.plane_cam_z);
    }
    fprintf(out, "\n");
   }
