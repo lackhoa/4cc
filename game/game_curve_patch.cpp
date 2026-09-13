@@ -228,12 +228,20 @@ push_curve_patch_hit_triangles(Arena *arena, darray(Poly3) *triangles,
 
 //~ Editing (Q8): selection + make/delete, shared by the right-click menu and the channel.
 
+function b32
+document_selection_can_hold(Recording &doc, i32 prim_index)
+{// NOTE(kv) Curves and patches select (Q4); anything else (or out of range) does not.
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
+ Primitive_Type type = doc.primitives[prim_index].type;
+ return (type == Primitive_Type_Curve or type == Primitive_Type_Curve_Patch);
+}
+
 function void
 document_selection_toggle(Game_State *state, i32 prim_index)
 {
  Document_Selection &sel = state->document_selection;
  Recording &doc = state->model.recordings.document;
- if(not curve_patch_is_valid_ref(doc, prim_index)){ return; }  // only curves select
+ if(not document_selection_can_hold(doc, prim_index)){ return; }
  for_i32(i, 0, sel.count)
  {
   if(sel.prim_index[i] == prim_index)
@@ -244,6 +252,117 @@ document_selection_toggle(Game_State *state, i32 prim_index)
   }
  }
  if(sel.count < alen(sel.prim_index)){ sel.prim_index[sel.count++] = prim_index; }
+}
+
+function void
+document_selection_set(Game_State *state, i32 prim_index)
+{// NOTE(kv) Q1: a plain click makes the clicked primitive the sole selection.
+ Document_Selection &sel = state->document_selection;
+ sel.count = 0;
+ if(document_selection_can_hold(state->model.recordings.document, prim_index))
+ { sel.prim_index[sel.count++] = prim_index; }
+}
+
+function void
+document_selection_clamp(Game_State *state)
+{// NOTE(kv) Q5: after an undo/redo snapshot restore the indices may point past the end
+ // (or at something that is no longer a curve/patch); drop those, keep the rest.
+ Document_Selection &sel = state->document_selection;
+ Recording &doc = state->model.recordings.document;
+ i32 kept = 0;
+ for_i32(i, 0, sel.count)
+ {
+  if(document_selection_can_hold(doc, sel.prim_index[i])){ sel.prim_index[kept++] = sel.prim_index[i]; }
+ }
+ sel.count = kept;
+}
+
+function b32
+document_selection_all_curves(Game_State *state)
+{// NOTE(kv) "Make patch from selection" needs curves only (Q4).
+ Document_Selection &sel = state->document_selection;
+ Recording &doc = state->model.recordings.document;
+ for_i32(i, 0, sel.count){ if(not curve_patch_is_valid_ref(doc, sel.prim_index[i])){ return false; } }
+ return true;
+}
+
+function void
+document_remove_primitives(Recording &doc, b32 *remove)
+{// NOTE(kv) The one primitive remover: `remove[i]` per primitive (doc.primitives.count
+ // entries). Patches referencing a removed curve lose that entry (compacted); a patch
+ // left with fewer than 2 curves goes too. Then one compaction pass with an old->new
+ // index map fixes every surviving patch's references. Vertices stay: an unreferenced
+ // vertex is harmless, and the line tool re-snaps to it if a new curve goes there.
+ // Shared by delete curve / delete patch / delete selection so a batch delete needs no
+ // index juggling.
+ Scratch_Block tmp;
+ i32 old_count = doc.primitives.count;
+ for_i32(i, 0, old_count)
+ {
+  Recorded_Primitive &prim = doc.primitives[i];
+  if(remove[i] or prim.type != Primitive_Type_Curve_Patch){ continue; }
+  Recorded_Curve_Patch &patch = prim.curve_patch;
+  i32 kept = 0;
+  for_i32(ic, 0, patch.curve_count)
+  {
+   i32 ref = patch.curve_index[ic];
+   if(remove[ref]){ continue; }
+   patch.curve_index[kept++] = ref;
+  }
+  patch.curve_count = kept;
+  if(kept < 2){ remove[i] = true; }
+ }
+ i32 *remap = push_array(tmp, i32, maximum(1, old_count));
+ i32 new_count = 0;
+ for_i32(i, 0, old_count)
+ {
+  remap[i] = remove[i] ? -1 : new_count;
+  if(not remove[i]){ doc.primitives[new_count++] = doc.primitives[i]; }
+ }
+ doc.primitives.count = new_count;
+ for_i32(i, 0, new_count)
+ {
+  Recorded_Primitive &prim = doc.primitives[i];
+  if(prim.type != Primitive_Type_Curve_Patch){ continue; }
+  for_i32(ic, 0, prim.curve_patch.curve_count)
+  { prim.curve_patch.curve_index[ic] = remap[prim.curve_patch.curve_index[ic]]; }
+ }
+}
+
+function b32
+document_delete_primitives(Game_State *state, Document_Action action, i32 *prim_index, i32 count)
+{// NOTE(kv) One history entry for the whole batch (Q3). Every index must be a curve or
+ // a patch; duplicates are fine (the mask absorbs them).
+ Recording &doc = state->model.recordings.document;
+ for_i32(i, 0, count)
+ {
+  if(not document_selection_can_hold(doc, prim_index[i]))
+  { log_error("delete: %d is not a curve or a patch", prim_index[i]); return false; }
+ }
+ if(count == 0){ return false; }
+ Scratch_Block tmp;
+ b32 *remove = push_array(tmp, b32, maximum(1, doc.primitives.count));
+ for_i32(i, 0, doc.primitives.count){ remove[i] = false; }
+ for_i32(i, 0, count){ remove[prim_index[i]] = true; }
+ history_begin(state, action);
+ document_remove_primitives(doc, remove);
+ state->document_selection.count = 0;
+ state->document_edit = {};
+ history_commit(state);
+ return save_document_file(state);
+}
+
+function b32
+document_delete_selection(Game_State *state)
+{// NOTE(kv) Delete / Backspace: the selection dies, nothing on an empty one (no
+ // hot-item fallback, Q3).
+ Document_Selection &sel = state->document_selection;
+ if(sel.count == 0){ return false; }
+ Document_Action action = {};
+ action.kind  = Document_Action_Delete_Selection;
+ action.count = sel.count;
+ for_i32(i, 0, sel.count){ action.indices[i] = sel.prim_index[i]; }
+ return document_delete_primitives(state, action, sel.prim_index, sel.count);
 }
 
 function b32
@@ -288,29 +407,13 @@ document_delete_patch(Game_State *state, i32 prim_index)
  Document_Action action = {};
  action.kind       = Document_Action_Delete_Patch;
  action.prim_index = prim_index;
- history_begin(state, action);
- for_i32(i, prim_index, doc.primitives.count-1){ doc.primitives[i] = doc.primitives[i+1]; }
- doc.primitives.count--;
- for_i32(i, 0, doc.primitives.count)
- {// NOTE(kv) References past the hole shift down by one.
-  Recorded_Primitive &other = doc.primitives[i];
-  if(other.type != Primitive_Type_Curve_Patch){ continue; }
-  for_i32(ic, 0, other.curve_patch.curve_count)
-  {
-   if(other.curve_patch.curve_index[ic] > prim_index){ other.curve_patch.curve_index[ic]--; }
-  }
- }
- state->document_selection.count = 0;
- state->document_edit = {};
- history_commit(state);
- return save_document_file(state);
+ return document_delete_primitives(state, action, &prim_index, 1);
 }
 
 function b32
 document_delete_curve(Game_State *state, i32 prim_index)
-{// NOTE(kv) Removes one curve primitive. Patches that used it lose that entry (compacted);
- // a patch left with fewer than 2 curves is removed too. Vertices stay: an unreferenced
- // vertex is harmless, and the line tool re-snaps to it if a new curve goes there.
+{// NOTE(kv) Removes one curve primitive; see document_remove_primitives for what
+ // happens to patches that used it.
  Recording &doc = state->model.recordings.document;
  if(prim_index < 0 or prim_index >= doc.primitives.count or
     doc.primitives[prim_index].type != Primitive_Type_Curve)
@@ -318,40 +421,5 @@ document_delete_curve(Game_State *state, i32 prim_index)
  Document_Action action = {};
  action.kind       = Document_Action_Delete_Curve;
  action.prim_index = prim_index;
- history_begin(state, action);
- for_i32(i, prim_index, doc.primitives.count-1){ doc.primitives[i] = doc.primitives[i+1]; }
- doc.primitives.count--;
- for(i32 i = 0; i < doc.primitives.count; )
- {
-  Recorded_Primitive &other = doc.primitives[i];
-  if(other.type != Primitive_Type_Curve_Patch){ i++; continue; }
-  Recorded_Curve_Patch &patch = other.curve_patch;
-  i32 kept = 0;
-  for_i32(ic, 0, patch.curve_count)
-  {
-   i32 ref = patch.curve_index[ic];
-   if(ref == prim_index){ continue; }
-   patch.curve_index[kept++] = (ref > prim_index) ? ref-1 : ref;
-  }
-  patch.curve_count = kept;
-  if(kept < 2)
-  {// NOTE(kv) The patch is gone too; its own index is `i`, so later references shift
-   // once more.
-   for_i32(j, i, doc.primitives.count-1){ doc.primitives[j] = doc.primitives[j+1]; }
-   doc.primitives.count--;
-   for_i32(j, 0, doc.primitives.count)
-   {
-    Recorded_Primitive &p = doc.primitives[j];
-    if(p.type != Primitive_Type_Curve_Patch){ continue; }
-    for_i32(ic, 0, p.curve_patch.curve_count)
-    { if(p.curve_patch.curve_index[ic] > i){ p.curve_patch.curve_index[ic]--; } }
-   }
-   // NOTE(kv) Don't advance: doc.primitives[i] is now the next primitive.
-  }
-  else { i++; }
- }
- state->document_selection.count = 0;
- state->document_edit = {};
- history_commit(state);
- return save_document_file(state);
+ return document_delete_primitives(state, action, &prim_index, 1);
 }

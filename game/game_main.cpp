@@ -1871,6 +1871,7 @@ game_update(Game_Update_Params params)
    {// NOTE(kv) A reference drag (image or skull) that started this frame owns the press;
     // without this check the orbit ran under the gizmo drag (found 2026-09-12).
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
+    state->document_selection.count = 0;  // NOTE(kv) Q5: a click on nothing deselects
     camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false);
    }
    else if(is_document_location(hot_location))
@@ -1881,8 +1882,9 @@ game_update(Game_Update_Params params)
      document_selection_toggle(state, document_primitive_index(hot_location));
     }
     else
-    {
-     state->document_selection.count = 0;
+    {// NOTE(kv) Q1: the clicked curve/patch becomes the sole selection, and the drag
+     // starts as before. (A vertex/handle location still resolves to its primitive.)
+     document_selection_set(state, document_primitive_index(hot_location));
      document_edit_press(state, mouse_viewport, V2(params.mouse.p), hot_location);
     }
    }
@@ -1907,7 +1909,7 @@ game_update(Game_Update_Params params)
      b32 menu_hot_is_patch = (is_document_location(sel.menu_hot) and
                               document_primitive_index(sel.menu_hot) < doc.primitives.count and
                               doc.primitives[document_primitive_index(sel.menu_hot)].type == Primitive_Type_Curve_Patch);
-     if(sel.count >= 2)
+     if(sel.count >= 2 and document_selection_all_curves(state))
      {
       char label[64];
       snprintf(label, sizeof(label), "Make patch from selection (%d curves)", sel.count);
@@ -2191,7 +2193,9 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->document_selection.count = 0; }break;
+      // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
+      case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
       case C|Key_Code_Return:{ game_save(state, app); }break;
       // NOTE(kv) Document undo/redo (plan-document-undo-redo Q5).

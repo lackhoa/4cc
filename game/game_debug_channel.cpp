@@ -24,6 +24,8 @@
 //   mouse_down <x> <y> [shift|alt|middle] / mouse_up -> press/release the virtual left button there
 //                        (drives the same document_edit_* as the real mouse; shift =
 //                        toggle the hot document curve in the patch selection, no drag)
+//   select <i> [j ...] / select none -> set the document selection (curves or patches)
+//   key delete        -> delete the selection, as the Delete/Backspace key does
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
 //   delete_patch <i>  -> remove a curve patch primitive
 //   delete_curve <i>  -> remove a curve primitive (patches using it drop the entry; a patch
@@ -979,6 +981,33 @@ debug_channel_update(Game_State *state, App *app)
    debug_channel_wants_animate = true;
   }
   else { fprintf(out, "error: usage: delete_curve <i>\n"); }
+ }
+ else if(strncmp(cmd, "select", 6) == 0 and (cmd[6] == ' ' or cmd[6] == 0))
+ {// NOTE(kv) `select none` / `select <i> [j ...]` (curves or patches): replaces the
+  // selection, like a click plus shift-clicks. `hot` prints it back.
+  Document_Selection &sel = state->document_selection;
+  sel.count = 0;
+  if(strcmp(cmd+6, " none") != 0)
+  {
+   char const *p = cmd+6;
+   i32 idx, read;
+   while(sscanf(p, "%d%n", &idx, &read) == 1)
+   {
+    document_selection_toggle(state, idx);
+    p += read;
+   }
+  }
+  fprintf(out, "select:");
+  for_i32(i, 0, sel.count){ fprintf(out, " %d", sel.prim_index[i]); }
+  fprintf(out, "%s\n", sel.count ? "" : " (empty)");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "key delete") == 0)
+ {// NOTE(kv) The Delete/Backspace key path without a keyboard.
+  b32 ok = document_delete_selection(state);
+  fprintf(out, "key delete: %s, document now %d primitives\n", ok ? "ok" : "nothing selected",
+          state->model.recordings.document.primitives.count);
+  debug_channel_wants_animate = true;
  }
  else if(strcmp(cmd, "mouse_up") == 0)
  {

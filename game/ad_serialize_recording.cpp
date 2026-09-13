@@ -275,7 +275,7 @@ load_document_file(Game_State *state)
  state->document_load_failed = not ok;
  // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
  // different document now (plan-document-undo-redo Q6).
- if(ok){ history_clear(state); }
+ if(ok){ history_clear(state); state->document_selection.count = 0; }
  return ok;
 }
 //-EOF

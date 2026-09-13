@@ -90,7 +90,9 @@ struct Camera_Drag
  v2  remainder_px;   // sub-step drag carried to the next frame
 };
 struct Document_Selection
-{
+{// NOTE(kv) What commands act on (plan-active-primitive-delete-key.md): curves AND
+ // patches, by primitive index. Plain click = sole selection, shift-click toggles,
+ // Delete/Backspace deletes the lot. Also the input of "Make patch from selection".
  i32 count;
  i32 prim_index[4];
  Location menu_hot;
@@ -115,6 +117,7 @@ enum Document_Action_Kind
  Document_Action_Export_Group,
  Document_Action_Add_Line,
  Document_Action_Delete_Curve,
+ Document_Action_Delete_Selection,  // Delete key: `count` primitives in `indices`
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the

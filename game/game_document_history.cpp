@@ -123,6 +123,7 @@ history_commit(Game_State *state)
  history.count++;
 }
 function i32 document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc);
+function void document_selection_clamp(Game_State *state);  // game_curve_patch.cpp
 function b32
 history_jump(Game_State *state, i32 position)
 {// NOTE(kv) Make the document equal entry `position` (undo/redo/panel click); saves.
@@ -139,6 +140,7 @@ history_jump(Game_State *state, i32 position)
  }
  history.position = position;
  document_snapshot_restore(state->model.recordings.document, history.entries[position]);
+ document_selection_clamp(state);  // NOTE(kv) Q5: keep the selection, drop dangling indices
  save_document_file(state);
  return true;
 }
@@ -188,6 +190,16 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
                    strexpand(document_group_name(doc, action.prim_index)));
   case Document_Action_Delete_Curve:
    return snprintf(buf, cap, "delete curve %d", action.prim_index);
+  case Document_Action_Delete_Selection:
+  {
+   i32 n = snprintf(buf, cap, "delete [");
+   for_i32(i, 0, action.count)
+   {
+    n += snprintf(buf + n, maximum(0, cap - n), "%s%d", i ? " " : "", action.indices[i]);
+   }
+   n += snprintf(buf + n, maximum(0, cap - n), "]");
+   return n;
+  }
  }
  return snprintf(buf, cap, "?");
 }
