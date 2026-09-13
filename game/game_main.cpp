@@ -2237,6 +2237,14 @@ game_update(Game_Update_Params params)
        i32 preset = code - Key_Code_0;
        game_set_preset(state, update_viewport_id, preset);
       }break;
+      // NOTE(kv) Numpad digits too (the platform only reports them as NumPad codes
+      // with Num Lock on; with it off they arrive as Home/End/arrows).
+      case Key_Code_NumPad0: case Key_Code_NumPad1: case Key_Code_NumPad2: case Key_Code_NumPad3: case Key_Code_NumPad4:
+      case Key_Code_NumPad5: case Key_Code_NumPad6: case Key_Code_NumPad7: case Key_Code_NumPad8: case Key_Code_NumPad9:
+      {
+       i32 preset = code - Key_Code_NumPad0;
+       game_set_preset(state, update_viewport_id, preset);
+      }break;
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
