@@ -34,6 +34,7 @@ enum
  Version_RecordingOnly        = 32,  // vis-tag names gone again: driver.document.ad is self-describing now (ad_serialize_schema.cpp), recording.ad is the only raw-block file
  Version_CurveMidline         = 33,  // Recorded_Curve grows `midline` (plan-focus-radii-midline Q8)
  Version_CurveHandles         = 34,  // Recorded_Curve grows `handle[2]` (plan-curve-table-first)
+ Version_CurveHandleOffsets   = 35,  // Recorded_Curve grows `handle_offset[2]` (plan-curve-chord-handles)
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

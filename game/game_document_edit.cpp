@@ -39,6 +39,28 @@ document_vertex_bone(Recording &doc, Recorded_Primitive &prim, Recorded_Vertex &
  return vertex.bone;
 }
 
+function tvert
+document_curve_endpoint(Recording &doc, Recorded_Primitive &prim, i32 slot)
+{// NOTE(kv) Table vertex `slot` (0 = v0, 1 = v1) of a curve as a tvert, for the
+ // chord-third builders in game_draw.cpp (plan-curve-chord-handles).
+ Recorded_Vertex &vertex = doc.vertices[prim.vertex_index[slot]];
+ return {.v = vertex.p, .bone_id = vertex.bone};
+}
+function tvert
+document_curve_handle_point(Recording &doc, Recorded_Primitive &prim, i32 i)
+{// NOTE(kv) P1 (i=0) / P2 (i=1) built from the table + handle_offset.
+ return curve_handle_point(document_curve_endpoint(doc, prim, 0),
+                           document_curve_endpoint(doc, prim, 1),
+                           prim.curve.handle_offset[i], i);
+}
+function void
+document_curve_set_handle_point(Recording &doc, Recorded_Primitive &prim, i32 i, tvert point)
+{// NOTE(kv) Inverse: store the offset that puts P1/P2 at `point`.
+ prim.curve.handle_offset[i] = curve_handle_offset_from_point(document_curve_endpoint(doc, prim, 0),
+                                                              document_curve_endpoint(doc, prim, 1),
+                                                              point, i);
+}
+
 function v3
 document_pick_world_pos(Recording &doc, Document_Pick pick)
 {
@@ -46,8 +68,10 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  v3 bone_p; Bone_ID bone_id;
  if(pick.is_handle)
  {
-  tvert &handle = prim.curve.handle[pick.slot-1];  // NOTE(kv) slot = e-index 1 or 2
+  tvert handle = document_curve_handle_point(doc, prim, pick.slot-1);  // NOTE(kv) slot = e-index 1 or 2
   bone_p = handle.v;
+  // TODO(kv) plan-curve-chord-handles Q3: assumes the offset's bone is the group bone
+  // (true for every document point today; capture logs when a curve mixes bones).
   bone_id = doc.groups[prim.group_index].bone_id;
  }
  else
@@ -301,24 +325,12 @@ document_edit_bone_delta(Bone_ID bone_id, b32 is_right, v3 delta_world)
 function void
 document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_index,
                           b32 is_right, v3 delta_world)
-{// NOTE(kv) Move one table vertex by a world delta, and drag the handles attached to
- // it along, on every curve that shares it (slot 0 -> e[1], slot 1 -> e[2]).
+{// NOTE(kv) Move one table vertex by a world delta. The handles of every curve sharing
+ // it follow on their own: they are offsets from the chord thirds
+ // (plan-curve-chord-handles Q5: translate only, the offsets stay fixed in bone space;
+ // rotating them with the chord like the tablet is a follow-up).
  Recorded_Vertex &vertex = doc.vertices[vertex_index];
  vertex.p += document_edit_bone_delta(document_vertex_bone(doc, prim, vertex), is_right, delta_world);
- for_i32(iprim, 0, doc.primitives.count)
- {
-  Recorded_Primitive &other = doc.primitives[iprim];
-  if(other.type != Primitive_Type_Curve){ continue; }
-  v3 handle_delta = document_edit_bone_delta(doc.groups[other.group_index].bone_id, is_right, delta_world);
-  if(other.vertex_index[0] == vertex_index)
-  {
-   other.curve.handle[0].v += handle_delta;
-  }
-  if(other.vertex_index[1] == vertex_index)
-  {
-   other.curve.handle[1].v += handle_delta;
-  }
- }
 }
 
 //~ NOTE(kv) plan-focus-radii-midline Q8: midline curves stay on the mirror plane.
@@ -329,9 +341,11 @@ document_curve_apply_midline(Recording &doc, i32 prim_index)
  Recorded_Primitive &prim = doc.primitives[prim_index];
  if(prim.type != Primitive_Type_Curve or not prim.curve.midline){ return; }
  for_i32(slot, 0, 2){ doc.vertices[prim.vertex_index[slot]].p.x = 0; }
- // NOTE(kv) plan-curve-table-first: the two handles are the only per-curve points;
- // `bezier` is scratch that resolve_vertices rebuilds on copies, nothing to keep in step.
- for_i32(i, 0, 2){ prim.curve.handle[i].v.x = 0; }
+ // NOTE(kv) plan-curve-table-first: the two handle offsets are the only per-curve
+ // points; `bezier` is scratch that resolve_vertices rebuilds on copies, nothing to keep
+ // in step. With both vertices at x=0 the chord is on the plane, so zeroing the
+ // offsets' x keeps P1/P2 there too (plan-curve-chord-handles Q6).
+ for_i32(i, 0, 2){ prim.curve.handle_offset[i].v.x = 0; }
  // TODO(kv) dbezier (shape-key delta) is left alone; a keyed midline curve could still
  // blend off the plane.
 }
@@ -452,8 +466,10 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  }
  else if(pick.is_handle)
  {
+  // NOTE(kv) The chord third does not move during a handle drag, so the offset takes
+  // the whole delta (plan-curve-chord-handles Q6).
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
-  prim.curve.handle[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
+  prim.curve.handle_offset[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
  }
  else
  {

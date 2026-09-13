@@ -244,6 +244,17 @@ tee_location_of_vertex(Vertex_Tee *tee, i32 vertex_index)
  }
  return {};
 }
+global v1 const replay_diff_epsilon = 1e-4f;  // NOTE(kv) px / world units, both are O(1..1000)
+function b32
+render_vertex_close(Render_Vertex &a, Render_Vertex &b)
+{
+ auto close1 = [](v1 x, v1 y){ return absolute(x - y) <= replay_diff_epsilon; };
+ auto close3 = [&](v3 x, v3 y){ return close1(x.x, y.x) and close1(x.y, y.y) and close1(x.z, y.z); };
+ return (close3(a.pos, b.pos) and close3(a.uvw, b.uvw) and
+         block_match_struct(&a.color, &b.color) and
+         close1(a.half_thickness, b.half_thickness) and
+         close1(a.depth_offset, b.depth_offset));
+}
 function Replay_Diff_Result
 diff_vertex_tees(Vertex_Tee *code, Vertex_Tee *replay)
 {
@@ -255,9 +266,11 @@ diff_vertex_tees(Vertex_Tee *code, Vertex_Tee *replay)
 
  i32 n = minimum(code->vertices.count, replay->vertices.count);
  for_i32(i, 0, n)
- {// NOTE(kv) Bitwise compare is correct: identical inputs through identical code
-  // must produce identical bits (vertices are zero-initialized, so padding matches).
-  if(not block_match_struct(&code->vertices.items[i], &replay->vertices.items[i]))
+ {// NOTE(kv) Was a bitwise compare (identical inputs through identical code). Since
+  // plan-curve-chord-handles Q2 the replay rebuilds P1/P2 as chord third + offset, which
+  // differs from the code path's points by float rounding, so the floats get an
+  // epsilon; color stays exact.
+  if(not render_vertex_close(code->vertices.items[i], replay->vertices.items[i]))
   {
    r.first_diff_vertex = i;
    break;

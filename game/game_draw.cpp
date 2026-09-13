@@ -551,12 +551,74 @@ primitive_vertex_ref(Recorded_Primitive &prim, i32 ivertex)
   }
  }
 }
+//~ NOTE(kv) plan-curve-chord-handles: handles as offsets from the chord thirds.
+function v3
+tvert_in_bone(tvert point, Bone_ID target)
+{// NOTE(kv) Re-express a point in `target`'s bone space. Bone_None on either side means
+ // the current bone (the group bone at replay / capture), so equal-or-None = no-op.
+ // Nothing in the document mixes bones today (all points Bone_None); the capture log
+ // in curve_handle_offset_from_point says when that changes.
+ b32 same = (point.bone_id.type == Bone_None or target.type == Bone_None or
+             block_match_struct(&point.bone_id, &target));
+ if(same){ return point.v; }
+ mat4 target_from_own = (get_bone(target)->world_from_bone.inverse *
+                         get_bone(point.bone_id)->world_from_bone.forward);
+ return mat4vert(target_from_own, point.v);
+}
+function tvert
+curve_chord_third(tvert v0, tvert v1, i32 i, Bone_ID bone_id)
+{// NOTE(kv) i=0 -> (2*v0 + v1)/3, i=1 -> (v0 + 2*v1)/3, in `bone_id`'s space.
+ v3 a = tvert_in_bone(v0, bone_id);
+ v3 b = tvert_in_bone(v1, bone_id);
+ v3 third = (i == 0) ? (2.f*a + b)/3.f : (a + 2.f*b)/3.f;
+ return {.v = third, .bone_id = bone_id};
+}
+function tvert
+curve_handle_point(tvert v0, tvert v1, tvert offset, i32 i)
+{// NOTE(kv) P1 (i=0) or P2 (i=1) = chord third + offset, in the offset's bone space.
+ tvert third = curve_chord_third(v0, v1, i, offset.bone_id);
+ return {.v = third.v + offset.v, .bone_id = offset.bone_id};
+}
+function tvert
+curve_handle_offset_from_point(tvert v0, tvert v1, tvert point, i32 i)
+{// NOTE(kv) Inverse of curve_handle_point: the offset that puts P1/P2 at `point`.
+ tvert third = curve_chord_third(v0, v1, i, point.bone_id);
+ return {.v = point.v - third.v, .bone_id = point.bone_id};
+}
+// NOTE(kv) Q3: the chord thirds assume one bone space. This file is also compiled into
+// the driver PCH unit, which has no log_* -- so count mixed-bone captures here and let
+// `dump_state` (game_debug_channel.cpp) print the count. Resets on DLL reload.
+global i32 curve_mixed_bone_capture_count;
+function void
+curve_log_mixed_bones(tvert P[4], char const *label)
+{
+ b32 mixed = false;
+ for_i32(i, 1, 4)
+ {
+  if(not block_match_struct(&P[i].bone_id, &P[0].bone_id)){ mixed = true; }
+ }
+ if(mixed)
+ {
+  (void)label;
+  curve_mixed_bone_capture_count++;
+ }
+}
+function void
+curve_record_handles(Recorded_Curve &curve, tvert P[4], char const *label)
+{// NOTE(kv) Capture side: P = {v0, P1, P2, v1} in owning-bone coords -> handle offsets.
+ curve_log_mixed_bones(P, label);
+ for_i32(i, 0, 2)
+ {
+  curve.handle_offset[i] = curve_handle_offset_from_point(P[0], P[3], P[i+1], i);
+ }
+}
 function void
 resolve_vertices(Recording &rec, Recorded_Primitive &prim)
 {// NOTE(kv) Refresh the by-value cache from the vertex table (the authority).
  // Runs on the replay COPY before apply_shape_key, so the table holds rest positions.
  // For curves this is the BUILDER (plan-curve-table-first): the draw-ready bezier is
- // {v0, handle[0], handle[1], v1}, nothing on the document holds a valid one.
+ // {v0, P1, P2, v1} with P1/P2 = chord thirds + handle_offset (plan-curve-chord-handles),
+ // nothing on the document holds a valid one.
  i32 count = primitive_vertex_count(prim.type);
  for_i32(i,0,count)
  {
@@ -565,8 +627,11 @@ resolve_vertices(Recording &rec, Recorded_Primitive &prim)
  }
  if(prim.type == Primitive_Type_Curve)
  {
-  prim.curve.bezier.e[1] = prim.curve.handle[0];
-  prim.curve.bezier.e[2] = prim.curve.handle[1];
+  Bezier &bez = prim.curve.bezier;
+  for_i32(i, 0, 2)
+  {
+   bez.e[i+1] = curve_handle_point(bez.e[0], bez.e[3], prim.curve.handle_offset[i], i);
+  }
  }
 }
 //-
@@ -842,10 +907,9 @@ draw_bezier(tvert P[4], Line_Params params)
   {
    primitive.curve.bezier[i] = P_rec[i];
   }
-  // NOTE(kv) plan-curve-table-first: handles are the serialized truth, the bezier
+  // NOTE(kv) plan-curve-table-first: handle offsets are the serialized truth, the bezier
   // above only feeds send_primitive's endpoint push (valid at capture time).
-  primitive.curve.handle[0] = P_rec[1];
-  primitive.curve.handle[1] = P_rec[2];
+  curve_record_handles(primitive.curve, P_rec, "draw_bezier");
   primitive.curve.radii = params.radii;
   primitive.curve.lightness_additions = params.lightness_additions;
   primitive.curve.straight = (params.flags & Line_Straight);
@@ -873,8 +937,7 @@ draw_keyed(Weight_Key key, Bezier rest, Bezier target,
    primitive.curve.bezier[i] = rest_rec[i];
    primitive.curve.dbezier[i] = delta[i];
   }
-  primitive.curve.handle[0] = rest_rec[1];
-  primitive.curve.handle[1] = rest_rec[2];
+  curve_record_handles(primitive.curve, rest_rec, "draw_keyed");
   primitive.curve.radii = radii_rest;
   primitive.curve.dradii = dradii;
   primitive.curve.key = key;

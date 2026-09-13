@@ -171,6 +171,9 @@ debug_channel_dump_state(FILE *out, Game_State *state)
  Model *m = &state->model;
  fprintf(out, "primitives: %d\n", m->primitives.count);
  fprintf(out, "groups: %d\n",     m->groups.count);
+ // NOTE(kv) plan-curve-chord-handles Q3: nonzero means a captured curve mixed bone
+ // spaces (offsets got converted through bone transforms); see game_draw.cpp.
+ fprintf(out, "curve_mixed_bone_captures: %d\n", curve_mixed_bone_capture_count);
  fprintf(out, "recorded_vertices: %d\n", m->recorded_vertices.count);
  {// NOTE(kv) Viewport 0 camera: target (what the keys/mouse drags set) vs current (animated).
   Camera_Data &t = state->viewports[0].target_camera;
@@ -334,23 +337,31 @@ debug_channel_document_dump(FILE *out, Game_State *state)
    {
     Recorded_Curve &c = prim.curve;
     fprintf(out, "curve%s%s: ", c.straight ? " (straight)" : "", c.midline ? " (midline)" : "");
-    // NOTE(kv) plan-curve-table-first: print the truth (table vertices + handles), never
-    // the scratch `bezier`, so staleness has nowhere to hide. Same v0 h0 h1 v1 order.
+    // NOTE(kv) plan-curve-table-first: print the truth (table vertices + handle
+    // offsets), never the scratch `bezier`, so staleness has nowhere to hide. Order
+    // v0 d0 d1 v1, then the BUILT h0 h1 (plan-curve-chord-handles) so a dump compares
+    // against the pre-offset dumps.
     for_i32(i, 0, 4)
     {
      tvert point;
      if(i == 0 or i == 3)
      {
-      Recorded_Vertex &vertex = doc.vertices.items[prim.vertex_index[i == 0 ? 0 : 1]];
-      point = {.v = vertex.p, .bone_id = vertex.bone};
+      point = document_curve_endpoint(doc, prim, i == 0 ? 0 : 1);
       fprintf(out, "v%d", i == 0 ? 0 : 1);
      }
      else
      {
-      point = c.handle[i-1];
-      fprintf(out, "h%d", i-1);
+      point = c.handle_offset[i-1];
+      fprintf(out, "d%d", i-1);
      }
      debug_channel_print_tvert(out, point);
+     fprintf(out, " ");
+    }
+    fprintf(out, "\n  built ");
+    for_i32(i, 0, 2)
+    {
+     fprintf(out, "h%d", i);
+     debug_channel_print_tvert(out, document_curve_handle_point(doc, prim, i));
      fprintf(out, " ");
     }
     fprintf(out, "\n  radii (%g %g %g %g) lightness (%g %g %g %g)",

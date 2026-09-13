@@ -76,12 +76,18 @@ struct Recorded_Curve
 {// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
  // parameterization live with the geometry; all style folds down the group path.
  // NOTE(kv) plan-curve-table-first: the two ENDPOINTS live only in the vertex table
- // (vertex_index[0..1]); `handle` = P1, P2 as absolute bone-space tverts. `bezier` is
- // the draw-ready {v0, handle[0], handle[1], v1} that resolve_vertices builds on a COPY
- // right before replay / hit-test / patch evaluation -- nothing on the document itself
- // reads it.
+ // (vertex_index[0..1]). `bezier` is the draw-ready {v0, P1, P2, v1} that
+ // resolve_vertices builds on a COPY right before replay / hit-test / patch evaluation
+ // -- nothing on the document itself reads it.
+ // NOTE(kv) plan-curve-chord-handles: `handle_offset[i]` = P1/P2 minus the chord's
+ // 1/3 / 2/3 point, in the offset's own bone space (Bone_None = the group bone, like a
+ // table vertex); zero = straight line, a vertex move stretches the shape with the
+ // chord. Same form as the tablet Stroke (tablet/src/document.ts d0/d3).
  meta_unserialized Bezier bezier;
+ // TODO(kv) plan-curve-chord-handles step 2: delete `handle` (absolute P1/P2, kept
+ // serialized one step so old files migrate on load; zeroed once converted).
  tvert handle[2];
+ tvert handle_offset[2];
  v4 radii;
  v4 lightness_additions;
  b32 straight;  // Line_Straight, set by the straight-line helper
@@ -106,8 +112,8 @@ struct Recorded_Vertex
  // per slot; welding (sharing) happens at document export.
  // "Vertex" = a point in the table = one that can be a junction: curve endpoints,
  // poly3 points, dual-bezier endpoints, patch corners, disk center. Bezier HANDLES
- // (P1/P2 = Recorded_Curve.handle) are tverts too but per-curve shape, never shared,
- // never in the table.
+ // (P1/P2, built from Recorded_Curve.handle_offset) are tverts too but per-curve
+ // shape, never shared, never in the table.
  v3 p;
  Bone_ID bone;
 };
