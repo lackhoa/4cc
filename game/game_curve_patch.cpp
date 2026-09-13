@@ -272,7 +272,10 @@ document_selection_clamp(Game_State *state)
  i32 kept = 0;
  for_i32(i, 0, sel.count)
  {
-  if(document_selection_can_hold(doc, sel.prim_index[i])){ sel.prim_index[kept++] = sel.prim_index[i]; }
+  if(document_selection_can_hold(doc, sel.prim_index[i]))
+  {
+   sel.prim_index[kept++] = sel.prim_index[i];
+  }
  }
  sel.count = kept;
 }

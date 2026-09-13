@@ -29,6 +29,14 @@ set_draw_location(Location location)
    break;
   }
  }
+ for_i32(i, 0, is_valid(location) ? painter->selected_locations.count : 0)
+ {//-Set selected state
+  if(painter->current_draw_location == painter->selected_locations[i])
+  {
+   painter->current_location_is_selected = true;
+   break;
+  }
+ }
  painter->current_location_is_active_shape = (is_valid(painter->active_shape_location) and
                                               location == painter->active_shape_location);
 }
@@ -42,6 +50,7 @@ clear_draw_location()
 {
  painter->current_draw_location = {};
  painter->current_location_is_hot = false;
+ painter->current_location_is_selected = false;
  painter->current_location_is_active_shape = false;
 }
 myinline b32
@@ -49,6 +58,11 @@ current_location_is_hot()
 {
  b32 result = painter->current_location_is_hot;
  return result;
+}
+myinline b32
+current_location_is_selected()
+{
+ return painter->current_location_is_selected;
 }
 myinline b32
 current_location_is_active_shape()
@@ -792,7 +806,8 @@ draw_bezier_rec(tvert P_rec[4], Line_Params params)
   
   if(do_draw)
   {
-   argb color = (is_hot ? hot_color
+   argb color = (current_location_is_selected() ? selection_color
+                 : is_hot ? hot_color
                  : painter->params.line_color);
    if(painter->ignore_radii)
    {// NOTE(kv) Preset knob: uniform default radii so every line reads clearly (the

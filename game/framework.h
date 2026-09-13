@@ -20,6 +20,7 @@ struct Game_Transient_State
 {// NOTE see @game_reload
  darray(Location) pinned_locations;
  darray(Location) hot_locations;
+ darray(Location) selected_locations;  // NOTE(kv) document_selection as locations (both sides), drawn in selection_color
 };
 struct Replay_Diff_Result
 {// NOTE(kv) Last "Diff now" outcome (game_replay.cpp); shown in the Replay ImGui panel.

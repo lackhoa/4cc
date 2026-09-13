@@ -657,6 +657,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   painter->sending_data = state->sending_data;
   painter->reference_mode = state->reference_mode;
   painter->hot_locations = state->transient->hot_locations;
+  painter->selected_locations = state->transient->selected_locations;
   painter->active_shape_location = {};
   if(fui_is_active())
   {// NOTE(kv) Curve handles show only while d0/d3 is the active member (@draw_curve).
@@ -948,6 +949,7 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
   state->transient = transient;
   init_dynamic(transient->pinned_locations, dll_arena);
   init_dynamic(transient->hot_locations, dll_arena);
+  init_dynamic(transient->selected_locations, dll_arena);
  }
 
  tweaks = push_struct(dll_arena, Tweak_Variables);
@@ -2101,12 +2103,18 @@ game_update(Game_Update_Params params)
    push(&transient->hot_locations, transient->pinned_locations[i]);
   }
   push_unique(&transient->hot_locations, hot_location);
-  {// NOTE(kv) Selected curves render hot on both sides, like pins.
+  {// NOTE(kv) Selected curves count as hot on both sides, like pins (visible, control
+   // points), and also go to selected_locations so they draw in selection_color.
    Document_Selection &sel = state->document_selection;
+   transient->selected_locations.count = 0;
    for_i32(i, 0, sel.count)
    {
-    push_unique(&transient->hot_locations, document_location(sel.prim_index[i], false));
-    push_unique(&transient->hot_locations, document_location(sel.prim_index[i], true));
+    for_i32(side, 0, 2)
+    {
+     Location location = document_location(sel.prim_index[i], side == 1);
+     push_unique(&transient->hot_locations, location);
+     push_unique(&transient->selected_locations, location);
+    }
    }
   }
 

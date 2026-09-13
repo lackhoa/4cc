@@ -114,7 +114,13 @@ document_selection_pick_list(Game_State *state, Document_Pick *out, i32 cap)
   {
    Document_Pick picks[document_pick_cap_per_primitive];
    i32 n = document_pick_list(doc, document_location(prim_index, side == 1), picks);
-   for_i32(k, 0, n){ if(count < cap){ out[count++] = picks[k]; } }
+   for_i32(k, 0, n)
+   {
+    if(count < cap)
+    {
+     out[count++] = picks[k];
+    }
+   }
   }
  }
  return count;
@@ -137,7 +143,11 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
  {
   v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, picks[i]));
   v1 dist = lengthof(V3(px - mouse_px, 0));
-  if(dist < best_dist){ best_dist = dist; *best_out = picks[i]; }
+  if(dist < best_dist)
+  {
+   best_dist = dist;
+   *best_out = picks[i];
+  }
  }
  *dist_out = best_dist;
  return true;

@@ -564,8 +564,13 @@ struct Painter
  v1 anim_time;
  
  sarray(Location) hot_locations;
+ // NOTE(kv) The document selection (Khoa, 2026-09-13: "highlight the selected thing"):
+ // selected items also count as hot (visible, control points), but draw in
+ // selection_color so they read apart from the item under the mouse.
+ sarray(Location) selected_locations;
  Location current_draw_location;
  b32 current_location_is_hot;
+ b32 current_location_is_selected;
  // NOTE(kv) Slider whose shape (Curve d0/d3) is being edited this frame, else invalid.
  // Set by the game per frame, read by @draw_curve to show the control handles.
  Location active_shape_location;
@@ -658,6 +663,7 @@ get_line_params(i4 radii)
 global argb hot_color  = argb_lightness(linear_argb_red, 0.75f);
 global argb hot_color2 = linear_argb_yellow;
 //global argb selected_color = argb_red;
+global argb selection_color = argb_lightness(linear_argb_green, 0.75f);  // document selection (see Painter.selected_locations)
 global v1 default_line_radius_unit = 1.728125f * millimeter;
 
 //-
