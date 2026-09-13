@@ -2794,7 +2794,7 @@ game_update(Game_Update_Params params)
     // first selected curve supplies the displayed values; edits go to all of them.
     Recording &doc = state->model.recordings.document;
     i32 curves[Document_Selection_Cap];
-    i32 curve_count = document_selected_curves(state, curves);
+    i32 curve_count = document_selection_curve_indices(state, curves);
     im_begin("Selection", 0, ImGuiWindowFlags_NoFocusOnAppearing);
     if(curve_count == 0)
     {

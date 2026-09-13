@@ -345,7 +345,7 @@ document_apply_midlines(Recording &doc)
 //~ NOTE(kv) Selection panel edits (plan-focus-radii-midline Q4/Q9): every selected
 // curve; the caller brackets a slider drag with begin/commit so one drag = one entry.
 function i32
-document_selected_curves(Game_State *state, i32 out[Document_Selection_Cap])
+document_selection_curve_indices(Game_State *state, i32 out[Document_Selection_Cap])
 {
  Recording &doc = state->model.recordings.document;
  Document_Selection &sel = state->document_selection;
@@ -366,7 +366,7 @@ document_selection_action(Game_State *state, Document_Action_Kind kind)
 {
  Document_Action action = {};
  action.kind  = kind;
- action.count = document_selected_curves(state, action.indices);
+ action.count = document_selection_curve_indices(state, action.indices);
  return action;
 }
 function void
@@ -379,7 +379,7 @@ document_set_radii_apply(Game_State *state, v4 radii)
 {// NOTE(kv) Between begin and commit (a slider drag), or alone for a one-shot set.
  Recording &doc = state->model.recordings.document;
  i32 curves[Document_Selection_Cap];
- i32 count = document_selected_curves(state, curves);
+ i32 count = document_selection_curve_indices(state, curves);
  for_i32(i, 0, count)
  {// TODO(kv) Q6: `dradii` (shape-key delta) is not touched.
   doc.primitives[curves[i]].curve.radii = radii;
@@ -390,7 +390,7 @@ document_set_radii_scale(Game_State *state, v1 scale)
 {// NOTE(kv) The width slider: scales each curve's own profile, keeps its taper.
  Recording &doc = state->model.recordings.document;
  i32 curves[Document_Selection_Cap];
- i32 count = document_selected_curves(state, curves);
+ i32 count = document_selection_curve_indices(state, curves);
  for_i32(i, 0, count)
  {
   doc.primitives[curves[i]].curve.radii *= scale;
@@ -407,7 +407,7 @@ document_set_midline(Game_State *state, b32 midline)
 {// NOTE(kv) One-shot: begin + apply + commit. Returns false with nothing selected.
  Recording &doc = state->model.recordings.document;
  i32 curves[Document_Selection_Cap];
- i32 count = document_selected_curves(state, curves);
+ i32 count = document_selection_curve_indices(state, curves);
  if(count == 0){ return false; }
  Document_Action action = document_selection_action(state, Document_Action_Set_Midline);
  action.index = midline;
