@@ -344,9 +344,11 @@ document_delete_primitives(Game_State *state, Document_Action action, i32 *prim_
  }
  if(count == 0){ return false; }
  Scratch_Block tmp;
- b32 *remove = push_array(tmp, b32, maximum(1, doc.primitives.count));
- for_i32(i, 0, doc.primitives.count){ remove[i] = false; }
- for_i32(i, 0, count){ remove[prim_index[i]] = true; }
+ b32 *remove = push_array0(tmp, b32, maximum(1, doc.primitives.count));
+ for_i32(i, 0, count)
+ {
+  remove[prim_index[i]] = true;
+ }
  history_begin(state, action);
  document_remove_primitives(doc, remove);
  state->document_selection.count = 0;
