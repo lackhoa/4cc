@@ -46,7 +46,7 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  v3 bone_p; Bone_ID bone_id;
  if(pick.is_handle)
  {
-  tvert &handle = prim.curve.bezier.e[pick.slot];
+  tvert &handle = prim.curve.handle[pick.slot-1];  // NOTE(kv) slot = e-index 1 or 2
   bone_p = handle.v;
   bone_id = doc.groups[prim.group_index].bone_id;
  }
@@ -312,11 +312,11 @@ document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_i
   v3 handle_delta = document_edit_bone_delta(doc.groups[other.group_index].bone_id, is_right, delta_world);
   if(other.vertex_index[0] == vertex_index)
   {
-   other.curve.bezier.e[1].v += handle_delta;
+   other.curve.handle[0].v += handle_delta;
   }
   if(other.vertex_index[1] == vertex_index)
   {
-   other.curve.bezier.e[2].v += handle_delta;
+   other.curve.handle[1].v += handle_delta;
   }
  }
 }
@@ -329,10 +329,9 @@ document_curve_apply_midline(Recording &doc, i32 prim_index)
  Recorded_Primitive &prim = doc.primitives[prim_index];
  if(prim.type != Primitive_Type_Curve or not prim.curve.midline){ return; }
  for_i32(slot, 0, 2){ doc.vertices[prim.vertex_index[slot]].p.x = 0; }
- // NOTE(kv) The table is the authority (resolve_vertices refreshes e[0]/e[3] before
- // every replay), but the cached endpoints are what document_dump prints and what the
- // hit-test reads until then -- keep them in step.
- for_i32(i, 0, 4){ prim.curve.bezier.e[i].v.x = 0; }
+ // NOTE(kv) plan-curve-table-first: the two handles are the only per-curve points;
+ // `bezier` is scratch that resolve_vertices rebuilds on copies, nothing to keep in step.
+ for_i32(i, 0, 2){ prim.curve.handle[i].v.x = 0; }
  // TODO(kv) dbezier (shape-key delta) is left alone; a keyed midline curve could still
  // blend off the plane.
 }
@@ -454,7 +453,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  else if(pick.is_handle)
  {
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
-  prim.curve.bezier.e[pick.slot].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
+  prim.curve.handle[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
  }
  else
  {

@@ -33,6 +33,7 @@ enum
  Version_GroupTagsByName      = 31,  // Recorded_Group.vis_tag also written as its name after the raw block (enum order no longer matters)
  Version_RecordingOnly        = 32,  // vis-tag names gone again: driver.document.ad is self-describing now (ad_serialize_schema.cpp), recording.ad is the only raw-block file
  Version_CurveMidline         = 33,  // Recorded_Curve grows `midline` (plan-focus-radii-midline Q8)
+ Version_CurveHandles         = 34,  // Recorded_Curve grows `handle[2]` (plan-curve-table-first)
  //-
  Version_OPL,
  Version_Inf                 = 0xFFFF,

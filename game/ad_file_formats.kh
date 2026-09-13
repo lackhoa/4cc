@@ -75,7 +75,16 @@ struct Recorded_Curve_Patch
 struct Recorded_Curve
 {// NOTE(kv) Per-curve SHAPE data (Q44/Q47c): profiles indexed by the curve's own
  // parameterization live with the geometry; all style folds down the group path.
+ // NOTE(kv) plan-curve-table-first: the two ENDPOINTS live only in the vertex table
+ // (vertex_index[0..1]); `handle` = P1, P2 as absolute bone-space tverts. `bezier` is
+ // the draw-ready {v0, handle[0], handle[1], v1} that resolve_vertices builds on a COPY
+ // right before replay / hit-test / patch evaluation -- nothing on the document itself
+ // reads it.
+ // TODO(kv) step 2 (plan Q4): make `bezier` meta_unserialized once driver.document.ad
+ // and driver.document.agent.ad both carry `handle` (the load/reload migration
+ // document_curve_migrate_handles goes away with it).
  Bezier bezier;
+ tvert handle[2];
  v4 radii;
  v4 lightness_additions;
  b32 straight;  // Line_Straight, set by the straight-line helper
@@ -95,11 +104,13 @@ struct Recorded_Vertex
  // Q95). `bone` is the owning bone of the point (Bone_None = the group's bone).
  // The vertex table is the authority for every primitive's VERTICES; the by-value
  // tverts inside the geometry union are a cache that resolve_vertices refreshes
- // before each replayed draw. Live capture pushes one fresh vertex per slot;
- // welding (sharing) happens at document export.
+ // before each replayed draw (for curves the document holds no valid cache at all --
+ // plan-curve-table-first, see Recorded_Curve). Live capture pushes one fresh vertex
+ // per slot; welding (sharing) happens at document export.
  // "Vertex" = a point in the table = one that can be a junction: curve endpoints,
  // poly3 points, dual-bezier endpoints, patch corners, disk center. Bezier HANDLES
- // (P1/P2) are tverts too but per-curve shape, never shared, never in the table.
+ // (P1/P2 = Recorded_Curve.handle) are tverts too but per-curve shape, never shared,
+ // never in the table.
  v3 p;
  Bone_ID bone;
 };

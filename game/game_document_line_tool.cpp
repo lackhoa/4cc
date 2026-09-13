@@ -295,8 +295,8 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  // plane, the end is unprojected onto it), so the raw 3D fit stays flat.
  v3 p1, p2;
  line_tool_fit_handles(tool.path, tool.path_count, tool.start_world, tool.end_world, &p1, &p2);
- prim.curve.bezier.e[1].v = line_tool_world_to_bone(bone_id, p1);
- prim.curve.bezier.e[2].v = line_tool_world_to_bone(bone_id, p2);
+ prim.curve.handle[0].v = line_tool_world_to_bone(bone_id, p1);
+ prim.curve.handle[1].v = line_tool_world_to_bone(bone_id, p2);
  document_curve_apply_midline(doc, tool.prim_index);
 }
 

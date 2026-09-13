@@ -555,11 +555,18 @@ function void
 resolve_vertices(Recording &rec, Recorded_Primitive &prim)
 {// NOTE(kv) Refresh the by-value cache from the vertex table (the authority).
  // Runs on the replay COPY before apply_shape_key, so the table holds rest positions.
+ // For curves this is the BUILDER (plan-curve-table-first): the draw-ready bezier is
+ // {v0, handle[0], handle[1], v1}, nothing on the document holds a valid one.
  i32 count = primitive_vertex_count(prim.type);
  for_i32(i,0,count)
  {
   Recorded_Vertex vertex = rec.vertices.items[prim.vertex_index[i]];
   primitive_vertex_ref(prim, i) = {.v = vertex.p, .bone_id = vertex.bone};
+ }
+ if(prim.type == Primitive_Type_Curve)
+ {
+  prim.curve.bezier.e[1] = prim.curve.handle[0];
+  prim.curve.bezier.e[2] = prim.curve.handle[1];
  }
 }
 //-
@@ -835,6 +842,10 @@ draw_bezier(tvert P[4], Line_Params params)
   {
    primitive.curve.bezier[i] = P_rec[i];
   }
+  // NOTE(kv) plan-curve-table-first: handles are the serialized truth, the bezier
+  // above only feeds send_primitive's endpoint push (valid at capture time).
+  primitive.curve.handle[0] = P_rec[1];
+  primitive.curve.handle[1] = P_rec[2];
   primitive.curve.radii = params.radii;
   primitive.curve.lightness_additions = params.lightness_additions;
   primitive.curve.straight = (params.flags & Line_Straight);
@@ -862,6 +873,8 @@ draw_keyed(Weight_Key key, Bezier rest, Bezier target,
    primitive.curve.bezier[i] = rest_rec[i];
    primitive.curve.dbezier[i] = delta[i];
   }
+  primitive.curve.handle[0] = rest_rec[1];
+  primitive.curve.handle[1] = rest_rec[2];
   primitive.curve.radii = radii_rest;
   primitive.curve.dradii = dradii;
   primitive.curve.key = key;

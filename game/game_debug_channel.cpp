@@ -334,7 +334,25 @@ debug_channel_document_dump(FILE *out, Game_State *state)
    {
     Recorded_Curve &c = prim.curve;
     fprintf(out, "curve%s%s: ", c.straight ? " (straight)" : "", c.midline ? " (midline)" : "");
-    for_i32(i, 0, 4){ debug_channel_print_tvert(out, c.bezier.e[i]); fprintf(out, " "); }
+    // NOTE(kv) plan-curve-table-first: print the truth (table vertices + handles), never
+    // the scratch `bezier`, so staleness has nowhere to hide. Same v0 h0 h1 v1 order.
+    for_i32(i, 0, 4)
+    {
+     tvert point;
+     if(i == 0 or i == 3)
+     {
+      Recorded_Vertex &vertex = doc.vertices.items[prim.vertex_index[i == 0 ? 0 : 1]];
+      point = {.v = vertex.p, .bone_id = vertex.bone};
+      fprintf(out, "v%d", i == 0 ? 0 : 1);
+     }
+     else
+     {
+      point = c.handle[i-1];
+      fprintf(out, "h%d", i-1);
+     }
+     debug_channel_print_tvert(out, point);
+     fprintf(out, " ");
+    }
     fprintf(out, "\n  radii (%g %g %g %g) lightness (%g %g %g %g)",
             c.radii.x, c.radii.y, c.radii.z, c.radii.w,
             c.lightness_additions.x, c.lightness_additions.y,
