@@ -610,7 +610,8 @@ convert_primitives_to_camera_space(Camera &camera)
    resolve_vertices(document, primitive);
    primitive.location = document_location(iprim, false);
    convert_primitive(primitive, group.bone_id, false);
-   if(not group.one_sided)
+   b32 midline = (primitive.type == Primitive_Type_Curve and primitive.curve.midline);
+   if(not group.one_sided and not midline)
    {
     primitive.location = document_location(iprim, true);
     convert_primitive(primitive, group.bone_id, true);
@@ -2785,6 +2786,78 @@ game_update(Game_Update_Params params)
     }
     ImGui::EndChild();
     if(jump_to != -1){ history_jump(state, jump_to); }
+    im_end();
+   }
+
+   {//-Selection panel (plan-focus-radii-midline Q3/Q4/Q9): the selected curves' width
+    // profile (uniform width + end taper, or the raw v4) and the midline flag. The
+    // first selected curve supplies the displayed values; edits go to all of them.
+    Recording &doc = state->model.recordings.document;
+    i32 curves[Document_Selection_Cap];
+    i32 curve_count = document_selected_curves(state, curves);
+    im_begin("Selection", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+    if(curve_count == 0)
+    {
+     ImGui::TextDisabled("no curve selected (click one, shift-click adds)");
+    }
+    else
+    {
+     Recorded_Curve &first = doc.primitives[curves[0]].curve;
+     ImGui::Text("%d curve%s:", curve_count, curve_count == 1 ? "" : "s");
+     for_i32(i, 0, curve_count){ ImGui::SameLine(); ImGui::Text("%d", curves[i]); }
+     if(state->model.recordings.preset_settings[state->viewports[0].preset].ignore_radii)
+     {// NOTE(kv) Q5: the knob forces uniform radii, so edits below don't show.
+      ImGui::TextColored(ImVec4(1,.6f,.2f,1), "ignore_radii is on: radii edits are invisible");
+     }
+     // NOTE(kv) One history entry per slider drag: begin on activation, commit on the
+     // release that followed an edit, discard a release without one.
+     auto bracket_drag = [&]()
+     {
+      if(ImGui::IsItemActivated()){ document_set_radii_begin(state); }
+      if(ImGui::IsItemDeactivatedAfterEdit()){ document_edit_commit_and_save(state); }
+      else if(ImGui::IsItemDeactivated()){ history_discard(state); }
+     };
+     v4 radii = first.radii;
+     v1 width = maximum(maximum(radii.x, radii.y), maximum(radii.z, radii.w));
+     {//-width: scales every selected curve's own profile
+      v1 new_width = width;
+      ImGui::SliderFloat("width", &new_width, 0.1f, 4.f, "%.2f", ImGuiSliderFlags_Logarithmic);
+      bracket_drag();
+      if(new_width != width and width > 0){ document_set_radii_scale(state, new_width / width); }
+     }
+     {//-taper: the end shape at the current width
+      const char *taper_names[] = {"flat", "default (.25 1 1 .25)", "tip in (.25 1 1 1)", "tip out (1 1 1 .25)", "custom"};
+      v4 tapers[] = {V4(1,1,1,1), V4(.25f,1,1,.25f), V4(.25f,1,1,1), V4(1,1,1,.25f)};
+      i32 taper = alen(tapers);  // custom
+      for_i32(i, 0, alen(tapers))
+      {
+       if(width > 0 and radii == width * tapers[i]){ taper = i; break; }
+      }
+      i32 new_taper = taper;
+      if(ImGui::Combo("taper", &new_taper, taper_names, alen(taper_names)) and
+         new_taper != taper and new_taper < alen(tapers))
+      {
+       document_set_radii_begin(state);
+       document_set_radii_apply(state, width * tapers[new_taper]);
+       document_edit_commit_and_save(state);
+      }
+     }
+     if(ImGui::TreeNode("raw radii"))
+     {// NOTE(kv) Q3: the four taper multipliers as stored; sets all selected curves.
+      v4 raw = radii;
+      ImGui::DragFloat4("radii", &raw.x, 0.01f, 0.f, 8.f, "%.2f");
+      bracket_drag();
+      if(not (raw == radii)){ document_set_radii_apply(state, raw); }
+      ImGui::TreePop();
+     }
+     {//-midline (Q9): pins x=0 and draws the curve once
+      bool midline = first.midline;
+      if(ImGui::Checkbox("midline (x=0, not mirrored)", &midline))
+      {
+       document_set_midline(state, midline);
+      }
+     }
+    }
     im_end();
    }
   }

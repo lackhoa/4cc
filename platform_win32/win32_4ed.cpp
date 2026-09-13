@@ -1228,7 +1228,10 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    // NOTE(kv): imgui might not have been initialized
    ImGuiIO& io = ImGui::GetIO();
    imgui_want_capture_mouse    = io.WantCaptureMouse;
-   imgui_want_capture_keyboard = io.WantCaptureKeyboard;
+   // NOTE(kv) plan-focus-radii-midline Q1: WantCaptureKeyboard stays true for as long
+   // as an ImGui window has nav focus (forever after a panel click), which swallowed
+   // every game shortcut. Only a text field (preset name box) really needs the keys.
+   imgui_want_capture_keyboard = io.WantTextInput;
   }
   if (imgui_want_capture_keyboard){
    breakhere;
@@ -1325,6 +1328,10 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     
     if(imgui_want_capture_keyboard)
     {//-imgui
+     if(keydown)
+     {// NOTE(kv) plan-focus-radii-midline Q2: makes the routing visible in the log.
+      log_string(push_stringf(tmp, "key %s -> imgui text input", key_code_name[keycode]));
+     }
      call_default_handler = true;
      win32vars.got_useful_event = true;
     }
@@ -1838,7 +1845,8 @@ win32_imgui_init()
  io.FontGlobalScale = win32vars.screen_scale_factor;
  
  {// NOTE(kv): At least DockingEnable has to be set before the first frame.
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   // Enable Keyboard Controls
+  // NOTE(kv) NavEnableKeyboard dropped (plan-focus-radii-midline Q1): keyboard nav kept
+  // focus on the last-clicked panel and ate the game shortcuts.
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;       // Enable Docking
  }
  ImGui_ImplWin32_InitForOpenGL(win32vars.window_handles[0]);

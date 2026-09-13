@@ -193,6 +193,19 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
                    strexpand(document_group_name(doc, action.prim_index)));
   case Document_Action_Delete_Curve:
    return snprintf(buf, cap, "delete curve %d", action.prim_index);
+  case Document_Action_Set_Radii:
+  case Document_Action_Set_Midline:
+  {
+   i32 n = snprintf(buf, cap, "%s [",
+                    action.kind == Document_Action_Set_Radii ? "set radii"
+                    : action.index ? "set midline" : "clear midline");
+   for_i32(i, 0, action.count)
+   {
+    n += snprintf(buf + n, maximum(0, cap - n), "%s%d", i ? " " : "", action.indices[i]);
+   }
+   n += snprintf(buf + n, maximum(0, cap - n), "]");
+   return n;
+  }
   case Document_Action_Delete_Selection:
   {
    i32 n = snprintf(buf, cap, "delete [");

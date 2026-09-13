@@ -469,6 +469,7 @@ Bezier bezier;
 v4 radii;
 v4 lightness_additions;
 b32 straight;
+b32 midline;
 Weight_Key key;
 v3 dbezier[4];
 v4 dradii;
@@ -481,7 +482,7 @@ Type_Info result = {};
 result.name = strlit("Recorded_Curve");
 result.size = sizeof(Recorded_Curve);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(7);
+result.members.set_count(8);
 {
 Type_Info *member_type = & Type_Info_Bezier;
 result.members[0] = {.type=member_type, .name=strlit("bezier"), .offset=offsetof(Recorded_Curve, bezier)};
@@ -499,8 +500,12 @@ Type_Info *member_type = & Type_Info_b32;
 result.members[3] = {.type=member_type, .name=strlit("straight"), .offset=offsetof(Recorded_Curve, straight)};
 }
 {
+Type_Info *member_type = & Type_Info_b32;
+result.members[4] = {.type=member_type, .name=strlit("midline"), .offset=offsetof(Recorded_Curve, midline)};
+}
+{
 Type_Info *member_type = & Type_Info_Weight_Key;
-result.members[4] = {.type=member_type, .name=strlit("key"), .offset=offsetof(Recorded_Curve, key)};
+result.members[5] = {.type=member_type, .name=strlit("key"), .offset=offsetof(Recorded_Curve, key)};
 }
 {
 local_persist Type_Info member_type_value;
@@ -511,11 +516,11 @@ member_type->kind = I_Type_Kind_Array;
 member_type->size = 4 * Type_Info_v3.size;
 member_type->array_item_type = & Type_Info_v3;
 member_type->count = 4;
-result.members[5] = {.type=member_type, .name=strlit("dbezier"), .offset=offsetof(Recorded_Curve, dbezier)};
+result.members[6] = {.type=member_type, .name=strlit("dbezier"), .offset=offsetof(Recorded_Curve, dbezier)};
 }
 {
 Type_Info *member_type = & Type_Info_v4;
-result.members[6] = {.type=member_type, .name=strlit("dradii"), .offset=offsetof(Recorded_Curve, dradii)};
+result.members[7] = {.type=member_type, .name=strlit("dradii"), .offset=offsetof(Recorded_Curve, dradii)};
 }
 return result;
 }
@@ -555,6 +560,12 @@ b32 m_straight = {};
 read_binary_b32(r, &m_straight);
 }
 dst->straight = m_straight;
+
+b32 m_midline = {};
+{
+read_binary_b32(r, &m_midline);
+}
+dst->midline = m_midline;
 
 Weight_Key m_key = {};
 {

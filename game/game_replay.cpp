@@ -122,6 +122,8 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
   Recorded_Primitive prim = rec.primitives.items[iprim];
   Recorded_Group &group = rec.groups.items[prim.group_index];
   if(replay_is_right and group.one_sided){ continue; }
+  // NOTE(kv) plan-focus-radii-midline Q8: a midline curve is its own mirror image.
+  if(replay_is_right and prim.type == Primitive_Type_Curve and prim.curve.midline){ continue; }
   resolve_vertices(rec, prim);  // NOTE(kv) before the blend: table holds rest positions
   apply_shape_key(prim);
 

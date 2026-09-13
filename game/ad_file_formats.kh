@@ -79,6 +79,11 @@ struct Recorded_Curve
  v4 radii;
  v4 lightness_additions;
  b32 straight;  // Line_Straight, set by the straight-line helper
+ // NOTE(kv) plan-focus-radii-midline Q8: the curve lies on the mirror plane. Every
+ // write forces x=0 (bone space) on its two vertices and two handles
+ // (document_curve_apply_midline), and replay/hit-test skip its right-side pass, so
+ // the centre line is drawn once instead of twice slightly apart.
+ b32 midline;
  // NOTE(kv) Shape key: points AND radii blend (the blink changes stroke width too).
  Weight_Key key;
  v3 dbezier[4];

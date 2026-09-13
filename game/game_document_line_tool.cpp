@@ -254,6 +254,11 @@ line_tool_create_curve(Game_State *state)
    }
   }
  }
+ if(tool.start_snap >= 0 and doc.vertices[tool.start_snap].p.x == 0)
+ {// NOTE(kv) plan-focus-radii-midline Q9: continuing from a vertex that sits on the
+  // mirror plane (a pinned midline vertex has exactly x=0) keeps the new curve there.
+  prim.curve.midline = true;
+ }
  tool.prim_index  = doc.primitives.count;
  tool.group_index = group_index;
  push(&doc.primitives, prim);
@@ -292,6 +297,7 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  line_tool_fit_handles(tool.path, tool.path_count, tool.start_world, tool.end_world, &p1, &p2);
  prim.curve.bezier.e[1].v = line_tool_world_to_bone(bone_id, p1);
  prim.curve.bezier.e[2].v = line_tool_world_to_bone(bone_id, p2);
+ document_curve_apply_midline(doc, tool.prim_index);
 }
 
 function void

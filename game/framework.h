@@ -136,6 +136,10 @@ enum Document_Action_Kind
  Document_Action_Add_Line,
  Document_Action_Delete_Curve,
  Document_Action_Delete_Selection,  // Delete key: `count` primitives in `indices`
+ // NOTE(kv) plan-focus-radii-midline: Selection panel edits, applied to every selected
+ // curve (`count` curves in `indices`, one entry per slider drag / toggle).
+ Document_Action_Set_Radii,
+ Document_Action_Set_Midline,  // `index` = the new flag value
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the

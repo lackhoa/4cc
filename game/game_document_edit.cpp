@@ -106,7 +106,9 @@ document_selection_pick_list(Game_State *state, Document_Pick *out, i32 cap)
  {
   i32 prim_index = sel.prim_index[i];
   if(prim_index < 0 or prim_index >= doc.primitives.count){ continue; }
-  b32 one_sided = doc.groups[doc.primitives[prim_index].group_index].one_sided;
+  Recorded_Primitive &prim = doc.primitives[prim_index];
+  b32 one_sided = (doc.groups[prim.group_index].one_sided or
+                   (prim.type == Primitive_Type_Curve and prim.curve.midline));
   // NOTE(kv) PITFALL: for_i32 doesn't parenthesize the bound -- `side < a ? 1 : 2`
   // is always true (spun the app on 2026-09-13), so the bound goes in a variable.
   i32 side_count = one_sided ? 1 : 2;
@@ -319,6 +321,106 @@ document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_i
  }
 }
 
+//~ NOTE(kv) plan-focus-radii-midline Q8: midline curves stay on the mirror plane.
+function void
+document_curve_apply_midline(Recording &doc, i32 prim_index)
+{// NOTE(kv) x=0 in each point's own bone space (that is the axis the right pass
+ // negates). A table vertex shared with a non-midline curve is pinned too: the flag wins.
+ Recorded_Primitive &prim = doc.primitives[prim_index];
+ if(prim.type != Primitive_Type_Curve or not prim.curve.midline){ return; }
+ for_i32(slot, 0, 2){ doc.vertices[prim.vertex_index[slot]].p.x = 0; }
+ // NOTE(kv) The table is the authority (resolve_vertices refreshes e[0]/e[3] before
+ // every replay), but the cached endpoints are what document_dump prints and what the
+ // hit-test reads until then -- keep them in step.
+ for_i32(i, 0, 4){ prim.curve.bezier.e[i].v.x = 0; }
+ // TODO(kv) dbezier (shape-key delta) is left alone; a keyed midline curve could still
+ // blend off the plane.
+}
+function void
+document_apply_midlines(Recording &doc)
+{// NOTE(kv) After any write: a moved shared vertex may belong to a midline curve too.
+ for_i32(iprim, 0, doc.primitives.count){ document_curve_apply_midline(doc, iprim); }
+}
+
+//~ NOTE(kv) Selection panel edits (plan-focus-radii-midline Q4/Q9): every selected
+// curve; the caller brackets a slider drag with begin/commit so one drag = one entry.
+function i32
+document_selected_curves(Game_State *state, i32 out[Document_Selection_Cap])
+{
+ Recording &doc = state->model.recordings.document;
+ Document_Selection &sel = state->document_selection;
+ i32 count = 0;
+ for_i32(i, 0, sel.count)
+ {
+  i32 prim_index = sel.prim_index[i];
+  if(prim_index >= 0 and prim_index < doc.primitives.count and
+     doc.primitives[prim_index].type == Primitive_Type_Curve)
+  {
+   out[count++] = prim_index;
+  }
+ }
+ return count;
+}
+function Document_Action
+document_selection_action(Game_State *state, Document_Action_Kind kind)
+{
+ Document_Action action = {};
+ action.kind  = kind;
+ action.count = document_selected_curves(state, action.indices);
+ return action;
+}
+function void
+document_set_radii_begin(Game_State *state)
+{
+ history_begin(state, document_selection_action(state, Document_Action_Set_Radii));
+}
+function void
+document_set_radii_apply(Game_State *state, v4 radii)
+{// NOTE(kv) Between begin and commit (a slider drag), or alone for a one-shot set.
+ Recording &doc = state->model.recordings.document;
+ i32 curves[Document_Selection_Cap];
+ i32 count = document_selected_curves(state, curves);
+ for_i32(i, 0, count)
+ {// TODO(kv) Q6: `dradii` (shape-key delta) is not touched.
+  doc.primitives[curves[i]].curve.radii = radii;
+ }
+}
+function void
+document_set_radii_scale(Game_State *state, v1 scale)
+{// NOTE(kv) The width slider: scales each curve's own profile, keeps its taper.
+ Recording &doc = state->model.recordings.document;
+ i32 curves[Document_Selection_Cap];
+ i32 count = document_selected_curves(state, curves);
+ for_i32(i, 0, count)
+ {
+  doc.primitives[curves[i]].curve.radii *= scale;
+ }
+}
+function void
+document_edit_commit_and_save(Game_State *state)
+{
+ history_commit(state);
+ save_document_file(state);
+}
+function b32
+document_set_midline(Game_State *state, b32 midline)
+{// NOTE(kv) One-shot: begin + apply + commit. Returns false with nothing selected.
+ Recording &doc = state->model.recordings.document;
+ i32 curves[Document_Selection_Cap];
+ i32 count = document_selected_curves(state, curves);
+ if(count == 0){ return false; }
+ Document_Action action = document_selection_action(state, Document_Action_Set_Midline);
+ action.index = midline;
+ history_begin(state, action);
+ for_i32(i, 0, count)
+ {
+  doc.primitives[curves[i]].curve.midline = midline;
+  document_curve_apply_midline(doc, curves[i]);
+ }
+ document_edit_commit_and_save(state);
+ return true;
+}
+
 function void
 document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
@@ -358,6 +460,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  {
   document_edit_move_vertex(doc, prim, prim.vertex_index[pick.slot], pick.is_right, delta_world);
  }
+ document_apply_midlines(doc);
 }
 
 function void

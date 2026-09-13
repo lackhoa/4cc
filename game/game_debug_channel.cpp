@@ -333,7 +333,7 @@ debug_channel_document_dump(FILE *out, Game_State *state)
    case Primitive_Type_Curve:
    {
     Recorded_Curve &c = prim.curve;
-    fprintf(out, "curve%s: ", c.straight ? " (straight)" : "");
+    fprintf(out, "curve%s%s: ", c.straight ? " (straight)" : "", c.midline ? " (midline)" : "");
     for_i32(i, 0, 4){ debug_channel_print_tvert(out, c.bezier.e[i]); fprintf(out, " "); }
     fprintf(out, "\n  radii (%g %g %g %g) lightness (%g %g %g %g)",
             c.radii.x, c.radii.y, c.radii.z, c.radii.w,
@@ -1033,6 +1033,29 @@ debug_channel_update(Game_State *state, App *app)
   fprintf(out, "select:");
   for_i32(i, 0, sel.count){ fprintf(out, " %d", sel.prim_index[i]); }
   fprintf(out, "%s\n", sel.count ? "" : " (empty)");
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "set_radii ", 10) == 0)
+ {// NOTE(kv) plan-focus-radii-midline: the Selection panel's raw v4 without a mouse.
+  v4 radii = {};
+  if(sscanf(cmd+10, "%f %f %f %f", &radii.x, &radii.y, &radii.z, &radii.w) == 4)
+  {
+   document_set_radii_begin(state);
+   document_set_radii_apply(state, radii);
+   document_edit_commit_and_save(state);
+   fprintf(out, "set_radii: (%g %g %g %g) on %d selected\n",
+           radii.x, radii.y, radii.z, radii.w, state->document_selection.count);
+  }
+  else
+  {
+   fprintf(out, "set_radii: usage set_radii x y z w\n");
+  }
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "set_midline ", 12) == 0)
+ {
+  b32 ok = document_set_midline(state, atoi(cmd+12) != 0);
+  fprintf(out, "set_midline: %s\n", ok ? "ok" : "nothing selected");
   debug_channel_wants_animate = true;
  }
  else if(strcmp(cmd, "key delete") == 0)
