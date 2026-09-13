@@ -466,7 +466,6 @@ copy_array_dst(dst->curve_index, m_curve_index);
 ;
 struct Recorded_Curve{
 Bezier bezier;
-tvert handle[2];
 tvert handle_offset[2];
 v4 radii;
 v4 lightness_additions;
@@ -484,7 +483,7 @@ Type_Info result = {};
 result.name = strlit("Recorded_Curve");
 result.size = sizeof(Recorded_Curve);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(10);
+result.members.set_count(9);
 {
 Type_Info *member_type = & Type_Info_Bezier;
 result.members[0] = {.type=member_type, .name=strlit("bezier"), .offset=offsetof(Recorded_Curve, bezier), .unserialized=true};
@@ -498,38 +497,27 @@ member_type->kind = I_Type_Kind_Array;
 member_type->size = 2 * Type_Info_tvert.size;
 member_type->array_item_type = & Type_Info_tvert;
 member_type->count = 2;
-result.members[1] = {.type=member_type, .name=strlit("handle"), .offset=offsetof(Recorded_Curve, handle)};
-}
-{
-local_persist Type_Info member_type_value;
-Type_Info *member_type = &member_type_value;
-*member_type = {};
-member_type->name = strlit("tvert[2]");
-member_type->kind = I_Type_Kind_Array;
-member_type->size = 2 * Type_Info_tvert.size;
-member_type->array_item_type = & Type_Info_tvert;
-member_type->count = 2;
-result.members[2] = {.type=member_type, .name=strlit("handle_offset"), .offset=offsetof(Recorded_Curve, handle_offset)};
+result.members[1] = {.type=member_type, .name=strlit("handle_offset"), .offset=offsetof(Recorded_Curve, handle_offset)};
 }
 {
 Type_Info *member_type = & Type_Info_v4;
-result.members[3] = {.type=member_type, .name=strlit("radii"), .offset=offsetof(Recorded_Curve, radii)};
+result.members[2] = {.type=member_type, .name=strlit("radii"), .offset=offsetof(Recorded_Curve, radii)};
 }
 {
 Type_Info *member_type = & Type_Info_v4;
-result.members[4] = {.type=member_type, .name=strlit("lightness_additions"), .offset=offsetof(Recorded_Curve, lightness_additions)};
+result.members[3] = {.type=member_type, .name=strlit("lightness_additions"), .offset=offsetof(Recorded_Curve, lightness_additions)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[5] = {.type=member_type, .name=strlit("straight"), .offset=offsetof(Recorded_Curve, straight)};
+result.members[4] = {.type=member_type, .name=strlit("straight"), .offset=offsetof(Recorded_Curve, straight)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[6] = {.type=member_type, .name=strlit("midline"), .offset=offsetof(Recorded_Curve, midline)};
+result.members[5] = {.type=member_type, .name=strlit("midline"), .offset=offsetof(Recorded_Curve, midline)};
 }
 {
 Type_Info *member_type = & Type_Info_Weight_Key;
-result.members[7] = {.type=member_type, .name=strlit("key"), .offset=offsetof(Recorded_Curve, key)};
+result.members[6] = {.type=member_type, .name=strlit("key"), .offset=offsetof(Recorded_Curve, key)};
 }
 {
 local_persist Type_Info member_type_value;
@@ -540,11 +528,11 @@ member_type->kind = I_Type_Kind_Array;
 member_type->size = 4 * Type_Info_v3.size;
 member_type->array_item_type = & Type_Info_v3;
 member_type->count = 4;
-result.members[8] = {.type=member_type, .name=strlit("dbezier"), .offset=offsetof(Recorded_Curve, dbezier)};
+result.members[7] = {.type=member_type, .name=strlit("dbezier"), .offset=offsetof(Recorded_Curve, dbezier)};
 }
 {
 Type_Info *member_type = & Type_Info_v4;
-result.members[9] = {.type=member_type, .name=strlit("dradii"), .offset=offsetof(Recorded_Curve, dradii)};
+result.members[8] = {.type=member_type, .name=strlit("dradii"), .offset=offsetof(Recorded_Curve, dradii)};
 }
 return result;
 }
@@ -561,14 +549,6 @@ return &Type_Info_Recorded_Curve;
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
 function void
 read_binary_Recorded_Curve(Binary_Reader *r, Recorded_Curve *dst){
-tvert m_handle[2] = {};
-{
-for_i32(i,0,2){
-read_binary_tvert(r, &m_handle[i]);
-}
-}
-copy_array_dst(dst->handle, m_handle);
-
 tvert m_handle_offset[2] = {};
 {
 for_i32(i,0,2){

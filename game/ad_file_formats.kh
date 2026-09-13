@@ -84,9 +84,6 @@ struct Recorded_Curve
  // table vertex); zero = straight line, a vertex move stretches the shape with the
  // chord. Same form as the tablet Stroke (tablet/src/document.ts d0/d3).
  meta_unserialized Bezier bezier;
- // TODO(kv) plan-curve-chord-handles step 2: delete `handle` (absolute P1/P2, kept
- // serialized one step so old files migrate on load; zeroed once converted).
- tvert handle[2];
  tvert handle_offset[2];
  v4 radii;
  v4 lightness_additions;

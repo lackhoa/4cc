@@ -269,38 +269,6 @@ load_recording_file(Game_State *state)
  return r->ok;
 }
 
-function i32
-document_curve_migrate_handle_offsets(Recording &doc)
-{// TODO(kv) Delete with plan-curve-chord-handles step 2. Files (and the live editor's
- // in-memory document across a hot reload) from before `handle_offset` existed carry
- // absolute P1/P2 in `handle`; convert once and zero `handle` so a genuinely zero
- // offset can never be re-migrated. Returns the count converted.
- i32 migrated = 0;
- for_i32(iprim, 0, doc.primitives.count)
- {
-  Recorded_Primitive &prim = doc.primitives.items[iprim];
-  if(prim.type != Primitive_Type_Curve){ continue; }
-  Recorded_Curve &curve = prim.curve;
-  b32 offsets_zero = (curve.handle_offset[0].v == V3(0,0,0) and curve.handle_offset[1].v == V3(0,0,0) and
-                      curve.handle_offset[0].bone_id.type == Bone_None and curve.handle_offset[1].bone_id.type == Bone_None);
-  b32 handles_set = (curve.handle[0].v != V3(0,0,0) or curve.handle[1].v != V3(0,0,0));
-  if(offsets_zero and handles_set)
-  {
-   Recorded_Vertex &vertex0 = doc.vertices.items[prim.vertex_index[0]];
-   Recorded_Vertex &vertex1 = doc.vertices.items[prim.vertex_index[1]];
-   tvert v0 = {.v = vertex0.p, .bone_id = vertex0.bone};
-   tvert v1 = {.v = vertex1.p, .bone_id = vertex1.bone};
-   for_i32(i, 0, 2)
-   {
-    curve.handle_offset[i] = curve_handle_offset_from_point(v0, v1, curve.handle[i], i);
-    curve.handle[i] = {};
-   }
-   migrated++;
-  }
- }
- if(migrated){ log_string("document: migrated %d curve handles to chord offsets", migrated); }
- return migrated;
-}
 function b32
 load_document_file(Game_State *state)
 {
@@ -318,12 +286,7 @@ load_document_file(Game_State *state)
  state->document_load_failed = not ok;
  // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
  // different document now (plan-document-undo-redo Q6).
- if(ok)
- {
-  document_curve_migrate_handle_offsets(state->model.recordings.document);  // TODO(kv) plan-curve-chord-handles step 2: remove
-  history_clear(state);
-  state->document_selection.count = 0;
- }
+ if(ok){ history_clear(state); state->document_selection.count = 0; }
  return ok;
 }
 //-EOF
