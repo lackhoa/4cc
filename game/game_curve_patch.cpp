@@ -254,6 +254,20 @@ document_selection_toggle(Game_State *state, i32 prim_index)
  if(sel.count < alen(sel.prim_index)){ sel.prim_index[sel.count++] = prim_index; }
 }
 
+function b32
+document_selection_contains(Game_State *state, i32 prim_index)
+{
+ Document_Selection &sel = state->document_selection;
+ for_i32(i, 0, sel.count)
+ {
+  if(sel.prim_index[i] == prim_index)
+  {
+   return true;
+  }
+ }
+ return false;
+}
+
 function void
 document_selection_set(Game_State *state, i32 prim_index)
 {// NOTE(kv) Q1: a plain click makes the clicked primitive the sole selection.

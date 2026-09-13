@@ -171,6 +171,9 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
   case Document_Action_Move_Handle:
    return snprintf(buf, cap, "move handle e[%d] of curve %d (%.*s)", action.index,
                    action.prim_index, strexpand(document_group_name(doc, action.prim_index)));
+  case Document_Action_Move_Stroke:
+   return snprintf(buf, cap, "move stroke %d (%.*s)", action.prim_index,
+                   strexpand(document_group_name(doc, action.prim_index)));
   case Document_Action_Make_Patch:
   {
    i32 n = snprintf(buf, cap, "make patch [");

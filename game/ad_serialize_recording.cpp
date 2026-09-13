@@ -24,9 +24,20 @@ recording_file_path(Arena *arena, Game_State *state)
  return pjoin(arena, state->save_dir, strlit("recording.ad"));
 }
 function Stringz
-document_file_path(Arena *arena, Game_State *state)
+live_document_file_path(Arena *arena, Game_State *state)
 {
  return pjoin(arena, state->code_dir, strlit("game/driver/driver.document.ad"));
+}
+function Stringz
+document_file_path(Arena *arena, Game_State *state)
+{// NOTE(kv) plan-selection-followups Q3: the agent instance (-debug-cmd) edits its own
+ // git-tracked copy, so channel test drags never dirty the live document. Refresh it
+ // with the `document_copy_from_live` channel command.
+ if(debug_channel_enabled)
+ {
+  return pjoin(arena, state->code_dir, strlit("game/driver/driver.document.agent.ad"));
+ }
+ return live_document_file_path(arena, state);
 }
 
 //~ Writing

@@ -51,7 +51,7 @@
 #include <windows.h>
 
 global b32  debug_channel_initialized;
-global b32  debug_channel_enabled;
+// NOTE(kv) debug_channel_enabled lives in framework.h (document_file_path needs it).
 global char debug_channel_dir[MAX_PATH];      // <exe_dir>/debug
 global char debug_channel_cmd_path[MAX_PATH];
 global char debug_channel_out_path[MAX_PATH];
@@ -640,6 +640,37 @@ debug_channel_update(Game_State *state, App *app)
  {
   b32 ok = load_document_file(state);
   fprintf(out, "load_document: %s\n", ok ? "ok" : "FAILED");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "document_copy_from_live") == 0)
+ {// NOTE(kv) plan-selection-followups Q3: refresh the agent's own document
+  // (driver.document.agent.ad) from the live driver.document.ad, then reload it.
+  Scratch_Scope tmp;
+  Stringz src = live_document_file_path(tmp, state);
+  Stringz dst = document_file_path(tmp, state);
+  Stringz data = read_entire_file(tmp, src);
+  b32 ok = (data.len > 0);
+  if(ok)
+  {
+   Stringz temp_path = pjoin(tmp, state->save_dir, strlit("document_copy_temp.ad"));
+   FILE *file = open_file(temp_path, "wb");
+   ok = (file != 0);
+   if(ok)
+   {
+    ok = (fwrite(data.str, 1, data.len, file) == (size_t)data.len);
+    close_file(file);
+   }
+   if(ok)
+   {
+    if(file_exists(dst)){ remove_file(dst); }
+    ok = move_file(temp_path, dst);
+   }
+  }
+  if(ok)
+  {
+   ok = load_document_file(state);
+  }
+  fprintf(out, "document_copy_from_live: %s (%s -> %s)\n", ok ? "ok" : "FAILED", to_cstring(src), to_cstring(dst));
   debug_channel_wants_animate = true;
  }
  else if(strncmp(cmd, "export_group ", 13) == 0)

@@ -1045,8 +1045,11 @@ global v1 CAMERA_DRAG_ORBIT_PX_PER_STEP = 80.f;  // NOTE(kv) one 1/24-turn cell 
 global v1 CAMERA_DRAG_PAN_PX_PER_STEP   = 40.f;  // NOTE(kv) one (scaled) pan step per this many px
 global v1 CAMERA_DRAG_PAN_STEP_SCALE = 0.5f;  // NOTE(kv) a drag pan step is this fraction of a keyboard pan step
 
+global v1 CAMERA_DRAG_TAP_PX = 4.f;  // NOTE(kv) a press that strays less than this is a click, not a drag
+
 function void
-camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan, b32 middle)
+camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan, b32 middle,
+                  b32 deselect_on_tap)
 {
  Camera_Drag &drag = state->camera_drag;
  drag = {};
@@ -1055,6 +1058,8 @@ camera_drag_press(Game_State *state, i32 viewport_index, v2 mouse_px, b32 pan, b
  drag.middle = middle;
  drag.viewport_index = viewport_index;
  drag.last_px = mouse_px;
+ drag.press_px = mouse_px;
+ drag.deselect_on_tap = deselect_on_tap;
 }
 
 // NOTE(kv) Called every frame while the left button is held: turn the pixel delta
@@ -1065,6 +1070,10 @@ camera_drag_move(Game_State *state, v2 mouse_px)
  Camera_Drag &drag = state->camera_drag;
  if(not drag.active){ return; }
  Camera_Data *cam = get_target_camera(state, drag.viewport_index);
+ if(lengthof(V3(mouse_px - drag.press_px, 0)) > CAMERA_DRAG_TAP_PX)
+ {
+  drag.moved = true;
+ }
  v2 acc = drag.remainder_px + (mouse_px - drag.last_px);
  drag.last_px = mouse_px;
  // NOTE(kv) Truncate, not round: a step fires only after a full px_per_step.
@@ -1095,7 +1104,13 @@ camera_drag_move(Game_State *state, v2 mouse_px)
 function void
 camera_drag_release(Game_State *state)
 {
- state->camera_drag.active = false;
+ Camera_Drag &drag = state->camera_drag;
+ if(drag.deselect_on_tap and not drag.moved)
+ {// NOTE(kv) Q5 of plan-active-primitive-delete-key + plan-selection-followups Q1: a
+  // click on nothing deselects, a drag (orbit/pan) keeps the selection.
+  state->document_selection.count = 0;
+ }
+ drag.active = false;
 }
 
 myinline void
@@ -1857,7 +1872,7 @@ game_update(Game_Update_Params params)
   }
   else if(params.mouse.middle and mouse_viewport and not state->document_edit.active and not state->line_tool.active)
   {// NOTE(kv) Middle button held: pan drag, regardless of what is hot.
-   camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true);
+   camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true, false);
   }
 
   if(params.mouse.press_left and not state->document_edit.active and not state->camera_drag.active)
@@ -1887,21 +1902,31 @@ game_update(Game_Update_Params params)
    {// NOTE(kv) A reference drag (image or skull) that started this frame owns the press;
     // without this check the orbit ran under the gizmo drag (found 2026-09-12).
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
-    state->document_selection.count = 0;  // NOTE(kv) Q5: a click on nothing deselects
-    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false);
+    // NOTE(kv) Q5: a click on nothing deselects -- decided on release, once we know it
+    // stayed a click (plan-selection-followups Q1). Shift-click on nothing adds
+    // nothing and keeps the selection (Q2).
+    b32 deselect_on_tap = (not shift and not alt);
+    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), alt, false,
+                      deselect_on_tap);
    }
    else if(is_document_location(hot_location))
    {
+    i32 hot_prim = document_primitive_index(hot_location);
     if(shift)
     {// NOTE(kv) Q8: shift-click toggles the hot curve in the patch selection, no drag.
-     document_selection_toggle(state, document_primitive_index(hot_location));
+     document_selection_toggle(state, hot_prim);
+    }
+    else if(document_selection_contains(state, hot_prim) and
+            state->model.recordings.document.primitives[hot_prim].type == Primitive_Type_Curve)
+    {// NOTE(kv) plan-selection-followups Q4, after the tablet: pressing the already
+     // selected curve away from its control points drags the whole stroke.
+     document_edit_press_stroke(state, mouse_viewport, V2(params.mouse.p),
+                                hot_prim, document_location_is_right(hot_location));
     }
     else
     {// NOTE(kv) Q1 (revised 2026-09-13): the clicked curve/patch becomes the sole
-     // selection; its control points become grabbable on the NEXT press. Clicking the
-     // already-selected primitive away from its points is a no-op (TODO(kv) the
-     // tablet moves the whole stroke here -- decide whether 4ed wants that).
-     document_selection_set(state, document_primitive_index(hot_location));
+     // selection; its control points become grabbable on the NEXT press.
+     document_selection_set(state, hot_prim);
     }
    }
    else if(is_valid(hot_location))

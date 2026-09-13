@@ -89,7 +89,17 @@ struct Camera_Drag
  i32 viewport_index;
  v2  last_px;
  v2  remainder_px;   // sub-step drag carried to the next frame
+ // NOTE(kv) plan-selection-followups Q1: a plain click on empty space deselects only
+ // if it stays a click -- the release checks `moved` (set once the mouse strays
+ // camera_drag_tap_px from `press_px`), so an orbit/pan keeps the selection.
+ v2  press_px;
+ b32 moved;
+ b32 deselect_on_tap;  // plain left press (no shift/alt/middle)
 };
+// NOTE(kv) Agent instance (`-debug-cmd`, game_debug_channel.cpp). Declared here, not
+// in the channel file, because document_file_path (ad_serialize_recording.cpp, included
+// earlier) picks the agent's own document off it (plan-selection-followups Q3).
+global b32 debug_channel_enabled;
 global i32 const Document_Selection_Cap = 4;  // at most this many primitives selected at once
 struct Document_Selection
 {// NOTE(kv) What commands act on (plan-active-primitive-delete-key.md): curves AND
@@ -103,6 +113,11 @@ struct Document_Edit_State
 {// NOTE(kv) A live drag of one document control point (plan-document-mouse-editing).
  b32 active;
  b32 moved;           // anything written since press -> save on release
+ // NOTE(kv) plan-selection-followups Q4 (tablet behavior): a press on an already
+ // selected curve away from its control points drags the WHOLE stroke -- both table
+ // vertices (with every handle attached to them, on any curve). `pick` then names
+ // vertex slot 0 of that curve: the depth/offset reference of the drag.
+ b32 whole_stroke;
  Document_Pick pick;
  Location location;   // the hot document location being dragged (stays hot)
  v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
@@ -114,6 +129,7 @@ enum Document_Action_Kind
  Document_Action_None = 0,  // entry 0: the state before the first edit
  Document_Action_Move_Vertex,
  Document_Action_Move_Handle,
+ Document_Action_Move_Stroke,  // whole curve: both vertices + attached handles
  Document_Action_Make_Patch,
  Document_Action_Delete_Patch,
  Document_Action_Export_Group,

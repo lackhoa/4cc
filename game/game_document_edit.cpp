@@ -260,6 +260,66 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
 }
 
 function void
+document_edit_press_stroke(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
+                           i32 prim_index, b32 is_right)
+{// NOTE(kv) plan-selection-followups Q4: grab a whole selected curve (the caller
+ // checked it is selected and the press is away from its control points). Vertex slot
+ // 0 is the drag's depth/offset reference; the move applies the same world delta to
+ // both vertices.
+ Document_Edit_State &edit = state->document_edit;
+ Recording &doc = state->model.recordings.document;
+ if(not viewport){ return; }
+ Document_Pick reference = {prim_index, is_right, false, 0};
+ v3 world = document_pick_world_pos(doc, reference);
+ Camera camera = setup_camera(state->viewports[0].camera);
+ v2 center = get_center(viewport->clip_box);
+ edit.active = true;
+ edit.whole_stroke = true;
+ edit.pick = reference;
+ edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
+ edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
+ edit.location = document_location(prim_index, is_right);
+ {
+  Document_Action action = {};
+  action.kind       = Document_Action_Move_Stroke;
+  action.prim_index = prim_index;
+  history_begin(state, action);
+ }
+}
+
+// NOTE(kv) Q4: world delta -> a point's own bone space (rotation only: it's a delta,
+// so the bone's translation must not apply).
+function v3
+document_edit_bone_delta(Bone_ID bone_id, b32 is_right, v3 delta_world)
+{
+ mat4 bone_from_world = get_bone(bone_id, is_right)->world_from_bone.inverse;
+ return mat4vert(bone_from_world, delta_world) - mat4vert(bone_from_world, V3());
+}
+
+function void
+document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_index,
+                          b32 is_right, v3 delta_world)
+{// NOTE(kv) Move one table vertex by a world delta, and drag the handles attached to
+ // it along, on every curve that shares it (slot 0 -> e[1], slot 1 -> e[2]).
+ Recorded_Vertex &vertex = doc.vertices[vertex_index];
+ vertex.p += document_edit_bone_delta(document_vertex_bone(doc, prim, vertex), is_right, delta_world);
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &other = doc.primitives[iprim];
+  if(other.type != Primitive_Type_Curve){ continue; }
+  v3 handle_delta = document_edit_bone_delta(doc.groups[other.group_index].bone_id, is_right, delta_world);
+  if(other.vertex_index[0] == vertex_index)
+  {
+   other.curve.bezier.e[1].v += handle_delta;
+  }
+  if(other.vertex_index[1] == vertex_index)
+  {
+   other.curve.bezier.e[2].v += handle_delta;
+  }
+ }
+}
+
+function void
 document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
  Document_Edit_State &edit = state->document_edit;
@@ -279,34 +339,24 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  if(length_squared(delta_world) < 1e-12f){ return; }
  edit.moved = true;
 
- // NOTE(kv) Q4: world delta -> the point's own bone space (rotation only: it's a
- // delta, so the bone's translation must not apply).
- auto bone_delta = [&](Bone_ID bone_id) -> v3
- {
-  mat4 bone_from_world = get_bone(bone_id, pick.is_right)->world_from_bone.inverse;
-  return mat4vert(bone_from_world, delta_world) - mat4vert(bone_from_world, V3());
- };
-
- if(pick.is_handle)
+ if(edit.whole_stroke)
+ {// NOTE(kv) Both endpoints; a curve looping onto one vertex moves it once.
+  i32 v0 = prim.vertex_index[0];
+  i32 v1 = prim.vertex_index[1];
+  document_edit_move_vertex(doc, prim, v0, pick.is_right, delta_world);
+  if(v1 != v0)
+  {
+   document_edit_move_vertex(doc, prim, v1, pick.is_right, delta_world);
+  }
+ }
+ else if(pick.is_handle)
  {
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
-  prim.curve.bezier.e[pick.slot].v += bone_delta(bone_id);
+  prim.curve.bezier.e[pick.slot].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
  }
  else
  {
-  i32 vertex_index = prim.vertex_index[pick.slot];
-  Recorded_Vertex &vertex = doc.vertices[vertex_index];
-  vertex.p += bone_delta(document_vertex_bone(doc, prim, vertex));
-  // NOTE(kv) Drag the handles attached to this vertex along, on every curve that
-  // shares it (slot 0 -> e[1], slot 1 -> e[2]).
-  for_i32(iprim, 0, doc.primitives.count)
-  {
-   Recorded_Primitive &other = doc.primitives[iprim];
-   if(other.type != Primitive_Type_Curve){ continue; }
-   v3 handle_delta = bone_delta(doc.groups[other.group_index].bone_id);
-   if(other.vertex_index[0] == vertex_index){ other.curve.bezier.e[1].v += handle_delta; }
-   if(other.vertex_index[1] == vertex_index){ other.curve.bezier.e[2].v += handle_delta; }
-  }
+  document_edit_move_vertex(doc, prim, prim.vertex_index[pick.slot], pick.is_right, delta_world);
  }
 }
 
