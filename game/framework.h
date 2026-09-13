@@ -89,12 +89,13 @@ struct Camera_Drag
  v2  last_px;
  v2  remainder_px;   // sub-step drag carried to the next frame
 };
+global i32 const Document_Selection_Cap = 4;  // at most this many primitives selected at once
 struct Document_Selection
 {// NOTE(kv) What commands act on (plan-active-primitive-delete-key.md): curves AND
  // patches, by primitive index. Plain click = sole selection, shift-click toggles,
  // Delete/Backspace deletes the lot. Also the input of "Make patch from selection".
  i32 count;
- i32 prim_index[4];
+ i32 prim_index[Document_Selection_Cap];
  Location menu_hot;
 };
 struct Document_Edit_State

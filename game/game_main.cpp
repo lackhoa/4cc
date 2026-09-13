@@ -1842,7 +1842,7 @@ game_update(Game_Update_Params params)
    hot_location = get_primitive_hit_by_mouse(state, mouse_viewport, params.mouse.p);
   }
   debug_channel_last_hot = hot_location;
-  document_hover_update(state, mouse_viewport, V2(params.mouse.p), hot_location);
+  document_hover_update(state, mouse_viewport, V2(params.mouse.p));
   if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
 
   if(state->camera_drag.active)
@@ -1859,12 +1859,26 @@ game_update(Game_Update_Params params)
   }
 
   if(params.mouse.press_left and not state->document_edit.active and not state->camera_drag.active)
-  {// NOTE(kv) Hot code item: jump to code. Hot document item: start a drag (Q6).
-   // Nothing hot: camera drag (orbit, alt = pan). Line tool armed: the press starts
-   // a new curve whatever is hot (a hot vertex is a snap target, not a drag).
+  {// NOTE(kv) Hot code item: jump to code. Near a control point of a SELECTED document
+   // primitive: start a drag (Q6, explicit selection since 2026-09-13). Hot unselected
+   // document item: select it, no drag. Nothing hot: camera drag (orbit, alt = pan).
+   // Line tool armed: the press starts a new curve whatever is hot (a hot vertex is a
+   // snap target, not a drag).
+   b32 shift = ((params.input.active_mods & Key_Mod_Sft) != 0 or debug_channel_mouse_shift);
+   Document_Pick pick = {};
+   v1 pick_dist = INFINITY;
+   b32 near_selected_point = (not shift and
+                              document_pick_nearest(state, mouse_viewport, V2(params.mouse.p), &pick, &pick_dist) and
+                              pick_dist <= document_pick_radius_px);
    if(state->line_tool.armed and mouse_viewport)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
+   }
+   else if(near_selected_point)
+   {// NOTE(kv) Control points of the selection win over whatever is hot: a shared
+    // vertex of two chained curves is edited through the curve you selected, and a
+    // handle floating off the surface is grabbable with nothing hot under it.
+    document_edit_press(state, mouse_viewport, V2(params.mouse.p), pick);
    }
    else if(not is_valid(hot_location) and mouse_viewport and
            state->reference_edit.drag == Reference_Drag_None)
@@ -1876,16 +1890,16 @@ game_update(Game_Update_Params params)
    }
    else if(is_document_location(hot_location))
    {
-    b32 shift = ((params.input.active_mods & Key_Mod_Sft) != 0 or debug_channel_mouse_shift);
     if(shift)
     {// NOTE(kv) Q8: shift-click toggles the hot curve in the patch selection, no drag.
      document_selection_toggle(state, document_primitive_index(hot_location));
     }
     else
-    {// NOTE(kv) Q1: the clicked curve/patch becomes the sole selection, and the drag
-     // starts as before. (A vertex/handle location still resolves to its primitive.)
+    {// NOTE(kv) Q1 (revised 2026-09-13): the clicked curve/patch becomes the sole
+     // selection; its control points become grabbable on the NEXT press. Clicking the
+     // already-selected primitive away from its points is a no-op (TODO(kv) the
+     // tablet moves the whole stroke here -- decide whether 4ed wants that).
      document_selection_set(state, document_primitive_index(hot_location));
-     document_edit_press(state, mouse_viewport, V2(params.mouse.p), hot_location);
     }
    }
    else if(is_valid(hot_location))

@@ -1,9 +1,10 @@
 // NOTE(kv) Mouse editing of the document (plan-document-mouse-editing, 2026-09-06).
 // Pixel-level entry points shared by the real mouse and the debug channel's virtual
-// mouse (Q9): press grabs a control point of the hot document primitive, move drags it
-// in the camera plane (Q3) and writes the delta back through the inverse bone
-// transform (Q4), release saves driver.document.ad (Q5). No mode: a press on a hot
-// document item IS the drag (Q6).
+// mouse (Q9): press grabs a control point of a SELECTED document primitive (since
+// 2026-09-13; before that, of the hot one), move drags it in the camera plane (Q3) and
+// writes the delta back through the inverse bone transform (Q4), release saves
+// driver.document.ad (Q5). No mode: a press near a selected control point IS the drag
+// (Q6); a press on an unselected primitive selects it (game_main.cpp).
 //
 // Control points: table vertices (shared, via Recorded_Primitive.vertex_index) and,
 // for curves, the two bezier handles (per-curve tverts, absolute bone-space positions).
@@ -58,8 +59,15 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  return mat4vert(get_bone(bone_id, pick.is_right)->world_from_bone, bone_p);
 }
 
+// NOTE(kv) Control points per primitive: up to recorded_vertex_cap table vertices, plus
+// the two handles of a curve.
+global i32 const document_pick_cap_per_primitive = recorded_vertex_cap + 2;
+// NOTE(kv) Control points over the whole selection: every selected primitive, both
+// mirror sides (document_selection_pick_list).
+global i32 const document_selection_pick_cap = Document_Selection_Cap * 2 * document_pick_cap_per_primitive;
+
 function i32
-document_pick_list(Recording &doc, Location hot, Document_Pick out[6])
+document_pick_list(Recording &doc, Location hot, Document_Pick out[document_pick_cap_per_primitive])
 {// NOTE(kv) Every control point of the hot document primitive: its table vertices,
  // plus the two handles if it's a curve. Returns the count (0 if `hot` isn't a
  // document item).
@@ -80,15 +88,47 @@ document_pick_list(Recording &doc, Location hot, Document_Pick out[6])
  }
  return count;
 }
+// NOTE(kv) Explicit control-point selection (Khoa, 2026-09-13, follow-up in
+// plan-active-primitive-delete-key.md, after the tablet's edit_pen_down): control
+// points are grabbable ONLY on the selected primitives, within this pixel radius, no
+// matter what is hot -- so a vertex shared by two chained curves is edited through
+// the curve you selected. Pen down on an unselected primitive just selects it.
+global v1 const document_pick_radius_px = 12.f;
+
+function i32
+document_selection_pick_list(Game_State *state, Document_Pick *out, i32 cap)
+{// NOTE(kv) Every control point of every selected primitive, both mirror sides
+ // (the right side only for two-sided groups, like convert_primitives_to_camera_space).
+ Recording &doc = state->model.recordings.document;
+ Document_Selection &sel = state->document_selection;
+ i32 count = 0;
+ for_i32(i, 0, sel.count)
+ {
+  i32 prim_index = sel.prim_index[i];
+  if(prim_index < 0 or prim_index >= doc.primitives.count){ continue; }
+  b32 one_sided = doc.groups[doc.primitives[prim_index].group_index].one_sided;
+  // NOTE(kv) PITFALL: for_i32 doesn't parenthesize the bound -- `side < a ? 1 : 2`
+  // is always true (spun the app on 2026-09-13), so the bound goes in a variable.
+  i32 side_count = one_sided ? 1 : 2;
+  for_i32(side, 0, side_count)
+  {
+   Document_Pick picks[document_pick_cap_per_primitive];
+   i32 n = document_pick_list(doc, document_location(prim_index, side == 1), picks);
+   for_i32(k, 0, n){ if(count < cap){ out[count++] = picks[k]; } }
+  }
+ }
+ return count;
+}
 function b32
-document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot,
-                      Document_Pick *best_out)
-{// NOTE(kv) The control point of the hot document primitive nearest the mouse (in
- // pixels) -- what a press would grab, and what the hover highlight shows.
+document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
+                      Document_Pick *best_out, v1 *dist_out)
+{// NOTE(kv) The selected control point nearest the mouse (in pixels) and how far it
+ // is -- a press grabs it when within document_pick_radius_px, and the hover
+ // highlight shows it. False when nothing is selected.
  Recording &doc = state->model.recordings.document;
  if(not viewport){ return false; }
- Document_Pick picks[6];
- i32 pick_count = document_pick_list(doc, hot, picks);
+ Document_Pick picks[document_selection_pick_cap];
+ i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
  if(pick_count == 0){ return false; }
  Camera camera = setup_camera(state->viewports[0].camera);
  v2 center = get_center(viewport->clip_box);
@@ -99,39 +139,42 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px, L
   v1 dist = lengthof(V3(px - mouse_px, 0));
   if(dist < best_dist){ best_dist = dist; *best_out = picks[i]; }
  }
+ *dist_out = best_dist;
  return true;
 }
 
 // NOTE(kv) Hover highlight (Khoa, 2026-09-12: "highlight hot vertices that I hover
-// mouse over" + show the vertex id). Per frame, not saved: the hot document
-// primitive's control points draw as disks, the one a press would grab (or the one
-// being dragged) bigger and in hot_color2, and its id goes to the debug text line.
+// mouse over" + show the vertex id). Per frame, not saved: the selected primitives'
+// control points draw as disks, the one a press would grab (or the one being dragged)
+// bigger and in hot_color2, and its id goes to the debug text line.
 // Globals, not Game_State: purely transient, and a DLL reload recomputes them next frame.
-global b32           document_hover_valid;
-global Location      document_hover_hot;   // the hot document item the picks belong to
+global b32           document_hover_valid;  // something selected (or a drag running)
+global b32           document_hover_grab;   // document_hover_pick is within grab radius
 global Document_Pick document_hover_pick;
 
 function void
-document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot)
+document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
  document_hover_valid = false;
+ document_hover_grab  = false;
  Document_Edit_State &edit = state->document_edit;
+ v1 dist = INFINITY;
  if(edit.active)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
   document_hover_valid = true;
-  document_hover_hot   = edit.location;
+  document_hover_grab  = true;
   document_hover_pick  = edit.pick;
  }
- else if(document_pick_nearest(state, viewport, mouse_px, hot, &document_hover_pick))
+ else if(document_pick_nearest(state, viewport, mouse_px, &document_hover_pick, &dist))
  {
   document_hover_valid = true;
-  document_hover_hot   = hot;
+  document_hover_grab  = (dist <= document_pick_radius_px);
  }
 }
 function i32
 document_hover_label(char *buf, i32 cap, Recording &doc)
 {// NOTE(kv) "vertex 43 (Vis_Cheek) -- slot 0 of curve 48" / "handle e[1] of curve 48".
- if(not document_hover_valid){ return 0; }
+ if(not document_hover_valid or not document_hover_grab){ return 0; }
  Document_Pick &pick = document_hover_pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
  String group_name = document_group_name(doc, pick.prim_index);
@@ -149,13 +192,16 @@ document_hover_draw(Game_State *state, Camera &camera)
  // would hide the ones behind a fill). Same depth-scaled sizing as the kb cursor.
  if(not document_hover_valid){ return; }
  Recording &doc = state->model.recordings.document;
- Document_Pick picks[6];
- i32 pick_count = document_pick_list(doc, document_hover_hot, picks);
+ Document_Pick picks[document_selection_pick_cap];
+ i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
  for_i32(i, 0, pick_count)
  {
   Document_Pick &pick = picks[i];
-  b32 is_hovered = (pick.is_handle == document_hover_pick.is_handle and
-                    pick.slot      == document_hover_pick.slot);
+  b32 is_hovered = (document_hover_grab and
+                    pick.prim_index == document_hover_pick.prim_index and
+                    pick.is_right   == document_hover_pick.is_right and
+                    pick.is_handle  == document_hover_pick.is_handle and
+                    pick.slot       == document_hover_pick.slot);
   v3 center = document_pick_world_pos(doc, pick);
   v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
   v1 radius = (is_hovered ? 4.5f : 3.f)*millimeter * dist / camera.focal_length;
@@ -177,13 +223,12 @@ document_hover_draw(Game_State *state, Camera &camera)
 }
 
 function void
-document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Location hot)
-{// NOTE(kv) Grab the control point of the hot document primitive nearest the mouse
- // (in pixels): its table vertices, plus the handles if it's a curve.
+document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best)
+{// NOTE(kv) Grab one control point (a table vertex, or a curve handle) of a selected
+ // primitive; the caller found it with document_pick_nearest within the grab radius.
  Document_Edit_State &edit = state->document_edit;
  Recording &doc = state->model.recordings.document;
- Document_Pick best = {};
- if(not document_pick_nearest(state, viewport, mouse_px, hot, &best)){ return; }
+ if(not viewport){ return; }
  i32 prim_index = best.prim_index;
  Recorded_Primitive &prim = doc.primitives[prim_index];
 
@@ -194,7 +239,7 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Loc
  edit.pick = best;
  edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
  edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
- edit.location = hot;
+ edit.location = document_location(prim_index, best.is_right);
  {// NOTE(kv) Open the history entry now; release commits it only if something moved.
   Document_Action action = {};
   action.kind       = best.is_handle ? Document_Action_Move_Handle : Document_Action_Move_Vertex;

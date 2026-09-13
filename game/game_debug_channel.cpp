@@ -22,8 +22,10 @@
 //   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
 //                        frame as the screenshot png); picking runs against it every frame
 //   mouse_down <x> <y> [shift|alt|middle] / mouse_up -> press/release the virtual left button there
-//                        (drives the same document_edit_* as the real mouse; shift =
-//                        toggle the hot document curve in the patch selection, no drag)
+//                        (drives the same document_edit_* as the real mouse: near a
+//                        control point of a SELECTED primitive = drag it, on an unselected
+//                        one = select it (no drag); shift = toggle the hot document curve
+//                        in the selection, no drag)
 //   select <i> [j ...] / select none -> set the document selection (curves or patches)
 //   key delete        -> delete the selection, as the Delete/Backspace key does
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
