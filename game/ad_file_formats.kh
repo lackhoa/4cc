@@ -80,10 +80,7 @@ struct Recorded_Curve
  // the draw-ready {v0, handle[0], handle[1], v1} that resolve_vertices builds on a COPY
  // right before replay / hit-test / patch evaluation -- nothing on the document itself
  // reads it.
- // TODO(kv) step 2 (plan Q4): make `bezier` meta_unserialized once driver.document.ad
- // and driver.document.agent.ad both carry `handle` (the load/reload migration
- // document_curve_migrate_handles goes away with it).
- Bezier bezier;
+ meta_unserialized Bezier bezier;
  tvert handle[2];
  v4 radii;
  v4 lightness_additions;

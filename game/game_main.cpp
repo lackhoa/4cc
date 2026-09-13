@@ -967,12 +967,6 @@ game_reload(Game_State *state, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_
  init_sliders(type_info_pointers);
  build_location_maps(dll_arena, 0);
  load_slider_values_file(state, /*is_driver*/0);
- if(not first_time)
- {// NOTE(kv) The in-memory document survives the DLL swap with `handle` zeroed when
-  // the old DLL never knew the member (plan-curve-table-first Q4).
-  // TODO(kv) plan-curve-table-first step 2: remove.
-  document_curve_migrate_handles(state->model.recordings.document);
- }
 }
 function void
 game_shutdown(Game_State *state)

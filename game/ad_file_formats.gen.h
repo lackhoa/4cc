@@ -486,7 +486,7 @@ result.kind = I_Type_Kind_Struct;
 result.members.set_count(9);
 {
 Type_Info *member_type = & Type_Info_Bezier;
-result.members[0] = {.type=member_type, .name=strlit("bezier"), .offset=offsetof(Recorded_Curve, bezier)};
+result.members[0] = {.type=member_type, .name=strlit("bezier"), .offset=offsetof(Recorded_Curve, bezier), .unserialized=true};
 }
 {
 local_persist Type_Info member_type_value;
@@ -549,12 +549,6 @@ return &Type_Info_Recorded_Curve;
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
 function void
 read_binary_Recorded_Curve(Binary_Reader *r, Recorded_Curve *dst){
-Bezier m_bezier = {};
-{
-read_binary_Bezier(r, &m_bezier);
-}
-dst->bezier = m_bezier;
-
 tvert m_handle[2] = {};
 {
 for_i32(i,0,2){

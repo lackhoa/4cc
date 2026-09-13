@@ -269,30 +269,6 @@ load_recording_file(Game_State *state)
  return r->ok;
 }
 
-function i32
-document_curve_migrate_handles(Recording &doc)
-{// TODO(kv) Delete with plan-curve-table-first step 2. Files (and the live editor's
- // in-memory document across a hot reload) from before `handle` existed carry the
- // handles only inside `bezier`; copy them over once. Returns the count migrated.
- i32 migrated = 0;
- for_i32(iprim, 0, doc.primitives.count)
- {
-  Recorded_Primitive &prim = doc.primitives.items[iprim];
-  if(prim.type != Primitive_Type_Curve){ continue; }
-  Recorded_Curve &curve = prim.curve;
-  b32 handles_zero = (curve.handle[0].v == V3(0,0,0) and curve.handle[1].v == V3(0,0,0) and
-                      curve.handle[0].bone_id.type == Bone_None and curve.handle[1].bone_id.type == Bone_None);
-  b32 bezier_set = (curve.bezier.e[1].v != V3(0,0,0) or curve.bezier.e[2].v != V3(0,0,0));
-  if(handles_zero and bezier_set)
-  {
-   curve.handle[0] = curve.bezier.e[1];
-   curve.handle[1] = curve.bezier.e[2];
-   migrated++;
-  }
- }
- if(migrated){ log_string("document: migrated %d curve handles out of bezier", migrated); }
- return migrated;
-}
 function b32
 load_document_file(Game_State *state)
 {
@@ -310,12 +286,7 @@ load_document_file(Game_State *state)
  state->document_load_failed = not ok;
  // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
  // different document now (plan-document-undo-redo Q6).
- if(ok)
- {
-  document_curve_migrate_handles(state->model.recordings.document);  // TODO(kv) plan-curve-table-first step 2: remove
-  history_clear(state);
-  state->document_selection.count = 0;
- }
+ if(ok){ history_clear(state); state->document_selection.count = 0; }
  return ok;
 }
 //-EOF
