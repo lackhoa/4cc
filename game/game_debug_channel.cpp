@@ -34,6 +34,11 @@
 //                        left with < 2 curves goes too)
 //   line_tool 0|1     -> arm/disarm the line tool (game_document_line_tool.cpp); then
 //                        mouse_down/mouse_move.../mouse_up draws one curve, `hot` shows the tool state
+//   tilt_tool 0|1     -> arm/disarm the tilt tool (plan-curve-coplanar-handles Q8); then a
+//                        mouse_down/mouse_move/mouse_up drag rolls every selected curve about
+//                        its chord, 0.01 rad per horizontal px, one history entry
+//   tilt <i> <radians> -> roll curve i about its chord by an exact angle (one history entry)
+//   coplanarize <i>   -> swing curve i's d3 into the {chord, d0} plane (one history entry)
 //   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
@@ -1111,6 +1116,31 @@ debug_channel_update(Game_State *state, App *app)
   state->line_tool.armed = (on != 0);
   fprintf(out, "line_tool: %s\n", on ? "armed" : "disarmed");
  }
+ else if(strncmp(cmd, "tilt_tool ", 10) == 0)
+ {// NOTE(kv) plan-curve-coplanar-handles Q8: then mouse_down/mouse_move/mouse_up rolls
+  // the selected curves, 0.01 rad per horizontal px.
+  i32 on = atoi(cmd+10);
+  state->tilt_tool_armed = (on != 0);
+  fprintf(out, "tilt_tool: %s\n", on ? "armed" : "disarmed");
+ }
+ else if(strncmp(cmd, "tilt ", 5) == 0)
+ {
+  i32 idx; float radians;
+  if(sscanf(cmd+5, "%d %f", &idx, &radians) == 2)
+  {
+   b32 ok = document_tilt_once(state, idx, radians);
+   fprintf(out, "tilt: %s\n", ok ? "ok" : "FAILED (not a curve, midline, or ~0 chord)");
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: tilt <prim> <radians>\n"); }
+ }
+ else if(strncmp(cmd, "coplanarize ", 12) == 0)
+ {
+  i32 idx = atoi(cmd+12);
+  b32 ok = document_coplanarize_once(state, idx);
+  fprintf(out, "coplanarize: %s\n", ok ? "ok" : "nothing changed (already planar, not a curve, or ~0 chord)");
+  debug_channel_wants_animate = true;
+ }
  else if(strcmp(cmd, "mouse_off") == 0)
  {
   debug_channel_mouse_active = false;
@@ -1151,6 +1181,8 @@ debug_channel_update(Game_State *state, App *app)
   }
   {
    Line_Tool_State &tool = state->line_tool;
+   fprintf(out, "tilt_tool: %s%s\n", state->tilt_tool_armed ? "armed" : "off",
+           state->document_edit.tilt ? " (drag active)" : "");
    fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
    if(tool.created)
    {

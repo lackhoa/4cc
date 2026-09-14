@@ -585,6 +585,75 @@ curve_handle_offset_from_point(tvert v0, tvert v1, tvert point, i32 i)
  tvert third = curve_chord_third(v0, v1, i, point.bone_id);
  return {.v = point.v - third.v, .bone_id = point.bone_id};
 }
+//~ NOTE(kv) plan-curve-coplanar-handles: the tablet's coplanar-handle math (document.ts,
+// math.ts) on bare v3 in ONE bone space. A curve's plane is {chord, d0} (fallback d3,
+// fallback camera-facing, fallback a fixed perpendicular); handle drags land in that
+// plane, a vertex move rotates both offsets with the chord, tilt rolls both about it.
+// Lengths compare against the tablet's COLLINEAR_EPSILON (on the length, not squared).
+global v1 const curve_collinear_epsilon = 1e-9f;
+function v3
+perpendicular_to_direction(v3 u)
+{// NOTE(kv) Some unit vector perpendicular to unit `u` (tablet fallback_perpendicular).
+ v3 p = cross(u, V3(0,1,0));
+ if(lengthof(p) < curve_collinear_epsilon){ p = cross(u, V3(1,0,0)); }
+ return noz(p);
+}
+function v3
+curve_chord_direction(v3 v0, v3 v1)
+{// NOTE(kv) Unit chord; (1,0,0) when the endpoints coincide (tablet chord_direction).
+ v3 chord = v1 - v0;
+ return (lengthof(chord) > curve_collinear_epsilon) ? noz(chord) : V3(1,0,0);
+}
+function v3
+rotate_about_axis(v3 x, v3 axis, v1 radians)
+{// NOTE(kv) Rodrigues; `axis` unit.
+ v1 c = kv_cos(radians);
+ v1 s = kv_sin(radians);
+ return x*c + cross(axis, x)*s + axis*(dot(axis, x)*(1.f-c));
+}
+function v3
+rotate_between_directions(v3 x, v3 from, v3 to, v3 flip_axis)
+{// NOTE(kv) The minimal rotation taking unit `from` onto unit `to`, applied to x
+ // (tablet v3_rotate_between_directions). Parallel: identity. Anti-parallel: a half
+ // turn about `flip_axis` (unit, perpendicular to `from`), which the caller fixes so
+ // consecutive flips agree.
+ v3 axis = cross(from, to);
+ v1 s = lengthof(axis);
+ v1 c = dot(from, to);
+ if(s < 1e-12f)
+ {
+  if(c > 0){ return x; }
+  return 2.f*dot(flip_axis, x)*flip_axis - x;
+ }
+ axis = axis / s;
+ return x*c + cross(axis, x)*s + axis*(dot(axis, x)*(1.f-c));
+}
+function v3
+curve_plane_normal(v3 u, v3 d0, v3 d3, v3 camera_forward)
+{// NOTE(kv) Unit normal of the curve's plane: cross(u, d0), else cross(u, d3), else the
+ // plane through the chord facing the camera, else a fixed perpendicular
+ // (tablet stroke_plane_normal). `u` unit.
+ v3 n = cross(u, d0);
+ if(lengthof(n) < curve_collinear_epsilon){ n = cross(u, d3); }
+ if(lengthof(n) < curve_collinear_epsilon){ n = camera_forward - u*dot(u, camera_forward); }
+ if(lengthof(n) < curve_collinear_epsilon){ return perpendicular_to_direction(u); }
+ return noz(n);
+}
+function v3
+swing_offset_into_plane(v3 u, v3 leader, v3 follower)
+{// NOTE(kv) Swing `follower` into the plane {u, leader}: along-chord part and
+ // perpendicular length kept, the perpendicular part lands on the side of the chord it
+ // was on (tablet swing_offset_into_plane). leader ∥ chord -> follower unchanged.
+ // Used by the `coplanarize` channel command only (the tablet's "swing" drag mode is
+ // not ported, Khoa 2026-09-14).
+ v3 leader_perp = leader - u*dot(u, leader);
+ if(lengthof(leader_perp) < curve_collinear_epsilon){ return follower; }
+ v3 v = noz(leader_perp);
+ v1 along = dot(follower, u);
+ v3 follower_perp = follower - u*along;
+ v1 side = (dot(follower_perp, v) < 0) ? -1.f : 1.f;
+ return u*along + v*(side*lengthof(follower_perp));
+}
 // NOTE(kv) Q3: the chord thirds assume one bone space. This file is also compiled into
 // the driver PCH unit, which has no log_* -- so count mixed-bone captures here and let
 // `dump_state` (game_debug_channel.cpp) print the count. Resets on DLL reload.

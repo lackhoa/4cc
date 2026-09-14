@@ -7,10 +7,11 @@
 // (Q6); a press on an unselected primitive selects it (game_main.cpp).
 //
 // Control points: table vertices (shared, via Recorded_Primitive.vertex_index) and,
-// for curves, the two bezier handles (per-curve tverts, absolute bone-space positions).
-// Moving a vertex also moves the handles attached to it on every curve sharing it, so
-// the tangents ride along (the desktop stores handles absolutely, unlike the tablet's
-// chord offsets).
+// for curves, the two bezier handles (per-curve offsets from the chord thirds, like the
+// tablet, since plan-curve-chord-handles). Moving a vertex carries the handles of every
+// curve sharing it along the chord and rotates them with it; a handle drag stays in the
+// curve's plane; the tilt tool rolls a curve about its chord
+// (plan-curve-coplanar-handles).
 
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
 
@@ -195,7 +196,7 @@ document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_hover_grab  = false;
  Document_Edit_State &edit = state->document_edit;
  v1 dist = INFINITY;
- if(edit.active)
+ if(edit.active and not edit.tilt)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
   document_hover_valid = true;
   document_hover_grab  = true;
@@ -322,15 +323,126 @@ document_edit_bone_delta(Bone_ID bone_id, b32 is_right, v3 delta_world)
  return mat4vert(bone_from_world, delta_world) - mat4vert(bone_from_world, V3());
 }
 
+function Bone_ID
+document_curve_offset_bone(Recording &doc, Recorded_Primitive &prim)
+{// TODO(kv) plan-curve-chord-handles Q3: the offsets' bone is the group bone (true for
+ // every document point today; capture counts curves that mix bones).
+ return doc.groups[prim.group_index].bone_id;
+}
+function v3
+document_curve_chord(Recording &doc, Recorded_Primitive &prim)
+{// NOTE(kv) v1 - v0 in the offsets' bone space (unnormalized).
+ Bone_ID bone_id = document_curve_offset_bone(doc, prim);
+ return (tvert_in_bone(document_curve_endpoint(doc, prim, 1), bone_id) -
+         tvert_in_bone(document_curve_endpoint(doc, prim, 0), bone_id));
+}
+
 function void
 document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_index,
-                          b32 is_right, v3 delta_world)
+                          b32 is_right, v3 delta_world, i32 skip_rotate_prim = -1)
 {// NOTE(kv) Move one table vertex by a world delta. The handles of every curve sharing
- // it follow on their own: they are offsets from the chord thirds
- // (plan-curve-chord-handles Q5: translate only, the offsets stay fixed in bone space;
- // rotating them with the chord like the tablet is a follow-up).
+ // it are offsets from the chord thirds, so they translate on their own; on top of that
+ // (plan-curve-coplanar-handles Q2, tablet move_vertex) both offsets of every such
+ // curve get the minimal rotation old-chord-dir -> new-chord-dir, so the in-plane shape
+ // rides the chord and {chord, d0, d3} stay coplanar. Skipped when either chord is ~0,
+ // and for `skip_rotate_prim` (the whole-stroke drag: that chord only translates).
  Recorded_Vertex &vertex = doc.vertices[vertex_index];
  vertex.p += document_edit_bone_delta(document_vertex_bone(doc, prim, vertex), is_right, delta_world);
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &curve = doc.primitives[iprim];
+  if(curve.type != Primitive_Type_Curve or iprim == skip_rotate_prim){ continue; }
+  b32 at0 = (curve.vertex_index[0] == vertex_index);
+  b32 at1 = (curve.vertex_index[1] == vertex_index);
+  if(at0 == at1){ continue; }  // NOTE(kv) not on this curve, or a loop (chord stays 0)
+  // NOTE(kv) The old chord = the new one minus what the moved end gained, in the
+  // offsets' bone space (the same bone as the vertex today).
+  v3 delta = document_edit_bone_delta(document_curve_offset_bone(doc, curve), is_right, delta_world);
+  v3 new_chord = document_curve_chord(doc, curve);
+  v3 old_chord = at1 ? (new_chord - delta) : (new_chord + delta);
+  if(lengthof(old_chord) < curve_collinear_epsilon or lengthof(new_chord) < curve_collinear_epsilon){ continue; }
+  v3 from = noz(old_chord);
+  v3 to   = noz(new_chord);
+  v3 flip_axis = perpendicular_to_direction(from);
+  for_i32(i, 0, 2)
+  {
+   v3 &offset = curve.curve.handle_offset[i].v;
+   offset = rotate_between_directions(offset, from, to, flip_axis);
+  }
+ }
+}
+
+//~ NOTE(kv) plan-curve-coplanar-handles Q1: a handle drag lands where the mouse ray
+// pierces the curve's plane (tablet "plane" mode, the default there); the other handle
+// never moves. Edge-on plane or a hit behind the eye: the handle stays where it is.
+global v1 const document_edit_edge_on_cosine = 0.15f;  // tablet EDGE_ON_PLANE_COSINE
+function b32
+document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewport_center,
+                                  v2 px, Document_Pick pick, v3 *world_out)
+{// NOTE(kv) All in world space, on the picked mirror side: the plane is {chord, d0}
+ // (fallback d3, fallback camera-facing), the ray goes from the eye through `px`.
+ // NOTE(kv) PITFALL: `v1` is the scalar type, so the endpoints are p0/p3 here.
+ Document_Pick p0_pick = {pick.prim_index, pick.is_right, false, 0};
+ Document_Pick p3_pick = {pick.prim_index, pick.is_right, false, 1};
+ Document_Pick h0_pick = {pick.prim_index, pick.is_right, true, 1};
+ Document_Pick h1_pick = {pick.prim_index, pick.is_right, true, 2};
+ v3 p0 = document_pick_world_pos(doc, p0_pick);
+ v3 p3 = document_pick_world_pos(doc, p3_pick);
+ v3 d0 = document_pick_world_pos(doc, h0_pick) - (2.f*p0 + p3)/3.f;
+ v3 d3 = document_pick_world_pos(doc, h1_pick) - (p0 + 2.f*p3)/3.f;
+ v3 u = curve_chord_direction(p0, p3);
+ v3 camera_forward = -camera.z;  // NOTE(kv) the camera looks down its -z
+ v3 normal = curve_plane_normal(u, d0, d3, camera_forward);
+ v3 eye = mat4vert(camera.world_from_cam, V3(0,0,0));
+ v3 ray = noz(document_edit_unproject(camera, viewport_center, px, -1.f) - eye);
+ v1 denom = dot(ray, normal);
+ if(absolute(denom) < document_edit_edge_on_cosine){ return false; }
+ v1 t = dot(p0 - eye, normal) / denom;
+ if(t <= 0){ return false; }
+ *world_out = eye + ray*t;
+ return true;
+}
+
+//~ NOTE(kv) plan-curve-coplanar-handles Q7/Q8: tilt = roll a curve about its chord,
+// both offsets by the same angle, vertices fixed (tablet "dial"/"tilt" button). The
+// tilt tool is armed from the Selection panel or the channel (`tilt_tool 1`); while
+// armed a left-drag anywhere rolls every selected curve, horizontal mouse travel ->
+// angle. Midline curves are skipped (the roll would leave the mirror plane and
+// apply_midline would flatten it back).
+global v1 const document_tilt_radians_per_px = 0.01f;  // tablet TILT_RADIANS_PER_PIXEL
+function b32
+document_curve_tilt(Recording &doc, i32 prim_index, v1 radians)
+{// NOTE(kv) Returns false when nothing could roll (not a curve, midline, ~0 chord).
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
+ Recorded_Primitive &prim = doc.primitives[prim_index];
+ if(prim.type != Primitive_Type_Curve or prim.curve.midline){ return false; }
+ v3 chord = document_curve_chord(doc, prim);
+ if(lengthof(chord) < curve_collinear_epsilon){ return false; }
+ v3 u = noz(chord);
+ for_i32(i, 0, 2)
+ {
+  v3 &offset = prim.curve.handle_offset[i].v;
+  offset = rotate_about_axis(offset, u, radians);
+ }
+ return true;
+}
+function b32
+document_curve_coplanarize(Recording &doc, i32 prim_index)
+{// NOTE(kv) Q3: swing d3 into the plane {chord, d0} (the `coplanarize` channel
+ // command; no migration, no capture-time flattening -- the document holds what was
+ // drawn). Returns false when nothing changed.
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
+ Recorded_Primitive &prim = doc.primitives[prim_index];
+ if(prim.type != Primitive_Type_Curve){ return false; }
+ v3 chord = document_curve_chord(doc, prim);
+ if(lengthof(chord) < curve_collinear_epsilon){ return false; }
+ v3 u = noz(chord);
+ v3 &d0 = prim.curve.handle_offset[0].v;
+ v3 &d3 = prim.curve.handle_offset[1].v;
+ v3 swung = swing_offset_into_plane(u, d0, d3);
+ if(length_squared(swung - d3) < 1e-12f){ return false; }
+ d3 = swung;
+ return true;
 }
 
 //~ NOTE(kv) plan-focus-radii-midline Q8: midline curves stay on the mirror plane.
@@ -434,6 +546,54 @@ document_set_midline(Game_State *state, b32 midline)
  return true;
 }
 
+function b32
+document_tilt_press(Game_State *state, v2 mouse_px)
+{// NOTE(kv) Tilt tool armed + left press: start a tilt drag over the selected curves
+ // (one history entry). False with no curve selected (the press falls through).
+ Document_Edit_State &edit = state->document_edit;
+ i32 curves[Document_Selection_Cap];
+ i32 count = document_selection_curve_indices(state, curves);
+ if(count == 0){ return false; }
+ edit = {};
+ edit.active  = true;
+ edit.tilt    = true;
+ edit.last_px = mouse_px;
+ edit.location = document_location(curves[0], false);
+ history_begin(state, document_selection_action(state, Document_Action_Tilt));
+ return true;
+}
+function b32
+document_tilt_once(Game_State *state, i32 prim_index, v1 radians)
+{// NOTE(kv) Channel `tilt <prim> <radians>`: one-shot with its own history entry.
+ Document_Action action = {};
+ action.kind = Document_Action_Tilt;
+ action.count = 1;
+ action.indices[0] = prim_index;
+ history_begin(state, action);
+ if(not document_curve_tilt(state->model.recordings.document, prim_index, radians))
+ {
+  history_discard(state);
+  return false;
+ }
+ document_edit_commit_and_save(state);
+ return true;
+}
+function b32
+document_coplanarize_once(Game_State *state, i32 prim_index)
+{// NOTE(kv) Channel `coplanarize <prim>`: one-shot with its own history entry.
+ Document_Action action = {};
+ action.kind = Document_Action_Coplanarize;
+ action.prim_index = prim_index;
+ history_begin(state, action);
+ if(not document_curve_coplanarize(state->model.recordings.document, prim_index))
+ {
+  history_discard(state);
+  return false;
+ }
+ document_edit_commit_and_save(state);
+ return true;
+}
+
 function void
 document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
@@ -443,11 +603,38 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Document_Pick pick = edit.pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
 
+ if(edit.tilt)
+ {// NOTE(kv) Tilt drag: no picking, horizontal travel since the last move rolls every
+  // selected curve about its own chord.
+  v1 radians = (mouse_px.x - edit.last_px.x) * document_tilt_radians_per_px;
+  edit.last_px = mouse_px;
+  if(radians == 0){ return; }
+  i32 curves[Document_Selection_Cap];
+  i32 count = document_selection_curve_indices(state, curves);
+  for_i32(i, 0, count)
+  {
+   if(document_curve_tilt(doc, curves[i], radians)){ edit.moved = true; }
+  }
+  return;
+ }
+
  Camera camera = setup_camera(state->viewports[0].camera);
  v2 center = get_center(viewport->clip_box);
  v3 old_world = document_pick_world_pos(doc, pick);
- v3 new_world = document_edit_unproject(camera, center, mouse_px - edit.grab_offset_px,
-                                        edit.grab_cam_z);
+ v3 new_world;
+ if(pick.is_handle and not edit.whole_stroke)
+ {// NOTE(kv) plan-curve-coplanar-handles Q1: the handle stays in the curve's plane.
+  if(not document_edit_handle_plane_target(doc, camera, center, mouse_px - edit.grab_offset_px,
+                                           pick, &new_world))
+  {
+   return;
+  }
+ }
+ else
+ {
+  new_world = document_edit_unproject(camera, center, mouse_px - edit.grab_offset_px,
+                                      edit.grab_cam_z);
+ }
  v3 delta_world = new_world - old_world;
  // NOTE(kv) Project/unproject round-trip jitter must not count as an edit (it would
  // save the file on every release).
@@ -458,16 +645,21 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  {// NOTE(kv) Both endpoints; a curve looping onto one vertex moves it once.
   i32 v0 = prim.vertex_index[0];
   i32 v1 = prim.vertex_index[1];
-  document_edit_move_vertex(doc, prim, v0, pick.is_right, delta_world);
+  // NOTE(kv) This curve's chord only translates, so its handles are not rotated.
+  // Another curve sharing one of the vertices turns as it would under a vertex drag.
+  // TODO(kv) A curve chained to BOTH ends of the dragged stroke rotates on the first
+  // move and back on the second: identity up to float noise, not exactly.
+  document_edit_move_vertex(doc, prim, v0, pick.is_right, delta_world, pick.prim_index);
   if(v1 != v0)
   {
-   document_edit_move_vertex(doc, prim, v1, pick.is_right, delta_world);
+   document_edit_move_vertex(doc, prim, v1, pick.is_right, delta_world, pick.prim_index);
   }
  }
  else if(pick.is_handle)
  {
   // NOTE(kv) The chord third does not move during a handle drag, so the offset takes
-  // the whole delta (plan-curve-chord-handles Q6).
+  // the whole delta (plan-curve-chord-handles Q6); the target point is on the curve's
+  // plane already (plan-curve-coplanar-handles Q1), the other handle is untouched.
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
   prim.curve.handle_offset[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
  }
