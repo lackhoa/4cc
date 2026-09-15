@@ -1892,6 +1892,9 @@ game_update(Game_Update_Params params)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
    }
+   else if(state->roll_tool_armed and mouse_viewport and document_roll_press(state, V2(params.mouse.p)))
+   {// NOTE(kv) Roll tool (plan-curve-coplanar-handles Q8): the drag rolls the selection.
+   }
    else if(near_selected_point)
    {// NOTE(kv) Control points of the selection win over whatever is hot: a shared
     // vertex of two chained curves is edited through the curve you selected, and a
@@ -2249,7 +2252,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->document_selection.count = 0; }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->roll_tool_armed = false; state->document_selection.count = 0; }break;
       // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
       case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
@@ -2857,28 +2860,12 @@ game_update(Game_Update_Params params)
        document_set_midline(state, midline);
       }
      }
-     {//-roll (plan-curve-coplanar-handles Q8): dragging the number rolls every selected
-      // curve about its chord, 0.01 rad per px; the value is relative to the drag start
-      // and snaps back to 0 on release. One history entry per drag, like the radii sliders.
-      // (A viewport drag mode came first but stole the orbit gesture, 2026-09-15.)
-      ImGui::DragFloat("roll (rad, drag me)", &state->roll_widget_radians, 0.01f, 0, 0, "%+.2f");
-      if(ImGui::IsItemActivated())
+     {//-roll tool (plan-curve-coplanar-handles Q8): while armed, a left-drag rolls every
+      // selected curve about its chord (horizontal travel -> angle); Escape disarms.
+      bool armed = state->roll_tool_armed;
+      if(ImGui::Checkbox("roll tool (drag rolls about the chord)", &armed))
       {
-       document_roll_begin(state);
-       state->roll_widget_applied = 0;
-      }
-      v1 pending = state->roll_widget_radians - state->roll_widget_applied;
-      if(pending != 0)
-      {
-       document_roll_apply(state, pending);
-       state->roll_widget_applied = state->roll_widget_radians;
-      }
-      if(ImGui::IsItemDeactivatedAfterEdit()){ document_edit_commit_and_save(state); }
-      else if(ImGui::IsItemDeactivated()){ history_discard(state); }
-      if(ImGui::IsItemDeactivated())
-      {
-       state->roll_widget_radians = 0;
-       state->roll_widget_applied = 0;
+       state->roll_tool_armed = armed;
       }
      }
     }

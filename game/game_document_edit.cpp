@@ -10,7 +10,7 @@
 // for curves, the two bezier handles (per-curve offsets from the chord thirds, like the
 // tablet, since plan-curve-chord-handles). Moving a vertex carries the handles of every
 // curve sharing it along the chord and rotates them with it; a handle drag stays in the
-// curve's plane; the Selection panel's roll drag rolls a curve about its chord
+// curve's plane; the roll tool rolls a curve about its chord
 // (plan-curve-coplanar-handles).
 
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
@@ -196,7 +196,7 @@ document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_hover_grab  = false;
  Document_Edit_State &edit = state->document_edit;
  v1 dist = INFINITY;
- if(edit.active)
+ if(edit.active and not edit.roll)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
   document_hover_valid = true;
   document_hover_grab  = true;
@@ -404,11 +404,12 @@ document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewp
 }
 
 //~ NOTE(kv) plan-curve-coplanar-handles Q7/Q8: roll = turn a curve about its chord,
-// both offsets by the same angle, vertices fixed (tablet "dial"/"tilt" button). Driven
-// by the "roll" drag widget in the Selection panel (2026-09-15: an armed viewport
-// left-drag mode came first, but it stole the orbit gesture -- the widget leaves the
-// camera alone), one history entry per widget drag. Midline curves are skipped (the
-// roll would leave the mirror plane and apply_midline would flatten it back).
+// both offsets by the same angle, vertices fixed (tablet "dial"/"tilt" button). The
+// roll tool is armed from the Selection panel or the channel (`roll_tool 1`); while
+// armed a left-drag anywhere rolls every selected curve, horizontal mouse travel ->
+// angle. Midline curves are skipped (the roll would leave the mirror plane and
+// apply_midline would flatten it back).
+global v1 const document_roll_radians_per_px = 0.01f;  // tablet TILT_RADIANS_PER_PIXEL
 function b32
 document_curve_roll(Recording &doc, i32 prim_index, v1 radians)
 {// NOTE(kv) Returns false when nothing could roll (not a curve, midline, ~0 chord).
@@ -545,24 +546,21 @@ document_set_midline(Game_State *state, b32 midline)
  return true;
 }
 
-function void
-document_roll_begin(Game_State *state)
-{// NOTE(kv) The panel widget's drag starts: one history entry for the whole drag.
- history_begin(state, document_selection_action(state, Document_Action_Roll));
-}
 function b32
-document_roll_apply(Game_State *state, v1 radians)
-{// NOTE(kv) Between begin and commit: rolls every selected curve by `radians` more.
- // Returns whether anything rolled (midline curves refuse).
- Recording &doc = state->model.recordings.document;
+document_roll_press(Game_State *state, v2 mouse_px)
+{// NOTE(kv) Roll tool armed + left press: start a roll drag over the selected curves
+ // (one history entry). False with no curve selected (the press falls through).
+ Document_Edit_State &edit = state->document_edit;
  i32 curves[Document_Selection_Cap];
  i32 count = document_selection_curve_indices(state, curves);
- b32 rolled = false;
- for_i32(i, 0, count)
- {
-  if(document_curve_roll(doc, curves[i], radians)){ rolled = true; }
- }
- return rolled;
+ if(count == 0){ return false; }
+ edit = {};
+ edit.active  = true;
+ edit.roll    = true;
+ edit.last_px = mouse_px;
+ edit.location = document_location(curves[0], false);
+ history_begin(state, document_selection_action(state, Document_Action_Roll));
+ return true;
 }
 function b32
 document_roll_once(Game_State *state, i32 prim_index, v1 radians)
@@ -604,6 +602,21 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  if(not edit.active or not viewport){ return; }
  Document_Pick pick = edit.pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
+
+ if(edit.roll)
+ {// NOTE(kv) Roll drag: no picking, horizontal travel since the last move rolls every
+  // selected curve about its own chord.
+  v1 radians = (mouse_px.x - edit.last_px.x) * document_roll_radians_per_px;
+  edit.last_px = mouse_px;
+  if(radians == 0){ return; }
+  i32 curves[Document_Selection_Cap];
+  i32 count = document_selection_curve_indices(state, curves);
+  for_i32(i, 0, count)
+  {
+   if(document_curve_roll(doc, curves[i], radians)){ edit.moved = true; }
+  }
+  return;
+ }
 
  Camera camera = setup_camera(state->viewports[0].camera);
  v2 center = get_center(viewport->clip_box);

@@ -1,7 +1,7 @@
 # Serialized_State -- written by autodraw; zero members are omitted, unknown ones are skipped.
 kb_cursor = {pos = {0.000625892193, -0.0617891401, 0.101311393}},
 orthographic = 1,
-saved_viewports = [{target_camera = {distance = 0.770413041, phi = 0.25, pivot = {-0.0383047909, -0.0531884469, 0.0895445645}}, last_preset = 1}, {last_preset = 2}, {last_preset = 2}],
+saved_viewports = [{target_camera = {distance = 1.30199802, phi = 0.25, pivot = {-0.0383047909, -0.0531884469, 0.0895445645}}, last_preset = 1}, {last_preset = 2}, {last_preset = 2}],
 presets = [
   {name = "preset 0", reference_image = -1},
   {name = "preset 1", viz_level = 1, reference_image = -1, scene = Scene_Head_Profile, hide_hair = 1, ignore_alignment_min = 1},

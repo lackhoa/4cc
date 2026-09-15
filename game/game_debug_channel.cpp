@@ -34,8 +34,10 @@
 //                        left with < 2 curves goes too)
 //   line_tool 0|1     -> arm/disarm the line tool (game_document_line_tool.cpp); then
 //                        mouse_down/mouse_move.../mouse_up draws one curve, `hot` shows the tool state
-//   roll <i> <radians> -> roll curve i about its chord by an exact angle (one history entry;
-//                        the live app has a "roll" drag widget in the Selection panel instead)
+//   roll_tool 0|1     -> arm/disarm the roll tool (plan-curve-coplanar-handles Q8); then a
+//                        mouse_down/mouse_move/mouse_up drag rolls every selected curve about
+//                        its chord, 0.01 rad per horizontal px, one history entry
+//   roll <i> <radians> -> roll curve i about its chord by an exact angle (one history entry)
 //   coplanarize <i>   -> swing curve i's d3 into the {chord, d0} plane (one history entry)
 //   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
@@ -1114,6 +1116,13 @@ debug_channel_update(Game_State *state, App *app)
   state->line_tool.armed = (on != 0);
   fprintf(out, "line_tool: %s\n", on ? "armed" : "disarmed");
  }
+ else if(strncmp(cmd, "roll_tool ", 10) == 0)
+ {// NOTE(kv) plan-curve-coplanar-handles Q8: then mouse_down/mouse_move/mouse_up rolls
+  // the selected curves, 0.01 rad per horizontal px.
+  i32 on = atoi(cmd+10);
+  state->roll_tool_armed = (on != 0);
+  fprintf(out, "roll_tool: %s\n", on ? "armed" : "disarmed");
+ }
  else if(strncmp(cmd, "roll ", 5) == 0)
  {
   i32 idx; float radians;
@@ -1172,6 +1181,8 @@ debug_channel_update(Game_State *state, App *app)
   }
   {
    Line_Tool_State &tool = state->line_tool;
+   fprintf(out, "roll_tool: %s%s\n", state->roll_tool_armed ? "armed" : "off",
+           state->document_edit.roll ? " (drag active)" : "");
    fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
    if(tool.created)
    {
