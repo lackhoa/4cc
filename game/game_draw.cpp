@@ -588,7 +588,7 @@ curve_handle_offset_from_point(tvert v0, tvert v1, tvert point, i32 i)
 //~ NOTE(kv) plan-curve-coplanar-handles: the tablet's coplanar-handle math (document.ts,
 // math.ts) on bare v3 in ONE bone space. A curve's plane is {chord, d0} (fallback d3,
 // fallback camera-facing, fallback a fixed perpendicular); handle drags land in that
-// plane, a vertex move rotates both offsets with the chord, tilt rolls both about it.
+// plane, a vertex move rotates both offsets with the chord, roll turns both about it.
 // Lengths compare against the tablet's COLLINEAR_EPSILON (on the length, not squared).
 global v1 const curve_collinear_epsilon = 1e-9f;
 function v3

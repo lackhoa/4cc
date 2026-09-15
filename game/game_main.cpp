@@ -1892,8 +1892,8 @@ game_update(Game_Update_Params params)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
    }
-   else if(state->tilt_tool_armed and mouse_viewport and document_tilt_press(state, V2(params.mouse.p)))
-   {// NOTE(kv) Tilt tool (plan-curve-coplanar-handles Q8): the drag rolls the selection.
+   else if(state->roll_tool_armed and mouse_viewport and document_roll_press(state, V2(params.mouse.p)))
+   {// NOTE(kv) Roll tool (plan-curve-coplanar-handles Q8): the drag rolls the selection.
    }
    else if(near_selected_point)
    {// NOTE(kv) Control points of the selection win over whatever is hot: a shared
@@ -2252,7 +2252,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->tilt_tool_armed = false; state->document_selection.count = 0; }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->roll_tool_armed = false; state->document_selection.count = 0; }break;
       // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
       case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
@@ -2860,12 +2860,12 @@ game_update(Game_Update_Params params)
        document_set_midline(state, midline);
       }
      }
-     {//-tilt tool (plan-curve-coplanar-handles Q8): while armed, a left-drag rolls every
+     {//-roll tool (plan-curve-coplanar-handles Q8): while armed, a left-drag rolls every
       // selected curve about its chord (horizontal travel -> angle); Escape disarms.
-      bool armed = state->tilt_tool_armed;
-      if(ImGui::Checkbox("tilt tool (drag rolls about the chord)", &armed))
+      bool armed = state->roll_tool_armed;
+      if(ImGui::Checkbox("roll tool (drag rolls about the chord)", &armed))
       {
-       state->tilt_tool_armed = armed;
+       state->roll_tool_armed = armed;
       }
      }
     }

@@ -10,7 +10,7 @@
 // for curves, the two bezier handles (per-curve offsets from the chord thirds, like the
 // tablet, since plan-curve-chord-handles). Moving a vertex carries the handles of every
 // curve sharing it along the chord and rotates them with it; a handle drag stays in the
-// curve's plane; the tilt tool rolls a curve about its chord
+// curve's plane; the roll tool rolls a curve about its chord
 // (plan-curve-coplanar-handles).
 
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
@@ -196,7 +196,7 @@ document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_hover_grab  = false;
  Document_Edit_State &edit = state->document_edit;
  v1 dist = INFINITY;
- if(edit.active and not edit.tilt)
+ if(edit.active and not edit.roll)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
   document_hover_valid = true;
   document_hover_grab  = true;
@@ -403,15 +403,15 @@ document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewp
  return true;
 }
 
-//~ NOTE(kv) plan-curve-coplanar-handles Q7/Q8: tilt = roll a curve about its chord,
+//~ NOTE(kv) plan-curve-coplanar-handles Q7/Q8: roll = turn a curve about its chord,
 // both offsets by the same angle, vertices fixed (tablet "dial"/"tilt" button). The
-// tilt tool is armed from the Selection panel or the channel (`tilt_tool 1`); while
+// roll tool is armed from the Selection panel or the channel (`roll_tool 1`); while
 // armed a left-drag anywhere rolls every selected curve, horizontal mouse travel ->
 // angle. Midline curves are skipped (the roll would leave the mirror plane and
 // apply_midline would flatten it back).
-global v1 const document_tilt_radians_per_px = 0.01f;  // tablet TILT_RADIANS_PER_PIXEL
+global v1 const document_roll_radians_per_px = 0.01f;  // tablet TILT_RADIANS_PER_PIXEL
 function b32
-document_curve_tilt(Recording &doc, i32 prim_index, v1 radians)
+document_curve_roll(Recording &doc, i32 prim_index, v1 radians)
 {// NOTE(kv) Returns false when nothing could roll (not a curve, midline, ~0 chord).
  if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
  Recorded_Primitive &prim = doc.primitives[prim_index];
@@ -547,8 +547,8 @@ document_set_midline(Game_State *state, b32 midline)
 }
 
 function b32
-document_tilt_press(Game_State *state, v2 mouse_px)
-{// NOTE(kv) Tilt tool armed + left press: start a tilt drag over the selected curves
+document_roll_press(Game_State *state, v2 mouse_px)
+{// NOTE(kv) Roll tool armed + left press: start a roll drag over the selected curves
  // (one history entry). False with no curve selected (the press falls through).
  Document_Edit_State &edit = state->document_edit;
  i32 curves[Document_Selection_Cap];
@@ -556,21 +556,21 @@ document_tilt_press(Game_State *state, v2 mouse_px)
  if(count == 0){ return false; }
  edit = {};
  edit.active  = true;
- edit.tilt    = true;
+ edit.roll    = true;
  edit.last_px = mouse_px;
  edit.location = document_location(curves[0], false);
- history_begin(state, document_selection_action(state, Document_Action_Tilt));
+ history_begin(state, document_selection_action(state, Document_Action_Roll));
  return true;
 }
 function b32
-document_tilt_once(Game_State *state, i32 prim_index, v1 radians)
-{// NOTE(kv) Channel `tilt <prim> <radians>`: one-shot with its own history entry.
+document_roll_once(Game_State *state, i32 prim_index, v1 radians)
+{// NOTE(kv) Channel `roll <prim> <radians>`: one-shot with its own history entry.
  Document_Action action = {};
- action.kind = Document_Action_Tilt;
+ action.kind = Document_Action_Roll;
  action.count = 1;
  action.indices[0] = prim_index;
  history_begin(state, action);
- if(not document_curve_tilt(state->model.recordings.document, prim_index, radians))
+ if(not document_curve_roll(state->model.recordings.document, prim_index, radians))
  {
   history_discard(state);
   return false;
@@ -603,17 +603,17 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Document_Pick pick = edit.pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
 
- if(edit.tilt)
- {// NOTE(kv) Tilt drag: no picking, horizontal travel since the last move rolls every
+ if(edit.roll)
+ {// NOTE(kv) Roll drag: no picking, horizontal travel since the last move rolls every
   // selected curve about its own chord.
-  v1 radians = (mouse_px.x - edit.last_px.x) * document_tilt_radians_per_px;
+  v1 radians = (mouse_px.x - edit.last_px.x) * document_roll_radians_per_px;
   edit.last_px = mouse_px;
   if(radians == 0){ return; }
   i32 curves[Document_Selection_Cap];
   i32 count = document_selection_curve_indices(state, curves);
   for_i32(i, 0, count)
   {
-   if(document_curve_tilt(doc, curves[i], radians)){ edit.moved = true; }
+   if(document_curve_roll(doc, curves[i], radians)){ edit.moved = true; }
   }
   return;
  }
