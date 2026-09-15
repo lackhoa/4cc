@@ -197,11 +197,9 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
    return snprintf(buf, cap, "coplanarize curve %d", action.prim_index);
   case Document_Action_Set_Radii:
   case Document_Action_Set_Midline:
-  case Document_Action_Roll:
   {
    i32 n = snprintf(buf, cap, "%s [",
                     action.kind == Document_Action_Set_Radii ? "set radii"
-                    : action.kind == Document_Action_Roll ? "roll"
                     : action.index ? "set midline" : "clear midline");
    for_i32(i, 0, action.count)
    {

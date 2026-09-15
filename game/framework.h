@@ -118,10 +118,10 @@ struct Document_Edit_State
  // vertices (with every handle attached to them, on any curve). `pick` then names
  // vertex slot 0 of that curve: the depth/offset reference of the drag.
  b32 whole_stroke;
- // NOTE(kv) plan-curve-coplanar-handles Q8: a roll drag (roll tool armed) rolls every
- // selected curve about its chord; no pick, `last_px` is the previous mouse position.
- b32 roll;
- v2 last_px;
+ // NOTE(kv) plan-handle-drag-modes Q1/Q2: a handle drag with Ctrl held at press is
+ // "free" -- the handle follows the mouse in the camera plane and the OTHER handle swings
+ // into the new {chord, handle} plane (tablet "swing"). Plain = stays in the curve's plane.
+ b32 free_handle;
  Document_Pick pick;
  Location location;   // the hot document location being dragged (stays hot)
  v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
@@ -144,10 +144,9 @@ enum Document_Action_Kind
  // curve (`count` curves in `indices`, one entry per slider drag / toggle).
  Document_Action_Set_Radii,
  Document_Action_Set_Midline,  // `index` = the new flag value
- // NOTE(kv) plan-curve-coplanar-handles: roll = roll the selected curves (`count` in
- // `indices`) about their chords, one entry per drag; coplanarize = channel command,
- // `prim_index`.
- Document_Action_Roll,
+ // NOTE(kv) plan-curve-coplanar-handles: coplanarize = channel command, `prim_index`.
+ // (Document_Action_Roll lived here 2026-09-14..15; roll went away with
+ // plan-handle-drag-modes Q3.)
  Document_Action_Coplanarize,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
@@ -258,7 +257,6 @@ struct Game_State
  Camera_Drag camera_drag;
  Document_History document_history;
  Line_Tool_State line_tool;
- b32 roll_tool_armed;  // NOTE(kv) plan-curve-coplanar-handles Q8: a left-drag rolls the selection
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

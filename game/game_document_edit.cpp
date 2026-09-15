@@ -10,8 +10,8 @@
 // for curves, the two bezier handles (per-curve offsets from the chord thirds, like the
 // tablet, since plan-curve-chord-handles). Moving a vertex carries the handles of every
 // curve sharing it along the chord and rotates them with it; a handle drag stays in the
-// curve's plane; the roll tool rolls a curve about its chord
-// (plan-curve-coplanar-handles).
+// curve's plane (plan-curve-coplanar-handles), or with Ctrl held at press moves freely
+// and swings the other handle into the new plane (plan-handle-drag-modes).
 
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
 
@@ -196,7 +196,7 @@ document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_hover_grab  = false;
  Document_Edit_State &edit = state->document_edit;
  v1 dist = INFINITY;
- if(edit.active and not edit.roll)
+ if(edit.active)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
   document_hover_valid = true;
   document_hover_grab  = true;
@@ -260,9 +260,12 @@ document_hover_draw(Game_State *state, Camera &camera)
 }
 
 function void
-document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best)
+document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best,
+                    b32 free_handle)
 {// NOTE(kv) Grab one control point (a table vertex, or a curve handle) of a selected
  // primitive; the caller found it with document_pick_nearest within the grab radius.
+ // `free_handle` (Ctrl at press, plan-handle-drag-modes Q2): a handle drag defines a new
+ // plane instead of staying in the old one; means nothing for a vertex (Q5).
  Document_Edit_State &edit = state->document_edit;
  Recording &doc = state->model.recordings.document;
  if(not viewport){ return; }
@@ -274,6 +277,7 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
  v2 center = get_center(viewport->clip_box);
  edit.active = true;
  edit.pick = best;
+ edit.free_handle = (free_handle and best.is_handle);
  edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
  edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
  edit.location = document_location(prim_index, best.is_right);
@@ -403,28 +407,21 @@ document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewp
  return true;
 }
 
-//~ NOTE(kv) plan-curve-coplanar-handles Q7/Q8: roll = turn a curve about its chord,
-// both offsets by the same angle, vertices fixed (tablet "dial"/"tilt" button). The
-// roll tool is armed from the Selection panel or the channel (`roll_tool 1`); while
-// armed a left-drag anywhere rolls every selected curve, horizontal mouse travel ->
-// angle. Midline curves are skipped (the roll would leave the mirror plane and
-// apply_midline would flatten it back).
-global v1 const document_roll_radians_per_px = 0.01f;  // tablet TILT_RADIANS_PER_PIXEL
-function b32
-document_curve_roll(Recording &doc, i32 prim_index, v1 radians)
-{// NOTE(kv) Returns false when nothing could roll (not a curve, midline, ~0 chord).
- if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
- Recorded_Primitive &prim = doc.primitives[prim_index];
- if(prim.type != Primitive_Type_Curve or prim.curve.midline){ return false; }
+//~ NOTE(kv) plan-handle-drag-modes Q1 (tablet "swing"): after a free handle drag the
+// OTHER handle is swung into the plane the dragged one now spans with the chord, so the
+// curve stays coplanar -- the drag defines the plane. Roll (both handles about the chord,
+// plan-curve-coplanar-handles Q7/Q8) was dropped for this on 2026-09-15: a free drag out
+// of the plane is a roll you can see.
+function void
+document_curve_swing_other_handle(Recording &doc, Recorded_Primitive &prim, i32 dragged_slot)
+{// NOTE(kv) `dragged_slot` is the handle_offset index (0 = d0, 1 = d3). ~0 chord: no
+ // plane to keep, nothing happens.
  v3 chord = document_curve_chord(doc, prim);
- if(lengthof(chord) < curve_collinear_epsilon){ return false; }
+ if(lengthof(chord) < curve_collinear_epsilon){ return; }
  v3 u = noz(chord);
- for_i32(i, 0, 2)
- {
-  v3 &offset = prim.curve.handle_offset[i].v;
-  offset = rotate_about_axis(offset, u, radians);
- }
- return true;
+ v3 leader   = prim.curve.handle_offset[dragged_slot].v;
+ v3 &follower = prim.curve.handle_offset[1 - dragged_slot].v;
+ follower = swing_offset_into_plane(u, leader, follower);
 }
 function b32
 document_curve_coplanarize(Recording &doc, i32 prim_index)
@@ -547,38 +544,6 @@ document_set_midline(Game_State *state, b32 midline)
 }
 
 function b32
-document_roll_press(Game_State *state, v2 mouse_px)
-{// NOTE(kv) Roll tool armed + left press: start a roll drag over the selected curves
- // (one history entry). False with no curve selected (the press falls through).
- Document_Edit_State &edit = state->document_edit;
- i32 curves[Document_Selection_Cap];
- i32 count = document_selection_curve_indices(state, curves);
- if(count == 0){ return false; }
- edit = {};
- edit.active  = true;
- edit.roll    = true;
- edit.last_px = mouse_px;
- edit.location = document_location(curves[0], false);
- history_begin(state, document_selection_action(state, Document_Action_Roll));
- return true;
-}
-function b32
-document_roll_once(Game_State *state, i32 prim_index, v1 radians)
-{// NOTE(kv) Channel `roll <prim> <radians>`: one-shot with its own history entry.
- Document_Action action = {};
- action.kind = Document_Action_Roll;
- action.count = 1;
- action.indices[0] = prim_index;
- history_begin(state, action);
- if(not document_curve_roll(state->model.recordings.document, prim_index, radians))
- {
-  history_discard(state);
-  return false;
- }
- document_edit_commit_and_save(state);
- return true;
-}
-function b32
 document_coplanarize_once(Game_State *state, i32 prim_index)
 {// NOTE(kv) Channel `coplanarize <prim>`: one-shot with its own history entry.
  Document_Action action = {};
@@ -603,26 +568,14 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Document_Pick pick = edit.pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
 
- if(edit.roll)
- {// NOTE(kv) Roll drag: no picking, horizontal travel since the last move rolls every
-  // selected curve about its own chord.
-  v1 radians = (mouse_px.x - edit.last_px.x) * document_roll_radians_per_px;
-  edit.last_px = mouse_px;
-  if(radians == 0){ return; }
-  i32 curves[Document_Selection_Cap];
-  i32 count = document_selection_curve_indices(state, curves);
-  for_i32(i, 0, count)
-  {
-   if(document_curve_roll(doc, curves[i], radians)){ edit.moved = true; }
-  }
-  return;
- }
-
  Camera camera = setup_camera(state->viewports[0].camera);
  v2 center = get_center(viewport->clip_box);
  v3 old_world = document_pick_world_pos(doc, pick);
  v3 new_world;
- if(pick.is_handle and not edit.whole_stroke)
+ // NOTE(kv) plan-handle-drag-modes Q4: a midline curve's plane IS the mirror plane, so a
+ // free drag on it is just an in-plane drag (apply_midline would flatten it anyway).
+ b32 free_handle = (edit.free_handle and not prim.curve.midline);
+ if(pick.is_handle and not edit.whole_stroke and not free_handle)
  {// NOTE(kv) plan-curve-coplanar-handles Q1: the handle stays in the curve's plane.
   if(not document_edit_handle_plane_target(doc, camera, center, mouse_px - edit.grab_offset_px,
                                            pick, &new_world))
@@ -658,10 +611,13 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  else if(pick.is_handle)
  {
   // NOTE(kv) The chord third does not move during a handle drag, so the offset takes
-  // the whole delta (plan-curve-chord-handles Q6); the target point is on the curve's
-  // plane already (plan-curve-coplanar-handles Q1), the other handle is untouched.
+  // the whole delta (plan-curve-chord-handles Q6). In-plane: the target point is on the
+  // curve's plane already (plan-curve-coplanar-handles Q1), the other handle is
+  // untouched. Free: the target is in the camera plane at the grab depth, and the other
+  // handle follows into the new plane (plan-handle-drag-modes Q1).
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
   prim.curve.handle_offset[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
+  if(free_handle){ document_curve_swing_other_handle(doc, prim, pick.slot-1); }
  }
  else
  {

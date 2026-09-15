@@ -21,11 +21,12 @@
 //   reload_autosave   -> load data/autosave.ad (the live instance's view), camera included
 //   mouse_move <x> <y> -> park a virtual mouse at window pixels (top-left origin, same
 //                        frame as the screenshot png); picking runs against it every frame
-//   mouse_down <x> <y> [shift|alt|middle] / mouse_up -> press/release the virtual left button there
+//   mouse_down <x> <y> [shift|alt|ctrl|middle] / mouse_up -> press/release the virtual left button there
 //                        (drives the same document_edit_* as the real mouse: near a
 //                        control point of a SELECTED primitive = drag it, on an unselected
 //                        one = select it (no drag); shift = toggle the hot document curve
-//                        in the selection, no drag)
+//                        in the selection, no drag; ctrl = free handle drag, the other
+//                        handle swings into the new plane (plan-handle-drag-modes))
 //   select <i> [j ...] / select none -> set the document selection (curves or patches)
 //   key delete        -> delete the selection, as the Delete/Backspace key does
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
@@ -34,10 +35,6 @@
 //                        left with < 2 curves goes too)
 //   line_tool 0|1     -> arm/disarm the line tool (game_document_line_tool.cpp); then
 //                        mouse_down/mouse_move.../mouse_up draws one curve, `hot` shows the tool state
-//   roll_tool 0|1     -> arm/disarm the roll tool (plan-curve-coplanar-handles Q8); then a
-//                        mouse_down/mouse_move/mouse_up drag rolls every selected curve about
-//                        its chord, 0.01 rad per horizontal px, one history entry
-//   roll <i> <radians> -> roll curve i about its chord by an exact angle (one history entry)
 //   coplanarize <i>   -> swing curve i's d3 into the {chord, d0} plane (one history entry)
 //   patch_grid <i>    -> evaluated grid size + corner/center px of a curve patch
 //   mouse_off         -> release the virtual mouse
@@ -78,6 +75,7 @@ global b32  debug_channel_mouse_press_pending;  // one-frame edges
 global b32  debug_channel_mouse_release_pending;
 global b32  debug_channel_mouse_shift;           // shift held for the virtual press
 global b32  debug_channel_mouse_alt;             // alt held for the virtual press (camera pan drag)
+global b32  debug_channel_mouse_ctrl;            // ctrl held for the virtual press (free handle drag)
 global b32  debug_channel_mouse_middle;          // virtual middle button held (camera pan drag)
 global Location debug_channel_last_hot;  // from the last frame's picking
 global rect2 debug_channel_mouse_viewport_box;  // clip box of the viewport under it
@@ -958,12 +956,13 @@ debug_channel_update(Game_State *state, App *app)
    debug_channel_mouse_press_pending = debug_channel_mouse_left;
    debug_channel_mouse_shift = (n == 3 and strcmp(mod, "shift") == 0);
    debug_channel_mouse_alt   = (n == 3 and strcmp(mod, "alt") == 0);
+   debug_channel_mouse_ctrl  = (n == 3 and strcmp(mod, "ctrl") == 0);
    debug_channel_wants_animate = true;
    fprintf(out, "mouse_down: at (%d %d) %s\n", x, y, n == 3 ? mod : "");
   }
   else
   {
-   fprintf(out, "error: usage: mouse_down <x> <y> [shift|alt|middle]\n");
+   fprintf(out, "error: usage: mouse_down <x> <y> [shift|alt|ctrl|middle]\n");
   }
  }
  else if(strncmp(cmd, "make_patch ", 11) == 0)
@@ -1104,6 +1103,7 @@ debug_channel_update(Game_State *state, App *app)
   debug_channel_mouse_left = false;
   debug_channel_mouse_shift = false;
   debug_channel_mouse_alt = false;
+  debug_channel_mouse_ctrl = false;
   debug_channel_mouse_middle = false;
   debug_channel_mouse_release_pending = true;
   debug_channel_wants_animate = true;
@@ -1115,24 +1115,6 @@ debug_channel_update(Game_State *state, App *app)
   line_tool_reset(state);
   state->line_tool.armed = (on != 0);
   fprintf(out, "line_tool: %s\n", on ? "armed" : "disarmed");
- }
- else if(strncmp(cmd, "roll_tool ", 10) == 0)
- {// NOTE(kv) plan-curve-coplanar-handles Q8: then mouse_down/mouse_move/mouse_up rolls
-  // the selected curves, 0.01 rad per horizontal px.
-  i32 on = atoi(cmd+10);
-  state->roll_tool_armed = (on != 0);
-  fprintf(out, "roll_tool: %s\n", on ? "armed" : "disarmed");
- }
- else if(strncmp(cmd, "roll ", 5) == 0)
- {
-  i32 idx; float radians;
-  if(sscanf(cmd+5, "%d %f", &idx, &radians) == 2)
-  {
-   b32 ok = document_roll_once(state, idx, radians);
-   fprintf(out, "roll: %s\n", ok ? "ok" : "FAILED (not a curve, midline, or ~0 chord)");
-   debug_channel_wants_animate = true;
-  }
-  else { fprintf(out, "error: usage: roll <prim> <radians>\n"); }
  }
  else if(strncmp(cmd, "coplanarize ", 12) == 0)
  {
@@ -1181,8 +1163,6 @@ debug_channel_update(Game_State *state, App *app)
   }
   {
    Line_Tool_State &tool = state->line_tool;
-   fprintf(out, "roll_tool: %s%s\n", state->roll_tool_armed ? "armed" : "off",
-           state->document_edit.roll ? " (drag active)" : "");
    fprintf(out, "line_tool: %s%s", tool.armed ? "armed" : "off", tool.active ? " active" : "");
    if(tool.created)
    {
