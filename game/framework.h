@@ -118,10 +118,6 @@ struct Document_Edit_State
  // vertices (with every handle attached to them, on any curve). `pick` then names
  // vertex slot 0 of that curve: the depth/offset reference of the drag.
  b32 whole_stroke;
- // NOTE(kv) plan-curve-coplanar-handles Q8: a roll drag (roll tool armed) rolls every
- // selected curve about its chord; no pick, `last_px` is the previous mouse position.
- b32 roll;
- v2 last_px;
  Document_Pick pick;
  Location location;   // the hot document location being dragged (stays hot)
  v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
@@ -258,7 +254,11 @@ struct Game_State
  Camera_Drag camera_drag;
  Document_History document_history;
  Line_Tool_State line_tool;
- b32 roll_tool_armed;  // NOTE(kv) plan-curve-coplanar-handles Q8: a left-drag rolls the selection
+ // NOTE(kv) plan-curve-coplanar-handles Q8: the Selection panel's "roll" drag widget.
+ // `roll_widget_radians` is the widget's value during one drag (0 at rest),
+ // `roll_widget_applied` how much of it has already been rolled into the curves.
+ v1 roll_widget_radians;
+ v1 roll_widget_applied;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate
