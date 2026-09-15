@@ -275,6 +275,21 @@ debug_channel_print_primitive_px(FILE *out, Game_State *state, i32 prim_index, b
  {
   print_pick("handle", {prim_index, is_right, true, 1});
   print_pick("handle", {prim_index, is_right, true, 2});
+  // NOTE(kv) Points ON the curve body, for aiming a pick test at the line itself
+  // (plan-pick-curves-over-patches): projected world bezier, not a px-space bezier.
+  v3 P[4] = {
+   document_pick_world_pos(doc, {prim_index, is_right, false, 0}),
+   document_pick_world_pos(doc, {prim_index, is_right, true,  1}),
+   document_pick_world_pos(doc, {prim_index, is_right, true,  2}),
+   document_pick_world_pos(doc, {prim_index, is_right, false, 1}),
+  };
+  fprintf(out, "  body px:");
+  for(v1 t = 0.25f; t < 0.9f; t += 0.25f)
+  {
+   v2 px = document_edit_project(camera, center, bezier_sample(P, t));
+   fprintf(out, " t=%.2f (%.0f %.0f)", t, px.x, px.y);
+  }
+  fprintf(out, "\n");
  }
  if(prim.type == Primitive_Type_Curve_Patch)
  {
@@ -314,8 +329,8 @@ debug_channel_document_dump(FILE *out, Game_State *state)
            g.view_bone.type, g.view_bone.id);
   }
   Paint_Params &pp = g.params;
-  fprintf(out, "  params: painting %d, line_color %08x, fill_color %08x, line_depth_offset %g, fill_depth_offset %g, radius_mult %g\n",
-          pp.painting, pp.line_color, pp.fill.color, pp.line_depth_offset,
+  fprintf(out, "  params: painting %d, line_color %08x, line_flags %x, fill_color %08x, line_depth_offset %g, fill_depth_offset %g, radius_mult %g\n",
+          pp.painting, pp.line_color, pp.line.flags, pp.fill.color, pp.line_depth_offset,
           pp.fill_depth_offset, pp.radius_mult);
   fprintf(out, "  changed vs parent:");
   for_i32(ifield, 0, ArrayCount(paint_field_names))

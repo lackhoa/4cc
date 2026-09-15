@@ -1480,6 +1480,22 @@ get_hit_triangles_from_vertex(Arena *arena, v3 pos)
  return result;
 }
 
+// NOTE(kv) plan-pick-curves-over-patches: a curve is picked by SCREEN distance (px from
+// the cursor to the projected polyline), a fill (patch, poly3, dual bezier) by ray depth,
+// and a curve within `curve_pick_radius_px` always beats a fill. The old 3 mm world-space
+// ribbon lost to any patch bulging toward the camera, and was hair-thin zoomed out.
+global const v1 curve_pick_radius_px = 8.f;
+
+function v1
+distance_squared_point_to_segment_2d(v2 p, v2 a, v2 b)
+{
+ v2 ab = b - a;
+ v1 len_sq = dot(ab, ab);
+ v1 t = (len_sq > 0.f) ? clamp01(dot(p - a, ab) / len_sq) : 0.f;
+ v2 q = a + t*ab;
+ return dot(p - q, p - q);
+}
+
 function Location
 get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
                            i2 params_mouse_p)
@@ -1506,6 +1522,20 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
   v3 ray_P = V3();
   v3 ray_dir = noz(mouse_cam);
 
+  // NOTE(kv) Camera space -> px relative to the viewport center, screen y down: the
+  // inverse of the `mouse_cam` construction above (so a curve point projects to exactly
+  // the pixel whose ray passes through it). Points at/behind the eye are unpickable.
+  v1 focal = tweaks->focal_length;
+  auto px_from_cam = [&](v3 P, v2 *out) -> b32 {
+   if(P.z >= -1e-6f){ return false; }
+   v1 s = default_meter_to_pixel * focal / -P.z;
+   *out = V2(P.x * s, -P.y * s);
+   return true;
+  };
+  Location  curve_hit = {};
+  v1        curve_hit_dsq = curve_pick_radius_px * curve_pick_radius_px;
+  b32       vertex_hit = false;
+
   if(not fill_only)
   {// NOTE(kv) Vertices
    Scratch_Block tmp;
@@ -1527,6 +1557,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
       Vertex_Info info = get_vertex_info(vertex);
       hot_location = info.location;
       min_t = hit_t;
+      vertex_hit = true;
      }
     }
    }
@@ -1545,39 +1576,29 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     case Primitive_Type_Curve:
     {
      if(not fill_only)
-     {
+     {// NOTE(kv) Screen-distance pick (plan-pick-curves-over-patches Q2): nearest
+      // projected polyline within `curve_pick_radius_px` wins, no triangles involved.
       tvert *curve = primitive.curve.bezier;
-      const i32 test_segment_count = 8;
-      // NOTE(kv) We know the triangle count,
-      // But just in case we mess up the code...
-      set_cap_min(&triangles, 2*test_segment_count);
-
+      const i32 test_segment_count = 24;
       v1 test_t_interval = 1.0f / v1(test_segment_count);
-      v3 A = curve[0];
-
+      v2 A_px;
+      b32 A_ok = px_from_cam(curve[0].v, &A_px);
       for_i32(si, 0, test_segment_count)
       {
        v1 B_t = test_t_interval * v1(si+1);
-       v3 B = bezier_sample(curve, B_t);
-
-       // NOTE(kv) We just assume that these two points are on the same plane.
-       v2 u = B.xy - A.xy;
-       v2 v_ = vertex_indicator_radius * noz(perp(u));
-       v3 v = V3(v_);
-
-       v3 R[4];
-       R[0] = A - v;
-       R[1] = B - v;
-       R[2] = B + v;
-       R[3] = A + v;
-
-       sarray(Poly3) segment_triangles = poly4_to_poly3(tmp, R);
-       for_i32(i, 0, 2)
+       v2 B_px;
+       b32 B_ok = px_from_cam(bezier_sample(curve, B_t), &B_px);
+       if(A_ok and B_ok)
        {
-        push(&triangles, segment_triangles[i]);
+        v1 dsq = distance_squared_point_to_segment_2d(mouse_px, A_px, B_px);
+        if(dsq < curve_hit_dsq)
+        {
+         curve_hit = primitive.location;
+         curve_hit_dsq = dsq;
+        }
        }
-
-       A = B;
+       A_px = B_px;
+       A_ok = B_ok;
       }
      }
     }break;
@@ -1633,9 +1654,18 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     {
      hot_location = primitive.location;
      min_t = hit_t;
+     vertex_hit = false;
     }
    }
   }// NOTE Loop over primitives
+
+  // NOTE(kv) Priority (plan-pick-curves-over-patches Q1): a vertex hit by the ray keeps
+  // its win (it is a screen-facing quad, already a "line-like" pick); else a curve within
+  // the pixel radius beats every fill hit regardless of depth; else the nearest fill.
+  if(not vertex_hit and curve_hit_dsq < curve_pick_radius_px * curve_pick_radius_px)
+  {
+   hot_location = curve_hit;
+  }
  }
 
  return hot_location;
