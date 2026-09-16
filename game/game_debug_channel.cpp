@@ -1160,6 +1160,14 @@ debug_channel_update(Game_State *state, App *app)
  }
  else if(strcmp(cmd, "hot") == 0)
  {
+  {// NOTE(kv) Viewport center + virtual-mouse rel-center, so a live counter-example read
+   // off the "Selection" panel (which prints rel-center) can be reproduced: mouse_move to
+   // (center + rel) here reproduces the same camera ray regardless of window size.
+   v2 center = get_center(debug_channel_mouse_viewport_box);
+   v2 rel = V2(debug_channel_mouse_p) - center;
+   fprintf(out, "viewport_center (%.0f %.0f)  mouse rel-center (%.0f %.0f)\n",
+           center.x, center.y, rel.x, rel.y);
+  }
   Location hot = debug_channel_last_hot;
   if(is_document_location(hot))
   {

@@ -1518,15 +1518,48 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
 
   v1 min_t = INFINITY;
 
-  // NOTE(kv) in camera space
-  v3 ray_P = V3();
-  v3 ray_dir = noz(mouse_cam);
+  // NOTE(kv) plan-curve-selection-precision: picking MUST use the same projection the
+  // renderer uses. In orthographic mode the render draws a parallel projection but the
+  // pick used to fire a perspective ray, so the picked primitive was not the one under
+  // the visual cursor (selecting a specific curve was near-impossible). Mirror the
+  // render-side ortho condition (the init_painter block) exactly.
+  v1 focal = tweaks->focal_length;
+  b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
+  b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
+  b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
+  b32 orthographic = (state->orthographic or
+                      (show_grid and (camera_frontal or camera_profile)));
+  // NOTE(kv) d = eye distance used by the render's ortho matrix (get_clip_from_camera):
+  // ortho divides x/y by this constant instead of by -P.z.
+  v1 ortho_d = orthographic ? lengthof(camera_world_position(camera)) : 1.f;
+
+  // NOTE(kv) in camera space. Perspective: ray diverges from the eye at the origin through
+  // the mouse point. Orthographic: rays are parallel along camera -z, and the mouse picks
+  // which parallel line (screen offset scaled back to camera x/y by d/focal).
+  v3 ray_P, ray_dir;
+  if(orthographic)
+  {
+   v1 k = ortho_d / focal;
+   ray_P   = V3(mouse_cam.x * k, mouse_cam.y * k, 0.f);
+   ray_dir = V3(0.f, 0.f, -1.f);
+  }
+  else
+  {
+   ray_P   = V3();
+   ray_dir = noz(mouse_cam);
+  }
 
   // NOTE(kv) Camera space -> px relative to the viewport center, screen y down: the
-  // inverse of the `mouse_cam` construction above (so a curve point projects to exactly
-  // the pixel whose ray passes through it). Points at/behind the eye are unpickable.
-  v1 focal = tweaks->focal_length;
+  // inverse of the ray construction above (so a curve point projects to exactly the pixel
+  // whose ray passes through it). Perspective divides by -P.z; ortho by the constant eye
+  // distance. Points at/behind the eye are unpickable in perspective.
   auto px_from_cam = [&](v3 P, v2 *out) -> b32 {
+   if(orthographic)
+   {
+    v1 s = default_meter_to_pixel * focal / ortho_d;
+    *out = V2(P.x * s, -P.y * s);
+    return true;
+   }
    if(P.z >= -1e-6f){ return false; }
    v1 s = default_meter_to_pixel * focal / -P.z;
    *out = V2(P.x * s, -P.y * s);
@@ -2829,6 +2862,38 @@ game_update(Game_Update_Params params)
     i32 curves[Document_Selection_Cap];
     i32 curve_count = document_selection_curve_indices(state, curves);
     im_begin("Selection", 0, ImGuiWindowFlags_NoFocusOnAppearing);
+    {// NOTE(kv) plan-curve-selection-precision: live pick readout so a counter-example is
+     // reproducible in the agent instance. Mouse px is RELATIVE TO THE VIEWPORT CENTER --
+     // that is window-size independent (px -> camera ray goes through the global
+     // default_meter_to_pixel, not the window size), so feeding the same rel px at the
+     // agent viewport's center reproduces the exact ray. Camera is viewport 0, same args
+     // as the channel `set_camera <theta> <phi> [distance [pivot...]]`. `hot` is what
+     // picking chose this frame (name + group tag), so Khoa can read all three to me.
+     v2 center = get_center(debug_channel_mouse_viewport_box);
+     v2 rel = V2(params.mouse.p) - center;
+     Camera_Data &cam = state->viewports[0].camera;
+     ImGui::Text("mouse rel-center (%.0f %.0f)  raw (%d %d)", rel.x, rel.y,
+                 params.mouse.p.x, params.mouse.p.y);
+     ImGui::Text("camera theta %.4f phi %.4f dist %.4f pivot (%.3f %.3f %.3f)",
+                 cam.theta, cam.phi, cam.distance, cam.pivot.x, cam.pivot.y, cam.pivot.z);
+     Location hot = debug_channel_last_hot;
+     if(is_document_location(hot))
+     {
+      i32 hi = document_primitive_index(hot);
+      Recorded_Primitive &hp = doc.primitives[hi];
+      String tname = enum_name_from_pointer(&Type_Info_Primitive_Type, &hp.type);
+      String gname = group_vis_name(doc.groups[hp.group_index].vis_tag);
+      ImGui::Text("hot: %.*s #%d (%.*s) %s", strexpand(tname), hi, strexpand(gname),
+                  document_location_is_right(hot) ? "right" : "left");
+     }
+     else if(is_valid(hot))
+     {
+      ImGui::Text("hot: code %d:%d %d..%d", hot.file.is_driver, hot.file.index,
+                  hot.range.min, hot.range.max);
+     }
+     else { ImGui::TextDisabled("hot: none"); }
+     ImGui::Separator();
+    }
     if(curve_count == 0)
     {
      ImGui::TextDisabled("no curve selected (click one, shift-click adds)");
