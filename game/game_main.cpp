@@ -646,11 +646,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
 
   painter->show_grid = state->model.recordings.preset_settings[viewport->preset].show_grid;
   {
-   b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
-   b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
-   // NOTE(kv) Q9: the global toggle (state.txt / presets panel) OR the grid rule.
-   b32 orthographic = (state->orthographic or
-                       (painter->show_grid and (camera_frontal or camera_profile)));
+   b32 orthographic = camera_is_orthographic(state->orthographic, painter->show_grid, camera);
    painter->clip_from_world = get_clip_from_world(camera, clip_radius, orthographic);
   }
   painter->target       = target;
@@ -1521,14 +1517,11 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
   // NOTE(kv) plan-curve-selection-precision: picking MUST use the same projection the
   // renderer uses. In orthographic mode the render draws a parallel projection but the
   // pick used to fire a perspective ray, so the picked primitive was not the one under
-  // the visual cursor (selecting a specific curve was near-impossible). Mirror the
-  // render-side ortho condition (the init_painter block) exactly.
+  // the visual cursor (selecting a specific curve was near-impossible). Share the
+  // render-side ortho decision via camera_is_orthographic (plan-screen-projection-unification).
   v1 focal = tweaks->focal_length;
   b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
-  b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
-  b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
-  b32 orthographic = (state->orthographic or
-                      (show_grid and (camera_frontal or camera_profile)));
+  b32 orthographic = camera_is_orthographic(state->orthographic, show_grid, camera);
   // NOTE(kv) d = eye distance used by the render's ortho matrix (get_clip_from_camera):
   // ortho divides x/y by this constant instead of by -P.z.
   v1 ortho_d = orthographic ? lengthof(camera_world_position(camera)) : 1.f;

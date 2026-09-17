@@ -15,6 +15,16 @@
 
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
 
+function b32
+camera_is_orthographic(b32 global_ortho, b32 show_grid, Camera const &camera)
+{// NOTE(kv) plan-screen-projection-unification Q5: the ONE ortho predicate, shared by
+ // render (get_clip_from_world), pick, and document drag. Ortho = the global toggle OR
+ // the grid rule (frontal/profile view with the grid on). Was copy-pasted; now one home.
+ b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
+ b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
+ return (global_ortho or (show_grid and (camera_frontal or camera_profile)));
+}
+
 function v2
 document_edit_project(Camera const &camera, v2 viewport_center, v3 world)
 {// NOTE(kv) World -> window pixels, the inverse of get_primitive_hit_by_mouse's ray.
