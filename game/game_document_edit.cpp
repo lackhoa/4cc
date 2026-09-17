@@ -42,16 +42,23 @@ struct Screen_Projection_Data
 struct Screen_Ray { v3 P; v3 dir; };  // camera-space pick ray
 
 function Screen_Projection_Data
-mk_screen_projection_data(Game_State *state, Live_Viewport *viewport)
-{// NOTE(kv) Q3: behavior-preserving -- camera from viewports[0] (Q9 defers the
- // multi-viewport camera/center mismatch), center from the passed viewport.
+mk_screen_projection_data(Game_State *state, v2 center)
+{// NOTE(kv) Q3: behavior-preserving -- camera + show_grid from viewports[0] (Q9 defers
+ // the multi-viewport camera/center mismatch); `center` = the view's center in window px
+ // (a live viewport's clip box below, or the debug channel's virtual-mouse box).
  Screen_Projection_Data proj = {};
  proj.camera = setup_camera(state->viewports[0].camera);
- proj.center = get_center(viewport->clip_box);
+ proj.center = center;
  b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
  proj.orthographic = camera_is_orthographic(state->orthographic, show_grid, proj.camera);
  proj.ortho_d = proj.orthographic ? lengthof(camera_world_position(proj.camera)) : 0.f;
  return proj;
+}
+
+function Screen_Projection_Data
+mk_screen_projection_data(Game_State *state, Live_Viewport *viewport)
+{// NOTE(kv) The usual entry point (pick, drag): center from the live viewport's clip box.
+ return mk_screen_projection_data(state, get_center(viewport->clip_box));
 }
 
 function b32
@@ -110,24 +117,6 @@ screen_ray(Screen_Projection_Data const &proj, v2 mouse_offset)
   ray.dir = noz(mouse_cam);
  }
  return ray;
-}
-
-function v2
-document_edit_project(Camera const &camera, v2 viewport_center, v3 world)
-{// NOTE(kv) World -> window pixels, the inverse of get_primitive_hit_by_mouse's ray.
- v3 cam = mat4vert(camera.cam_from_world, world);
- v1 scale = camera.focal_length / -cam.z;
- v2 px = V2(cam.x, -cam.y) * (scale * default_meter_to_pixel);
- return px + viewport_center;
-}
-
-function v3
-document_edit_unproject(Camera const &camera, v2 viewport_center, v2 px, v1 cam_z)
-{// NOTE(kv) Window pixels -> world point on the camera plane at depth cam_z (< 0).
- v2 meter = (px - viewport_center) / default_meter_to_pixel;
- v1 scale = -cam_z / camera.focal_length;
- v3 cam = V3(meter.x * scale, -meter.y * scale, cam_z);
- return mat4vert(camera.world_from_cam, cam);
 }
 
 function Bone_ID
@@ -260,12 +249,11 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
  Document_Pick picks[document_selection_pick_cap];
  i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
  if(pick_count == 0){ return false; }
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(viewport->clip_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  v1 best_dist = INFINITY;
  for_i32(i, 0, pick_count)
  {
-  v2 px = document_edit_project(camera, center, document_pick_world_pos(doc, picks[i]));
+  v2 px = project(proj, document_pick_world_pos(doc, picks[i]));
   v1 dist = lengthof(V3(px - mouse_px, 0));
   if(dist < best_dist)
   {
@@ -370,13 +358,12 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
  Recorded_Primitive &prim = doc.primitives[prim_index];
 
  v3 world = document_pick_world_pos(doc, best);
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(viewport->clip_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  edit.active = true;
  edit.pick = best;
  edit.free_handle = (free_handle and best.is_handle);
- edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
- edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
+ edit.grab_cam_z = mat4vert(proj.camera.cam_from_world, world).z;
+ edit.grab_offset_px = mouse_px - project(proj, world);
  edit.location = document_location(prim_index, best.is_right);
  {// NOTE(kv) Open the history entry now; release commits it only if something moved.
   Document_Action action = {};
@@ -399,13 +386,12 @@ document_edit_press_stroke(Game_State *state, Live_Viewport *viewport, v2 mouse_
  if(not viewport){ return; }
  Document_Pick reference = {prim_index, is_right, false, 0};
  v3 world = document_pick_world_pos(doc, reference);
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(viewport->clip_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  edit.active = true;
  edit.whole_stroke = true;
  edit.pick = reference;
- edit.grab_cam_z = mat4vert(camera.cam_from_world, world).z;
- edit.grab_offset_px = mouse_px - document_edit_project(camera, center, world);
+ edit.grab_cam_z = mat4vert(proj.camera.cam_from_world, world).z;
+ edit.grab_offset_px = mouse_px - project(proj, world);
  edit.location = document_location(prim_index, is_right);
  {
   Document_Action action = {};
@@ -478,10 +464,11 @@ document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_i
 // never moves. Edge-on plane or a hit behind the eye: the handle stays where it is.
 global v1 const document_edit_edge_on_cosine = 0.15f;  // tablet EDGE_ON_PLANE_COSINE
 function b32
-document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewport_center,
+document_edit_handle_plane_target(Recording &doc, Screen_Projection_Data const &proj,
                                   v2 px, Document_Pick pick, v3 *world_out)
 {// NOTE(kv) All in world space, on the picked mirror side: the plane is {chord, d0}
- // (fallback d3, fallback camera-facing), the ray goes from the eye through `px`.
+ // (fallback d3, fallback camera-facing); the pick ray comes from screen_ray -- from the
+ // eye through `px` in perspective, parallel along camera -z in ortho.
  // NOTE(kv) PITFALL: `v1` is the scalar type, so the endpoints are p0/p3 here.
  Document_Pick p0_pick = {pick.prim_index, pick.is_right, false, 0};
  Document_Pick p3_pick = {pick.prim_index, pick.is_right, false, 1};
@@ -492,15 +479,17 @@ document_edit_handle_plane_target(Recording &doc, Camera const &camera, v2 viewp
  v3 d0 = document_pick_world_pos(doc, h0_pick) - (2.f*p0 + p3)/3.f;
  v3 d3 = document_pick_world_pos(doc, h1_pick) - (p0 + 2.f*p3)/3.f;
  v3 u = curve_chord_direction(p0, p3);
- v3 camera_forward = -camera.z;  // NOTE(kv) the camera looks down its -z
+ v3 camera_forward = -proj.camera.z;  // NOTE(kv) the camera looks down its -z
  v3 normal = curve_plane_normal(u, d0, d3, camera_forward);
- v3 eye = mat4vert(camera.world_from_cam, V3(0,0,0));
- v3 ray = noz(document_edit_unproject(camera, viewport_center, px, -1.f) - eye);
+ // NOTE(kv) camera-space pick ray -> world (rotation only for the direction).
+ Screen_Ray r = screen_ray(proj, px - proj.center);
+ v3 ray_origin = mat4vert(proj.camera.world_from_cam, r.P);
+ v3 ray = noz(mat4vert(proj.camera.world_from_cam, r.dir) - mat4vert(proj.camera.world_from_cam, V3()));
  v1 denom = dot(ray, normal);
  if(absolute(denom) < document_edit_edge_on_cosine){ return false; }
- v1 t = dot(p0 - eye, normal) / denom;
+ v1 t = dot(p0 - ray_origin, normal) / denom;
  if(t <= 0){ return false; }
- *world_out = eye + ray*t;
+ *world_out = ray_origin + ray*t;
  return true;
 }
 
@@ -665,8 +654,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Document_Pick pick = edit.pick;
  Recorded_Primitive &prim = doc.primitives[pick.prim_index];
 
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(viewport->clip_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  v3 old_world = document_pick_world_pos(doc, pick);
  v3 new_world;
  // NOTE(kv) plan-handle-drag-modes Q4: a midline curve's plane IS the mirror plane, so a
@@ -674,7 +662,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  b32 free_handle = (edit.free_handle and not prim.curve.midline);
  if(pick.is_handle and not edit.whole_stroke and not free_handle)
  {// NOTE(kv) plan-curve-coplanar-handles Q1: the handle stays in the curve's plane.
-  if(not document_edit_handle_plane_target(doc, camera, center, mouse_px - edit.grab_offset_px,
+  if(not document_edit_handle_plane_target(doc, proj, mouse_px - edit.grab_offset_px,
                                            pick, &new_world))
   {
    return;
@@ -682,8 +670,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  }
  else
  {
-  new_world = document_edit_unproject(camera, center, mouse_px - edit.grab_offset_px,
-                                      edit.grab_cam_z);
+  new_world = unproject(proj, mouse_px - edit.grab_offset_px, edit.grab_cam_z);
  }
  v3 delta_world = new_world - old_world;
  // NOTE(kv) Project/unproject round-trip jitter must not count as an edit (it would

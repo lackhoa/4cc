@@ -41,9 +41,8 @@ line_tool_plane_point(Game_State *state, Live_Viewport *viewport, v2 px)
 {// NOTE(kv) Mouse -> the stroke plane (camera-facing, at the depth chosen at press:
  // the snapped start vertex's, else the pivot's -- tablet pen_point_on_camera_plane);
  // the depth is frozen at press so a camera move mid-drag can't tilt the stroke.
- Camera camera = setup_camera(state->viewports[0].camera);
- return document_edit_unproject(camera, get_center(viewport->clip_box), px,
-                                state->line_tool.plane_cam_z);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
+ return unproject(proj, px, state->line_tool.plane_cam_z);
 }
 
 // NOTE(kv) Nearest table vertex to the mouse within line_tool_snap_px, found through
@@ -55,8 +54,7 @@ line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px, v
 {
  Line_Tool_State &tool = state->line_tool;
  Recording &doc = state->model.recordings.document;
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(viewport->clip_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  i32 best = -1;
  v1 best_dist = line_tool_snap_px;
  for_i32(iprim, 0, doc.primitives.count)
@@ -69,7 +67,7 @@ line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px, v
    if(tool.created and vertex_index == tool.temp_end_vertex){ continue; }
    Document_Pick pick = {iprim, false, false, slot};
    v3 world = document_pick_world_pos(doc, pick);
-   v2 px = document_edit_project(camera, center, world);
+   v2 px = project(proj, world);
    v1 dist = lengthof(V3(px - mouse_px, 0));
    if(dist < best_dist){ best_dist = dist; best = vertex_index; *world_out = world; }
   }

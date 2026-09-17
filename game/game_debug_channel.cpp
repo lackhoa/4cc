@@ -257,15 +257,14 @@ debug_channel_print_primitive_px(FILE *out, Game_State *state, i32 prim_index, b
 {// NOTE(kv) Where a primitive's control points are on screen, so a drag can aim at one.
  Recording &doc = state->model.recordings.document;
  Recorded_Primitive &prim = doc.primitives[prim_index];
- Camera camera = setup_camera(state->viewports[0].camera);
- v2 center = get_center(debug_channel_mouse_viewport_box);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
  auto print_pick = [&](const char *label, Document_Pick pick)
  {
   v3 world = document_pick_world_pos(doc, pick);
-  v2 px = document_edit_project(camera, center, world);
+  v2 px = project(proj, world);
   // NOTE(kv) cam_z = camera-space depth (negative in front), the line tool's stroke-plane test.
   fprintf(out, "  %s slot %d: px (%.0f %.0f) cam_z %.4f\n", label, pick.slot, px.x, px.y,
-          mat4vert(camera.cam_from_world, world).z);
+          mat4vert(proj.camera.cam_from_world, world).z);
  };
  for_i32(slot, 0, primitive_vertex_count(prim.type))
  {
@@ -286,7 +285,7 @@ debug_channel_print_primitive_px(FILE *out, Game_State *state, i32 prim_index, b
   fprintf(out, "  body px:");
   for(v1 t = 0.25f; t < 0.9f; t += 0.25f)
   {
-   v2 px = document_edit_project(camera, center, bezier_sample(P, t));
+   v2 px = project(proj, bezier_sample(P, t));
    fprintf(out, " t=%.2f (%.0f %.0f)", t, px.x, px.y);
   }
   fprintf(out, "\n");
@@ -906,8 +905,8 @@ debug_channel_update(Game_State *state, App *app)
      // center in png pixels so mouse_down can aim at it.
      Reference_Mesh_Placement *mesh = get_reference_mesh_placement(state);
      Reference_Plane mesh_plane = {};
-     Camera camera = setup_camera(state->viewports[0].camera);
-     b32 has_mesh = (mesh and get_reference_mesh_plane(state, *mesh, camera, &mesh_plane));
+     Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
+     b32 has_mesh = (mesh and get_reference_mesh_plane(state, *mesh, proj.camera, &mesh_plane));
      fprintf(out, "  skull: placement %s, plane %s\n",
              mesh ? "found" : "MISSING", has_mesh ? "ok" : "FAILED");
      if(has_mesh)
@@ -915,11 +914,10 @@ debug_channel_update(Game_State *state, App *app)
       fprintf(out, "  skull center=(%.3f %.3f %.3f) radius=%.3f scale=%.3f rotation=(%.3f %.3f %.3f)\n",
               mesh_plane.center.x, mesh_plane.center.y, mesh_plane.center.z,
               mesh_plane.half_u, mesh->scale, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z);
-      v2 viewport_center = get_center(debug_channel_mouse_viewport_box);
-      v2 center_px = document_edit_project(camera, viewport_center, mesh_plane.center);
+      v2 center_px = project(proj, mesh_plane.center);
       v3 corner = mesh_plane.center + mesh_plane.half_u*mesh_plane.u_axis
                                     + mesh_plane.half_v*mesh_plane.v_axis;
-      v2 corner_px = document_edit_project(camera, viewport_center, corner);
+      v2 corner_px = project(proj, corner);
       fprintf(out, "  skull px: center (%.0f %.0f) +u+v corner (%.0f %.0f)\n",
               center_px.x, center_px.y, corner_px.x, corner_px.y);
      }
@@ -1004,13 +1002,12 @@ debug_channel_update(Game_State *state, App *app)
    Curve_Patch_Grid grid = {};
    if(curve_patch_world_grid(tmp, doc, doc.primitives[idx], false, &grid))
    {
-    Camera camera = setup_camera(state->viewports[0].camera);
-    v2 center = get_center(debug_channel_mouse_viewport_box);
+    Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
     i32 stride = grid.rows+1;
     auto print_at = [&](char const *name, i32 i, i32 j)
     {
      v3 world = grid.positions[i*stride+j];
-     v2 px = document_edit_project(camera, center, world);
+     v2 px = project(proj, world);
      fprintf(out, "  %s: world (%.4f %.4f %.4f) px (%.0f %.0f)\n", name, world.x, world.y, world.z, px.x, px.y);
     };
     fprintf(out, "patch_grid %d: %dx%d (left side)\n", idx, grid.columns, grid.rows);
@@ -1021,15 +1018,14 @@ debug_channel_update(Game_State *state, App *app)
      // get_primitive_hit_by_mouse) so the pick path is verifiable even when
      // another fill occludes the patch on screen.
      v3 world = grid.positions[(grid.columns/2)*stride + grid.rows/2];
-     v2 px = document_edit_project(camera, center, world);
-     v2 mouse_meter = (px - center) / default_meter_to_pixel;
-     v3 ray_dir = noz(V3(mouse_meter.x, -mouse_meter.y, -tweaks->focal_length));
+     v2 px = project(proj, world);
+     Screen_Ray ray = screen_ray(proj, px - proj.center);
      darray(Poly3) triangles; init_dynamic(triangles, tmp);
-     push_curve_patch_hit_triangles(tmp, &triangles, doc, doc.primitives[idx], false, camera.cam_from_world);
+     push_curve_patch_hit_triangles(tmp, &triangles, doc, doc.primitives[idx], false, proj.camera.cam_from_world);
      v1 min_t = INFINITY;
      for_i32(ti, 0, triangles.count)
      {
-      v1 t = hit_test_ray_triangle(V3(), ray_dir, expand3(triangles[ti]));
+      v1 t = hit_test_ray_triangle(ray.P, ray.dir, expand3(triangles[ti]));
       if(t < min_t){ min_t = t; }
      }
      fprintf(out, "  hit_test at center: %d triangles, t=%.4f\n", triangles.count, min_t);
