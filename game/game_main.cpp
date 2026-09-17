@@ -72,6 +72,13 @@ memory_functions_xlist(X);
 /*#define fv(value, ...) value
 #define fbool fv*/
 
+// NOTE(kv) The single world->pixel scale, shared by pick/drag (px_from_camera) and render.
+// Render doesn't read it directly -- it goes through clip_radius -- but clip_radius is built
+// AS get_radius(clip_box)/default_meter_to_pixel (see the clip_radius sites below), so
+// render's transverse scale works out to focal*default_meter_to_pixel/(-cam.z) in BOTH axes,
+// identical to px_from_camera. The viewport half-width/height cancel in the NDC->px step, so
+// the projection is isotropic and pick lands exactly where render draws, at any aspect. Keep
+// clip_radius derived from this constant -- making it an independent value reintroduces drift.
 global v1 default_meter_to_pixel = 4050.6329f;
 
 function b32
@@ -3001,6 +3008,8 @@ game_update(Game_Update_Params params)
     Render_Config *old_config = target_last_config(live_viewport.target);
     draw_set_clip(app, clip_box);
 
+    // NOTE(kv) clip_radius is derived from default_meter_to_pixel on purpose -- that's what
+    // makes render agree with pick (px_from_camera). See default_meter_to_pixel's definition.
     v1 meter_to_pixel = default_meter_to_pixel;
     v1 pixel_to_meter = 1.f / meter_to_pixel;
     v2 clip_radius = pixel_to_meter*get_radius(clip_box);

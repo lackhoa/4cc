@@ -65,6 +65,9 @@ px_from_camera(Screen_Projection_Data const &proj, v3 cam, v2 *out_offset)
 {// NOTE(kv) Camera-space point -> px offset from the viewport center (screen y down).
  // Always writes *out_offset; returns false for points at/behind the eye in perspective
  // (unpickable) -- callers that only project visible points ignore the bool.
+ // NOTE(kv) Same isotropic scale render uses (see default_meter_to_pixel), so pick lands
+ // exactly where render drew. Perspective divides by depth -cam.z; ortho by the constant eye
+ // distance ortho_d, so x/y stay parallel (independent of depth).
  v1 denom = proj.orthographic ? proj.ortho_d : -cam.z;
  v1 s = default_meter_to_pixel * proj.camera.focal_length / denom;
  *out_offset = V2(cam.x, -cam.y) * s;
