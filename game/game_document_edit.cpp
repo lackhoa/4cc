@@ -25,6 +25,93 @@ camera_is_orthographic(b32 global_ortho, b32 show_grid, Camera const &camera)
  return (global_ortho or (show_grid and (camera_frontal or camera_profile)));
 }
 
+// NOTE(kv) plan-screen-projection-unification: THE one world<->window-pixel mapping for a
+// view, shared by pick and document drag (render keeps its own GPU mat4, sharing only the
+// ortho predicate above). Perspective and ortho differ only in a denominator: per-point
+// depth -cam.z vs the constant eye distance ortho_d = |camera world pos| (the same d the
+// render's ortho matrix uses in get_clip_from_camera). Always built via
+// mk_screen_projection_data; never brace-initialized ad hoc (ortho_d must be filled).
+struct Screen_Projection_Data
+{
+ Camera camera;
+ v2     center;        // viewport center, window px
+ b32    orthographic;
+ v1     ortho_d;       // eye distance; only meaningful when orthographic
+};
+
+struct Screen_Ray { v3 P; v3 dir; };  // camera-space pick ray
+
+function Screen_Projection_Data
+mk_screen_projection_data(Game_State *state, Live_Viewport *viewport)
+{// NOTE(kv) Q3: behavior-preserving -- camera from viewports[0] (Q9 defers the
+ // multi-viewport camera/center mismatch), center from the passed viewport.
+ Screen_Projection_Data proj = {};
+ proj.camera = setup_camera(state->viewports[0].camera);
+ proj.center = get_center(viewport->clip_box);
+ b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
+ proj.orthographic = camera_is_orthographic(state->orthographic, show_grid, proj.camera);
+ proj.ortho_d = proj.orthographic ? lengthof(camera_world_position(proj.camera)) : 0.f;
+ return proj;
+}
+
+function b32
+px_from_camera(Screen_Projection_Data const &proj, v3 cam, v2 *out_offset)
+{// NOTE(kv) Camera-space point -> px offset from the viewport center (screen y down).
+ // Always writes *out_offset; returns false for points at/behind the eye in perspective
+ // (unpickable) -- callers that only project visible points ignore the bool.
+ v1 denom = proj.orthographic ? proj.ortho_d : -cam.z;
+ v1 s = default_meter_to_pixel * proj.camera.focal_length / denom;
+ *out_offset = V2(cam.x, -cam.y) * s;
+ return (proj.orthographic or (cam.z < -1e-6f));
+}
+
+function v3
+camera_from_px(Screen_Projection_Data const &proj, v2 px_offset, v1 cam_z)
+{// NOTE(kv) Inverse of px_from_camera: px offset from center -> camera point at depth
+ // cam_z. Ortho x/y scale is the constant ortho_d/focal (parallel, independent of cam_z).
+ v2 meter = px_offset / default_meter_to_pixel;
+ v1 scale = (proj.orthographic ? proj.ortho_d : -cam_z) / proj.camera.focal_length;
+ return V3(meter.x * scale, -meter.y * scale, cam_z);
+}
+
+function v2
+project(Screen_Projection_Data const &proj, v3 world)
+{// NOTE(kv) World -> absolute window px.
+ v3 cam = mat4vert(proj.camera.cam_from_world, world);
+ v2 offset = {};
+ px_from_camera(proj, cam, &offset);
+ return offset + proj.center;
+}
+
+function v3
+unproject(Screen_Projection_Data const &proj, v2 px, v1 cam_z)
+{// NOTE(kv) Window px -> world point on the camera plane at depth cam_z (< 0).
+ v3 cam = camera_from_px(proj, px - proj.center, cam_z);
+ return mat4vert(proj.camera.world_from_cam, cam);
+}
+
+function Screen_Ray
+screen_ray(Screen_Projection_Data const &proj, v2 mouse_offset)
+{// NOTE(kv) px offset from center -> camera-space pick ray, the inverse of px_from_camera.
+ // Perspective: diverges from the eye at the origin through the mouse point. Ortho: rays
+ // are parallel along camera -z; the mouse offset selects which parallel line.
+ Screen_Ray ray = {};
+ v2 meter = mouse_offset / default_meter_to_pixel;
+ v3 mouse_cam = V3(meter.x, -meter.y, -proj.camera.focal_length);
+ if(proj.orthographic)
+ {
+  v1 k = proj.ortho_d / proj.camera.focal_length;
+  ray.P   = V3(mouse_cam.x * k, mouse_cam.y * k, 0.f);
+  ray.dir = V3(0.f, 0.f, -1.f);
+ }
+ else
+ {
+  ray.P   = V3();
+  ray.dir = noz(mouse_cam);
+ }
+ return ray;
+}
+
 function v2
 document_edit_project(Camera const &camera, v2 viewport_center, v3 world)
 {// NOTE(kv) World -> window pixels, the inverse of get_primitive_hit_by_mouse's ray.

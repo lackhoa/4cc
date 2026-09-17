@@ -1500,64 +1500,22 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
 
  if(mouse_viewport)
  {
-  v2 center = get_center(mouse_viewport->clip_box);
-  v2 mouse_px = V2(params_mouse_p) - center;
-  v2 mouse_meter_ = mouse_px / default_meter_to_pixel;
-  v1 mouse_z = -tweaks->focal_length;  // TODO #Hack
-  v3 mouse_cam = V3(mouse_meter_, mouse_z);
-  mouse_cam.y *= -1.f;
-
-  // TODO(kv) There are multiple cameras, so this is a no-win, huh?
-  Camera camera = setup_camera(state->viewports[0].camera);
-  convert_primitives_to_camera_space(camera);
+  // NOTE(kv) plan-screen-projection-unification: the one view mapping, built once. Camera
+  // from viewports[0] (TODO(kv) multi-camera is a no-win, Q9), primitives cached in its
+  // camera space.
+  Screen_Projection_Data proj = mk_screen_projection_data(state, mouse_viewport);
+  convert_primitives_to_camera_space(proj.camera);
+  v2 mouse_px = V2(params_mouse_p) - proj.center;
   b32 fill_only = state->model.recordings.preset_settings[state->viewports[0].preset].fill_only_picking;
 
   v1 min_t = INFINITY;
 
   // NOTE(kv) plan-curve-selection-precision: picking MUST use the same projection the
-  // renderer uses. In orthographic mode the render draws a parallel projection but the
-  // pick used to fire a perspective ray, so the picked primitive was not the one under
-  // the visual cursor (selecting a specific curve was near-impossible). Share the
-  // render-side ortho decision via camera_is_orthographic (plan-screen-projection-unification).
-  v1 focal = tweaks->focal_length;
-  b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
-  b32 orthographic = camera_is_orthographic(state->orthographic, show_grid, camera);
-  // NOTE(kv) d = eye distance used by the render's ortho matrix (get_clip_from_camera):
-  // ortho divides x/y by this constant instead of by -P.z.
-  v1 ortho_d = orthographic ? lengthof(camera_world_position(camera)) : 1.f;
-
-  // NOTE(kv) in camera space. Perspective: ray diverges from the eye at the origin through
-  // the mouse point. Orthographic: rays are parallel along camera -z, and the mouse picks
-  // which parallel line (screen offset scaled back to camera x/y by d/focal).
-  v3 ray_P, ray_dir;
-  if(orthographic)
-  {
-   v1 k = ortho_d / focal;
-   ray_P   = V3(mouse_cam.x * k, mouse_cam.y * k, 0.f);
-   ray_dir = V3(0.f, 0.f, -1.f);
-  }
-  else
-  {
-   ray_P   = V3();
-   ray_dir = noz(mouse_cam);
-  }
-
-  // NOTE(kv) Camera space -> px relative to the viewport center, screen y down: the
-  // inverse of the ray construction above (so a curve point projects to exactly the pixel
-  // whose ray passes through it). Perspective divides by -P.z; ortho by the constant eye
-  // distance. Points at/behind the eye are unpickable in perspective.
-  auto px_from_cam = [&](v3 P, v2 *out) -> b32 {
-   if(orthographic)
-   {
-    v1 s = default_meter_to_pixel * focal / ortho_d;
-    *out = V2(P.x * s, -P.y * s);
-    return true;
-   }
-   if(P.z >= -1e-6f){ return false; }
-   v1 s = default_meter_to_pixel * focal / -P.z;
-   *out = V2(P.x * s, -P.y * s);
-   return true;
-  };
+  // renderer uses. In orthographic mode the render draws a parallel projection; a
+  // perspective pick ray would grab a primitive other than the one under the visual cursor
+  // (selecting a specific curve was near-impossible). The mouse ray and the curve-point
+  // projection below are the two halves of the one shared screen mapping.
+  Screen_Ray ray = screen_ray(proj, mouse_px);
   Location  curve_hit = {};
   v1        curve_hit_dsq = curve_pick_radius_px * curve_pick_radius_px;
   b32       vertex_hit = false;
@@ -1576,7 +1534,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
     for_i32(ti, 0, triangles.count)
     {// NOTE(kv) Hit test
      Poly3 triangle = triangles[ti];
-     v1 hit_t = hit_test_ray_triangle(ray_P, ray_dir, expand3(triangle));
+     v1 hit_t = hit_test_ray_triangle(ray.P, ray.dir, expand3(triangle));
      if(hit_t < min_t)
      {
       // TODO(kv) ...
@@ -1608,12 +1566,12 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
       const i32 test_segment_count = 24;
       v1 test_t_interval = 1.0f / v1(test_segment_count);
       v2 A_px;
-      b32 A_ok = px_from_cam(curve[0].v, &A_px);
+      b32 A_ok = px_from_camera(proj, curve[0].v, &A_px);
       for_i32(si, 0, test_segment_count)
       {
        v1 B_t = test_t_interval * v1(si+1);
        v2 B_px;
-       b32 B_ok = px_from_cam(bezier_sample(curve, B_t), &B_px);
+       b32 B_ok = px_from_camera(proj, bezier_sample(curve, B_t), &B_px);
        if(A_ok and B_ok)
        {
         v1 dsq = distance_squared_point_to_segment_2d(mouse_px, A_px, B_px);
@@ -1643,7 +1601,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
       push_curve_patch_hit_triangles(tmp, &triangles, document,
                                      document.primitives[document_primitive_index(primitive.location)],
                                      document_location_is_right(primitive.location),
-                                     camera.cam_from_world);
+                                     proj.camera.cam_from_world);
      }
     }break;
 
@@ -1675,7 +1633,7 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
    for_i32(ti, 0, triangles.count)
    {// NOTE Hit test #copypasta
     Poly3 triangle = triangles[ti];
-    v1 hit_t = hit_test_ray_triangle(ray_P, ray_dir, expand3(triangle));
+    v1 hit_t = hit_test_ray_triangle(ray.P, ray.dir, expand3(triangle));
     if(hit_t < min_t)
     {
      hot_location = primitive.location;
