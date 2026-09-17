@@ -76,7 +76,7 @@ dst->vel = m_vel;
 struct Serialized_State{
 Keyboard_Cursor kb_cursor;
 Reference_Mode reference_mode;
-b32 orthographic;
+b32 user_wants_orthographic;
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
 Preset_Settings presets[PRESET_CAP];
 i32 presets_count;
@@ -100,7 +100,7 @@ result.members[1] = {.type=member_type, .name=strlit("reference_mode"), .offset=
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[2] = {.type=member_type, .name=strlit("orthographic"), .offset=offsetof(Serialized_State, orthographic)};
+result.members[2] = {.type=member_type, .name=strlit("user_wants_orthographic"), .offset=offsetof(Serialized_State, user_wants_orthographic)};
 }
 {
 local_persist Type_Info member_type_value;
@@ -155,11 +155,11 @@ read_binary_Reference_Mode(r, &m_reference_mode);
 }
 dst->reference_mode = m_reference_mode;
 
-b32 m_orthographic = {};
+b32 m_user_wants_orthographic = {};
 {
-read_binary_b32(r, &m_orthographic);
+read_binary_b32(r, &m_user_wants_orthographic);
 }
-dst->orthographic = m_orthographic;
+dst->user_wants_orthographic = m_user_wants_orthographic;
 
 Saved_Viewport m_saved_viewports[GAME_VIEWPORT_COUNT] = {};
 {
@@ -192,7 +192,7 @@ dst->presets_count = m_presets_count;
 {\
 Keyboard_Cursor kb_cursor;\
 Reference_Mode reference_mode;\
-b32 orthographic;\
+b32 user_wants_orthographic;\
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];\
 Preset_Settings presets[PRESET_CAP];\
 i32 presets_count;\

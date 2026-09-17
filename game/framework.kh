@@ -20,7 +20,7 @@ struct Serialized_State
 {
  Keyboard_Cursor kb_cursor;
  Reference_Mode reference_mode;  // global: references behind (Off) or in front (On) of the drawing (Q toggles)
- b32 orthographic;  // global: force an orthographic camera (Q9: OR-ed with the grid rule)
+ b32 user_wants_orthographic;  // global: force an orthographic camera (the grid also forces ortho, see camera_is_orthographic)
 
  // NOTE(kv) Tbh we don't have to care about more than 3 viewports.
  // ("saved_" because the _Embed macro puts these next to Game_State.viewports.)

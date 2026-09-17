@@ -858,8 +858,8 @@ debug_channel_update(Game_State *state, App *app)
    }
    else if(strcmp(field, "orthographic") == 0)
    {// NOTE(kv) Global (state.txt), not per-preset.
-    state->orthographic = (value != 0);
-    fprintf(out, "set orthographic: %d\n", state->orthographic);
+    state->user_wants_orthographic = (value != 0);
+    fprintf(out, "set orthographic: %d\n", state->user_wants_orthographic);
     debug_channel_wants_animate = true;
    }
    else if(strcmp(field, "reference_mode") == 0)

@@ -16,13 +16,12 @@
 // Document_Pick / Document_Edit_State live in framework.h (Game_State member).
 
 function b32
-camera_is_orthographic(b32 global_ortho, b32 show_grid, Camera const &camera)
+camera_is_orthographic(b32 global_ortho, b32 show_grid)
 {// NOTE(kv) plan-screen-projection-unification Q5: the ONE ortho predicate, shared by
- // render (get_clip_from_world), pick, and document drag. Ortho = the global toggle OR
- // the grid rule (frontal/profile view with the grid on). Was copy-pasted; now one home.
- b32 camera_frontal = almost_equal(absolute(camera.z.z), 1.f, 1e-2f);
- b32 camera_profile = almost_equal(absolute(camera.z.x), 1.f, 1e-2f);
- return (global_ortho or (show_grid and (camera_frontal or camera_profile)));
+ // render (get_clip_from_world), pick, and document drag. Ortho when the user asks for it
+ // globally, or whenever the grid is shown (the grid only reads right axis-on, so we lock
+ // ortho with it regardless of camera angle). Was copy-pasted; now one home.
+ return (global_ortho or show_grid);
 }
 
 // NOTE(kv) plan-screen-projection-unification: THE one world<->window-pixel mapping for a
@@ -50,7 +49,7 @@ mk_screen_projection_data(Game_State *state, v2 center)
  proj.camera = setup_camera(state->viewports[0].camera);
  proj.center = center;
  b32 show_grid = state->model.recordings.preset_settings[state->viewports[0].preset].show_grid;
- proj.orthographic = camera_is_orthographic(state->orthographic, show_grid, proj.camera);
+ proj.orthographic = camera_is_orthographic(state->user_wants_orthographic, show_grid);
  proj.ortho_d = proj.orthographic ? lengthof(camera_world_position(proj.camera)) : 0.f;
  return proj;
 }

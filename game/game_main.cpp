@@ -646,7 +646,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
 
   painter->show_grid = state->model.recordings.preset_settings[viewport->preset].show_grid;
   {
-   b32 orthographic = camera_is_orthographic(state->orthographic, painter->show_grid, camera);
+   b32 orthographic = camera_is_orthographic(state->user_wants_orthographic, painter->show_grid);
    painter->clip_from_world = get_clip_from_world(camera, clip_radius, orthographic);
   }
   painter->target       = target;
@@ -2680,7 +2680,7 @@ game_update(Game_Update_Params params)
    im_begin("Presets", 0, ImGuiWindowFlags_NoFocusOnAppearing);
    {//-Global (state.txt flags that aren't per-preset)
     ImGui::SeparatorText("Global");
-    { bool value = state->orthographic;         ImGui::Checkbox("orthographic",         &value); state->orthographic = value; }
+    { bool value = state->user_wants_orthographic; ImGui::Checkbox("orthographic",         &value); state->user_wants_orthographic = value; }
     ImGui::SameLine();
     {
      bool value = (state->reference_mode == Reference_On);
