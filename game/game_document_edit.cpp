@@ -197,14 +197,42 @@ document_curve_bounds_patch(Recording &doc, i32 curve_prim_index)
  return false;
 }
 
+template<class T> myinline void
+decasteljau_split_4(T p0, T p1, T p2, T p3, v1 t, T out_left[4], T out_right[4])
+{// NOTE(kv) Q13: split a 4-control-point cubic at t into its [0,t] and [t,1] halves, the
+ // shared endpoint being the value AT t. The geometry, `radii`, `lightness_additions`,
+ // `dradii` (v4 read as 4 scalars) and `dbezier` (v3[4]) are every one a cubic bezier over
+ // the curve's own t -- render samples them with bezier_sample(...,t) and apply_shape_key
+ // blends rest + w*delta linearly -- so the same de Casteljau splits them all, and because
+ // it is linear it commutes with the blend: the two halves reproduce the original at every
+ // shape-key weight, width and lightness included.
+ T p01 = lerp(p0, t, p1), p12 = lerp(p1, t, p2), p23 = lerp(p2, t, p3);
+ T p012 = lerp(p01, t, p12), p123 = lerp(p12, t, p23);
+ T knot = lerp(p012, t, p123);
+ out_left[0]  = p0;   out_left[1]  = p01;  out_left[2]  = p012; out_left[3]  = knot;
+ out_right[0] = knot; out_right[1] = p123; out_right[2] = p23;  out_right[3] = p3;
+}
+
+// NOTE(kv) Q13: split the v4 profile (its 4 components are the cubic's control points).
+function void
+document_split_curve_profile_v4(v4 profile, v1 t, v4 *left, v4 *right)
+{
+ v1 lo[4], hi[4];
+ decasteljau_split_4<v1>(profile[0], profile[1], profile[2], profile[3], t, lo, hi);
+ *left  = V4(lo[0], lo[1], lo[2], lo[3]);
+ *right = V4(hi[0], hi[1], hi[2], hi[3]);
+}
+
 function b32
 document_split_curve(Game_State *state, i32 prim_index, v1 t)
 {// NOTE(kv) Cut curve `prim_index` into two at parameter t via de Casteljau (tablet
  // split_stroke): the halves reproduce the original exactly and share a new welded knot
- // vertex (Q3), so the join is smooth at the cut. The original keeps [0,t]; a new
- // primitive takes [t,1] and copies the styling (Q4). Opens ONE history entry; the caller
- // commits + saves. Returns false with NO history opened for a cut too near an end (Q6) or
- // a curve that bounds a patch (Q5).
+ // vertex (Q3), so the join is smooth at the cut. The original keeps [0,t]; a new primitive
+ // takes [t,1], copies the style (group/flags/straight/midline/key) but SPLITS the profiles
+ // that vary along the curve -- radii, lightness, and the shape-key deltas -- so the width
+ // and lightness reproduce too (Q4/Q13/Q14). Opens ONE history entry; the caller commits +
+ // saves. Returns false with NO history opened for a cut too near an end (Q6) or a curve
+ // that bounds a patch (Q5).
  Recording &doc = state->model.recordings.document;
  if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
  if(doc.primitives[prim_index].type != Primitive_Type_Curve){ return false; }
@@ -225,6 +253,26 @@ document_split_curve(Game_State *state, i32 prim_index, v1 t)
  v3 p01 = lerp(P0, t, P1), p12 = lerp(P1, t, P2), p23 = lerp(P2, t, P3);
  v3 p012 = lerp(p01, t, p12), p123 = lerp(p12, t, p23);
  v3 knot = lerp(p012, t, p123);
+
+ // NOTE(kv) Q13/Q14: split every per-curve profile at the same t (read the source by value
+ // now, before the push below can realloc). radii/lightness/dradii are v4 = 4 scalar control
+ // points; dbezier is v3[4]. The shared knot value lands on both halves (radii_left[3] ==
+ // radii_right[0] etc.), so the width, lightness and blink motion are smooth across the cut.
+ Recorded_Curve const src = doc.primitives[prim_index].curve;
+ v4 radii_left, radii_right, light_left, light_right, dradii_left, dradii_right;
+ document_split_curve_profile_v4(src.radii,               t, &radii_left,  &radii_right);
+ document_split_curve_profile_v4(src.lightness_additions, t, &light_left,  &light_right);
+ document_split_curve_profile_v4(src.dradii,              t, &dradii_left, &dradii_right);
+ if(src.straight)
+ {// NOTE(kv) Q14: a straight curve renders a UNIFORM width radii[1], so de Casteljau-ing the
+  // radii would change it. Keep radii/dradii unchanged on both halves (geometry + lightness
+  // still split); the two collinear segments keep the original constant width.
+  radii_left  = radii_right  = src.radii;
+  dradii_left = dradii_right = src.dradii;
+ }
+ v3 dbez_left[4], dbez_right[4];
+ decasteljau_split_4<v3>(src.dbezier[0], src.dbezier[1], src.dbezier[2], src.dbezier[3],
+                         t, dbez_left, dbez_right);
 
  {
   Document_Action action = {};
@@ -248,12 +296,20 @@ document_split_curve(Game_State *state, i32 prim_index, v1 t)
  Recorded_Primitive second = doc.primitives[prim_index];
  second.vertex_index[0] = knot_index;
  second.vertex_index[1] = far_vertex;
+ second.curve.radii               = radii_right;
+ second.curve.lightness_additions = light_right;
+ second.curve.dradii              = dradii_right;
+ for_i32(i, 0, 4){ second.curve.dbezier[i] = dbez_right[i]; }
 
  {// NOTE(kv) Original -> the [0,t] half: its far end moves to the knot, handles = p01/p012.
   Recorded_Primitive &orig = doc.primitives[prim_index];
   orig.vertex_index[1] = knot_index;
   document_curve_set_handle_point(doc, orig, 0, {.v = p01});
   document_curve_set_handle_point(doc, orig, 1, {.v = p012});
+  orig.curve.radii               = radii_left;
+  orig.curve.lightness_additions = light_left;
+  orig.curve.dradii              = dradii_left;
+  for_i32(i, 0, 4){ orig.curve.dbezier[i] = dbez_left[i]; }
  }
 
  i32 second_index = doc.primitives.count;
