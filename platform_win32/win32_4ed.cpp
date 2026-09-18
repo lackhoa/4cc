@@ -194,6 +194,10 @@ struct Win32_Vars
  b8 lctrl_lalt_is_altgr;
  b8 got_useful_event;
  b32 window_is_active;
+ // NOTE(kv) Agent mode (-debug-cmd): set at WinMain startup. cmd.txt is what the debug
+ // channel polls (game_debug_channel.cpp); WM_TIMER peeks at it to keep idle polls cheap.
+ b32 agent_mode;
+ char agent_cmd_path[MAX_PATH];
  
  Key_Mode key_mode;
  HKL kl_universal;
@@ -1252,6 +1256,9 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
    case WM_ACTIVATE:{
     win32vars.window_is_active = (wParam != 0);
+    // NOTE(kv) A background window does not animate (see the schedule-step gate at the
+    // end of the main loop), so gaining focus must produce the one fresh frame itself.
+    win32vars.got_useful_event = true;
    }break;
    case WM_MENUCHAR:
    {
@@ -1574,8 +1581,18 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
    case WM_TIMER:
    {
     UINT_PTR timer_id = (UINT_PTR)wParam;
-    KillTimer(win32vars.window_handles[0], timer_id);
-    win32vars.got_useful_event = true;
+    if(win32vars.agent_mode and
+       GetFileAttributesA(win32vars.agent_cmd_path) == INVALID_FILE_ATTRIBUTES)
+    {// NOTE(kv) Agent idle poll: no command waiting -> do NOT run a frame (a full
+     // game_update + render per poll was ~12% of a core, idle). The timer stays armed
+     // (SetTimer is periodic), so we peek again next period. Frames that must flow
+     // (force_animate, a command's wants_animate) arrive as WM_4coder_ANIMATE instead.
+    }
+    else
+    {
+     KillTimer(win32vars.window_handles[0], timer_id);
+     win32vars.got_useful_event = true;
+    }
    }break;
    
    case WM_4coder_ANIMATE:
@@ -2159,6 +2176,15 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
  // sink it to the bottom of the z-order. Not hidden/minimized: `screenshot` reads the
  // GL back buffer, which needs a non-empty client rect.
  b32 agent_mode = (strstr(GetCommandLineA(), "-debug-cmd") != 0);
+ win32vars.agent_mode = agent_mode;
+ if(agent_mode)
+ {// NOTE(kv) Same path as debug_channel_init (game_debug_channel.cpp): <exe dir>\debug\cmd.txt
+  char exe_path[MAX_PATH];
+  GetModuleFileNameA(0, exe_path, sizeof(exe_path));
+  char *last_slash = strrchr(exe_path, '\\');
+  if(last_slash){ *last_slash = 0; }
+  snprintf(win32vars.agent_cmd_path, sizeof(win32vars.agent_cmd_path), "%s\\debug\\cmd.txt", exe_path);
+ }
  for_i32(index,0,WINDOW_COUNT)
  {// NOTE(kv) Main window starts maximized (the default size is tiny).
   HWND hwnd = win32vars.window_handles[index];
@@ -2480,9 +2506,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   
   {//~NOTE(allen): render
    ImGui::PopFont();
-   ImGui::Render();
-   
-   for_i32(window_index, 0, WINDOW_COUNT)
+   ImGui::Render();  // NOTE(kv) always: it closes the ImGui frame
+
+   // NOTE(kv) Minimized: nothing to show, skip the GL work and the swap. The restore
+   // sends WM_SIZE/WM_ACTIVATE, which produce a fresh frame.
+   b32 minimized = IsIconic(win32vars.window_handles[0]);
+   i32 render_window_count = minimized ? 0 : WINDOW_COUNT;
+   for_i32(window_index, 0, render_window_count)
    {
     // Activate OpenGL context for device context where we'll be drawing
     win32_wgl_make_current(window_index);
@@ -2499,13 +2529,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
    {// NOTE(kv) Swap frame!
     ProfileBlock("swap framebuffers");
     
-    for_i32(window_index, 0, WINDOW_COUNT)
+    for_i32(window_index, 0, render_window_count)
     {
      SwapBuffers(win32vars.device_contexts[window_index]);
     }
    }
-   
-   hot_prim_id = ogl_read_primitive_id();
+
+   if(not minimized){ hot_prim_id = ogl_read_primitive_id(); }
   }
   
   {// NOTE Sleeping and waiting
@@ -2563,7 +2593,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   }
   
   // NOTE(allen): Schedule another step if needed
-  if (step_result.animating)
+  // NOTE(kv) ...but only for the foreground window: a background/minimized window drops
+  // the request and blocks in GetMessage until real input or WM_ACTIVATE (no polling, no
+  // background hot reload -- a rebuild shows on the activation frame). Every animate
+  // caller (game viewport, smooth scroll, ...) funnels through here. The agent instance
+  // is never the active window, so it is exempt.
+  // Plan: ~/notes/tasks/autodraw_draw_as_data/plan-idle-cpu-when-inactive.md
+  if (step_result.animating and (win32vars.window_is_active or win32vars.agent_mode))
   {
    system_schedule_step(0);
   }
