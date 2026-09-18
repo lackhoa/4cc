@@ -1127,12 +1127,52 @@ debug_channel_update(Game_State *state, App *app)
   state->line_tool.armed = (on != 0);
   fprintf(out, "line_tool: %s\n", on ? "armed" : "disarmed");
  }
+ else if(strncmp(cmd, "split_arm ", 10) == 0)
+ {// NOTE(kv) Enter split mode for a curve headlessly (the menu item does this live). A
+  // following mouse_move rides the marker; mouse_down/up commits through the game_main
+  // press branch. `split_report` reads back the preview the update computed.
+  i32 idx = atoi(cmd+10);
+  line_tool_reset(state);
+  split_tool_reset(state);
+  state->split_tool.armed      = true;
+  state->split_tool.prim_index = idx;
+  fprintf(out, "split_arm: armed for curve %d\n", idx);
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "split_report") == 0)
+ {
+  Split_Tool_State &split = state->split_tool;
+  fprintf(out, "split_report: armed %d prim %d on_curve %d preview_valid %d t %.4f\n",
+          split.armed, split.prim_index, split.on_curve, split.preview_valid, split.preview_t);
+ }
  else if(strncmp(cmd, "coplanarize ", 12) == 0)
  {
   i32 idx = atoi(cmd+12);
   b32 ok = document_coplanarize_once(state, idx);
   fprintf(out, "coplanarize: %s\n", ok ? "ok" : "nothing changed (already planar, not a curve, or ~0 chord)");
   debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "split_curve ", 12) == 0)
+ {// NOTE(kv) Cut curve <prim> at parameter <t> without the split-mode UI, so the de
+  // Casteljau math + history/save path is testable headless. Mirrors the game_main
+  // commit branch: split, then commit + save + clear the selection (Q7).
+  i32 idx; v1 t;
+  Recording &doc = state->model.recordings.document;
+  if(sscanf(cmd+12, "%d %f", &idx, &t) == 2)
+  {
+   b32 ok = document_split_curve(state, idx, t);
+   if(ok)
+   {
+    history_commit(state);
+    save_document_file(state);
+    state->document_selection.count = 0;
+   }
+   fprintf(out, "split_curve %d @ %.4f: %s, document now %d primitives / %d vertices\n",
+           idx, t, ok ? "ok" : "refused (near an end, not a curve, or bounds a patch)",
+           doc.primitives.count, doc.vertices.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: split_curve <primitive index> <t>\n"); }
  }
  else if(strcmp(cmd, "mouse_off") == 0)
  {

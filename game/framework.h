@@ -148,6 +148,8 @@ enum Document_Action_Kind
  // (Document_Action_Roll lived here 2026-09-14..15; roll went away with
  // plan-handle-drag-modes Q3.)
  Document_Action_Coplanarize,
+ // NOTE(kv) plan-native-curve-split: cut curve `prim_index` into two at a parameter t.
+ Document_Action_Split_Curve,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the
@@ -169,6 +171,20 @@ struct Line_Tool_State
  v2 press_px;
  v3 path[LINE_TOOL_PATH_CAP];  // raw (unsnapped) plane samples, the fit's input
  i32 path_count;
+};
+// NOTE(kv) Split tool (game_document_edit.cpp, plan-native-curve-split): armed from the
+// right-click menu on a curve. While armed, a marker rides that curve at the screen-space
+// point nearest the cursor (recomputed every frame); a left-click there cuts the curve
+// into two at that parameter. No drag -- a plain click commits. Q12: hidden and inert in
+// the near-end guard zone. Q8: a click well off the curve cancels; Esc cancels too.
+struct Split_Tool_State
+{
+ b32 armed;
+ i32 prim_index;      // the curve to split
+ b32 on_curve;        // the cursor is within reach of the curve this frame
+ b32 preview_valid;   // on_curve and outside the guard zone: marker shown, click splits
+ v1 preview_t;        // parameter of the preview split point
+ v3 preview_world;    // marker world position (drawn in the render pass)
 };
 struct Document_Action
 {// NOTE(kv) Display only: the snapshot is what restores.
@@ -257,6 +273,7 @@ struct Game_State
  Camera_Drag camera_drag;
  Document_History document_history;
  Line_Tool_State line_tool;
+ Split_Tool_State split_tool;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

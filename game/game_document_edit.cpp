@@ -172,6 +172,201 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  return mat4vert(get_bone(bone_id, pick.is_right)->world_from_bone, bone_p);
 }
 
+//~ NOTE(kv) plan-native-curve-split: cut a curve into two curves that reproduce the
+// original exactly (de Casteljau), plus the "split mode" preview that lets the user aim
+// the cut with a live marker (the mouse is not precise). Port of the tablet's
+// split_stroke (tablet/src/document.ts) minus the smooth-knot record (native has none
+// yet -- the join is smooth AT the cut, later handle edits may break it, Q1).
+global v1 const split_min_t_from_ends = 0.02f;  // Q6: a cut this close to an end is a no-op
+global v1 const split_tool_reach_px   = 80.f;   // Q8: a click beyond this from the curve cancels
+
+function b32
+document_curve_bounds_patch(Recording &doc, i32 curve_prim_index)
+{// NOTE(kv) Q5: true if any curve-patch primitive is built from this curve. Splitting it
+ // would leave the patch pointing at half the shape, so we refuse the split instead.
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  if(prim.type != Primitive_Type_Curve_Patch){ continue; }
+  Recorded_Curve_Patch &patch = prim.curve_patch;
+  for_i32(ic, 0, patch.curve_count)
+  {
+   if(patch.curve_index[ic] == curve_prim_index){ return true; }
+  }
+ }
+ return false;
+}
+
+function b32
+document_split_curve(Game_State *state, i32 prim_index, v1 t)
+{// NOTE(kv) Cut curve `prim_index` into two at parameter t via de Casteljau (tablet
+ // split_stroke): the halves reproduce the original exactly and share a new welded knot
+ // vertex (Q3), so the join is smooth at the cut. The original keeps [0,t]; a new
+ // primitive takes [t,1] and copies the styling (Q4). Opens ONE history entry; the caller
+ // commits + saves. Returns false with NO history opened for a cut too near an end (Q6) or
+ // a curve that bounds a patch (Q5).
+ Recording &doc = state->model.recordings.document;
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
+ if(doc.primitives[prim_index].type != Primitive_Type_Curve){ return false; }
+ if(t < split_min_t_from_ends or t > 1.f - split_min_t_from_ends){ return false; }
+ if(document_curve_bounds_patch(doc, prim_index))
+ {
+  log_error("split: curve %d bounds a patch, not splitting", prim_index);
+  return false;
+ }
+
+ // NOTE(kv) All four control points live in the group's bone space (Bone_None, like the
+ // line tool), so de Casteljau runs in that one space and the halves' handle points feed
+ // straight back through document_curve_set_handle_point.
+ v3 P0 = document_curve_endpoint(doc, doc.primitives[prim_index], 0).v;
+ v3 P1 = document_curve_handle_point(doc, doc.primitives[prim_index], 0).v;
+ v3 P2 = document_curve_handle_point(doc, doc.primitives[prim_index], 1).v;
+ v3 P3 = document_curve_endpoint(doc, doc.primitives[prim_index], 1).v;
+ v3 p01 = lerp(P0, t, P1), p12 = lerp(P1, t, P2), p23 = lerp(P2, t, P3);
+ v3 p012 = lerp(p01, t, p12), p123 = lerp(p12, t, p23);
+ v3 knot = lerp(p012, t, p123);
+
+ {
+  Document_Action action = {};
+  action.kind       = Document_Action_Split_Curve;
+  action.prim_index = prim_index;
+  history_begin(state, action);
+ }
+
+ // NOTE(kv) The welded knot: a new table vertex both halves reference. Bone_None, position
+ // in the group bone's space -- the same convention as the endpoints.
+ i32 knot_index = doc.vertices.count;
+ {
+  Recorded_Vertex vertex = {};
+  vertex.p = knot;
+  push(&doc.vertices, vertex);
+ }
+
+ // NOTE(kv) The push above may realloc, so re-index doc.primitives every time below. The
+ // second half copies the original by value (styling, group, flags) before we rewrite it.
+ i32 far_vertex = doc.primitives[prim_index].vertex_index[1];
+ Recorded_Primitive second = doc.primitives[prim_index];
+ second.vertex_index[0] = knot_index;
+ second.vertex_index[1] = far_vertex;
+
+ {// NOTE(kv) Original -> the [0,t] half: its far end moves to the knot, handles = p01/p012.
+  Recorded_Primitive &orig = doc.primitives[prim_index];
+  orig.vertex_index[1] = knot_index;
+  document_curve_set_handle_point(doc, orig, 0, {.v = p01});
+  document_curve_set_handle_point(doc, orig, 1, {.v = p012});
+ }
+
+ i32 second_index = doc.primitives.count;
+ push(&doc.primitives, second);
+ {// NOTE(kv) New primitive -> the [t,1] half: handles = p123/p23.
+  Recorded_Primitive &second_ref = doc.primitives[second_index];
+  document_curve_set_handle_point(doc, second_ref, 0, {.v = p123});
+  document_curve_set_handle_point(doc, second_ref, 1, {.v = p23});
+ }
+
+ doc.captured = true;
+ return true;
+}
+
+function b32
+document_nearest_t_on_curve(Game_State *state, Live_Viewport *viewport, i32 prim_index,
+                            v2 mouse_px, v1 *t_out, v3 *world_out, v1 *dist_px_out)
+{// NOTE(kv) Screen-space nearest point on a curve to the cursor (tablet
+ // nearest_t_on_stroke_screen): sample the world bezier, project with the shared pick
+ // mapping (project == the renderer's), keep the nearest projected sample, then refine
+ // around it. Returns the parameter, its world position, and the pixel distance. False
+ // only when the primitive isn't a live curve.
+ Recording &doc = state->model.recordings.document;
+ if(not viewport){ return false; }
+ if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
+ if(doc.primitives[prim_index].type != Primitive_Type_Curve){ return false; }
+ Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
+ v3 P[4];
+ P[0] = document_pick_world_pos(doc, {prim_index, false, false, 0});
+ P[1] = document_pick_world_pos(doc, {prim_index, false, true,  1});
+ P[2] = document_pick_world_pos(doc, {prim_index, false, true,  2});
+ P[3] = document_pick_world_pos(doc, {prim_index, false, false, 1});
+
+ v1 best_t = 0, best_dist = INFINITY;
+ const i32 samples = 128;
+ for_i32(i, 0, samples+1)
+ {
+  v1 t = v1(i) / v1(samples);
+  v2 px = project(proj, bezier_sample(P, t));
+  v1 dist = lengthof(V3(px - mouse_px, 0));
+  if(dist < best_dist){ best_dist = dist; best_t = t; }
+ }
+ // NOTE(kv) Refine: shrink a window around the best sample a few times.
+ v1 span = 1.f / v1(samples);
+ for_i32(iter, 0, 3)
+ {
+  v1 lo = best_t - span; if(lo < 0.f){ lo = 0.f; }
+  v1 hi = best_t + span; if(hi > 1.f){ hi = 1.f; }
+  const i32 refine = 16;
+  for_i32(i, 0, refine+1)
+  {
+   v1 t = lerp(lo, v1(i) / v1(refine), hi);
+   v2 px = project(proj, bezier_sample(P, t));
+   v1 dist = lengthof(V3(px - mouse_px, 0));
+   if(dist < best_dist){ best_dist = dist; best_t = t; }
+  }
+  span /= v1(refine);
+ }
+ *t_out       = best_t;
+ *world_out   = bezier_sample(P, best_t);
+ *dist_px_out = best_dist;
+ return true;
+}
+
+function void
+split_tool_reset(Game_State *state)
+{// NOTE(kv) Disarm split mode; the document is left as it is.
+ state->split_tool = {};
+}
+
+function void
+split_tool_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
+{// NOTE(kv) Per-frame while armed: ride the marker to the curve point nearest the cursor
+ // and decide whether a click here would split (Q2/Q10/Q12).
+ Split_Tool_State &split = state->split_tool;
+ if(not split.armed){ return; }
+ split.on_curve      = false;
+ split.preview_valid = false;
+ v1 t = 0, dist = 0; v3 world = {};
+ if(document_nearest_t_on_curve(state, viewport, split.prim_index, mouse_px, &t, &world, &dist))
+ {
+  b32 in_guard = (t < split_min_t_from_ends or t > 1.f - split_min_t_from_ends);
+  split.on_curve      = (dist <= split_tool_reach_px);
+  split.preview_valid = (split.on_curve and not in_guard);
+  split.preview_t     = t;
+  split.preview_world = world;
+ }
+}
+
+function void
+split_tool_draw(Game_State *state, Camera &camera)
+{// NOTE(kv) The split marker: one camera-facing disk on the curve at the preview point,
+ // overlaid (Q9), drawn like the hover control-point disks but larger and in hot_color2.
+ Split_Tool_State &split = state->split_tool;
+ if(not split.armed or not split.preview_valid){ return; }
+ v3 center = split.preview_world;
+ v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
+ v1 radius = 5.f*millimeter * dist / camera.focal_length;
+ const i32 nslice = 16;
+ v3 last = {};
+ for_i32(k, 0, nslice+1)
+ {
+  v2 arm = radius*arm2(v1(k) / v1(nslice));
+  v3 sample = center + arm.x*camera.x + arm.y*camera.y;
+  if(k != 0)
+  {
+   v3 points[3] = {center, last, sample};
+   poly3_inner(mk_poly3(points), repeat3(hot_color2), {Poly_Overlay});
+  }
+  last = sample;
+ }
+}
+
 // NOTE(kv) Control points per primitive: up to recorded_vertex_cap table vertices, plus
 // the two handles of a curve.
 global i32 const document_pick_cap_per_primitive = recorded_vertex_cap + 2;

@@ -195,6 +195,8 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
    return snprintf(buf, cap, "delete curve %d", action.prim_index);
   case Document_Action_Coplanarize:
    return snprintf(buf, cap, "coplanarize curve %d", action.prim_index);
+  case Document_Action_Split_Curve:
+   return snprintf(buf, cap, "split curve %d", action.prim_index);
   case Document_Action_Set_Radii:
   case Document_Action_Set_Midline:
   {

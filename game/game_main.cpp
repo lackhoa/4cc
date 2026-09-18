@@ -858,6 +858,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   }
 
   document_hover_draw(state, camera);  // NOTE(kv) control points of the hovered document item (every viewport)
+  split_tool_draw(state, camera);      // NOTE(kv) the split-mode marker riding the curve
 
   if(viewport_id == 1)
   {
@@ -1882,6 +1883,7 @@ game_update(Game_Update_Params params)
   }
   debug_channel_last_hot = hot_location;
   document_hover_update(state, mouse_viewport, V2(params.mouse.p));
+  split_tool_update(state, mouse_viewport, V2(params.mouse.p));  // NOTE(kv) ride the split marker to the cursor
   if(mouse_viewport){ debug_channel_mouse_viewport_box = mouse_viewport->clip_box; }
 
   if(state->camera_drag.active)
@@ -1909,7 +1911,29 @@ game_update(Game_Update_Params params)
    b32 near_selected_point = (not shift and
                               document_pick_nearest(state, mouse_viewport, V2(params.mouse.p), &pick, &pick_dist) and
                               pick_dist <= document_pick_radius_px);
-   if(state->line_tool.armed and mouse_viewport)
+   if(state->split_tool.armed and mouse_viewport)
+   {// NOTE(kv) Split mode owns the left press and consumes it (no drag / deselect
+    // fall-through). Three zones: on the curve outside the guard commits the cut and
+    // exits (Q8/Q11); off the curve cancels and exits (Q8); on the curve but inside the
+    // near-end guard the marker is hidden and the click does nothing, staying armed so a
+    // small nudge off the end re-shows the marker (Q12).
+    Split_Tool_State &split = state->split_tool;
+    if(split.preview_valid)
+    {
+     if(document_split_curve(state, split.prim_index, split.preview_t))
+     {
+      history_commit(state);
+      save_document_file(state);
+      state->document_selection.count = 0;  // NOTE(kv) Q7: nothing selected after a split
+     }
+     split_tool_reset(state);
+    }
+    else if(not split.on_curve)
+    {
+     split_tool_reset(state);
+    }
+   }
+   else if(state->line_tool.armed and mouse_viewport)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
    }
@@ -1991,6 +2015,15 @@ game_update(Game_Update_Params params)
      if(menu_hot_is_curve)
      {
       if(ImGui::Selectable("Delete curve")){ document_delete_curve(state, document_primitive_index(sel.menu_hot)); }
+      if(ImGui::Selectable("Split curve"))
+      {// NOTE(kv) Enter split mode for this curve: the marker rides it until a left-click
+       // commits the cut or Esc/off-curve cancels. The line tool is the other armed tool;
+       // never both at once.
+       line_tool_reset(state);
+       split_tool_reset(state);
+       state->split_tool.armed      = true;
+       state->split_tool.prim_index = document_primitive_index(sel.menu_hot);
+      }
      }
      if(sel.count >= 2 or menu_hot_is_patch or menu_hot_is_curve){ ImGui::Separator(); }
     }
@@ -2273,7 +2306,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); state->document_selection.count = 0; }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); split_tool_reset(state); state->document_selection.count = 0; }break;
       // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
       case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
