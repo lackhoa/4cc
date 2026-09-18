@@ -989,6 +989,9 @@ game_shutdown(Game_State *state)
 function b32
 game_save(Game_State *state, App *app)
 {// NOTE(kv) state.txt (text, git-friendly -- no backup ring anymore) + recording.ad.
+ // NOTE(kv) The agent instance (-debug-cmd) shares both files with the live editor and
+ // only ever READS them (startup, reload_autosave): no caller may write the user's view.
+ if(debug_channel_enabled){ return false; }
  b32 ok = save_state_file(state);
  if(ok){
   vim_set_bottom_text(strlit("Saved game state!"));
