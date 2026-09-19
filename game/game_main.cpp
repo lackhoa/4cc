@@ -429,6 +429,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
 #include "ad_serialize_schema.cpp"
 #include "ad_serialize_state.cpp"
 #include "game_document_history.cpp"
+#include "game_document_checkpoint.cpp"
 #include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
 
@@ -774,7 +775,11 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     }
    }
 
-   Recording &document = the_model->recordings.document;
+   // NOTE(kv) plan-document-checkpoints Q1: the flip swaps which Recording is replayed.
+   Document_Checkpoint *flipped_checkpoint = (state->document_checkpoints.is_flipped_to_checkpoint ?
+                                              document_checkpoint_compare(state) : 0);
+   Recording &document = (flipped_checkpoint ? flipped_checkpoint->recording :
+                          the_model->recordings.document);
    if(document.captured)
    {// NOTE(kv) The document is drawing, not debug state: replayed in every viewport,
     // rendering on regardless of mode, outside the diff tees (the diff compares the
@@ -1932,7 +1937,10 @@ game_update(Game_Update_Params params)
    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true, false);
   }
 
-  if(params.mouse.press_left and not state->document_mouse_drag.active and not state->camera_drag.active)
+  // NOTE(kv) plan-document-checkpoints: while flipped the document is hidden, so a press
+  // must not pick or edit it.
+  if(params.mouse.press_left and not state->document_mouse_drag.active and not state->camera_drag.active
+     and not state->document_checkpoints.is_flipped_to_checkpoint)
   {// NOTE(kv) Hot code item: jump to code. Near a control point of a SELECTED document
    // primitive: start a drag (Q6, explicit selection since 2026-09-13). Hot unselected
    // document item: select it, no drag. Nothing hot: camera drag (orbit, alt = pan).
@@ -2320,6 +2328,16 @@ game_update(Game_Update_Params params)
    seconds_since_last_keystroke_2 = 0;
   }
 
+  {// NOTE(kv) plan-document-checkpoints Q1: hold C = the compare checkpoint is drawn
+   // instead of the document. Recomputed every frame, so a release always flips back.
+   Document_Checkpoint_State &checkpoints = state->document_checkpoints;
+   b32 was_flipped = checkpoints.is_flipped_to_checkpoint;
+   b32 wants_flip = ((viewport_focused and key_is_down(input, Key_Code_C)) or
+                     checkpoints.is_flipped_by_debug_channel);
+   checkpoints.is_flipped_to_checkpoint = (wants_flip and document_checkpoint_compare(state) != 0);
+   if(was_flipped != checkpoints.is_flipped_to_checkpoint){ should_animate_next_frame = true; }
+  }
+
   u32 mods = input->active_mods;
   for_i32(key_stroke_index, 0, key_strokes.count)
   {//-NOTE(kv) Key bindings
@@ -2388,6 +2406,8 @@ game_update(Game_Update_Params params)
       // NOTE(kv) Document undo/redo (plan-document-undo-redo Q5).
       case C|Key_Code_Z:{ history_undo(state); }break;
       case C|S|Key_Code_Z: case C|Key_Code_Y:{ history_redo(state); }break;
+      // NOTE(kv) plan-document-checkpoints Q3: checkpoint now (plain C held = flip, above).
+      case S|Key_Code_C:{ document_checkpoint_create(state); }break;
       case Key_Code_A:
       {
        snap_camera(cam_data, update_viewport);
@@ -2598,6 +2618,7 @@ game_update(Game_Update_Params params)
 
   if(input_dir.xyz != v3{} and viewport_focused and not cursor_on and not fui_is_active() and
      state->document_vertex_selection.count > 0 and
+     not state->document_checkpoints.is_flipped_to_checkpoint and
      (mods & ~u32(Key_Mod_Sft|Key_Mod_Alt)) == 0)
   {//-NOTE(kv) plan-keyboard-vertex-move: nudge the vertex selection, same feel as a tvert
    // slider (held keys, camera-aligned, Shift = x10). Alt = solo (link members stay, Q5).
@@ -2704,6 +2725,12 @@ game_update(Game_Update_Params params)
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
    if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
    if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
+   if (state->document_checkpoints.is_flipped_to_checkpoint)
+   {
+    char flip_text[64];
+    snprintf(flip_text, sizeof(flip_text), "showing checkpoint %d", document_checkpoint_compare(state)->number);
+    DEBUG_TEXT(flip_text);
+   }
    if (state->document_history.pending_nudge) { DEBUG_TEXT("vertex move pending -- Enter commits, Esc cancels"); }
    if (state->document_history.status_frames > 0)
    {// NOTE(kv) "undo: move vertex 12 (nose)" for a couple of seconds after Ctrl+Z.
@@ -2930,6 +2957,32 @@ game_update(Game_Update_Params params)
     }
     ImGui::EndChild();
     if(jump_to != -1){ history_jump(state, jump_to); }
+    {//-Checkpoints (plan-document-checkpoints Q4): `>` = the compare checkpoint (hold C
+     // to see it); click a row to make it that; "go back" makes the document equal it.
+     Document_Checkpoint_State &checkpoints = state->document_checkpoints;
+     ImGui::Separator();
+     if(ImGui::Button("checkpoint now (Shift+C)")){ document_checkpoint_create(state); }
+     ImGui::BeginChild("checkpoint_list", ImVec2(300, 160), true);
+     i32 go_back_to = -1;
+     for_i32(index, 0, checkpoints.count)
+     {
+      Document_Checkpoint &checkpoint = checkpoints.entries[index];
+      time_t time_value = cast(time_t)checkpoint.time;
+      char time_text[32] = "?";
+      tm *local = localtime(&time_value);
+      if(local){ strftime(time_text, sizeof(time_text), "%m-%d %H:%M", local); }
+      b32 is_compare = (index == checkpoints.compare_checkpoint_index);
+      char label[96];
+      snprintf(label, sizeof(label), "go back##checkpoint_go_back%d", index);
+      if(ImGui::SmallButton(label)){ go_back_to = index; }
+      ImGui::SameLine();
+      snprintf(label, sizeof(label), "%c checkpoint %d  %s##checkpoint%d", is_compare ? '>' : ' ',
+               checkpoint.number, time_text, index);
+      if(ImGui::Selectable(label, is_compare)){ checkpoints.compare_checkpoint_index = index; }
+     }
+     ImGui::EndChild();
+     if(go_back_to != -1){ document_checkpoint_go_back_to(state, go_back_to); }
+    }
     im_end();
    }
 

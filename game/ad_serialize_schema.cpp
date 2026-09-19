@@ -764,12 +764,14 @@ read_schema_value(Schema_Reader *ctx, Type_Info_In_File *in_file, Type_Info *typ
 //~ Document load through the schema
 
 function b32
-read_document_schema_file(Binary_Reader *r, Arena *arena, Document_File *out, char const *label)
+read_document_schema_file(Binary_Reader *r, Arena *arena, Document_File *out, char const *label,
+                          u64 *optional_timestamp=0)
 {// NOTE(kv) false = rejected (already logged). `out` gets darrays living in `arena`.
  Scratch_Scope tmp;
  u32 magic = read_binary_u32(r);
  u32 tag   = read_binary_u32(r);
- u64 timestamp = read_binary_u64(r); (void)timestamp;
+ u64 timestamp = read_binary_u64(r);
+ if(optional_timestamp){ *optional_timestamp = timestamp; }
  if(not r->ok or magic != autodraw_data_magic or tag != schema_format_tag)
  {
   log_error("%s load: not a schema-format file (magic %08x tag %08x)", label, magic, tag);
@@ -799,16 +801,17 @@ read_document_schema_file(Binary_Reader *r, Arena *arena, Document_File *out, ch
 }
 
 function b32
-load_document_schema_file(Game_State *state, Stringz path, String file_data)
+load_document_schema_file_into(Recording &doc, Stringz path, String file_data,
+                               u64 *optional_timestamp=0)
 {// NOTE(kv) Reads into a fresh arena and swaps it in only on success, so a rejected
- // file leaves the live document untouched (the banner says REJECTED).
+ // file leaves `doc` untouched. `doc` is the live document or a checkpoint's recording
+ // (plan-document-checkpoints); it must stay at this address (darray arena pointers).
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Arena arena = make_arena();
  Document_File value = {};
- b32 ok = read_document_schema_file(&reader, &arena, &value, "document");
+ b32 ok = read_document_schema_file(&reader, &arena, &value, "document", optional_timestamp);
  if(ok)
  {
-  Recording &doc = state->model.recordings.document;
   arena_free(&doc.arena);
   doc.arena      = arena;
   doc.vertices   = value.vertices;
@@ -826,6 +829,11 @@ load_document_schema_file(Game_State *state, Stringz path, String file_data)
   log_error("document load: REJECTED (%S)", path);
  }
  return ok;
+}
+function b32
+load_document_schema_file(Game_State *state, Stringz path, String file_data)
+{// NOTE(kv) The live document (the banner says REJECTED on failure).
+ return load_document_schema_file_into(state->model.recordings.document, path, file_data);
 }
 
 //~ Schema dump (debug channel `document_schema_dump`)

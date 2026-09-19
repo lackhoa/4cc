@@ -272,6 +272,7 @@ load_recording_file(Game_State *state)
  return r->ok;
 }
 
+function void document_checkpoint_load_all(Game_State *state);  // game_document_checkpoint.cpp
 function b32
 load_document_file(Game_State *state)
 {
@@ -290,6 +291,8 @@ load_document_file(Game_State *state)
  // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
  // different document now (plan-document-undo-redo Q6).
  if(ok){ history_clear(state); state->document_selection.count = 0; }
+ // NOTE(kv) plan-document-checkpoints: the checkpoint files sit next to the document.
+ document_checkpoint_load_all(state);
  return ok;
 }
 //-EOF

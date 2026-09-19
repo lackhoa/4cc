@@ -172,6 +172,8 @@ enum Document_Action_Kind
  Document_Action_Unlink_Vertices,
  // NOTE(kv) plan-point-primitive: new group + vertex + point primitive `prim_index`.
  Document_Action_Add_Point,
+ // NOTE(kv) plan-document-checkpoints Q5: `index` = the checkpoint's number.
+ Document_Action_Go_Back_To_Checkpoint,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the
@@ -242,6 +244,24 @@ struct Document_History
  char status[160];  // "undo: move vertex 12 (nose)", shown on screen for status_frames
  i32 status_frames;
 };
+// NOTE(kv) Document checkpoints (game_document_checkpoint.cpp, plan-document-checkpoints.md):
+// copies of the document the user chose to keep, one plain document file each
+// (driver.document.checkpoint-NN.ad), all loaded in memory so a flip costs nothing.
+#define DOCUMENT_CHECKPOINT_CAP 99
+struct Document_Checkpoint
+{
+ Recording recording;  // NOTE(kv) its darrays point at recording.arena: never move an entry
+ i32 number;           // the NN of the file name, 1-based
+ u64 time;             // from the file header (time_t)
+};
+struct Document_Checkpoint_State
+{
+ Document_Checkpoint entries[DOCUMENT_CHECKPOINT_CAP];  // ascending number
+ i32 count;
+ i32 compare_checkpoint_index;   // the entry the flip shows; -1 when there is none
+ b32 is_flipped_to_checkpoint;   // this frame the compare checkpoint is drawn, not the document
+ b32 is_flipped_by_debug_channel;  // `checkpoint_flip 1` holds the flip without the key
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -300,6 +320,7 @@ struct Game_State
  Line_Tool_State line_tool;
  Split_Tool_State split_tool;
  Document_Vertex_Selection document_vertex_selection;
+ Document_Checkpoint_State document_checkpoints;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

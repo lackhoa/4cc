@@ -768,6 +768,37 @@ debug_channel_update(Game_State *state, App *app)
  {
   history_dump(out, state);
  }
+ //-NOTE(kv) plan-document-checkpoints. <n> is the checkpoint's NUMBER (file name), not an index.
+ else if(strcmp(cmd, "checkpoint_create") == 0)
+ {
+  i32 number = document_checkpoint_create(state);
+  fprintf(out, "checkpoint_create: %s (%d)\n", number ? "ok" : "FAILED", number);
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "checkpoint_list") == 0)
+ {
+  document_checkpoint_dump(out, state);
+ }
+ else if(strncmp(cmd, "checkpoint_compare_with ", 24) == 0)
+ {
+  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 24));
+  if(index != -1){ state->document_checkpoints.compare_checkpoint_index = index; }
+  fprintf(out, "checkpoint_compare_with: %s\n", index != -1 ? "ok" : "no such checkpoint");
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "checkpoint_flip ", 16) == 0)
+ {
+  state->document_checkpoints.is_flipped_by_debug_channel = (atoi(cmd + 16) != 0);
+  fprintf(out, "checkpoint_flip: %d\n", state->document_checkpoints.is_flipped_by_debug_channel);
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "checkpoint_go_back_to ", 22) == 0)
+ {
+  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 22));
+  b32 ok = document_checkpoint_go_back_to(state, index);
+  fprintf(out, "checkpoint_go_back_to: %s\n", ok ? "ok" : "no such checkpoint");
+  debug_channel_wants_animate = true;
+ }
  else if(strcmp(cmd, "document_schema_dump") == 0)
  {// NOTE(kv) The type table stored in driver.document.ad, as text (ad_serialize_schema.cpp).
   dump_document_schema_file(out, state);
