@@ -113,6 +113,10 @@ struct Recorded_Vertex
  // shape, never shared, never in the table.
  v3 p;
  Bone_ID bone;
+ // NOTE(kv) plan-vertex-links: vertices sharing a non-zero link_id move together (one
+ // set per vertex, all members in the same bone). 0 = not linked. Ids are arbitrary,
+ // not dense; a set left with one member is just a vertex.
+ i32 link_id;
 };
 [info]
 struct Recorded_Primitive

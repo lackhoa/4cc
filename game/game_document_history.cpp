@@ -141,6 +141,7 @@ history_jump(Game_State *state, i32 position)
  history.position = position;
  document_snapshot_restore(state->model.recordings.document, history.entries[position]);
  document_selection_clamp(state);  // NOTE(kv) Q5: keep the selection, drop dangling indices
+ state->document_vertex_selection.count = 0;  // NOTE(kv) table indices may be stale now
  save_document_file(state);
  return true;
 }
@@ -210,6 +211,10 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
    n += snprintf(buf + n, maximum(0, cap - n), "]");
    return n;
   }
+  case Document_Action_Link_Vertices:
+   return snprintf(buf, cap, "link %d vertices", action.count);
+  case Document_Action_Unlink_Vertices:
+   return snprintf(buf, cap, "unlink %d vertices", action.count);
   case Document_Action_Delete_Selection:
   {
    i32 n = snprintf(buf, cap, "delete [");

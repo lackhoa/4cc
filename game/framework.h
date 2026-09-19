@@ -109,6 +109,16 @@ struct Document_Selection
  i32 prim_index[Document_Selection_Cap];
  Location menu_hot;
 };
+// NOTE(kv) plan-vertex-links Q3: table vertices picked for "Link vertices" (shift-click a
+// vertex of a selected primitive toggles it). Independent of the primitive selection, so
+// vertices can be collected across more than Document_Selection_Cap primitives. Holds
+// table indices -> cleared whenever those may go stale (undo/redo, delete, Esc).
+global i32 const Document_Vertex_Selection_Cap = 64;
+struct Document_Vertex_Selection
+{
+ i32 count;
+ i32 vertex_index[Document_Vertex_Selection_Cap];
+};
 struct Document_Edit_State
 {// NOTE(kv) A live drag of one document control point (plan-document-mouse-editing).
  b32 active;
@@ -122,6 +132,9 @@ struct Document_Edit_State
  // "free" -- the handle follows the mouse in the camera plane and the OTHER handle swings
  // into the new {chord, handle} plane (tablet "swing"). Plain = stays in the curve's plane.
  b32 free_handle;
+ // NOTE(kv) plan-vertex-links Q5: Alt held at press -> the grabbed vertex moves alone,
+ // its link set stays put (the link itself survives).
+ b32 solo;
  Document_Pick pick;
  Location location;   // the hot document location being dragged (stays hot)
  v1 grab_cam_z;       // camera-space depth of the point at press: the drag plane
@@ -150,6 +163,9 @@ enum Document_Action_Kind
  Document_Action_Coplanarize,
  // NOTE(kv) plan-native-curve-split: cut curve `prim_index` into two at a parameter t.
  Document_Action_Split_Curve,
+ // NOTE(kv) plan-vertex-links: `count` vertices linked / unlinked (display only).
+ Document_Action_Link_Vertices,
+ Document_Action_Unlink_Vertices,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the
@@ -274,6 +290,7 @@ struct Game_State
  Document_History document_history;
  Line_Tool_State line_tool;
  Split_Tool_State split_tool;
+ Document_Vertex_Selection document_vertex_selection;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

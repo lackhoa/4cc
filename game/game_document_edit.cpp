@@ -562,6 +562,32 @@ document_hover_label(char *buf, i32 cap, Recording &doc)
                  prim.vertex_index[pick.slot], strexpand(group_name), pick.slot, pick.prim_index);
 }
 function void
+document_hover_draw_disk(Camera &camera, v3 center, v1 radius_mm, argb color)
+{
+ v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
+ v1 radius = radius_mm*millimeter * dist / camera.focal_length;
+ const i32 nslice = 12;
+ v3 last = {};
+ for_i32(k, 0, nslice+1)
+ {
+  v2 arm = radius*arm2(v1(k) / v1(nslice));
+  v3 sample = center + arm.x*camera.x + arm.y*camera.y;
+  if(k != 0)
+  {
+   v3 points[3] = {center, last, sample};
+   poly3_inner(mk_poly3(points), repeat3(color), {Poly_Overlay});
+  }
+  last = sample;
+ }
+}
+function Bone_ID document_vertex_index_bone(Recording &doc, i32 vertex_index);
+function v3
+document_vertex_index_world_pos(Recording &doc, i32 vertex_index, b32 is_right)
+{// NOTE(kv) plan-vertex-links: a table vertex without a primitive in hand.
+ Bone_ID bone_id = document_vertex_index_bone(doc, vertex_index);
+ return mat4vert(get_bone(bone_id, is_right)->world_from_bone, doc.vertices[vertex_index].p);
+}
+function void
 document_hover_draw(Game_State *state, Camera &camera)
 {// NOTE(kv) World-space disks facing the camera, overlaid (they mark positions, depth
  // would hide the ones behind a fill). Same depth-scaled sizing as the kb cursor.
@@ -578,29 +604,38 @@ document_hover_draw(Game_State *state, Camera &camera)
                     pick.is_handle  == document_hover_pick.is_handle and
                     pick.slot       == document_hover_pick.slot);
   v3 center = document_pick_world_pos(doc, pick);
-  v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
-  v1 radius = (is_hovered ? 4.5f : 3.f)*millimeter * dist / camera.focal_length;
   argb color = (is_hovered ? hot_color2 : pick.is_handle ? linear_argb_blue : linear_argb_silver);
-  const i32 nslice = 12;
-  v3 last = {};
-  for_i32(k, 0, nslice+1)
+  document_hover_draw_disk(camera, center, is_hovered ? 4.5f : 3.f, color);
+ }
+ {// NOTE(kv) plan-vertex-links Q8: the vertex selection, and every member of the hovered /
+  // dragged vertex's link set -- members can sit on unselected primitives, so they are
+  // drawn from the table, on the hovered pick's mirror side.
+  Document_Vertex_Selection &vsel = state->document_vertex_selection;
+  b32 is_right = document_hover_pick.is_right;
+  for_i32(i, 0, vsel.count)
   {
-   v2 arm = radius*arm2(v1(k) / v1(nslice));
-   v3 sample = center + arm.x*camera.x + arm.y*camera.y;
-   if(k != 0)
+   i32 vi = vsel.vertex_index[i];
+   if(vi < 0 or vi >= doc.vertices.count){ continue; }
+   document_hover_draw_disk(camera, document_vertex_index_world_pos(doc, vi, is_right), 4.f, linear_argb_blue);
+  }
+  if(document_hover_grab and not document_hover_pick.is_handle)
+  {
+   i32 hovered_vi = doc.primitives[document_hover_pick.prim_index].vertex_index[document_hover_pick.slot];
+   i32 link_id = doc.vertices[hovered_vi].link_id;
+   for_i32(vi, 0, doc.vertices.count)
    {
-    v3 points[3] = {center, last, sample};
-    poly3_inner(mk_poly3(points), repeat3(color), {Poly_Overlay});
+    if(link_id == 0 or vi == hovered_vi or doc.vertices[vi].link_id != link_id){ continue; }
+    document_hover_draw_disk(camera, document_vertex_index_world_pos(doc, vi, is_right), 4.f, hot_color2);
    }
-   last = sample;
   }
  }
 }
 
 function void
 document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best,
-                    b32 free_handle)
-{// NOTE(kv) Grab one control point (a table vertex, or a curve handle) of a selected
+                    b32 free_handle, b32 solo)
+{// NOTE(kv) `solo` (Alt at press, plan-vertex-links Q5): a linked vertex moves alone.
+ // Grab one control point (a table vertex, or a curve handle) of a selected
  // primitive; the caller found it with document_pick_nearest within the grab radius.
  // `free_handle` (Ctrl at press, plan-handle-drag-modes Q2): a handle drag defines a new
  // plane instead of staying in the old one; means nothing for a vertex (Q5).
@@ -615,6 +650,7 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
  edit.active = true;
  edit.pick = best;
  edit.free_handle = (free_handle and best.is_handle);
+ edit.solo = solo;
  edit.grab_cam_z = mat4vert(proj.camera.cam_from_world, world).z;
  edit.grab_offset_px = mouse_px - project(proj, world);
  edit.location = document_location(prim_index, best.is_right);
@@ -677,29 +713,65 @@ document_curve_chord(Recording &doc, Recorded_Primitive &prim)
          tvert_in_bone(document_curve_endpoint(doc, prim, 0), bone_id));
 }
 
-function void
-document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_index,
-                          b32 is_right, v3 delta_world, i32 skip_rotate_prim = -1)
-{// NOTE(kv) Move one table vertex by a world delta. The handles of every curve sharing
- // it are offsets from the chord thirds, so they translate on their own; on top of that
- // (plan-curve-coplanar-handles Q2, tablet move_vertex) both offsets of every such
- // curve get the minimal rotation old-chord-dir -> new-chord-dir, so the in-plane shape
- // rides the chord and {chord, d0, d3} stay coplanar. Skipped when either chord is ~0,
- // and for `skip_rotate_prim` (the whole-stroke drag: that chord only translates).
+function Bone_ID
+document_vertex_index_bone(Recording &doc, i32 vertex_index)
+{// NOTE(kv) plan-vertex-links: the effective bone of a table vertex without a primitive
+ // in hand -- Bone_None resolves through the first primitive referencing it.
  Recorded_Vertex &vertex = doc.vertices[vertex_index];
- vertex.p += document_edit_bone_delta(document_vertex_bone(doc, prim, vertex), is_right, delta_world);
+ if(vertex.bone.type != Bone_None){ return vertex.bone; }
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  i32 vertex_count = primitive_vertex_count(prim.type);
+  for_i32(ivertex, 0, vertex_count)
+  {
+   if(prim.vertex_index[ivertex] == vertex_index){ return doc.groups[prim.group_index].bone_id; }
+  }
+ }
+ return vertex.bone;
+}
+
+function b32
+document_vertex_list_contains(i32 *vertex_indices, i32 vertex_count, i32 vertex_index)
+{
+ for_i32(i, 0, vertex_count){ if(vertex_indices[i] == vertex_index){ return true; } }
+ return false;
+}
+
+function void
+document_edit_move_vertices(Recording &doc, i32 *vertex_indices, i32 vertex_count,
+                            b32 is_right, v3 delta_world)
+{// NOTE(kv) Move N distinct table vertices by ONE world delta (plan-vertex-links; N=1 is
+ // the plain vertex drag, N=2 the whole-stroke drag). The handles of every curve touching
+ // a moved vertex are offsets from the chord thirds, so they translate on their own; on
+ // top of that (plan-curve-coplanar-handles Q2, tablet move_vertex) both offsets of a
+ // curve with exactly ONE moved end get the minimal rotation old-chord-dir ->
+ // new-chord-dir, so the in-plane shape rides the chord and {chord, d0, d3} stay
+ // coplanar. A curve with BOTH ends moved only translates: its offsets are not touched
+ // at all (bit-identical). Batched on purpose -- moving the vertices one call at a time
+ // rotated such a curve on the first move and back on the second (float noise).
+ // Skipped when either chord is ~0.
+ Scratch_Scope scratch;
+ v3 *old_chords = push_array(scratch, v3, maximum(1, doc.primitives.count));
  for_i32(iprim, 0, doc.primitives.count)
  {
   Recorded_Primitive &curve = doc.primitives[iprim];
-  if(curve.type != Primitive_Type_Curve or iprim == skip_rotate_prim){ continue; }
-  b32 at0 = (curve.vertex_index[0] == vertex_index);
-  b32 at1 = (curve.vertex_index[1] == vertex_index);
-  if(at0 == at1){ continue; }  // NOTE(kv) not on this curve, or a loop (chord stays 0)
-  // NOTE(kv) The old chord = the new one minus what the moved end gained, in the
-  // offsets' bone space (the same bone as the vertex today).
-  v3 delta = document_edit_bone_delta(document_curve_offset_bone(doc, curve), is_right, delta_world);
+  if(curve.type == Primitive_Type_Curve){ old_chords[iprim] = document_curve_chord(doc, curve); }
+ }
+ for_i32(i, 0, vertex_count)
+ {
+  Bone_ID bone_id = document_vertex_index_bone(doc, vertex_indices[i]);
+  doc.vertices[vertex_indices[i]].p += document_edit_bone_delta(bone_id, is_right, delta_world);
+ }
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &curve = doc.primitives[iprim];
+  if(curve.type != Primitive_Type_Curve){ continue; }
+  b32 moved0 = document_vertex_list_contains(vertex_indices, vertex_count, curve.vertex_index[0]);
+  b32 moved1 = document_vertex_list_contains(vertex_indices, vertex_count, curve.vertex_index[1]);
+  if(moved0 == moved1){ continue; }  // NOTE(kv) untouched, rigidly translated, or a loop
+  v3 old_chord = old_chords[iprim];
   v3 new_chord = document_curve_chord(doc, curve);
-  v3 old_chord = at1 ? (new_chord - delta) : (new_chord + delta);
   if(lengthof(old_chord) < curve_collinear_epsilon or lengthof(new_chord) < curve_collinear_epsilon){ continue; }
   v3 from = noz(old_chord);
   v3 to   = noz(new_chord);
@@ -710,6 +782,24 @@ document_edit_move_vertex(Recording &doc, Recorded_Primitive &prim, i32 vertex_i
    offset = rotate_between_directions(offset, from, to, flip_axis);
   }
  }
+}
+
+function i32
+document_link_members(Recording &doc, Arena *arena, i32 vertex_index, i32 **members_out)
+{// NOTE(kv) plan-vertex-links: `vertex_index` plus every vertex sharing its link_id.
+ i32 link_id = doc.vertices[vertex_index].link_id;
+ i32 *members = push_array(arena, i32, maximum(1, doc.vertices.count));
+ i32 count = 0;
+ members[count++] = vertex_index;
+ if(link_id != 0)
+ {
+  for_i32(iv, 0, doc.vertices.count)
+  {
+   if(iv != vertex_index and doc.vertices[iv].link_id == link_id){ members[count++] = iv; }
+  }
+ }
+ *members_out = members;
+ return count;
 }
 
 //~ NOTE(kv) plan-curve-coplanar-handles Q1: a handle drag lands where the mouse ray
@@ -898,6 +988,159 @@ document_coplanarize_once(Game_State *state, i32 prim_index)
  return true;
 }
 
+//~ NOTE(kv) plan-vertex-links: the vertex selection (Q3) and Link / Unlink (Q4/Q6).
+function void
+document_vertex_selection_toggle(Game_State *state, i32 vertex_index)
+{
+ Document_Vertex_Selection &vsel = state->document_vertex_selection;
+ for_i32(i, 0, vsel.count)
+ {
+  if(vsel.vertex_index[i] == vertex_index)
+  {
+   for_i32(j, i, vsel.count-1){ vsel.vertex_index[j] = vsel.vertex_index[j+1]; }
+   vsel.count--;
+   return;
+  }
+ }
+ if(vsel.count < alen(vsel.vertex_index)){ vsel.vertex_index[vsel.count++] = vertex_index; }
+}
+
+function i32
+document_link_candidates(Game_State *state, i32 *out, i32 cap)
+{// NOTE(kv) What "Link vertices" / "Unlink" act on: the vertex selection if there is one,
+ // else the endpoints of every selected curve (Q3). Distinct table indices.
+ Recording &doc = state->model.recordings.document;
+ Document_Vertex_Selection &vsel = state->document_vertex_selection;
+ i32 count = 0;
+ for_i32(i, 0, vsel.count)
+ {
+  i32 vi = vsel.vertex_index[i];
+  if(vi < 0 or vi >= doc.vertices.count){ continue; }
+  if(count < cap and not document_vertex_list_contains(out, count, vi)){ out[count++] = vi; }
+ }
+ if(count == 0)
+ {
+  i32 curves[Document_Selection_Cap];
+  i32 curve_count = document_selection_curve_indices(state, curves);
+  for_i32(i, 0, curve_count)
+  {
+   for_i32(slot, 0, 2)
+   {
+    i32 vi = doc.primitives[curves[i]].vertex_index[slot];
+    if(count < cap and not document_vertex_list_contains(out, count, vi)){ out[count++] = vi; }
+   }
+  }
+ }
+ return count;
+}
+
+function b32
+document_link_vertices(Game_State *state, i32 *vertex_indices, i32 vertex_count)
+{// NOTE(kv) Put the vertices in ONE link set. Members already in other sets drag those
+ // sets along (Q4: merge). Refuses a selection spanning bones (Q6): a link drag is one
+ // bone-local delta for all members.
+ Recording &doc = state->model.recordings.document;
+ if(vertex_count < 2){ log_error("link: need at least 2 vertices, got %d", vertex_count); return false; }
+ for_i32(i, 0, vertex_count)
+ {
+  if(vertex_indices[i] < 0 or vertex_indices[i] >= doc.vertices.count)
+  { log_error("link: vertex %d out of range", vertex_indices[i]); return false; }
+ }
+ i32 max_id = 0;
+ for_i32(iv, 0, doc.vertices.count){ max_id = maximum(max_id, doc.vertices[iv].link_id); }
+ Bone_ID bone_id = document_vertex_index_bone(doc, vertex_indices[0]);
+ for_i32(iv, 0, doc.vertices.count)
+ {// NOTE(kv) Everything that would end up in the merged set must share the bone.
+  b32 joins = false;
+  for_i32(i, 0, vertex_count)
+  {
+   i32 vi = vertex_indices[i];
+   if(iv == vi or (doc.vertices[vi].link_id != 0 and doc.vertices[vi].link_id == doc.vertices[iv].link_id))
+   { joins = true; break; }
+  }
+  if(joins and not (document_vertex_index_bone(doc, iv) == bone_id))
+  {
+   log_error("link: vertex %d is on a different bone than vertex %d, not linking", iv, vertex_indices[0]);
+   return false;
+  }
+ }
+ Document_Action action = {};
+ action.kind  = Document_Action_Link_Vertices;
+ action.count = vertex_count;
+ history_begin(state, action);
+ i32 new_id = max_id + 1;
+ for_i32(i, 0, vertex_count)
+ {
+  i32 old_id = doc.vertices[vertex_indices[i]].link_id;
+  doc.vertices[vertex_indices[i]].link_id = new_id;
+  if(old_id == 0){ continue; }
+  for_i32(iv, 0, doc.vertices.count)
+  {
+   if(doc.vertices[iv].link_id == old_id){ doc.vertices[iv].link_id = new_id; }
+  }
+ }
+ doc.captured = true;
+ state->document_vertex_selection.count = 0;
+ document_edit_commit_and_save(state);
+ return true;
+}
+
+function void
+document_link_dissolve_singletons(Recording &doc)
+{// NOTE(kv) A set left with one member is just a vertex.
+ for_i32(iv, 0, doc.vertices.count)
+ {
+  i32 link_id = doc.vertices[iv].link_id;
+  if(link_id == 0){ continue; }
+  b32 has_peer = false;
+  for_i32(jv, 0, doc.vertices.count)
+  {
+   if(jv != iv and doc.vertices[jv].link_id == link_id){ has_peer = true; break; }
+  }
+  if(not has_peer){ doc.vertices[iv].link_id = 0; }
+ }
+}
+
+function b32
+document_unlink_vertices(Game_State *state, i32 *vertex_indices, i32 vertex_count)
+{// NOTE(kv) Take these vertices out of their sets; the rest of each set stays linked.
+ Recording &doc = state->model.recordings.document;
+ i32 linked_count = 0;
+ for_i32(i, 0, vertex_count)
+ {
+  i32 vi = vertex_indices[i];
+  if(vi >= 0 and vi < doc.vertices.count and doc.vertices[vi].link_id != 0){ linked_count++; }
+ }
+ if(linked_count == 0){ return false; }
+ Document_Action action = {};
+ action.kind  = Document_Action_Unlink_Vertices;
+ action.count = linked_count;
+ history_begin(state, action);
+ for_i32(i, 0, vertex_count)
+ {
+  i32 vi = vertex_indices[i];
+  if(vi >= 0 and vi < doc.vertices.count){ doc.vertices[vi].link_id = 0; }
+ }
+ document_link_dissolve_singletons(doc);
+ state->document_vertex_selection.count = 0;
+ document_edit_commit_and_save(state);
+ return true;
+}
+
+function b32
+document_unlink_set(Game_State *state, i32 link_id)
+{// NOTE(kv) Selection panel "delete": the whole set goes.
+ Recording &doc = state->model.recordings.document;
+ Scratch_Scope scratch;
+ i32 *members = push_array(scratch, i32, maximum(1, doc.vertices.count));
+ i32 count = 0;
+ for_i32(iv, 0, doc.vertices.count)
+ {
+  if(link_id != 0 and doc.vertices[iv].link_id == link_id){ members[count++] = iv; }
+ }
+ return document_unlink_vertices(state, members, count);
+}
+
 function void
 document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
@@ -931,19 +1174,28 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  if(length_squared(delta_world) < 1e-12f){ return; }
  edit.moved = true;
 
- if(edit.whole_stroke)
- {// NOTE(kv) Both endpoints; a curve looping onto one vertex moves it once.
-  i32 v0 = prim.vertex_index[0];
-  i32 v1 = prim.vertex_index[1];
-  // NOTE(kv) This curve's chord only translates, so its handles are not rotated.
-  // Another curve sharing one of the vertices turns as it would under a vertex drag.
-  // TODO(kv) A curve chained to BOTH ends of the dragged stroke rotates on the first
-  // move and back on the second: identity up to float noise, not exactly.
-  document_edit_move_vertex(doc, prim, v0, pick.is_right, delta_world, pick.prim_index);
-  if(v1 != v0)
+ if(edit.whole_stroke or not pick.is_handle)
+ {// NOTE(kv) Whole stroke: both endpoints (a curve looping onto one vertex moves it
+  // once); its chord only translates, so its handles are not rotated. Another curve
+  // sharing ONE of the moved vertices turns as it would under a vertex drag.
+  // NOTE(kv) plan-vertex-links: every grabbed vertex drags its link set along, unless
+  // Alt was held at press (`solo`, Q5). One batched move, see document_edit_move_vertices.
+  Scratch_Scope scratch;
+  i32 *moved = push_array(scratch, i32, maximum(1, doc.vertices.count));
+  i32 moved_count = 0;
+  i32 grabbed_count = edit.whole_stroke ? 2 : 1;
+  for_i32(igrab, 0, grabbed_count)
   {
-   document_edit_move_vertex(doc, prim, v1, pick.is_right, delta_world, pick.prim_index);
+   i32 grabbed = prim.vertex_index[edit.whole_stroke ? igrab : pick.slot];
+   i32 *members = &grabbed;
+   i32 member_count = 1;
+   if(not edit.solo){ member_count = document_link_members(doc, scratch, grabbed, &members); }
+   for_i32(im, 0, member_count)
+   {
+    if(not document_vertex_list_contains(moved, moved_count, members[im])){ moved[moved_count++] = members[im]; }
+   }
   }
+  document_edit_move_vertices(doc, moved, moved_count, pick.is_right, delta_world);
  }
  else if(pick.is_handle)
  {
@@ -955,10 +1207,6 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
   Bone_ID bone_id = doc.groups[prim.group_index].bone_id;
   prim.curve.handle_offset[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
   if(free_handle){ document_curve_swing_other_handle(doc, prim, pick.slot-1); }
- }
- else
- {
-  document_edit_move_vertex(doc, prim, prim.vertex_index[pick.slot], pick.is_right, delta_world);
  }
  document_apply_midlines(doc);
 }

@@ -30,6 +30,8 @@
 //   select <i> [j ...] / select none -> set the document selection (curves or patches)
 //   key delete        -> delete the selection, as the Delete/Backspace key does
 //   make_patch <i> <j> [k] [l] -> curve patch primitive over those document curves
+//   link <v> <v> [v...] / unlink <v> [v...] -> vertex links (table indices, plan-vertex-links)
+//   curve_offsets <prim> -> full-precision endpoints + handle offsets of one curve
 //   delete_patch <i>  -> remove a curve patch primitive
 //   delete_curve <i>  -> remove a curve primitive (patches using it drop the entry; a patch
 //                        left with < 2 curves goes too)
@@ -426,7 +428,9 @@ debug_channel_document_dump(FILE *out, Game_State *state)
  for_i32(ivert, 0, doc.vertices.count)
  {
   Recorded_Vertex &v = doc.vertices.items[ivert];
-  fprintf(out, "vertex %d: (%g %g %g) bone %d:%d\n", ivert, v.p.x, v.p.y, v.p.z, v.bone.type, v.bone.id);
+  fprintf(out, "vertex %d: (%g %g %g) bone %d:%d", ivert, v.p.x, v.p.y, v.p.z, v.bone.type, v.bone.id);
+  if(v.link_id != 0){ fprintf(out, " link %d", v.link_id); }
+  fprintf(out, "\n");
  }
 }
 
@@ -990,6 +994,42 @@ debug_channel_update(Game_State *state, App *app)
    debug_channel_wants_animate = true;
   }
   else { fprintf(out, "error: usage: make_patch <i> <j> [k] [l]\n"); }
+ }
+ else if(strncmp(cmd, "link ", 5) == 0 or strncmp(cmd, "unlink ", 7) == 0)
+ {// NOTE(kv) plan-vertex-links: `link <v> <v> [v...]` / `unlink <v> [v...]`, table indices.
+  b32 is_link = (cmd[0] == 'l');
+  i32 indices[Document_Vertex_Selection_Cap];
+  i32 count = 0;
+  char *at = cmd + (is_link ? 5 : 7);
+  i32 value, consumed;
+  while(count < alen(indices) and sscanf(at, "%d%n", &value, &consumed) == 1)
+  {
+   indices[count++] = value;
+   at += consumed;
+  }
+  b32 ok = (is_link ? document_link_vertices(state, indices, count)
+            : document_unlink_vertices(state, indices, count));
+  fprintf(out, "%s: %s\n", is_link ? "link" : "unlink", ok ? "ok" : "FAILED / nothing to do (see log)");
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "curve_offsets ", 14) == 0)
+ {// NOTE(kv) Full-precision endpoints + handle offsets of one curve (%.9g round-trips a
+  // float), for "did this curve only translate" asserts.
+  Recording &doc = state->model.recordings.document;
+  i32 prim_index = -1;
+  if(sscanf(cmd+14, "%d", &prim_index) == 1 and prim_index >= 0 and prim_index < doc.primitives.count and
+     doc.primitives[prim_index].type == Primitive_Type_Curve)
+  {
+   Recorded_Primitive &prim = doc.primitives[prim_index];
+   for_i32(i, 0, 2)
+   {
+    v3 p = doc.vertices[prim.vertex_index[i]].p;
+    v3 d = prim.curve.handle_offset[i].v;
+    fprintf(out, "v%d #%d (%.9g %.9g %.9g)  d%d (%.9g %.9g %.9g)\n",
+            i, prim.vertex_index[i], p.x, p.y, p.z, i, d.x, d.y, d.z);
+   }
+  }
+  else { fprintf(out, "error: usage: curve_offsets <curve prim index>\n"); }
  }
  else if(strncmp(cmd, "patch_grid ", 11) == 0)
  {// NOTE(kv) Evaluate a curve patch and print its grid corners/center in window px.

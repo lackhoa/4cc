@@ -1117,6 +1117,7 @@ camera_drag_release(Game_State *state)
  {// NOTE(kv) Q5 of plan-active-primitive-delete-key + plan-selection-followups Q1: a
   // click on nothing deselects, a drag (orbit/pan) keeps the selection.
   state->document_selection.count = 0;
+  state->document_vertex_selection.count = 0;
  }
  drag.active = false;
 }
@@ -1911,9 +1912,12 @@ game_update(Game_Update_Params params)
    b32 shift = ((params.input.active_mods & Key_Mod_Sft) != 0 or debug_channel_mouse_shift);
    Document_Pick pick = {};
    v1 pick_dist = INFINITY;
-   b32 near_selected_point = (not shift and
-                              document_pick_nearest(state, mouse_viewport, V2(params.mouse.p), &pick, &pick_dist) and
-                              pick_dist <= document_pick_radius_px);
+   b32 near_any_point = (document_pick_nearest(state, mouse_viewport, V2(params.mouse.p), &pick, &pick_dist) and
+                         pick_dist <= document_pick_radius_px);
+   b32 near_selected_point = (not shift and near_any_point);
+   // NOTE(kv) plan-vertex-links Q3: shift-click ON a vertex of the selection toggles it in
+   // the vertex selection (the input of "Link vertices"); handles don't link.
+   b32 shift_on_vertex = (shift and near_any_point and not pick.is_handle);
    if(state->split_tool.armed and mouse_viewport)
    {// NOTE(kv) Split mode owns the left press and consumes it (no drag / deselect
     // fall-through). Three zones: on the curve outside the guard commits the cut and
@@ -1940,6 +1944,11 @@ game_update(Game_Update_Params params)
    {
     line_tool_press(state, mouse_viewport, V2(params.mouse.p));
    }
+   else if(shift_on_vertex)
+   {
+    Recording &doc = state->model.recordings.document;
+    document_vertex_selection_toggle(state, doc.primitives[pick.prim_index].vertex_index[pick.slot]);
+   }
    else if(near_selected_point)
    {// NOTE(kv) Control points of the selection win over whatever is hot: a shared
     // vertex of two chained curves is edited through the curve you selected, and a
@@ -1947,7 +1956,8 @@ game_update(Game_Update_Params params)
     // Ctrl at press = free handle drag (plan-handle-drag-modes Q2), sampled once here
     // like shift/alt.
     b32 ctrl = ((params.input.active_mods & Key_Mod_Ctl) != 0 or debug_channel_mouse_ctrl);
-    document_edit_press(state, mouse_viewport, V2(params.mouse.p), pick, ctrl);
+    b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
+    document_edit_press(state, mouse_viewport, V2(params.mouse.p), pick, ctrl, alt);
    }
    else if(not is_valid(hot_location) and mouse_viewport and
            state->reference_edit.drag == Reference_Drag_None)
@@ -2028,7 +2038,29 @@ game_update(Game_Update_Params params)
        state->split_tool.prim_index = document_primitive_index(sel.menu_hot);
       }
      }
-     if(sel.count >= 2 or menu_hot_is_patch or menu_hot_is_curve){ ImGui::Separator(); }
+     b32 has_link_items = false;
+     {// NOTE(kv) plan-vertex-links Q3: acts on the shift-clicked vertices, else on the
+      // endpoints of the selected curves.
+      i32 candidates[Document_Vertex_Selection_Cap];
+      i32 candidate_count = document_link_candidates(state, candidates, alen(candidates));
+      i32 linked_count = 0;
+      for_i32(i, 0, candidate_count){ if(doc.vertices[candidates[i]].link_id != 0){ linked_count++; } }
+      if(candidate_count >= 2)
+      {
+       has_link_items = true;
+       char label[64];
+       snprintf(label, sizeof(label), "Link vertices (%d)", candidate_count);
+       if(ImGui::Selectable(label)){ document_link_vertices(state, candidates, candidate_count); }
+      }
+      if(linked_count > 0)
+      {
+       has_link_items = true;
+       char label[64];
+       snprintf(label, sizeof(label), "Unlink vertices (%d)", linked_count);
+       if(ImGui::Selectable(label)){ document_unlink_vertices(state, candidates, candidate_count); }
+      }
+     }
+     if(sel.count >= 2 or menu_hot_is_patch or menu_hot_is_curve or has_link_items){ ImGui::Separator(); }
     }
     {// NOTE(kv) Line tool (game_document_line_tool.cpp): arm, then drag a curve; a
      // click without a drag disarms.
@@ -2309,7 +2341,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); split_tool_reset(state); state->document_selection.count = 0; }break;
+      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); split_tool_reset(state); state->document_selection.count = 0; state->document_vertex_selection.count = 0; }break;
       // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
       case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
@@ -2887,6 +2919,35 @@ game_update(Game_Update_Params params)
      }
      else { ImGui::TextDisabled("hot: none"); }
      ImGui::Separator();
+    }
+    {//-plan-vertex-links Q8: the vertex selection + every link set, with delete.
+     Document_Vertex_Selection &vsel = state->document_vertex_selection;
+     if(vsel.count > 0)
+     {
+      ImGui::Text("%d vertices picked (right-click: Link):", vsel.count);
+      for_i32(i, 0, vsel.count){ ImGui::SameLine(); ImGui::Text("%d", vsel.vertex_index[i]); }
+     }
+     i32 unlink_id = 0;
+     b32 any_set = false;
+     for_i32(iv, 0, doc.vertices.count)
+     {// NOTE(kv) One row per set, at its lowest-index member.
+      i32 link_id = doc.vertices[iv].link_id;
+      if(link_id == 0){ continue; }
+      b32 is_first = true;
+      for_i32(jv, 0, iv){ if(doc.vertices[jv].link_id == link_id){ is_first = false; break; } }
+      if(not is_first){ continue; }
+      any_set = true;
+      char label[32];
+      snprintf(label, sizeof(label), "x##unlink%d", link_id);
+      if(ImGui::SmallButton(label)){ unlink_id = link_id; }
+      ImGui::SameLine(); ImGui::Text("link:");
+      for_i32(jv, iv, doc.vertices.count)
+      {
+       if(doc.vertices[jv].link_id == link_id){ ImGui::SameLine(); ImGui::Text("%d", jv); }
+      }
+     }
+     if(unlink_id != 0){ document_unlink_set(state, unlink_id); }
+     if(vsel.count > 0 or any_set){ ImGui::Separator(); }
     }
     if(curve_count == 0)
     {

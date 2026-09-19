@@ -46,7 +46,12 @@ weld_document_vertices(Recording &doc, Arena *tmp, i32 *welded_count_out)
      { found = j; break; }
     }
     if(found == -1){ found = welded.count; push(&welded, vertex); }
-    else           { welded_count++; }
+    else
+    {
+     welded_count++;
+     // NOTE(kv) plan-vertex-links: the survivor keeps its own link, else inherits.
+     if(welded.items[found].link_id == 0){ welded.items[found].link_id = vertex.link_id; }
+    }
     remap[old_index] = found;
    }
    prim.vertex_index[ivertex] = remap[old_index];
