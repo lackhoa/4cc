@@ -150,6 +150,12 @@ document_curve_set_handle_point(Recording &doc, Recorded_Primitive &prim, i32 i,
                                                               point, i);
 }
 
+inline i32
+document_pick_vertex_index(Recording &doc, Document_Pick pick)
+{// NOTE(kv) The TABLE index of a vertex pick. Not for handles: their `slot` is an e-index.
+ kv_assert(not pick.is_handle);
+ return doc.primitives[pick.prim_index].vertex_index[pick.slot];
+}
 function v3
 document_pick_world_pos(Recording &doc, Document_Pick pick)
 {
@@ -165,7 +171,7 @@ document_pick_world_pos(Recording &doc, Document_Pick pick)
  }
  else
  {
-  Recorded_Vertex &vertex = doc.vertices[prim.vertex_index[pick.slot]];
+  Recorded_Vertex &vertex = doc.vertices[document_pick_vertex_index(doc, pick)];
   bone_p = vertex.p;
   bone_id = document_vertex_bone(doc, prim, vertex);
  }
@@ -598,7 +604,7 @@ document_hover_label(char *buf, i32 cap, Recording &doc)
                   strexpand(group_name));
  }
  return snprintf(buf, cap, "vertex %d (%.*s) -- slot %d of prim %d",
-                 prim.vertex_index[pick.slot], strexpand(group_name), pick.slot, pick.prim_index);
+                 document_pick_vertex_index(doc, pick), strexpand(group_name), pick.slot, pick.prim_index);
 }
 function void
 document_hover_draw_disk(Camera &camera, v3 center, v1 radius_mm, argb color)
@@ -705,7 +711,7 @@ document_hover_draw(Game_State *state, Camera &camera)
   }
   if(document_hover_grab and not document_hover_pick.is_handle)
   {
-   i32 hovered_vi = doc.primitives[document_hover_pick.prim_index].vertex_index[document_hover_pick.slot];
+   i32 hovered_vi = document_pick_vertex_index(doc, document_hover_pick);
    i32 link_id = doc.vertices[hovered_vi].link_id;
    for_i32(vi, 0, doc.vertices.count)
    {
@@ -743,7 +749,7 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
   Document_Action action = {};
   action.kind       = best.is_handle ? Document_Action_Move_Handle : Document_Action_Move_Vertex;
   action.prim_index = prim_index;
-  action.index      = best.is_handle ? best.slot : prim.vertex_index[best.slot];
+  action.index      = best.is_handle ? best.slot : document_pick_vertex_index(doc, best);
   history_begin(state, action);
  }
 }
@@ -1318,7 +1324,7 @@ document_edit_release(Game_State *state)
    Recording &doc = state->model.recordings.document;
    Document_Vertex_Selection &vsel = state->document_vertex_selection;
    vsel.count = 1;
-   vsel.vertex_index[0] = doc.primitives[edit.pick.prim_index].vertex_index[edit.pick.slot];
+   vsel.vertex_index[0] = document_pick_vertex_index(doc, edit.pick);
    state->document_selection.count = 0;
   }
  }

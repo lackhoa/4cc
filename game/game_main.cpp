@@ -1973,7 +1973,7 @@ game_update(Game_Update_Params params)
    else if(shift_on_vertex)
    {
     Recording &doc = state->model.recordings.document;
-    document_vertex_selection_toggle(state, doc.primitives[pick.prim_index].vertex_index[pick.slot]);
+    document_vertex_selection_toggle(state, document_pick_vertex_index(doc, pick));
    }
    else if(near_selected_point)
    {// NOTE(kv) Control points of the selection win over whatever is hot: a shared
