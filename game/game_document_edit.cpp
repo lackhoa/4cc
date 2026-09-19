@@ -537,7 +537,11 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
    {
     for_i32(slot, 0, primitive_vertex_count(prim.type))
     {
-     Document_Pick candidate = {iprim, side == 1, false, slot};
+     Document_Pick candidate = {};
+     candidate.prim_index = iprim;
+     candidate.is_right   = (side == 1);
+     candidate.is_handle  = false;
+     candidate.slot       = slot;
      v2 px = project(proj, document_pick_world_pos(doc, candidate));
      v1 dist = lengthof(V3(px - mouse_px, 0));
      if(dist < best_dist)
