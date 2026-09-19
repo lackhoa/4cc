@@ -2330,15 +2330,21 @@ game_update(Game_Update_Params params)
    const u32 S = Key_Mod_Sft;
    const u32 C = Key_Mod_Ctl;
    const u32 M = Key_Mod_Alt;
+   // NOTE(kv) plan-keyboard-vertex-move Q1/Q9: with a vertex selected, plain and Alt
+   // h/j/k/l/i/o move it (continuous input, handled below); Ctrl still orbits.
+   b32 nudge_owns_keys = (state->document_vertex_selection.count > 0 and not cursor_on);
    if(viewport_focused)
    {
     if(mods==Key_Mod_Ctl and is_v3_key(keycode))
     {
      update_orbit(cam_data, input);
     }
+    else if(nudge_owns_keys and is_v3_key(keycode) and (mods & ~(Key_Mod_Sft|Key_Mod_Alt)) == 0)
+    {
+    }
     else if(mods==Key_Mod_Alt and is_v2_key(keycode))
     {
-     update_pan(cam_data, input); 
+     update_pan(cam_data, input);
     }
     else
     {//-Other keys
@@ -2370,7 +2376,11 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Space: { game_last_preset(state, update_viewport_id); }break;
       case Key_Code_M:     { state->kb_cursor.on = true; } break;
-      case Key_Code_Escape:{ state->kb_cursor.on = false; line_tool_reset(state); split_tool_reset(state); state->document_selection.count = 0; state->document_vertex_selection.count = 0; }break;
+      case Key_Code_Escape:
+      {// NOTE(kv) plan-keyboard-vertex-move Q8: Esc on a pending nudge only cancels it.
+       if(history_nudge_cancel(state)){ break; }
+       state->kb_cursor.on = false; line_tool_reset(state); split_tool_reset(state); state->document_selection.count = 0; state->document_vertex_selection.count = 0;
+      }break;
       // NOTE(kv) Delete the selection (plan-active-primitive-delete-key.md Q2/Q3).
       case Key_Code_Delete: case Key_Code_Backspace:{ document_delete_selection(state); }break;
 
@@ -2406,6 +2416,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Return:
       {
+       document_nudge_commit(state);  // NOTE(kv) plan-keyboard-vertex-move Q3
        if(0)
        {// NOTE(kv) OLD mouse cursor code
         if(is_valid(hot_location) and not is_document_location(hot_location))
@@ -2585,6 +2596,17 @@ game_update(Game_Update_Params params)
    block_copy(data.data, &value, data.size);
   }
 
+  if(input_dir.xyz != v3{} and viewport_focused and not cursor_on and not fui_is_active() and
+     state->document_vertex_selection.count > 0 and
+     (mods & ~u32(Key_Mod_Sft|Key_Mod_Alt)) == 0)
+  {//-NOTE(kv) plan-keyboard-vertex-move: nudge the vertex selection, same feel as a tvert
+   // slider (held keys, camera-aligned, Shift = x10). Alt = solo (link members stay, Q5).
+   v3 dir_world = mat4vec(update_target_camera.world_from_cam, input_dir.xyz);
+   v3 delta = document_nudge_speed * dt * dir_world;
+   if(mods & Key_Mod_Sft){ delta *= 10.f; }
+   document_nudge(state, delta, (mods & Key_Mod_Alt) != 0);
+  }
+
   if(mouse_viewport)
   {
    i32 wheel = signof(params.mouse.wheel);  // NOTE(kv) We have WEIRD +/-100 mouse wheel values!
@@ -2682,6 +2704,7 @@ game_update(Game_Update_Params params)
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
    if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
    if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
+   if (state->document_history.pending_nudge) { DEBUG_TEXT("vertex move pending -- Enter commits, Esc cancels"); }
    if (state->document_history.status_frames > 0)
    {// NOTE(kv) "undo: move vertex 12 (nose)" for a couple of seconds after Ctrl+Z.
     state->document_history.status_frames--;

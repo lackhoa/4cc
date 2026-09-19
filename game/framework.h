@@ -235,6 +235,9 @@ struct Document_History
  i32 count;
  i32 position;      // entry the document currently equals; -1 when empty
  b32 pending;       // history_begin called, commit/discard not yet
+ // NOTE(kv) plan-keyboard-vertex-move: the pending edit is a keyboard nudge, open across
+ // frames until Enter (commit) or Esc (cancel). Any other history/save traffic cancels it.
+ b32 pending_nudge;
  Document_Action pending_action;
  char status[160];  // "undo: move vertex 12 (nose)", shown on screen for status_frames
  i32 status_frames;

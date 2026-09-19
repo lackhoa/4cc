@@ -80,12 +80,28 @@ history_clear(Game_State *state)
  history.count    = 0;
  history.position = -1;
  history.pending  = false;
+ history.pending_nudge = false;
  history.pending_action = {};
+}
+function b32
+history_nudge_cancel(Game_State *state)
+{// NOTE(kv) plan-keyboard-vertex-move Q3/Q7: Esc, and every other piece of history/save
+ // traffic, puts a pending keyboard nudge back. entries[position] IS the pre-nudge
+ // document: the nudge's history_begin took the baseline if there was none, and nothing
+ // else can have committed since (it would have come through here first).
+ Document_History &history = state->document_history;
+ if(not history.pending_nudge){ return false; }
+ history.pending_nudge = false;
+ history.pending       = false;
+ // NOTE(kv) A pure vertex move: counts and indices are unchanged, selections stay valid.
+ document_snapshot_restore(state->model.recordings.document, history.entries[history.position]);
+ return true;
 }
 function void
 history_begin(Game_State *state, Document_Action action)
 {// NOTE(kv) Call before mutating the document. The first edit after a clear also
  // captures entry 0 (the state the edit starts from), so the baseline never goes stale.
+ history_nudge_cancel(state);
  Document_History &history = state->document_history;
  if(history.count == 0)
  {
@@ -128,6 +144,7 @@ function b32
 history_jump(Game_State *state, i32 position)
 {// NOTE(kv) Make the document equal entry `position` (undo/redo/panel click); saves.
  Document_History &history = state->document_history;
+ if(history_nudge_cancel(state)){ return true; }  // NOTE(kv) Ctrl+Z on a pending nudge == Esc
  if(position < 0 or position >= history.count or position == history.position){ return false; }
  history.pending = false;
  {// NOTE(kv) Status line: undo names the entry being undone, redo the one redone.

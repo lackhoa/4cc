@@ -1330,3 +1330,66 @@ document_edit_release(Game_State *state)
  }
  edit = {};
 }
+
+//~ NOTE(kv) plan-keyboard-vertex-move: the vertex selection moves by keyboard, slider
+// style. The first nudge opens a history entry that stays pending across frames; Enter
+// commits it (one undo entry + save), Esc -- or any other history/save traffic, see
+// history_nudge_cancel -- puts the vertices back.
+global v1 const document_nudge_speed = 0.05f;  // world units per second; Shift = x10
+
+function b32
+document_nudge(Game_State *state, v3 delta_world, b32 solo)
+{
+ Recording &doc = state->model.recordings.document;
+ Document_Vertex_Selection &vsel = state->document_vertex_selection;
+ Document_History &history = state->document_history;
+ if(vsel.count == 0 or state->document_edit.active){ return false; }
+ if(history.pending and not history.pending_nudge){ return false; }  // someone else's edit is open
+ for_i32(i, 0, vsel.count)
+ {
+  if(vsel.vertex_index[i] < 0 or vsel.vertex_index[i] >= doc.vertices.count){ return false; }
+ }
+ if(not history.pending_nudge)
+ {
+  Document_Action action = {};
+  action.kind  = Document_Action_Move_Vertex;
+  action.index = vsel.vertex_index[0];
+  for_i32(iprim, 0, doc.primitives.count)
+  {// NOTE(kv) Any primitive on the vertex, for the group name in the history label.
+   Recorded_Primitive &prim = doc.primitives[iprim];
+   i32 vertex_count = (prim.type == Primitive_Type_Point) ? 1 : 2;
+   b32 found = false;
+   for_i32(iv, 0, vertex_count){ if(prim.vertex_index[iv] == action.index){ found = true; } }
+   if(found){ action.prim_index = iprim; break; }
+  }
+  history_begin(state, action);
+  history.pending_nudge = true;
+ }
+ Scratch_Scope scratch;
+ i32 *moved = push_array(scratch, i32, maximum(1, doc.vertices.count));
+ i32 moved_count = 0;
+ for_i32(isel, 0, vsel.count)
+ {
+  i32 selected = vsel.vertex_index[isel];
+  i32 *members = &selected;
+  i32 member_count = 1;
+  if(not solo){ member_count = document_link_members(doc, scratch, selected, &members); }
+  for_i32(im, 0, member_count)
+  {
+   if(not document_vertex_list_contains(moved, moved_count, members[im])){ moved[moved_count++] = members[im]; }
+  }
+ }
+ document_edit_move_vertices(doc, moved, moved_count, false, delta_world);
+ document_apply_midlines(doc);
+ return true;
+}
+function b32
+document_nudge_commit(Game_State *state)
+{
+ Document_History &history = state->document_history;
+ if(not history.pending_nudge){ return false; }
+ history.pending_nudge = false;  // NOTE(kv) before the save, which would cancel it
+ history_commit(state);
+ save_document_file(state);
+ return true;
+}

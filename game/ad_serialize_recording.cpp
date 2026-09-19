@@ -144,9 +144,12 @@ save_recording_file(Game_State *state)
                            pjoin(tmp, state->save_dir, strlit("recording_temp.ad")),
                            write_recording_file, "recording");
 }
+function b32 history_nudge_cancel(Game_State *state);  // game_document_history.cpp
 function b32
 save_document_file(Game_State *state)
 {
+ // NOTE(kv) plan-keyboard-vertex-move Q7: an uncommitted keyboard nudge never reaches the file.
+ history_nudge_cancel(state);
  Scratch_Scope tmp;
  return save_file_via_temp(state, document_file_path(tmp, state),
                            pjoin(tmp, state->save_dir, strlit("document_temp.ad")),

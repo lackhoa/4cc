@@ -1178,6 +1178,39 @@ debug_channel_update(Game_State *state, App *app)
           state->model.recordings.document.primitives.count);
   debug_channel_wants_animate = true;
  }
+ else if(strncmp(cmd, "nudge ", 6) == 0)
+ {// NOTE(kv) plan-keyboard-vertex-move: `nudge <dx> <dy> <dz> [solo]` -- the h/j/k/l path
+  // without a keyboard; the delta is in WORLD units (the keys rotate theirs by the camera).
+  v3 delta = {};
+  char solo_word[16] = {};
+  i32 got = sscanf(cmd+6, "%f %f %f %15s", &delta.x, &delta.y, &delta.z, solo_word);
+  b32 ok = (got >= 3) and document_nudge(state, delta, strcmp(solo_word, "solo") == 0);
+  fprintf(out, "nudge: %s, pending %d\n", ok ? "ok" : "refused", state->document_history.pending_nudge);
+  debug_channel_wants_animate = true;
+ }
+ else if(strncmp(cmd, "select_vertex ", 14) == 0)
+ {// NOTE(kv) A plain click on table vertex <i>, without having to hit its pixel.
+  i32 vertex_index = atoi(cmd+14);
+  b32 ok = (vertex_index >= 0 and vertex_index < state->model.recordings.document.vertices.count);
+  if(ok)
+  {
+   state->document_vertex_selection.count = 1;
+   state->document_vertex_selection.vertex_index[0] = vertex_index;
+   state->document_selection.count = 0;
+  }
+  fprintf(out, "select_vertex: %s\n", ok ? "ok" : "out of range");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "nudge_commit") == 0)
+ {
+  fprintf(out, "nudge_commit: %s\n", document_nudge_commit(state) ? "ok" : "nothing pending");
+  debug_channel_wants_animate = true;
+ }
+ else if(strcmp(cmd, "nudge_cancel") == 0)
+ {
+  fprintf(out, "nudge_cancel: %s\n", history_nudge_cancel(state) ? "ok" : "nothing pending");
+  debug_channel_wants_animate = true;
+ }
  else if(strcmp(cmd, "mouse_up") == 0)
  {
   debug_channel_mouse_left = false;
