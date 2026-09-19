@@ -893,6 +893,28 @@ document_link_members(Recording &doc, Arena *arena, i32 vertex_index, i32 **memb
  return count;
 }
 
+function void
+document_move_vertices_linked(Recording &doc, i32 *grabbed, i32 grabbed_count, b32 solo,
+                              b32 is_right, v3 delta_world)
+{// NOTE(kv) plan-vertex-links: every grabbed vertex drags its link set along, unless
+ // `solo` (Alt, Q5). Deduped (a curve looping onto one vertex, two grabbed vertices in
+ // one link set), then ONE batched move, see document_edit_move_vertices.
+ Scratch_Scope scratch;
+ i32 *moved = push_array(scratch, i32, maximum(1, doc.vertices.count));
+ i32 moved_count = 0;
+ for_i32(igrab, 0, grabbed_count)
+ {
+  i32 *members = &grabbed[igrab];
+  i32 member_count = 1;
+  if(not solo){ member_count = document_link_members(doc, scratch, grabbed[igrab], &members); }
+  for_i32(im, 0, member_count)
+  {
+   if(not document_vertex_list_contains(moved, moved_count, members[im])){ moved[moved_count++] = members[im]; }
+  }
+ }
+ document_edit_move_vertices(doc, moved, moved_count, is_right, delta_world);
+}
+
 //~ NOTE(kv) plan-curve-coplanar-handles Q1: a handle drag lands where the mouse ray
 // pierces the curve's plane (tablet "plane" mode, the default there); the other handle
 // never moves. Edge-on plane or a hit behind the eye: the handle stays where it is.
@@ -979,8 +1001,11 @@ document_curve_apply_midline(Recording &doc, i32 prim_index)
  // blend off the plane.
 }
 function void
-document_apply_midlines(Recording &doc)
-{// NOTE(kv) After any write: a moved shared vertex may belong to a midline curve too.
+document_apply_constraints(Recording &doc)
+{// NOTE(kv) After any write. Only constraints that can be checked from the document
+ // alone live here (today: midline). Constraints that need the delta or the old state
+ // (coplanar handles, links) are kept inside the write -- see document_edit_move_vertices.
+ // Midline: a moved shared vertex may belong to a midline curve too.
  for_i32(iprim, 0, doc.primitives.count){ document_curve_apply_midline(doc, iprim); }
 }
 
@@ -1270,23 +1295,11 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
   // once); its chord only translates, so its handles are not rotated. Another curve
   // sharing ONE of the moved vertices turns as it would under a vertex drag.
   // NOTE(kv) plan-vertex-links: every grabbed vertex drags its link set along, unless
-  // Alt was held at press (`solo`, Q5). One batched move, see document_edit_move_vertices.
-  Scratch_Scope scratch;
-  i32 *moved = push_array(scratch, i32, maximum(1, doc.vertices.count));
-  i32 moved_count = 0;
-  i32 grabbed_count = edit.whole_stroke ? 2 : 1;
-  for_i32(igrab, 0, grabbed_count)
-  {
-   i32 grabbed = prim.vertex_index[edit.whole_stroke ? igrab : pick.slot];
-   i32 *members = &grabbed;
-   i32 member_count = 1;
-   if(not edit.solo){ member_count = document_link_members(doc, scratch, grabbed, &members); }
-   for_i32(im, 0, member_count)
-   {
-    if(not document_vertex_list_contains(moved, moved_count, members[im])){ moved[moved_count++] = members[im]; }
-   }
-  }
-  document_edit_move_vertices(doc, moved, moved_count, pick.is_right, delta_world);
+  // Alt was held at press (`solo`, Q5). See document_move_vertices_linked.
+  i32 grabbed[2] = { prim.vertex_index[0], prim.vertex_index[1] };
+  i32 grabbed_count = 2;
+  if(not edit.whole_stroke){ grabbed[0] = prim.vertex_index[pick.slot]; grabbed_count = 1; }
+  document_move_vertices_linked(doc, grabbed, grabbed_count, edit.solo, pick.is_right, delta_world);
  }
  else if(pick.is_handle)
  {
@@ -1299,7 +1312,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
   prim.curve.handle_offset[pick.slot-1].v += document_edit_bone_delta(bone_id, pick.is_right, delta_world);
   if(free_handle){ document_curve_swing_other_handle(doc, prim, pick.slot-1); }
  }
- document_apply_midlines(doc);
+ document_apply_constraints(doc);
 }
 
 function void
@@ -1365,22 +1378,8 @@ document_nudge(Game_State *state, v3 delta_world, b32 solo)
   history_begin(state, action);
   history.pending_nudge = true;
  }
- Scratch_Scope scratch;
- i32 *moved = push_array(scratch, i32, maximum(1, doc.vertices.count));
- i32 moved_count = 0;
- for_i32(isel, 0, vsel.count)
- {
-  i32 selected = vsel.vertex_index[isel];
-  i32 *members = &selected;
-  i32 member_count = 1;
-  if(not solo){ member_count = document_link_members(doc, scratch, selected, &members); }
-  for_i32(im, 0, member_count)
-  {
-   if(not document_vertex_list_contains(moved, moved_count, members[im])){ moved[moved_count++] = members[im]; }
-  }
- }
- document_edit_move_vertices(doc, moved, moved_count, false, delta_world);
- document_apply_midlines(doc);
+ document_move_vertices_linked(doc, vsel.vertex_index, vsel.count, solo, false, delta_world);
+ document_apply_constraints(doc);
  return true;
 }
 function b32
