@@ -723,7 +723,7 @@ document_hover_draw(Game_State *state, Camera &camera)
 }
 
 function void
-document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best,
+document_mouse_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Document_Pick best,
                     b32 free_handle, b32 solo)
 {// NOTE(kv) `solo` (Alt at press, plan-vertex-links Q5): a linked vertex moves alone.
  // Grab one control point (a table vertex, or a curve handle) of a selected
@@ -755,7 +755,7 @@ document_edit_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Doc
 }
 
 function void
-document_edit_press_stroke(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
+document_mouse_press_stroke(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
                            i32 prim_index, b32 is_right)
 {// NOTE(kv) plan-selection-followups Q4: grab a whole selected curve (the caller
  // checked it is selected and the press is away from its control points). Vertex slot
@@ -1258,7 +1258,7 @@ document_unlink_set(Game_State *state, i32 link_id)
 }
 
 function void
-document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
+document_mouse_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
  Document_Edit_State &edit = state->document_edit;
  Recording &doc = state->model.recordings.document;
@@ -1316,7 +1316,7 @@ document_edit_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 }
 
 function void
-document_edit_release(Game_State *state)
+document_mouse_release(Game_State *state)
 {
  Document_Edit_State &edit = state->document_edit;
  if(not edit.active){ return; }
@@ -1348,10 +1348,10 @@ document_edit_release(Game_State *state)
 // style. The first nudge opens a history entry that stays pending across frames; Enter
 // commits it (one undo entry + save), Esc -- or any other history/save traffic, see
 // history_nudge_cancel -- puts the vertices back.
-global v1 const document_nudge_speed = 0.05f;  // world units per second; Shift = x10
+global v1 const document_keyboard_nudge_speed = 0.05f;  // world units per second; Shift = x10
 
 function b32
-document_nudge(Game_State *state, v3 delta_world, b32 solo)
+document_keyboard_nudge(Game_State *state, v3 delta_world, b32 solo)
 {
  Recording &doc = state->model.recordings.document;
  Document_Vertex_Selection &vsel = state->document_vertex_selection;
@@ -1383,7 +1383,7 @@ document_nudge(Game_State *state, v3 delta_world, b32 solo)
  return true;
 }
 function b32
-document_nudge_commit(Game_State *state)
+document_keyboard_nudge_commit(Game_State *state)
 {
  Document_History &history = state->document_history;
  if(not history.pending_nudge){ return false; }

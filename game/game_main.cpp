@@ -1902,12 +1902,12 @@ game_update(Game_Update_Params params)
    hot_location = state->document_edit.location;
    if(params.mouse.left)
    {
-    document_edit_move(state, mouse_viewport, V2(params.mouse.p));
+    document_mouse_move(state, mouse_viewport, V2(params.mouse.p));
     should_animate_next_frame = true;
    }
    if(params.mouse.release_left or not params.mouse.left)
    {
-    document_edit_release(state);
+    document_mouse_release(state);
    }
   }
   else if((not debug_channel_enabled or debug_channel_mouse_active) and not state->reference_edit.active)
@@ -1986,7 +1986,7 @@ game_update(Game_Update_Params params)
     // like shift/alt.
     b32 ctrl = ((params.input.active_mods & Key_Mod_Ctl) != 0 or debug_channel_mouse_ctrl);
     b32 alt = ((params.input.active_mods & Key_Mod_Alt) != 0 or debug_channel_mouse_alt);
-    document_edit_press(state, mouse_viewport, V2(params.mouse.p), pick, ctrl, alt);
+    document_mouse_press(state, mouse_viewport, V2(params.mouse.p), pick, ctrl, alt);
    }
    else if(not is_valid(hot_location) and mouse_viewport and
            state->reference_edit.drag == Reference_Drag_None)
@@ -2011,7 +2011,7 @@ game_update(Game_Update_Params params)
             state->model.recordings.document.primitives[hot_prim].type == Primitive_Type_Curve)
     {// NOTE(kv) plan-selection-followups Q4, after the tablet: pressing the already
      // selected curve away from its control points drags the whole stroke.
-     document_edit_press_stroke(state, mouse_viewport, V2(params.mouse.p),
+     document_mouse_press_stroke(state, mouse_viewport, V2(params.mouse.p),
                                 hot_prim, document_location_is_right(hot_location));
     }
     else
@@ -2416,7 +2416,7 @@ game_update(Game_Update_Params params)
 
       case Key_Code_Return:
       {
-       document_nudge_commit(state);  // NOTE(kv) plan-keyboard-vertex-move Q3
+       document_keyboard_nudge_commit(state);  // NOTE(kv) plan-keyboard-vertex-move Q3
        if(0)
        {// NOTE(kv) OLD mouse cursor code
         if(is_valid(hot_location) and not is_document_location(hot_location))
@@ -2602,9 +2602,9 @@ game_update(Game_Update_Params params)
   {//-NOTE(kv) plan-keyboard-vertex-move: nudge the vertex selection, same feel as a tvert
    // slider (held keys, camera-aligned, Shift = x10). Alt = solo (link members stay, Q5).
    v3 dir_world = mat4vec(update_target_camera.world_from_cam, input_dir.xyz);
-   v3 delta = document_nudge_speed * dt * dir_world;
+   v3 delta = document_keyboard_nudge_speed * dt * dir_world;
    if(mods & Key_Mod_Sft){ delta *= 10.f; }
-   document_nudge(state, delta, (mods & Key_Mod_Alt) != 0);
+   document_keyboard_nudge(state, delta, (mods & Key_Mod_Alt) != 0);
   }
 
   if(mouse_viewport)

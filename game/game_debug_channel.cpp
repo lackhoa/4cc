@@ -1184,7 +1184,7 @@ debug_channel_update(Game_State *state, App *app)
   v3 delta = {};
   char solo_word[16] = {};
   i32 got = sscanf(cmd+6, "%f %f %f %15s", &delta.x, &delta.y, &delta.z, solo_word);
-  b32 ok = (got >= 3) and document_nudge(state, delta, strcmp(solo_word, "solo") == 0);
+  b32 ok = (got >= 3) and document_keyboard_nudge(state, delta, strcmp(solo_word, "solo") == 0);
   fprintf(out, "nudge: %s, pending %d\n", ok ? "ok" : "refused", state->document_history.pending_nudge);
   debug_channel_wants_animate = true;
  }
@@ -1203,7 +1203,7 @@ debug_channel_update(Game_State *state, App *app)
  }
  else if(strcmp(cmd, "nudge_commit") == 0)
  {
-  fprintf(out, "nudge_commit: %s\n", document_nudge_commit(state) ? "ok" : "nothing pending");
+  fprintf(out, "nudge_commit: %s\n", document_keyboard_nudge_commit(state) ? "ok" : "nothing pending");
   debug_channel_wants_animate = true;
  }
  else if(strcmp(cmd, "nudge_cancel") == 0)
