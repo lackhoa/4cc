@@ -608,6 +608,7 @@ dst->dradii = m_dradii;
 struct Recorded_Vertex{
 v3 p;
 Bone_ID bone;
+i32 link_id;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
@@ -617,7 +618,7 @@ Type_Info result = {};
 result.name = strlit("Recorded_Vertex");
 result.size = sizeof(Recorded_Vertex);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(2);
+result.members.set_count(3);
 {
 Type_Info *member_type = & Type_Info_v3;
 result.members[0] = {.type=member_type, .name=strlit("p"), .offset=offsetof(Recorded_Vertex, p)};
@@ -625,6 +626,10 @@ result.members[0] = {.type=member_type, .name=strlit("p"), .offset=offsetof(Reco
 {
 Type_Info *member_type = & Type_Info_Bone_ID;
 result.members[1] = {.type=member_type, .name=strlit("bone"), .offset=offsetof(Recorded_Vertex, bone)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[2] = {.type=member_type, .name=strlit("link_id"), .offset=offsetof(Recorded_Vertex, link_id)};
 }
 return result;
 }
@@ -652,6 +657,12 @@ Bone_ID m_bone = {};
 read_binary_Bone_ID(r, &m_bone);
 }
 dst->bone = m_bone;
+
+i32 m_link_id = {};
+{
+read_binary_i32(r, &m_link_id);
+}
+dst->link_id = m_link_id;
 
 
 }
