@@ -457,6 +457,9 @@ document_pick_list(Recording &doc, Location hot, Document_Pick out[document_pick
 // points are grabbable ONLY on the selected primitives, within this pixel radius, no
 // matter what is hot -- so a vertex shared by two chained curves is edited through
 // the curve you selected. Pen down on an unselected primitive just selects it.
+// NOTE(kv) 2026-09-19 (plan-point-primitive Q11): table VERTICES are now grabbable on every
+// visible primitive, selected or not (document_pick_nearest); HANDLES are still
+// selection-only. At a shared vertex the selected curve still wins.
 global v1 const document_pick_radius_px = 12.f;
 
 function i32
@@ -496,12 +499,12 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
                       Document_Pick *best_out, v1 *dist_out)
 {// NOTE(kv) The selected control point nearest the mouse (in pixels) and how far it
  // is -- a press grabs it when within document_pick_radius_px, and the hover
- // highlight shows it. False when nothing is selected.
+ // highlight shows it. False when there is no candidate at all (was: nothing selected;
+ // since Q11 the vertices of unselected visible primitives are candidates too).
  Recording &doc = state->model.recordings.document;
  if(not viewport){ return false; }
  Document_Pick picks[document_selection_pick_cap];
  i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
- if(pick_count == 0){ return false; }
  Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
  v1 best_dist = INFINITY;
  for_i32(i, 0, pick_count)
@@ -514,8 +517,40 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
    *best_out = picks[i];
   }
  }
+ {// NOTE(kv) plan-point-primitive Q11 (direct vertex pick): the table vertices of every
+  // VISIBLE primitive are candidates too, selected or not -- a pick through an owning
+  // primitive, so bone + mirror side come from its group like any other pick. Handles stay
+  // selection-only (they are per-curve offsets). Visibility = the hit-test's is_pickable.
+  // The selection went first and `<` is strict, so at a shared vertex the selected curve
+  // still wins (the 2026-09-13 rule).
+  Model *m = &state->model;
+  for_i32(iprim, 0, doc.primitives.count * (doc.captured ? 1 : 0))
+  {
+   Recorded_Primitive &prim = doc.primitives[iprim];
+   Recorded_Group &group = doc.groups[prim.group_index];
+   if(not group.params.painting or not m->vis_live[group.vis_tag]){ continue; }
+   if(prim.type == Primitive_Type_Curve and
+      HasFlag(group.params.line.flags, Line_Invisible)){ continue; }
+   b32 one_sided = (group.one_sided or (prim.type == Primitive_Type_Curve and prim.curve.midline));
+   i32 side_count = one_sided ? 1 : 2;
+   for_i32(side, 0, side_count)
+   {
+    for_i32(slot, 0, primitive_vertex_count(prim.type))
+    {
+     Document_Pick candidate = {iprim, side == 1, false, slot};
+     v2 px = project(proj, document_pick_world_pos(doc, candidate));
+     v1 dist = lengthof(V3(px - mouse_px, 0));
+     if(dist < best_dist)
+     {
+      best_dist = dist;
+      *best_out = candidate;
+     }
+    }
+   }
+  }
+ }
  *dist_out = best_dist;
- return true;
+ return (best_dist < INFINITY);
 }
 
 // NOTE(kv) Hover highlight (Khoa, 2026-09-12: "highlight hot vertices that I hover
@@ -634,6 +669,7 @@ document_hover_draw(Game_State *state, Camera &camera)
  Recording &doc = state->model.recordings.document;
  Document_Pick picks[document_selection_pick_cap];
  i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
+ b32 hovered_drawn = false;
  for_i32(i, 0, pick_count)
  {
   Document_Pick &pick = picks[i];
@@ -642,9 +678,15 @@ document_hover_draw(Game_State *state, Camera &camera)
                     pick.is_right   == document_hover_pick.is_right and
                     pick.is_handle  == document_hover_pick.is_handle and
                     pick.slot       == document_hover_pick.slot);
+  if(is_hovered){ hovered_drawn = true; }
   v3 center = document_pick_world_pos(doc, pick);
   argb color = (is_hovered ? hot_color2 : pick.is_handle ? linear_argb_blue : linear_argb_silver);
   document_hover_draw_disk(camera, center, is_hovered ? 4.5f : 3.f, color);
+ }
+ if(document_hover_grab and not hovered_drawn)
+ {// NOTE(kv) plan-point-primitive Q11: a vertex of an UNSELECTED primitive lights up only
+  // while the mouse is on it (no always-on dots: 45 vertices x 2 sides of clutter).
+  document_hover_draw_disk(camera, document_pick_world_pos(doc, document_hover_pick), 4.5f, hot_color2);
  }
  {// NOTE(kv) plan-vertex-links Q8: the vertex selection, and every member of the hovered /
   // dragged vertex's link set -- members can sit on unselected primitives, so they are
