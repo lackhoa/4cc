@@ -577,7 +577,7 @@ document_hover_update(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
  document_hover_valid = false;
  document_hover_grab  = false;
- Document_Edit_State &edit = state->document_edit;
+ Document_Mouse_Drag &edit = state->document_mouse_drag;
  v1 dist = INFINITY;
  if(edit.active)
  {// NOTE(kv) Mid-drag: the grabbed point stays highlighted wherever the mouse goes.
@@ -730,7 +730,7 @@ document_mouse_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px, Do
  // primitive; the caller found it with document_pick_nearest within the grab radius.
  // `free_handle` (Ctrl at press, plan-handle-drag-modes Q2): a handle drag defines a new
  // plane instead of staying in the old one; means nothing for a vertex (Q5).
- Document_Edit_State &edit = state->document_edit;
+ Document_Mouse_Drag &edit = state->document_mouse_drag;
  Recording &doc = state->model.recordings.document;
  if(not viewport){ return; }
  i32 prim_index = best.prim_index;
@@ -761,7 +761,7 @@ document_mouse_press_stroke(Game_State *state, Live_Viewport *viewport, v2 mouse
  // checked it is selected and the press is away from its control points). Vertex slot
  // 0 is the drag's depth/offset reference; the move applies the same world delta to
  // both vertices.
- Document_Edit_State &edit = state->document_edit;
+ Document_Mouse_Drag &edit = state->document_mouse_drag;
  Recording &doc = state->model.recordings.document;
  if(not viewport){ return; }
  Document_Pick reference = {prim_index, is_right, false, 0};
@@ -1260,7 +1260,7 @@ document_unlink_set(Game_State *state, i32 link_id)
 function void
 document_mouse_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 {
- Document_Edit_State &edit = state->document_edit;
+ Document_Mouse_Drag &edit = state->document_mouse_drag;
  Recording &doc = state->model.recordings.document;
  if(not edit.active or not viewport){ return; }
  Document_Pick pick = edit.pick;
@@ -1318,7 +1318,7 @@ document_mouse_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 function void
 document_mouse_release(Game_State *state)
 {
- Document_Edit_State &edit = state->document_edit;
+ Document_Mouse_Drag &edit = state->document_mouse_drag;
  if(not edit.active){ return; }
  if(edit.moved)
  {// NOTE(kv) Q5: the file is the document (saved on every edit); undo/redo restore
@@ -1356,7 +1356,7 @@ document_keyboard_nudge(Game_State *state, v3 delta_world, b32 solo)
  Recording &doc = state->model.recordings.document;
  Document_Vertex_Selection &vsel = state->document_vertex_selection;
  Document_History &history = state->document_history;
- if(vsel.count == 0 or state->document_edit.active){ return false; }
+ if(vsel.count == 0 or state->document_mouse_drag.active){ return false; }
  if(history.pending and not history.pending_nudge){ return false; }  // someone else's edit is open
  for_i32(i, 0, vsel.count)
  {

@@ -368,7 +368,7 @@ document_delete_primitives(Game_State *state, Document_Action action, i32 *prim_
  history_begin(state, action);
  document_remove_primitives(doc, remove);
  state->document_selection.count = 0;
- state->document_edit = {};
+ state->document_mouse_drag = {};
  history_commit(state);
  return save_document_file(state);
 }

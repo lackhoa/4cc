@@ -1897,9 +1897,9 @@ game_update(Game_Update_Params params)
     line_tool_release(state);
    }
   }
-  else if(state->document_edit.active)
+  else if(state->document_mouse_drag.active)
   {// NOTE(kv) A document drag owns the mouse: keep the grabbed item hot, no re-picking.
-   hot_location = state->document_edit.location;
+   hot_location = state->document_mouse_drag.location;
    if(params.mouse.left)
    {
     document_mouse_move(state, mouse_viewport, V2(params.mouse.p));
@@ -1927,12 +1927,12 @@ game_update(Game_Update_Params params)
                    (params.mouse.release_left or not params.mouse.left));
    if(released){ camera_drag_release(state); }
   }
-  else if(params.mouse.middle and mouse_viewport and not state->document_edit.active and not state->line_tool.active)
+  else if(params.mouse.middle and mouse_viewport and not state->document_mouse_drag.active and not state->line_tool.active)
   {// NOTE(kv) Middle button held: pan drag, regardless of what is hot.
    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true, false);
   }
 
-  if(params.mouse.press_left and not state->document_edit.active and not state->camera_drag.active)
+  if(params.mouse.press_left and not state->document_mouse_drag.active and not state->camera_drag.active)
   {// NOTE(kv) Hot code item: jump to code. Near a control point of a SELECTED document
    // primitive: start a drag (Q6, explicit selection since 2026-09-13). Hot unselected
    // document item: select it, no drag. Nothing hot: camera drag (orbit, alt = pan).

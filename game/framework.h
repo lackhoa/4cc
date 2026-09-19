@@ -123,7 +123,7 @@ struct Document_Vertex_Selection
  i32 count;
  i32 vertex_index[Document_Vertex_Selection_Cap];
 };
-struct Document_Edit_State
+struct Document_Mouse_Drag
 {// NOTE(kv) A live drag of one document control point (plan-document-mouse-editing).
  b32 active;
  b32 moved;           // anything written since press -> save on release
@@ -293,7 +293,7 @@ struct Game_State
  // painter only lives during call_driver_render). 0 = the skull has never been drawn.
  v1 reference_mesh_obj_radius;
  v3 reference_mesh_obj_center;
- Document_Edit_State document_edit;
+ Document_Mouse_Drag document_mouse_drag;
  Document_Selection document_selection;
  Camera_Drag camera_drag;
  Document_History document_history;
