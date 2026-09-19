@@ -1339,7 +1339,7 @@ debug_channel_update(Game_State *state, App *app)
    for_i32(i, 0, sel.count){ fprintf(out, " %d", sel.prim_index[i]); }
    fprintf(out, "%s\n", sel.count ? "" : " (empty)");
   }
-  Document_Mouse_Drag &edit = state->document_mouse_drag;
+  Document_Mouse_Drag_State &edit = state->document_mouse_drag;
   fprintf(out, "edit: active %d moved %d prim %d %s slot %d %s\n",
           edit.active, edit.moved, edit.pick.prim_index,
           edit.pick.is_right ? "right" : "left", edit.pick.slot,
