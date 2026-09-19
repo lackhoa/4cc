@@ -1306,6 +1306,17 @@ document_edit_release(Game_State *state)
  else
  {
   history_discard(state);
+  if(not edit.whole_stroke and not edit.pick.is_handle)
+  {// NOTE(kv) plan-point-primitive Q12: a plain click on a vertex (released without
+   // moving) makes it the SOLE vertex selection and clears the primitive selection --
+   // same rule as primitives (click = select this, shift-click = toggle). A drag does
+   // not touch either selection.
+   Recording &doc = state->model.recordings.document;
+   Document_Vertex_Selection &vsel = state->document_vertex_selection;
+   vsel.count = 1;
+   vsel.vertex_index[0] = doc.primitives[edit.pick.prim_index].vertex_index[edit.pick.slot];
+   state->document_selection.count = 0;
+  }
  }
  edit = {};
 }
