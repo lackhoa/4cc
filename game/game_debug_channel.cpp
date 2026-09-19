@@ -415,6 +415,10 @@ debug_channel_document_dump(FILE *out, Game_State *state)
     debug_channel_print_tvert(out, prim.disk.center);
     fprintf(out, " radius %g", prim.disk.radius);
    }break;
+   case Primitive_Type_Point:
+   {// NOTE(kv) The position is the table vertex (see "vertex refs"); `p` is only a cache.
+    fprintf(out, "point");
+   }break;
    case Primitive_Type_Image:
    {
     fprintf(out, "image: %s", prim.image.filename.str);
@@ -1090,6 +1094,27 @@ debug_channel_update(Game_State *state, App *app)
    debug_channel_wants_animate = true;
   }
   else { fprintf(out, "error: usage: delete_patch <i>\n"); }
+ }
+ else if(strncmp(cmd, "add_point ", 10) == 0)
+ {// NOTE(kv) plan-point-primitive: `add_point Vis_Nose 1:0 x y z` -- tag by name, bone
+  // as type:id (what document_dump prints), position in that bone's space.
+  char name[64] = {};
+  i32 bone_type, bone_index;
+  v3 p;
+  Group_Vis tag = Vis_None;
+  if(sscanf(cmd+10, "%63s %d:%d %f %f %f", name, &bone_type, &bone_index, &p.x, &p.y, &p.z) == 6 and
+     (group_vis_from_name(SCu8(name), &tag), tag != Vis_None))
+  {
+   Bone_ID bone_id = {};
+   bone_id.type = (Bone_Type)bone_type;
+   bone_id.id   = bone_index;
+   i32 prim_index = document_add_point(state, tag, bone_id, p);
+   fprintf(out, "add_point: %s, prim %d, document now %d primitives\n",
+           prim_index >= 0 ? "ok" : "FAILED (see log)", prim_index,
+           state->model.recordings.document.primitives.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: add_point <Vis_Tag> <bone type:id> x y z\n"); }
  }
  else if(strncmp(cmd, "delete_curve ", 13) == 0)
  {

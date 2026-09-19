@@ -230,10 +230,12 @@ push_curve_patch_hit_triangles(Arena *arena, darray(Poly3) *triangles,
 
 function b32
 document_selection_can_hold(Recording &doc, i32 prim_index)
-{// NOTE(kv) Curves and patches select (Q4); anything else (or out of range) does not.
+{// NOTE(kv) Curves and patches select (Q4), and points (plan-point-primitive); anything
+ // else (or out of range) does not.
  if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
  Primitive_Type type = doc.primitives[prim_index].type;
- return (type == Primitive_Type_Curve or type == Primitive_Type_Curve_Patch);
+ return (type == Primitive_Type_Curve or type == Primitive_Type_Curve_Patch or
+         type == Primitive_Type_Point);
 }
 
 function void
@@ -354,7 +356,7 @@ document_delete_primitives(Game_State *state, Document_Action action, i32 *prim_
  for_i32(i, 0, count)
  {
   if(not document_selection_can_hold(doc, prim_index[i]))
-  { log_error("delete: %d is not a curve or a patch", prim_index[i]); return false; }
+  { log_error("delete: %d is not a curve, a patch or a point", prim_index[i]); return false; }
  }
  if(count == 0){ return false; }
  Scratch_Block tmp;
@@ -414,6 +416,50 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
  state->document_selection.count = 0;
  history_commit(state);
  return save_document_file(state);
+}
+
+function i32
+document_add_point(Game_State *state, Group_Vis tag, Bone_ID bone_id, v3 p)
+{// NOTE(kv) plan-point-primitive: a point gets its OWN new top-level group (tag + bone are
+ // its identity: a driver finds "the eye anchor" by the tag). `p` is in `bone_id`'s space;
+ // the vertex is Bone_None (= the group's bone) like every other document vertex. Paint
+ // params are copied from an existing group of the same bone so `painting` etc. are sane
+ // (a point draws nothing in the render, only `painting` matters). Returns the primitive
+ // index, -1 on failure.
+ Recording &doc = state->model.recordings.document;
+ Document_Action action = {};
+ action.kind       = Document_Action_Add_Point;
+ action.prim_index = doc.primitives.count;
+ history_begin(state, action);
+
+ Recorded_Group group = {};
+ for_i32(igroup, 0, doc.groups.count)
+ {
+  if(doc.groups[igroup].bone_id == bone_id and doc.groups[igroup].params.painting)
+  { group.params = doc.groups[igroup].params; break; }
+ }
+ group.params.painting = true;
+ group.parent_index = -1;
+ group.vis_tag      = tag;
+ group.bone_id      = bone_id;
+ group.view_bone    = bone_id;
+ i32 group_index = doc.groups.count;
+ push(&doc.groups, group);
+
+ Recorded_Vertex vertex = {};
+ vertex.p = p;
+ i32 vertex_index = doc.vertices.count;
+ push(&doc.vertices, vertex);
+
+ Recorded_Primitive prim = {};
+ prim.type = Primitive_Type_Point;
+ prim.group_index = group_index;
+ prim.vertex_index[0] = vertex_index;
+ i32 prim_index = doc.primitives.count;
+ push(&doc.primitives, prim);
+ doc.captured = true;
+ history_commit(state);
+ return save_document_file(state) ? prim_index : -1;
 }
 
 function b32

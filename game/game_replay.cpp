@@ -201,6 +201,11 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
     draw_curve_patch(rec, prim, replay_is_right);
    }break;
 
+   case Primitive_Type_Point:
+   {// NOTE(kv) plan-point-primitive: nothing in the render; the marker is an edit
+    // overlay (document_points_draw).
+   }break;
+
    case Primitive_Type_Image:
    {
     // NOTE(kv) Recorded_Image.filename is a String for Type_Info's sake; the bytes

@@ -581,6 +581,45 @@ document_hover_draw_disk(Camera &camera, v3 center, v1 radius_mm, argb color)
  }
 }
 function Bone_ID document_vertex_index_bone(Recording &doc, i32 vertex_index);
+function b32 document_selection_contains(Game_State *state, i32 prim_index);
+function v3 document_vertex_index_world_pos(Recording &doc, i32 vertex_index, b32 is_right);
+function void
+document_points_draw(Game_State *state, Camera &camera)
+{// NOTE(kv) plan-point-primitive Q3: every point primitive of a visible group draws as a
+ // camera-facing diamond of fixed screen size, overlaid; brighter when hot or selected.
+ // Edit marker only -- replay draws nothing for a point.
+ Model *m = &state->model;
+ Recording &doc = m->recordings.document;
+ if(not doc.captured){ return; }
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  if(prim.type != Primitive_Type_Point){ continue; }
+  Recorded_Group &group = doc.groups[prim.group_index];
+  if(not group.params.painting or not m->vis_live[group.vis_tag]){ continue; }
+  b32 is_hot = false;
+  for_i32(ihot, 0, painter->hot_locations.count)
+  {
+   Location hot = painter->hot_locations[ihot];
+   if(is_document_location(hot) and document_primitive_index(hot) == iprim){ is_hot = true; }
+  }
+  b32 bright = (is_hot or document_selection_contains(state, iprim));
+  argb color = bright ? hot_color2 : linear_argb_silver;
+  i32 side_count = group.one_sided ? 1 : 2;
+  for_i32(side, 0, side_count)
+  {
+   v3 center = document_vertex_index_world_pos(doc, prim.vertex_index[0], side == 1);
+   v1 dist = lengthof(mat4vert(camera.cam_from_world, center));
+   v1 radius = (bright ? 5.f : 4.f)*millimeter * dist / camera.focal_length;
+   v3 x = radius*camera.x;
+   v3 y = radius*camera.y;
+   v3 upper[3] = {center - x, center + y, center + x};
+   v3 lower[3] = {center - x, center - y, center + x};
+   poly3_inner(mk_poly3(upper), repeat3(color), {Poly_Overlay});
+   poly3_inner(mk_poly3(lower), repeat3(color), {Poly_Overlay});
+  }
+ }
+}
 function v3
 document_vertex_index_world_pos(Recording &doc, i32 vertex_index, b32 is_right)
 {// NOTE(kv) plan-vertex-links: a table vertex without a primitive in hand.

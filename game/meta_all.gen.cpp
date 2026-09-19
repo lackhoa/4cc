@@ -37,6 +37,7 @@ Type_Info_Recorded_Poly3 = get_type_info_Recorded_Poly3();
 Type_Info_Disk = get_type_info_Disk();
 Type_Info_Recorded_Image = get_type_info_Recorded_Image();
 Type_Info_Primitive_Type = get_type_info_Primitive_Type();
+Type_Info_Recorded_Point = get_type_info_Recorded_Point();
 Type_Info_Recorded_Curve_Patch = get_type_info_Recorded_Curve_Patch();
 Type_Info_Recorded_Curve = get_type_info_Recorded_Curve();
 Type_Info_Recorded_Vertex = get_type_info_Recorded_Vertex();

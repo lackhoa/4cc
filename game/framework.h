@@ -166,6 +166,8 @@ enum Document_Action_Kind
  // NOTE(kv) plan-vertex-links: `count` vertices linked / unlinked (display only).
  Document_Action_Link_Vertices,
  Document_Action_Unlink_Vertices,
+ // NOTE(kv) plan-point-primitive: new group + vertex + point primitive `prim_index`.
+ Document_Action_Add_Point,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the

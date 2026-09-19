@@ -359,7 +359,8 @@ Primitive_Type_Dual_Bezier,
 Primitive_Type_Patch,
 Primitive_Type_Disk,
 Primitive_Type_Image,
-Primitive_Type_Curve_Patch,};
+Primitive_Type_Curve_Patch,
+Primitive_Type_Point,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:579:
 function Type_Info
@@ -370,7 +371,7 @@ Type_Info result = {};
 result.name = strlit("Primitive_Type");
 result.size = sizeof(Primitive_Type);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(8);
+result.enum_members.set_count(9);
 result.enum_members[0] = {.name=strlit("Primitive_Type_None"), .value=Primitive_Type_None};
 result.enum_members[1] = {.name=strlit("Primitive_Type_Curve"), .value=Primitive_Type_Curve};
 result.enum_members[2] = {.name=strlit("Primitive_Type_Poly3"), .value=Primitive_Type_Poly3};
@@ -379,6 +380,7 @@ result.enum_members[4] = {.name=strlit("Primitive_Type_Patch"), .value=Primitive
 result.enum_members[5] = {.name=strlit("Primitive_Type_Disk"), .value=Primitive_Type_Disk};
 result.enum_members[6] = {.name=strlit("Primitive_Type_Image"), .value=Primitive_Type_Image};
 result.enum_members[7] = {.name=strlit("Primitive_Type_Curve_Patch"), .value=Primitive_Type_Curve_Patch};
+result.enum_members[8] = {.name=strlit("Primitive_Type_Point"), .value=Primitive_Type_Point};
 return result;
 }
 #if WANT_TYPE_INFO
@@ -401,6 +403,47 @@ read_binary_i1(r, &integer);
 }
 static_assert( sizeof(Primitive_Type) <= sizeof(i32) );
 
+#endif
+;
+struct Recorded_Point{
+tvert p;
+};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
+function Type_Info
+get_type_info_Recorded_Point(){
+Type_Info result = {};
+result.name = strlit("Recorded_Point");
+result.size = sizeof(Recorded_Point);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(1);
+{
+Type_Info *member_type = & Type_Info_tvert;
+result.members[0] = {.type=member_type, .name=strlit("p"), .offset=offsetof(Recorded_Point, p)};
+}
+return result;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:117:
+global Type_Info Type_Info_Recorded_Point;
+
+function Type_Info *type_info_from_pointer(Recorded_Point*pointer){
+return &Type_Info_Recorded_Point;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
+function void
+read_binary_Recorded_Point(Binary_Reader *r, Recorded_Point *dst){
+tvert m_p = {};
+{
+read_binary_tvert(r, &m_p);
+}
+dst->p = m_p;
+
+
+}
 #endif
 ;
 struct Recorded_Curve_Patch{
@@ -677,6 +720,7 @@ Patch patch;
 Disk disk;
 Recorded_Image image;
 Recorded_Curve_Patch curve_patch;
+Recorded_Point point;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:518:
@@ -687,7 +731,7 @@ result.name = strlit("Recorded_Primitive_Union");
 result.size = sizeof(Recorded_Primitive_Union);
 result.kind = I_Type_Kind_Union;
 result.discriminator_type = &Type_Info_Primitive_Type;
-result.union_members.set_count(7);
+result.union_members.set_count(8);
 result.union_members[0] = {.type=&Type_Info_Recorded_Curve, .name=strlit("curve"), .variant=Primitive_Type_Curve};
 result.union_members[1] = {.type=&Type_Info_Recorded_Poly3, .name=strlit("poly3"), .variant=Primitive_Type_Poly3};
 result.union_members[2] = {.type=&Type_Info_Dual_Bezier, .name=strlit("dual_bezier"), .variant=Primitive_Type_Dual_Bezier};
@@ -695,6 +739,7 @@ result.union_members[3] = {.type=&Type_Info_Patch, .name=strlit("patch"), .varia
 result.union_members[4] = {.type=&Type_Info_Disk, .name=strlit("disk"), .variant=Primitive_Type_Disk};
 result.union_members[5] = {.type=&Type_Info_Recorded_Image, .name=strlit("image"), .variant=Primitive_Type_Image};
 result.union_members[6] = {.type=&Type_Info_Recorded_Curve_Patch, .name=strlit("curve_patch"), .variant=Primitive_Type_Curve_Patch};
+result.union_members[7] = {.type=&Type_Info_Recorded_Point, .name=strlit("point"), .variant=Primitive_Type_Point};
 return result;
 }
 #if WANT_TYPE_INFO
@@ -711,7 +756,7 @@ Primitive_Type type;
 Location location;
 i32 group_index;
 i32 vertex_index[recorded_vertex_cap];
-union { Recorded_Curve curve; Recorded_Poly3 poly3; Dual_Bezier dual_bezier; Patch patch; Disk disk; Recorded_Image image; Recorded_Curve_Patch curve_patch; };
+union { Recorded_Curve curve; Recorded_Poly3 poly3; Dual_Bezier dual_bezier; Patch patch; Disk disk; Recorded_Image image; Recorded_Curve_Patch curve_patch; Recorded_Point point; };
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:

@@ -62,6 +62,14 @@ enum Primitive_Type
  Primitive_Type_Disk,
  Primitive_Type_Image,
  Primitive_Type_Curve_Patch,  // NOTE(kv) appended: values are stored in driver.document.ad
+ Primitive_Type_Point,
+};
+[info]
+struct Recorded_Point
+{// NOTE(kv) plan-point-primitive: a primitive owning exactly one table vertex
+ // (vertex_index[0]); `p` is the by-value cache like every other primitive's tverts.
+ // Edit-marker only: replay draws nothing in the render, the edit overlay draws a diamond.
+ tvert p;
 };
 [info]
 struct Recorded_Curve_Patch
@@ -135,6 +143,7 @@ struct Recorded_Primitive
   Disk disk = Primitive_Type_Disk;
   Recorded_Image image = Primitive_Type_Image;
   Recorded_Curve_Patch curve_patch = Primitive_Type_Curve_Patch;
+  Recorded_Point point = Primitive_Type_Point;
  };
 };
 [info]

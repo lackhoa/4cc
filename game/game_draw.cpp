@@ -517,6 +517,7 @@ primitive_vertex_count(Primitive_Type type)
   case Primitive_Type_Dual_Bezier: return 4;
   case Primitive_Type_Patch:       return 4;
   case Primitive_Type_Disk:        return 1;
+  case Primitive_Type_Point:       return 1;
   default:                         return 0;
  }
 }
@@ -544,6 +545,8 @@ primitive_vertex_ref(Recorded_Primitive &prim, i32 ivertex)
   }
   case Primitive_Type_Disk:
   { return prim.disk.center; }
+  case Primitive_Type_Point:
+  { return prim.point.p; }
   default:
   {
    InvalidCodePath;

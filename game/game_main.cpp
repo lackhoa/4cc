@@ -596,6 +596,11 @@ convert_primitives_to_camera_space(Camera &camera)
     {
      mat4vert(camera_from_bone, &primitive.disk.center.v);
     }break;
+
+    case Primitive_Type_Point:
+    {
+     mat4vert(camera_from_bone, &primitive.point.p.v);
+    }break;
    }
    push(&m->camera_primitives, primitive);
   };
@@ -857,6 +862,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    poly3_inner(mk_poly3(points), repeat3(linear_argb_blue), {Poly_Overlay});
   }
 
+  document_points_draw(state, camera);  // NOTE(kv) point-primitive markers (every viewport)
   document_hover_draw(state, camera);  // NOTE(kv) control points of the hovered document item (every viewport)
   split_tool_draw(state, camera);      // NOTE(kv) the split-mode marker riding the curve
 
@@ -1600,6 +1606,21 @@ get_primitive_hit_by_mouse(Game_State *state, Live_Viewport *mouse_viewport,
        }
        A_px = B_px;
        A_ok = B_ok;
+      }
+     }
+    }break;
+
+    case Primitive_Type_Point:
+    {// NOTE(kv) plan-point-primitive: same screen-distance pick as a curve (it is a
+     // marker, there is no surface to hit); nearest of curves and points wins.
+     v2 P_px;
+     if(not fill_only and px_from_camera(proj, primitive.point.p.v, &P_px))
+     {
+      v1 dsq = distance_squared_point_to_segment_2d(mouse_px, P_px, P_px);
+      if(dsq < curve_hit_dsq)
+      {
+       curve_hit = primitive.location;
+       curve_hit_dsq = dsq;
       }
      }
     }break;
