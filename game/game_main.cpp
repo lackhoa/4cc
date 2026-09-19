@@ -880,11 +880,16 @@ import_api_from_editor(API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new)
  ed_api_read_vtable(ed_api);
  ed_api_read_vtable_new(ed_api_new);
 }
+function void debug_channel_init();  // game_debug_channel.cpp (included further down)
 function Game_State *
 game_init(Arena *bootstrap_arena, API_VTable_ed *ed_api, API_VTable_ed_new *ed_api_new,
           App *app, Game_ImGui_State &imgui_state, b32 is_dev_editor)
 {
  import_api_from_editor(ed_api, ed_api_new);
+ // NOTE(kv) Before any load: document_file_path() picks the agent copy off
+ // debug_channel_enabled. Left to the first channel poll, the agent instance loaded the
+ // LIVE document at startup while saving to the agent copy (2026-09-19).
+ debug_channel_init();
  Game_State *state = push_struct0(bootstrap_arena, Game_State);
  state->is_dev_editor   = is_dev_editor;
  state->permanent_arena = *bootstrap_arena;
