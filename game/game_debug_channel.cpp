@@ -597,6 +597,10 @@ debug_channel_update(Game_State *state, App *app)
  else if(strcmp(cmd, "quit") == 0)
  {
   debug_channel_request_exit = true;
+  // NOTE(kv) The exit signal is only acted on in the NEXT app_step, and an idle agent
+  // gets no frames (win32 WM_TIMER skips them while no cmd.txt waits), so ask for one.
+  // Without it the instance lived on and answered the next command (2026-09-19).
+  debug_channel_wants_animate = true;
   fprintf(out, "quit: exiting\n");
  }
  else if(strcmp(cmd, "reload_autosave") == 0)
