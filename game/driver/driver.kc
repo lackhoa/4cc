@@ -53,6 +53,34 @@ global tvert cheek_up;
 global tvert eyeball_center;
 global v1 eyeball_radius;
 //-
+struct Eye_Origin
+{
+ tvert rest;    // the slider value: where the eye sat before the document owned it
+ tvert origin;  // where it is now
+};
+function Eye_Origin
+eye_origin()
+{// NOTE(kv) plan-move-the-eye: the eye's origin (head-bone space) is the document's ANCHOR
+ // -- the point primitive whose group is tagged Vis_Anchor_Eye -- so the mouse can drag
+ // the whole eye. The slider is the fallback for a document without one, and the rest
+ // position: `origin - rest` is how far the eye was dragged (render_eyes shifts its
+ // frozen brow points by it).
+ Eye_Origin result = {};
+ result.rest   = fv(tvert_177);
+ result.origin = result.rest;
+ Recording &doc = the_model->recordings.document;
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  if(prim.type == Primitive_Type_Point and
+     doc.groups[prim.group_index].vis_tag == Vis_Anchor_Eye)
+  {
+   result.origin.v = doc.vertices[prim.vertex_index[0]].p;
+   break;
+  }
+ }
+ return result;
+}
 function void
 driver_update_tweaks()
 {// NOTE @driver_api
@@ -179,7 +207,7 @@ defer(pop(&model->bone_stack);)
    MakeBoneBlock(mk_bone_id(Bone_Head), headT);
    
    {//-Eyeball
-    tvert eyeO = fv(tvert_23);
+    tvert eyeO = eye_origin().origin;
     v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
     mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
     tvert eye_in = eyeT*fv(tvert_24);
@@ -1352,7 +1380,14 @@ render_eyes(Pose &pose)
 {
  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
- tvert eyeO = fv(tvert_177);
+ Eye_Origin eye_origin_pair = eye_origin();
+ tvert eyeO = eye_origin_pair.origin;
+ // NOTE(kv) plan-move-the-eye Q10(b): the brow curves are document data, linked to the
+ // anchor by hand, so they translate with the eye. The brow points the fills below use
+ // are frozen code copies -> shift LOCAL copies by the same amount (the globals feed
+ // other regions). Wrong if the brow is later reshaped on its own.
+ tvec eye_moved = eyeO - eye_origin_pair.rest;
+ tvert brow_out_moved = brow_out + eye_moved;
  v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
  mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
  // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
@@ -1368,8 +1403,8 @@ render_eyes(Pose &pose)
   if(level1){ draw(bez_line(eye_in, nose_rootL)); }
  }
  tvert eye_out = (eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f));
- if(level1){ hl_block; draw_line(eye_out, brow_out); }
- tvert es_up_in = (bezier_sample(brow_ridge, 0.3668f));
+ if(level1){ hl_block; draw_line(eye_out, brow_out_moved); }
+ tvert es_up_in = (bezier_sample(brow_ridge, 0.3668f)) + eye_moved;
  Bezier eye_up_line = bez_bezd_old(eye_in, 
                                    V3(0.0814f, 0.3741f, 0.2401f),
                                    V2(0.0159f, 0.3341f),
@@ -1406,7 +1441,7 @@ render_eyes(Pose &pose)
   tvert eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
   fill_point_bez(eye_low_patch, eye_low_line);
   fill3(eye_low_patch, eye_out, cheek_low);
-  fill3(eye_out, brow_out, es_up_in);
+  fill3(eye_out, brow_out_moved, es_up_in);
  }
  {// NOTE: Blinking animation control: the closed upper lid IS the lower line, so the
   // blink shape key blends eye_up_line toward eye_low_line (shared endpoints -> the
@@ -1469,7 +1504,7 @@ render_eyes(Pose &pose)
  fill3(nose_wing, cheek_low, eye_in);
  fill3(nose_root_backL, eye_in, nose_rootL);
  fill3(nose_root_backL, nose_wing, eye_in);
- fill3(eye_out, cheek_up, brow_out);
+ fill3(eye_out, cheek_up, brow_out_moved);
 }
 function void
 render_grid()

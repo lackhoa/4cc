@@ -328,6 +328,7 @@ struct Preset_Settings
  b32 show_loomis_ball;
  b32 show_grid;
  b32 hide_hair;             // inverted so zero (= every existing preset) keeps the hair
+ b32 hide_anchors;          // inverted likewise: anchors (Vis_Anchor_Eye) show by default
  b32 ignore_radii;
  b32 ignore_alignment_min;
  //-Reference images (side cameras)

@@ -418,6 +418,7 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
  return save_document_file(state);
 }
 
+function i32 document_push_point(Recording &doc, Group_Vis tag, Bone_ID bone_id, v3 p);
 function i32
 document_add_point(Game_State *state, Group_Vis tag, Bone_ID bone_id, v3 p)
 {// NOTE(kv) plan-point-primitive: a point gets its OWN new top-level group (tag + bone are
@@ -431,7 +432,14 @@ document_add_point(Game_State *state, Group_Vis tag, Bone_ID bone_id, v3 p)
  action.kind       = Document_Action_Add_Point;
  action.prim_index = doc.primitives.count;
  history_begin(state, action);
+ i32 prim_index = document_push_point(doc, tag, bone_id, p);
+ history_commit(state);
+ return save_document_file(state) ? prim_index : -1;
+}
 
+function i32
+document_push_point(Recording &doc, Group_Vis tag, Bone_ID bone_id, v3 p)
+{// NOTE(kv) The bare mutation of document_add_point: no history, no save.
  Recorded_Group group = {};
  for_i32(igroup, 0, doc.groups.count)
  {
@@ -458,8 +466,30 @@ document_add_point(Game_State *state, Group_Vis tag, Bone_ID bone_id, v3 p)
  i32 prim_index = doc.primitives.count;
  push(&doc.primitives, prim);
  doc.captured = true;
- history_commit(state);
- return save_document_file(state) ? prim_index : -1;
+ return prim_index;
+}
+
+function void
+document_ensure_eye_anchor(Game_State *state)
+{// NOTE(kv) plan-move-the-eye Q9: a loaded document without an eye anchor gets one, at the
+ // eye-origin slider's value so nothing jumps (eye_origin in driver.kc reads the anchor
+ // from then on). Called every frame: cheap, and it also covers `load_document` and the
+ // driver (= the slider table) arriving after the document. Not an edit: no history entry
+ // -- the undo baseline is taken lazily at the first real edit, so it holds the anchor.
+ Recording &doc = state->model.recordings.document;
+ if(not doc.captured){ return; }
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  if(prim.type == Primitive_Type_Point and
+     doc.groups[prim.group_index].vis_tag == Vis_Anchor_Eye){ return; }
+ }
+ Slider *slider = find_slider_by_id(true, strlit("tvert_177"));
+ if(slider == 0){ return; }
+ tvert rest = *(cast(tvert *)slider->value);
+ document_push_point(doc, Vis_Anchor_Eye, mk_bone_id(Bone_Head), rest.v);
+ save_document_file(state);
+ log_string("document: added the eye anchor at the eye-origin slider value");
 }
 
 function b32
