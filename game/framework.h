@@ -68,6 +68,10 @@ struct Reference_Edit_State
  v2 grab_px;       // rotate (mesh): mouse pixel where the drag started
  v3 grab_rotation; // rotate (mesh): rotation at drag start
 };
+// NOTE(kv) 2026-09-19: the mirrored (right) copy of the document is not selectable --
+// neither its primitives (hit-test) nor its control points (document_pick_nearest).
+// Flip to true to get both sides back.
+global b32 document_pick_right_side = false;  // not const: MSVC C4127 on `if(constant)`
 struct Document_Pick
 {// NOTE(kv) One control point of a document primitive, addressed for editing
  // (game_document_edit.cpp).

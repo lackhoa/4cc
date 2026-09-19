@@ -484,7 +484,7 @@ document_selection_pick_list(Game_State *state, Document_Pick *out, i32 cap)
                    (prim.type == Primitive_Type_Curve and prim.curve.midline));
   // NOTE(kv) PITFALL: for_i32 doesn't parenthesize the bound -- `side < a ? 1 : 2`
   // is always true (spun the app on 2026-09-13), so the bound goes in a variable.
-  i32 side_count = one_sided ? 1 : 2;
+  i32 side_count = (one_sided or not document_pick_right_side) ? 1 : 2;
   for_i32(side, 0, side_count)
   {
    Document_Pick picks[document_pick_cap_per_primitive];
@@ -538,7 +538,7 @@ document_pick_nearest(Game_State *state, Live_Viewport *viewport, v2 mouse_px,
    if(prim.type == Primitive_Type_Curve and
       HasFlag(group.params.line.flags, Line_Invisible)){ continue; }
    b32 one_sided = (group.one_sided or (prim.type == Primitive_Type_Curve and prim.curve.midline));
-   i32 side_count = one_sided ? 1 : 2;
+   i32 side_count = (one_sided or not document_pick_right_side) ? 1 : 2;
    for_i32(side, 0, side_count)
    {
     for_i32(slot, 0, primitive_vertex_count(prim.type))

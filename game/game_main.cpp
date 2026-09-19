@@ -614,6 +614,9 @@ convert_primitives_to_camera_space(Camera &camera)
   // NOTE(kv) Document primitives are hit-testable too, on both sides (they're
   // replayed left+right); their locations are the document variant so a hit
   // highlights the replayed draw instead of jumping to code.
+  // NOTE(kv) 2026-09-19: LEFT side only now (document_pick_right_side = false): fewer
+  // things to select is less confusing, and the camera is always tilted left anyway.
+  // The mirrored copy is drawn but is "nothing" to the mouse.
   for_i32(iprim, 0, document.primitives.count * (document.captured ? 1 : 0))
   {
    Recorded_Primitive primitive = document.primitives[iprim];
@@ -623,7 +626,7 @@ convert_primitives_to_camera_space(Camera &camera)
    primitive.location = document_location(iprim, false);
    convert_primitive(primitive, group.bone_id, false);
    b32 midline = (primitive.type == Primitive_Type_Curve and primitive.curve.midline);
-   if(not group.one_sided and not midline)
+   if(document_pick_right_side and not group.one_sided and not midline)
    {
     primitive.location = document_location(iprim, true);
     convert_primitive(primitive, group.bone_id, true);
