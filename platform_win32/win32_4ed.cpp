@@ -1255,7 +1255,10 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   switch (uMsg)
   {
    case WM_ACTIVATE:{
-    win32vars.window_is_active = (wParam != 0);
+    // NOTE(kv) LOWORD = activation state, HIWORD = minimized flag. Testing the whole wParam
+    // read "deactivated while minimized" (0x10000) as ACTIVE -> a minimized window kept
+    // animating, unthrottled since it skips SwapBuffers (62% of a core).
+    win32vars.window_is_active = (LOWORD(wParam) != WA_INACTIVE and HIWORD(wParam) == 0);
     // NOTE(kv) A background window does not animate (see the schedule-step gate at the
     // end of the main loop), so gaining focus must produce the one fresh frame itself.
     win32vars.got_useful_event = true;
@@ -1588,13 +1591,20 @@ win32_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
      // (SetTimer is periodic), so we peek again next period. Frames that must flow
      // (force_animate, a command's wants_animate) arrive as WM_4coder_ANIMATE instead.
     }
+    else if(not win32vars.agent_mode and
+            (not win32vars.window_is_active or IsIconic(win32vars.window_handles[0])))
+    {// NOTE(kv) Background/minimized window: delayed animate requests (autosave tick,
+     // fps hud, ...) are dropped like the immediate ones -- one frame per second was
+     // still 1.3% of a core. The activation frame re-issues them.
+     KillTimer(win32vars.window_handles[0], timer_id);
+    }
     else
     {
      KillTimer(win32vars.window_handles[0], timer_id);
      win32vars.got_useful_event = true;
     }
    }break;
-   
+
    case WM_4coder_ANIMATE:
    {
     win32vars.got_useful_event = true;
@@ -2599,7 +2609,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   // caller (game viewport, smooth scroll, ...) funnels through here. The agent instance
   // is never the active window, so it is exempt.
   // Plan: ~/notes/tasks/autodraw_draw_as_data/plan-idle-cpu-when-inactive.md
-  if (step_result.animating and (win32vars.window_is_active or win32vars.agent_mode))
+  b32 may_animate = (win32vars.agent_mode or
+                     (win32vars.window_is_active and not IsIconic(win32vars.window_handles[0])));
+  if (step_result.animating and may_animate)
   {
    system_schedule_step(0);
   }
