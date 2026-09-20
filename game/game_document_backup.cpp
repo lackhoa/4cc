@@ -1,11 +1,13 @@
-// NOTE(kv) Document backup (2026-09-20): every document save also copies the document,
-// its checkpoints, driver.values.ad, state.txt and recording.ad into one folder per day on
-// Google Drive (~/personal-drive/autodraw-backup/YYYY-MM-DD/), so a day's folder ends up
-// holding that day's last save. Day folders older than DOCUMENT_BACKUP_KEEP_DAYS are
-// deleted. Personal app: the location is hard-coded. Windows only.
+// NOTE(kv) Document backup (2026-09-20): once a day, at the first document load (or save,
+// when the app stayed open overnight), the document, its checkpoints, driver.values.ad,
+// state.txt and recording.ad are copied into a folder on Google Drive
+// (~/personal-drive/autodraw-backup/YYYY-MM-DD/). A day that already has a folder is left
+// alone. Retention is by size, not age, so a long break deletes nothing: the oldest day
+// folders go only while the total is over DOCUMENT_BACKUP_MAX_BYTES.
+// Personal app: the location is hard-coded. Windows only.
 // Not the same thing as a checkpoint: backups are automatic and never loaded by the app.
 
-#define DOCUMENT_BACKUP_KEEP_DAYS 92
+#define DOCUMENT_BACKUP_MAX_BYTES (100ull*1024ull*1024ull)
 
 #if OS_WINDOWS
 function Stringz
@@ -55,36 +57,64 @@ document_backup_copy(Arena *arena, Stringz from, Stringz to_dir, b32 *ok)
 function void
 document_backup_prune(Arena *arena, Stringz root)
 {// NOTE(kv) Only touches folders named like a date, and only the files inside them.
- char cutoff[16];
- document_backup_day_name(cutoff, sizeof(cutoff), DOCUMENT_BACKUP_KEEP_DAYS);
+ // One pass = total size + the oldest day; delete that day and go again while over the
+ // cap. The newest day is never deleted.
  Stringz pattern = pjoin(arena, root, strlit("????-??-??"));
- WIN32_FIND_DATAA found;
- HANDLE find = FindFirstFileA(to_cstring(pattern), &found);
- if(find == INVALID_HANDLE_VALUE){ return; }
- do
+ for(;;)
  {
-  b32 is_dir = (found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-  if(is_dir and strcmp(found.cFileName, cutoff) < 0)
+  u64 total_bytes = 0;
+  i32 day_count = 0;
+  char oldest[MAX_PATH] = {};
+  WIN32_FIND_DATAA found;
+  HANDLE find = FindFirstFileA(to_cstring(pattern), &found);
+  if(find == INVALID_HANDLE_VALUE){ return; }
+  do
   {
-   Stringz dir = pjoin(arena, root, SCu8(found.cFileName));
-   Stringz inner_pattern = pjoin(arena, dir, strlit("*"));
-   WIN32_FIND_DATAA inner;
-   HANDLE inner_find = FindFirstFileA(to_cstring(inner_pattern), &inner);
-   if(inner_find != INVALID_HANDLE_VALUE)
+   if((found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0){ continue; }
+   day_count++;
+   if(oldest[0] == 0 or strcmp(found.cFileName, oldest) < 0)
    {
-    do
-    {
-     if((inner.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-     {
-      remove_file(pjoin(arena, dir, SCu8(inner.cFileName)));
-     }
-    }while(FindNextFileA(inner_find, &inner));
-    FindClose(inner_find);
+    snprintf(oldest, sizeof(oldest), "%s", found.cFileName);
    }
-   if(RemoveDirectoryA(to_cstring(dir))){ log_string("document backup: deleted old %s", found.cFileName); }
+   Stringz dir = pjoin(arena, root, SCu8(found.cFileName));
+   WIN32_FIND_DATAA inner;
+   HANDLE inner_find = FindFirstFileA(to_cstring(pjoin(arena, dir, strlit("*"))), &inner);
+   if(inner_find == INVALID_HANDLE_VALUE){ continue; }
+   do
+   {
+    if((inner.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+    {
+     total_bytes += (cast(u64)inner.nFileSizeHigh << 32) | cast(u64)inner.nFileSizeLow;
+    }
+   }while(FindNextFileA(inner_find, &inner));
+   FindClose(inner_find);
+  }while(FindNextFileA(find, &found));
+  FindClose(find);
+
+  if(total_bytes <= DOCUMENT_BACKUP_MAX_BYTES or day_count <= 1){ return; }
+
+  Stringz dir = pjoin(arena, root, SCu8(oldest));
+  WIN32_FIND_DATAA inner;
+  HANDLE inner_find = FindFirstFileA(to_cstring(pjoin(arena, dir, strlit("*"))), &inner);
+  if(inner_find != INVALID_HANDLE_VALUE)
+  {
+   do
+   {
+    if((inner.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+    {
+     remove_file(pjoin(arena, dir, SCu8(inner.cFileName)));
+    }
+   }while(FindNextFileA(inner_find, &inner));
+   FindClose(inner_find);
   }
- }while(FindNextFileA(find, &found));
- FindClose(find);
+  // NOTE(kv) A folder that won't go (something else inside it) would loop forever.
+  if(not RemoveDirectoryA(to_cstring(dir)))
+  {
+   log_error("document backup: could not delete old %s", oldest);
+   return;
+  }
+  log_string("document backup: over the size cap, deleted %s", oldest);
+ }
 }
 function void
 document_backup(Game_State *state)
@@ -99,6 +129,8 @@ document_backup(Game_State *state)
  char day_name[16];
  document_backup_day_name(day_name, sizeof(day_name), 0);
  Stringz day_dir = pjoin(tmp, root, SCu8(day_name));
+ // NOTE(kv) Once a day: the first call of the day makes the folder, the rest stop here.
+ if(file_exists(day_dir)){ return; }
  b32 ok = mkdir_p(root) and mkdir_p(day_dir);
  if(ok)
  {

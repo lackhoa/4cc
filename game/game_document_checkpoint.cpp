@@ -83,7 +83,6 @@ document_checkpoint_create(Game_State *state)
  // what a restart would load.
  if(ok){ ok = document_checkpoint_load_one(state, number); }
  if(not ok){ return 0; }
- document_backup(state);
  checkpoints.compare_checkpoint_index = checkpoints.count - 1;
  Document_History &history = state->document_history;
  snprintf(history.status, sizeof(history.status), "checkpoint %d made", number);

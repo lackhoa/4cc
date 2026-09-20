@@ -296,6 +296,9 @@ load_document_file(Game_State *state)
  if(ok){ history_clear(state); state->document_selection.count = 0; }
  // NOTE(kv) plan-document-checkpoints: the checkpoint files sit next to the document.
  document_checkpoint_load_all(state);
+ // NOTE(kv) The day's backup is taken here, of the files as they were before today's
+ // edits. A rejected document doesn't use up the day's backup.
+ if(ok){ document_backup(state); }
  return ok;
 }
 //-EOF
