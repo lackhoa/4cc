@@ -1952,6 +1952,13 @@ game_update(Game_Update_Params params)
    v1 pick_dist = INFINITY;
    b32 near_any_point = (document_pick_nearest(state, mouse_viewport, V2(params.mouse.p), &pick, &pick_dist) and
                          pick_dist <= document_pick_radius_px);
+   // NOTE(kv) 2026-09-20: Ctrl-click = shift-click (add to / toggle in the selection), as in
+   // other programs. Except ON a handle of the selection, where Ctrl keeps meaning "free
+   // handle drag" (plan-handle-drag-modes Q2); handles never took part in selecting anyway.
+   if((params.input.active_mods & Key_Mod_Ctl) != 0 or debug_channel_mouse_ctrl)
+   {
+    if(not (near_any_point and pick.is_handle)){ shift = true; }
+   }
    b32 near_selected_point = (not shift and near_any_point);
    // NOTE(kv) plan-vertex-links Q3: shift-click ON a vertex of the selection toggles it in
    // the vertex selection (the input of "Link vertices"); handles don't link.
