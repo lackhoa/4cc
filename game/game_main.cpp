@@ -2965,6 +2965,7 @@ game_update(Game_Update_Params params)
      if(ImGui::Button("checkpoint now (Shift+C)")){ document_checkpoint_create(state); }
      ImGui::BeginChild("checkpoint_list", ImVec2(300, 160), true);
      i32 go_back_to = -1;
+     i32 delete_index = -1;
      for_i32(index, 0, checkpoints.count)
      {
       Document_Checkpoint &checkpoint = checkpoints.entries[index];
@@ -2979,10 +2980,19 @@ game_update(Game_Update_Params params)
       ImGui::SameLine();
       snprintf(label, sizeof(label), "%c checkpoint %d  %s##checkpoint%d", is_compare ? '>' : ' ',
                checkpoint.number, time_text, index);
-      if(ImGui::Selectable(label, is_compare)){ checkpoints.compare_checkpoint_index = index; }
+      // NOTE(kv) Q12c: the row stops short so the `x` sits at the right end, far from "go back".
+      if(ImGui::Selectable(label, is_compare, 0, ImVec2(ImGui::GetContentRegionAvail().x - 24, 0)))
+      {
+       checkpoints.compare_checkpoint_index = index;
+      }
+      ImGui::SameLine();
+      snprintf(label, sizeof(label), "x##checkpoint_delete%d", index);
+      if(ImGui::SmallButton(label)){ delete_index = index; }
+      if(ImGui::IsItemHovered()){ ImGui::SetTooltip("move to checkpoint-trash/"); }
      }
      ImGui::EndChild();
      if(go_back_to != -1){ document_checkpoint_go_back_to(state, go_back_to); }
+     if(delete_index != -1){ document_checkpoint_delete(state, delete_index); }
     }
     im_end();
    }

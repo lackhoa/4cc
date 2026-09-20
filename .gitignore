@@ -10,3 +10,4 @@ data/recording.ad
 data/state.txt
 game/driver/driver.document.checkpoint-*.ad
 game/driver/driver.document.agent.checkpoint-*.ad
+game/driver/checkpoint-trash/

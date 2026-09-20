@@ -138,6 +138,48 @@ document_checkpoint_go_back_to(Game_State *state, i32 index)
  history.status_frames = 120;
  return true;
 }
+function b32
+document_checkpoint_delete(Game_State *state, i32 index)
+{// NOTE(kv) plan-document-checkpoints Q12: the file MOVES to game/driver/checkpoint-trash/
+ // (same name; an older one of that name there is overwritten), so a mis-click costs
+ // nothing -- the user empties the folder by hand. Not an undo entry (checkpoints live
+ // outside the document history). Refused while flipped: the flip draws this Recording.
+ Document_Checkpoint_State &checkpoints = state->document_checkpoints;
+ if(index < 0 or index >= checkpoints.count){ return false; }
+ if(checkpoints.is_flipped_to_checkpoint){ return false; }
+ i32 number = checkpoints.entries[index].number;
+ Scratch_Scope tmp;
+ Stringz path = document_checkpoint_file_path(tmp, state, number);
+ Stringz trash_dir = pjoin(tmp, state->code_dir, strlit("game/driver/checkpoint-trash"));
+ Stringz trash_path = pjoin(tmp, trash_dir, path_filename(path));
+ b32 ok = mkdir_p(trash_dir);
+ if(ok)
+ {// NOTE(kv) move_file fails if the destination exists.
+  if(file_exists(trash_path)){ remove_file(trash_path); }
+  ok = move_file(path, trash_path);
+ }
+ if(not ok)
+ {
+  log_error("document checkpoint: could not move %S to %S", path, trash_path);
+  return false;
+ }
+ arena_free(&checkpoints.entries[index].recording.arena);
+ for_i32(i, index + 1, checkpoints.count){ checkpoints.entries[i-1] = checkpoints.entries[i]; }
+ checkpoints.count--;
+ checkpoints.entries[checkpoints.count] = {};
+ if(checkpoints.compare_checkpoint_index == index)
+ {// NOTE(kv) Q12c: the newest remaining one becomes the compare checkpoint (-1 if none).
+  checkpoints.compare_checkpoint_index = checkpoints.count - 1;
+ }
+ else if(checkpoints.compare_checkpoint_index > index)
+ {
+  checkpoints.compare_checkpoint_index--;
+ }
+ Document_History &history = state->document_history;
+ snprintf(history.status, sizeof(history.status), "checkpoint %d moved to trash", number);
+ history.status_frames = 120;
+ return true;
+}
 function void
 document_checkpoint_dump(FILE *out, Game_State *state)
 {// NOTE(kv) Debug channel `checkpoint_list`: `>` = the compare checkpoint.

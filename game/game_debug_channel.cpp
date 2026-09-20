@@ -799,6 +799,13 @@ debug_channel_update(Game_State *state, App *app)
   fprintf(out, "checkpoint_go_back_to: %s\n", ok ? "ok" : "no such checkpoint");
   debug_channel_wants_animate = true;
  }
+ else if(strncmp(cmd, "checkpoint_delete ", 18) == 0)
+ {// NOTE(kv) Q12: moves the file to game/driver/checkpoint-trash/.
+  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 18));
+  b32 ok = document_checkpoint_delete(state, index);
+  fprintf(out, "checkpoint_delete: %s\n", ok ? "ok" : "refused (no such checkpoint, flipped, or move failed)");
+  debug_channel_wants_animate = true;
+ }
  else if(strcmp(cmd, "document_schema_dump") == 0)
  {// NOTE(kv) The type table stored in driver.document.ad, as text (ad_serialize_schema.cpp).
   dump_document_schema_file(out, state);
