@@ -3179,8 +3179,7 @@ game_update(Game_Update_Params params)
      m->vis_live[Vis_Eyeball]              = row.show_eyeball;
      m->vis_live[Vis_Loomis_Ball]          = row.show_loomis_ball;
      m->vis_live[Vis_Hair]                 = !row.hide_hair;
-     // NOTE(kv) The anchor is distracting on the finished face: it shows with the eyeball only.
-     m->vis_live[Vis_Anchor_Eye]           = row.show_eyeball and !row.hide_anchors;
+     m->vis_live[Vis_Anchor_Eye]           = !row.hide_anchors;
      m->vis_live[Vis_Ref_Arm_Medial_Right] = row.show_arm_medial_right;
      m->vis_live[Vis_Ref_Arm_Back_Bone]    = row.show_arm_back_bone;
      m->vis_live[Vis_Ref_Arm_Profile_Left] = row.show_arm_profile_left;
