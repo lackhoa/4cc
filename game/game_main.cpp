@@ -1900,7 +1900,7 @@ game_update(Game_Update_Params params)
    }
    if(params.mouse.release_left or not params.mouse.left)
    {
-    line_tool_release(state);
+    line_tool_release(state, mouse_viewport);
    }
   }
   else if(state->document_mouse_drag.active)
@@ -1913,7 +1913,7 @@ game_update(Game_Update_Params params)
    }
    if(params.mouse.release_left or not params.mouse.left)
    {
-    document_mouse_release(state);
+    document_mouse_release(state, mouse_viewport);
    }
   }
   else if((not debug_channel_enabled or debug_channel_mouse_active) and not state->reference_edit.active)

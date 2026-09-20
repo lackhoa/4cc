@@ -1332,13 +1332,114 @@ document_mouse_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_apply_constraints(doc);
 }
 
+//~ NOTE(kv) 2026-09-20 Vertex merge, port of the tablet's merge_vertex_if_near_another
+// (edit_mode.ts): a vertex released next to another one becomes that vertex. Every
+// primitive that referenced it is rewired to the target. Near = within
+// document_merge_radius_world in 3D (the tablet's VERTEX_SNAP_RADIUS_WORLD; a screen-only
+// snap pulled prim 48 to another depth, plan-line-tool-snapping) AND, when a viewport is
+// at hand, within document_merge_radius_px on screen (0.05 alone is 67 px zoomed in on
+// the nose, where real vertices sit 0.044 apart).
+// Runs inside the caller's open history entry, so drag + merge is one undo step.
+global v1 const document_merge_radius_world = 0.05f;
+global v1 const document_merge_radius_px    = 12.f;  // = line_tool_snap_px
+function i32
+document_find_merge_target(Game_State *state, Live_Viewport *viewport, i32 dragged, b32 is_right)
+{// NOTE(kv) -1 = nothing to merge into. Refused targets:
+ // - an orphan (no primitive references it, e.g. what an earlier merge left behind);
+ // - one that a primitive already shares with `dragged` (both ends on one vertex);
+ // - one that would be read in another bone by a primitive of `dragged`: a table vertex
+ //   without a bone of its own is read in the READER's group bone (plan-line-tool-wrong-group).
+ Recording &doc = state->model.recordings.document;
+ v3 dragged_world = document_vertex_index_world_pos(doc, dragged, is_right);
+ Bone_ID dragged_bone = document_vertex_index_bone(doc, dragged);
+ i32 best = -1;
+ v1 best_dist = document_merge_radius_world;
+ for_i32(target, 0, doc.vertices.count)
+ {
+  if(target == dragged){ continue; }
+  b32 referenced = false;
+  b32 usable = true;
+  for_i32(iprim, 0, doc.primitives.count)
+  {
+   Recorded_Primitive &prim = doc.primitives[iprim];
+   b32 has_dragged = false, has_target = false;
+   for_i32(slot, 0, primitive_vertex_count(prim.type))
+   {
+    if(prim.vertex_index[slot] == dragged){ has_dragged = true; }
+    if(prim.vertex_index[slot] == target){ has_target = true; }
+   }
+   if(has_target){ referenced = true; }
+   if(has_dragged and has_target){ usable = false; }
+   if(has_dragged and not (document_vertex_bone(doc, prim, doc.vertices[target]) == dragged_bone)){ usable = false; }
+  }
+  if(not referenced or not usable){ continue; }
+  if(not (document_vertex_index_bone(doc, target) == dragged_bone)){ continue; }
+  v3 target_world = document_vertex_index_world_pos(doc, target, is_right);
+  v1 dist = lengthof(target_world - dragged_world);
+  if(dist >= best_dist){ continue; }
+  if(viewport)
+  {
+   Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
+   v2 off_px = project(proj, target_world) - project(proj, dragged_world);
+   if(lengthof(V3(off_px, 0)) >= document_merge_radius_px){ continue; }
+  }
+  best_dist = dist;
+  best = target;
+ }
+ return best;
+}
+function b32
+document_merge_vertex_if_near_another(Game_State *state, Live_Viewport *viewport, i32 dragged,
+                                      b32 is_right, b32 solo)
+{
+ Recording &doc = state->model.recordings.document;
+ i32 target = document_find_merge_target(state, viewport, dragged, is_right);
+ if(target < 0){ return false; }
+ // NOTE(kv) Snap first so the curves ending on `dragged` turn their handle offsets with
+ // the chord change (tablet Q4), then rewire them.
+ v3 delta_world = (document_vertex_index_world_pos(doc, target, is_right) -
+                   document_vertex_index_world_pos(doc, dragged, is_right));
+ document_move_vertices_linked(doc, &dragged, 1, solo, is_right, delta_world);
+ b32 target_on_mirror_plane = (doc.vertices[target].p.x == 0);
+ for_i32(iprim, 0, doc.primitives.count)
+ {
+  Recorded_Primitive &prim = doc.primitives[iprim];
+  for_i32(slot, 0, primitive_vertex_count(prim.type))
+  {
+   if(prim.vertex_index[slot] != dragged){ continue; }
+   prim.vertex_index[slot] = target;
+   // NOTE(kv) A midline curve pins its vertices to x=0 ("the flag wins"), which would
+   // drag an off-plane target onto the mirror plane. The target wins here: the flag goes.
+   if(prim.type == Primitive_Type_Curve and not target_on_mirror_plane){ prim.curve.midline = false; }
+  }
+ }
+ // NOTE(kv) `dragged` stays in the table as an orphan: indices are identities here
+ // (selection, links, undo snapshots), removing one would shift all the others.
+ if(doc.vertices[target].link_id == 0){ doc.vertices[target].link_id = doc.vertices[dragged].link_id; }
+ doc.vertices[dragged].link_id = 0;
+ Document_Vertex_Selection &vsel = state->document_vertex_selection;
+ for_i32(i, 0, vsel.count){ if(vsel.vertex_index[i] == dragged){ vsel.vertex_index[i] = target; } }
+ document_apply_constraints(doc);
+ Document_History &history = state->document_history;
+ snprintf(history.status, sizeof(history.status), "merged vertex %d into %d", dragged, target);
+ history.status_frames = 120;
+ return true;
+}
+
 function void
-document_mouse_release(Game_State *state)
+document_mouse_release(Game_State *state, Live_Viewport *viewport)
 {
  Document_Mouse_Drag_State &edit = state->document_mouse_drag;
  if(not edit.active){ return; }
  if(edit.moved)
- {// NOTE(kv) Q5: the file is the document (saved on every edit); undo/redo restore
+ {
+  if(not edit.whole_stroke and not edit.pick.is_handle)
+  {
+   Recording &doc = state->model.recordings.document;
+   document_merge_vertex_if_near_another(state, viewport, document_pick_vertex_index(doc, edit.pick),
+                                         edit.pick.is_right, edit.solo);
+  }
+  // NOTE(kv) Q5: the file is the document (saved on every edit); undo/redo restore
   // history snapshots (game_document_history.cpp).
   history_commit(state);
   save_document_file(state);

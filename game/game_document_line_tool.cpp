@@ -14,6 +14,8 @@
 // always a new vertex on the plane (Khoa 2026-09-12: "I don't need end snapping"; the
 // old screen-only end snap was what made prim 48 curve in x from profile). Join curves
 // end-to-end by starting the next one on the previous end vertex.
+// 2026-09-20: the end still never snaps DURING the drag, but on release it merges into a
+// vertex that is near in 3D (line_tool_release), like the tablet.
 //
 // Desktop deviations from the tablet: the tablet snaps both ends by a world radius
 // around the pen point on the pivot plane; handles here are stored as absolute
@@ -331,7 +333,7 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
 }
 
 function void
-line_tool_release(Game_State *state)
+line_tool_release(Game_State *state, Live_Viewport *viewport)
 {
  Line_Tool_State &tool = state->line_tool;
  if(not tool.active){ return; }
@@ -340,8 +342,11 @@ line_tool_release(Game_State *state)
   line_tool_reset(state);
   return;
  }
- // NOTE(kv) The end never snaps, so the temp end vertex is always the real one and
- // the curve can't collapse onto its start vertex (a tap never gets here: `created`).
+ // NOTE(kv) 2026-09-20 End snap, tablet style: the end vertex released next to another
+ // vertex merges into it (document_merge_vertex_if_near_another: near in 3D, not just on
+ // screen, so the stroke is not pulled to another depth). The merge refuses the curve's
+ // own start vertex, so the curve can't collapse (a tap never gets here: `created`).
+ document_merge_vertex_if_near_another(state, viewport, tool.temp_end_vertex, false, true);
  history_commit(state);
  save_document_file(state);
  line_tool_reset(state);
