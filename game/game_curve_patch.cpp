@@ -234,10 +234,13 @@ function b32
 document_selection_can_hold(Recording &doc, i32 prim_index)
 {// NOTE(kv) Curves and patches select (Q4), and points (plan-point-primitive); anything
  // else (or out of range) does not.
+ // NOTE(kv) 2026-09-20: the old fills (poly3, dual_bezier, patch) select too, so they can
+ // be deleted while the head moves to curve patches (plan-head-coons-topology).
  if(prim_index < 0 or prim_index >= doc.primitives.count){ return false; }
  Primitive_Type type = doc.primitives[prim_index].type;
  return (type == Primitive_Type_Curve or type == Primitive_Type_Curve_Patch or
-         type == Primitive_Type_Point);
+         type == Primitive_Type_Point or type == Primitive_Type_Poly3 or
+         type == Primitive_Type_Dual_Bezier or type == Primitive_Type_Patch);
 }
 
 function void
@@ -365,7 +368,7 @@ document_delete_primitives(Game_State *state, Document_Action action, i32 *prim_
  for_i32(i, 0, count)
  {
   if(not document_selection_can_hold(doc, prim_index[i]))
-  { log_error("delete: %d is not a curve, a patch or a point", prim_index[i]); return false; }
+  { log_error("delete: %d is not a selectable primitive", prim_index[i]); return false; }
  }
  if(count == 0){ return false; }
  Scratch_Block tmp;
