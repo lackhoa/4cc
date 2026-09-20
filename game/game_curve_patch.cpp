@@ -459,6 +459,38 @@ document_add_helper_curve(Game_State *state, i32 group_index, i32 vertex0, i32 v
 }
 
 function b32
+document_add_curve_from_fill_edge(Game_State *state, i32 prim_index, i32 side)
+{// NOTE(kv) 2026-09-20 (plan-head-coons-topology): a real curve with the exact shape of one
+ // side of a dual_bezier fill (side 0 = P, 1 = Q), on the fill's own two table vertices and
+ // in the fill's group. The fill stays. A side collapsed onto one vertex is refused.
+ Recording &doc = state->model.recordings.document;
+ if(prim_index < 0 or prim_index >= doc.primitives.count or
+    doc.primitives[prim_index].type != Primitive_Type_Dual_Bezier or side < 0 or side > 1)
+ { log_error("curve_from_fill_edge: %d is not a dual_bezier, or bad side %d", prim_index, side); return false; }
+ Recorded_Primitive fill = doc.primitives[prim_index];  // NOTE(kv) copy: the push below can realloc
+ i32 vertex0 = fill.vertex_index[2*side];
+ i32 vertex1 = fill.vertex_index[2*side+1];
+ if(vertex0 == vertex1)
+ { log_error("curve_from_fill_edge: side %d of %d is collapsed onto vertex %d", side, prim_index, vertex0); return false; }
+ Bezier &edge = (side == 0) ? fill.dual_bezier.P : fill.dual_bezier.Q;
+ Document_Action action = {};
+ action.kind       = Document_Action_Add_Line;
+ action.prim_index = doc.primitives.count;
+ history_begin(state, action);
+ Recorded_Primitive prim = {};
+ prim.type = Primitive_Type_Curve;
+ prim.group_index = fill.group_index;
+ prim.vertex_index[0] = vertex0;
+ prim.vertex_index[1] = vertex1;
+ prim.curve.radii = V4(1,1,1,1);
+ for_i32(i, 0, 2){ document_curve_set_handle_point(doc, prim, i, edge.e[i+1]); }
+ push(&doc.primitives, prim);
+ doc.captured = true;
+ history_commit(state);
+ return save_document_file(state);
+}
+
+function b32
 document_set_key_target(Game_State *state, i32 curve_index, i32 target_index, Weight_Key key)
 {// NOTE(kv) plan-eye-to-document Q1: `curve_index` closes onto `target_index` at weight 1 of
  // `key`; target -1 clears it (the key and the stored delta stay). Both must share their

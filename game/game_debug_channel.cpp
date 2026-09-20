@@ -1073,6 +1073,18 @@ debug_channel_update(Game_State *state, App *app)
   }
   else { fprintf(out, "error: usage: add_curve <group> <v0> <v1>\n"); }
  }
+ else if(strncmp(cmd, "curve_from_fill_edge ", 21) == 0)
+ {// NOTE(kv) `curve_from_fill_edge <dual_bezier prim> <side 0=P 1=Q>`
+  i32 prim_index, side;
+  if(sscanf(cmd+21, "%d %d", &prim_index, &side) == 2)
+  {
+   b32 ok = document_add_curve_from_fill_edge(state, prim_index, side);
+   fprintf(out, "curve_from_fill_edge: %s, curve %d\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count - 1);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: curve_from_fill_edge <dual_bezier prim> <side>\n"); }
+ }
  else if(strncmp(cmd, "key_target ", 11) == 0)
  {// NOTE(kv) plan-eye-to-document Q1: `key_target <curve> <target|-1>`, key = Weight_Blink
   // (the only one there is).
