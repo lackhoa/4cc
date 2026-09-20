@@ -105,6 +105,15 @@ struct Recorded_Curve
  Weight_Key key;
  v3 dbezier[4];
  v4 dradii;
+ // NOTE(kv) plan-eye-to-document Q1: a keyed curve may name ANOTHER curve of the same
+ // recording as its weight-1 shape (the closed upper lid IS the lower lid). Then
+ // resolve_vertices rebuilds `dbezier` = target rest shape - own rest shape every time, so
+ // reshaping either curve keeps the closed shape on the target; the stored `dbezier` is
+ // only the fallback once the target is gone. `dradii` stays stored (Q2).
+ // A flag and not "-1 = none": zero-init (every capture-time curve, every older file)
+ // must mean "no target".
+ b32 key_has_target;
+ i32 key_target_curve_index;
 };
 [info]
 struct Recorded_Vertex

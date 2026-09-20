@@ -1034,6 +1034,40 @@ debug_channel_update(Game_State *state, App *app)
   }
   else { fprintf(out, "error: usage: make_patch <i> <j> [k] [l]\n"); }
  }
+ else if(strncmp(cmd, "key_target ", 11) == 0)
+ {// NOTE(kv) plan-eye-to-document Q1: `key_target <curve> <target|-1>`, key = Weight_Blink
+  // (the only one there is).
+  i32 curve_index, target_index;
+  if(sscanf(cmd+11, "%d %d", &curve_index, &target_index) == 2)
+  {
+   b32 ok = document_set_key_target(state, curve_index, target_index, Weight_Blink);
+   fprintf(out, "key_target: %s\n", ok ? "ok" : "FAILED (see log)");
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: key_target <curve> <target|-1>\n"); }
+ }
+ else if(strncmp(cmd, "key_shape ", 10) == 0)
+ {// NOTE(kv) plan-eye-to-document Q1 test aid: a curve's rest shape and its weight-1 shape
+  // (rest + resolved delta), in bone space. With a key target, weight-1 == the target's rest.
+  i32 curve_index;
+  Recording &doc = state->model.recordings.document;
+  if(sscanf(cmd+10, "%d", &curve_index) == 1 and curve_patch_is_valid_ref(doc, curve_index))
+  {
+   Recorded_Primitive prim = doc.primitives[curve_index];
+   resolve_vertices(doc, prim);
+   Recorded_Curve &curve = prim.curve;
+   fprintf(out, "key_shape %d: key %d, has_target %d, target %d\n", curve_index, curve.key,
+           curve.key_has_target, curve.key_target_curve_index);
+   for_i32(i, 0, 4)
+   {
+    v3 rest = curve.bezier.e[i].v;
+    v3 full = rest + curve.dbezier[i];
+    fprintf(out, "  e[%d] rest (%.5f %.5f %.5f) weight1 (%.5f %.5f %.5f)\n", i,
+            rest.x, rest.y, rest.z, full.x, full.y, full.z);
+   }
+  }
+  else { fprintf(out, "error: usage: key_shape <curve index>\n"); }
+ }
  else if(strncmp(cmd, "link ", 5) == 0 or strncmp(cmd, "unlink ", 7) == 0)
  {// NOTE(kv) plan-vertex-links: `link <v> <v> [v...]` / `unlink <v> [v...]`, table indices.
   b32 is_link = (cmd[0] == 'l');

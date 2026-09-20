@@ -248,6 +248,16 @@ document_split_curve(Game_State *state, i32 prim_index, v1 t)
   log_error("split: curve %d bounds a patch, not splitting", prim_index);
   return false;
  }
+ for_i32(i, 0, doc.primitives.count)
+ {// NOTE(kv) plan-eye-to-document Q1: same deal for a curve another one closes onto.
+  Recorded_Primitive &other = doc.primitives[i];
+  if(other.type == Primitive_Type_Curve and other.curve.key_has_target and
+     other.curve.key_target_curve_index == prim_index)
+  {
+   log_error("split: curve %d is the key target of curve %d, not splitting", prim_index, i);
+   return false;
+  }
+ }
 
  // NOTE(kv) All four control points live in the group's bone space (Bone_None, like the
  // line tool), so de Casteljau runs in that one space and the halves' handle points feed
@@ -264,7 +274,13 @@ document_split_curve(Game_State *state, i32 prim_index, v1 t)
  // now, before the push below can realloc). radii/lightness/dradii are v4 = 4 scalar control
  // points; dbezier is v3[4]. The shared knot value lands on both halves (radii_left[3] ==
  // radii_right[0] etc.), so the width, lightness and blink motion are smooth across the cut.
- Recorded_Curve const src = doc.primitives[prim_index].curve;
+ // NOTE(kv) plan-eye-to-document Q1: read `dbezier` off a RESOLVED copy -- with a key target
+ // the stored delta is only a fallback, the live one is rebuilt by resolve_vertices. The
+ // halves then keep their share of that delta and drop the target (half a curve cannot
+ // close onto a whole one).
+ Recorded_Primitive resolved_src = doc.primitives[prim_index];
+ resolve_vertices(doc, resolved_src);
+ Recorded_Curve const src = resolved_src.curve;
  v4 radii_left, radii_right, light_left, light_right, dradii_left, dradii_right;
  document_split_curve_profile_v4(src.radii,               t, &radii_left,  &radii_right);
  document_split_curve_profile_v4(src.lightness_additions, t, &light_left,  &light_right);
@@ -299,6 +315,7 @@ document_split_curve(Game_State *state, i32 prim_index, v1 t)
  // NOTE(kv) The push above may realloc, so re-index doc.primitives every time below. The
  // second half copies the original by value (styling, group, flags) before we rewrite it.
  i32 far_vertex = doc.primitives[prim_index].vertex_index[1];
+ doc.primitives[prim_index].curve.key_has_target = false;
  Recorded_Primitive second = doc.primitives[prim_index];
  second.vertex_index[0] = knot_index;
  second.vertex_index[1] = far_vertex;

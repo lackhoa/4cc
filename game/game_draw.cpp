@@ -706,6 +706,22 @@ resolve_vertices(Recording &rec, Recorded_Primitive &prim)
   {
    bez.e[i+1] = curve_handle_point(bez.e[0], bez.e[3], prim.curve.handle_offset[i], i);
   }
+  Recorded_Curve &curve = prim.curve;
+  if(curve.key != Weight_None and curve.key_has_target)
+  {// NOTE(kv) plan-eye-to-document Q1: the delta is the target's REST shape minus ours,
+   // rebuilt here so it can never go stale. Plain v3 difference: both curves are expected
+   // in the same bone space (same as the stored delta, which has no bone either).
+   // One level only: the target's own key target is not followed.
+   i32 target_index = curve.key_target_curve_index;
+   if(target_index >= 0 and target_index < rec.primitives.count and
+      rec.primitives.items[target_index].type == Primitive_Type_Curve)
+   {
+    Recorded_Primitive target = rec.primitives.items[target_index];
+    target.curve.key_has_target = false;
+    resolve_vertices(rec, target);
+    for_i32(i, 0, 4){ curve.dbezier[i] = target.curve.bezier.e[i].v - bez.e[i].v; }
+   }
+  }
  }
 }
 //-

@@ -174,6 +174,8 @@ enum Document_Action_Kind
  Document_Action_Add_Point,
  // NOTE(kv) plan-document-checkpoints Q5: `index` = the checkpoint's number.
  Document_Action_Go_Back_To_Checkpoint,
+ // NOTE(kv) plan-eye-to-document Q1: curve `prim_index` closes onto curve `index` (-1 = none).
+ Document_Action_Set_Key_Target,
 };
 // NOTE(kv) Line tool (game_document_line_tool.cpp, port of tablet line_tool.ts): armed
 // from the right-click menu; the next left-drag places one cubic curve on the

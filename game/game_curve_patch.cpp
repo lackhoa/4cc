@@ -342,6 +342,13 @@ document_remove_primitives(Recording &doc, b32 *remove)
  for_i32(i, 0, new_count)
  {
   Recorded_Primitive &prim = doc.primitives[i];
+  if(prim.type == Primitive_Type_Curve and prim.curve.key_has_target)
+  {// NOTE(kv) plan-eye-to-document Q1: a removed key target leaves the stored delta.
+   i32 old_target = prim.curve.key_target_curve_index;
+   i32 new_target = (old_target >= 0 and old_target < old_count) ? remap[old_target] : -1;
+   prim.curve.key_has_target         = (new_target != -1);
+   prim.curve.key_target_curve_index = maximum(new_target, 0);
+  }
   if(prim.type != Primitive_Type_Curve_Patch){ continue; }
   for_i32(ic, 0, prim.curve_patch.curve_count)
   { prim.curve_patch.curve_index[ic] = remap[prim.curve_patch.curve_index[ic]]; }
@@ -414,6 +421,36 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
  push(&doc.primitives, prim);
  doc.captured = true;
  state->document_selection.count = 0;
+ history_commit(state);
+ return save_document_file(state);
+}
+
+function b32
+document_set_key_target(Game_State *state, i32 curve_index, i32 target_index, Weight_Key key)
+{// NOTE(kv) plan-eye-to-document Q1: `curve_index` closes onto `target_index` at weight 1 of
+ // `key`; target -1 clears it (the key and the stored delta stay). Both must share their
+ // endpoints' direction -- the delta is control point i to control point i.
+ Recording &doc = state->model.recordings.document;
+ if(not curve_patch_is_valid_ref(doc, curve_index))
+ { log_error("key_target: %d is not a curve", curve_index); return false; }
+ if(target_index != -1 and
+    (not curve_patch_is_valid_ref(doc, target_index) or target_index == curve_index))
+ { log_error("key_target: bad target %d", target_index); return false; }
+ if(target_index != -1 and (key <= Weight_None or key >= Weight_Count))
+ { log_error("key_target: bad weight key %d", key); return false; }
+ Document_Action action = {};
+ action.kind       = Document_Action_Set_Key_Target;
+ action.prim_index = curve_index;
+ action.index      = target_index;
+ history_begin(state, action);
+ Recorded_Curve &curve = doc.primitives[curve_index].curve;
+ if(target_index == -1){ curve.key_has_target = false; }
+ else
+ {
+  curve.key                    = key;
+  curve.key_has_target         = true;
+  curve.key_target_curve_index = target_index;
+ }
  history_commit(state);
  return save_document_file(state);
 }

@@ -517,6 +517,8 @@ b32 midline;
 Weight_Key key;
 v3 dbezier[4];
 v4 dradii;
+b32 key_has_target;
+i32 key_target_curve_index;
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
@@ -526,7 +528,7 @@ Type_Info result = {};
 result.name = strlit("Recorded_Curve");
 result.size = sizeof(Recorded_Curve);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(9);
+result.members.set_count(11);
 {
 Type_Info *member_type = & Type_Info_Bezier;
 result.members[0] = {.type=member_type, .name=strlit("bezier"), .offset=offsetof(Recorded_Curve, bezier), .unserialized=true};
@@ -576,6 +578,14 @@ result.members[7] = {.type=member_type, .name=strlit("dbezier"), .offset=offseto
 {
 Type_Info *member_type = & Type_Info_v4;
 result.members[8] = {.type=member_type, .name=strlit("dradii"), .offset=offsetof(Recorded_Curve, dradii)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[9] = {.type=member_type, .name=strlit("key_has_target"), .offset=offsetof(Recorded_Curve, key_has_target)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[10] = {.type=member_type, .name=strlit("key_target_curve_index"), .offset=offsetof(Recorded_Curve, key_target_curve_index)};
 }
 return result;
 }
@@ -643,6 +653,18 @@ v4 m_dradii = {};
 read_binary_v4(r, &m_dradii);
 }
 dst->dradii = m_dradii;
+
+b32 m_key_has_target = {};
+{
+read_binary_b32(r, &m_key_has_target);
+}
+dst->key_has_target = m_key_has_target;
+
+i32 m_key_target_curve_index = {};
+{
+read_binary_i32(r, &m_key_target_curve_index);
+}
+dst->key_target_curve_index = m_key_target_curve_index;
 
 
 }
