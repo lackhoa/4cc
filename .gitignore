@@ -5,3 +5,8 @@ vc120.pdb
 data/backups/*
 backups/*
 dont_check_in/*
+# App-written data; backed up to Google Drive by game/game_document_backup.cpp
+data/recording.ad
+data/state.txt
+game/driver/driver.document.checkpoint-*.ad
+game/driver/driver.document.agent.checkpoint-*.ad
