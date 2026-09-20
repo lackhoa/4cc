@@ -144,7 +144,10 @@ replay_recording(Recording &rec, b32 replay_is_right=false)
   // toggle (ShowGroup binds it to painter->live_vis_tag, outside params), so a
   // capture taken with the toggle OFF still replays correctly once it turns on.
   p->params.painting = (p->params.painting and m->vis_live[group.vis_tag]);
-  if(group.cam_vis.active)
+  // NOTE(kv) show_all_lines: curves skip the camera condition, fills keep it (same split
+  // as is_line_enabled / is_fill_enabled on the code path).
+  b32 skip_cam_vis = (p->show_all_lines and prim.type == Primitive_Type_Curve);
+  if(group.cam_vis.active and not skip_cam_vis)
   {// NOTE(kv) Q38 camera-bound visibility: re-evaluate the recorded condition against
    // the LIVE view vector (derived from the group's view scope + current camera, Q42)
    // and AND it in -- same decomposition argument as the vis_live re-AND above.
