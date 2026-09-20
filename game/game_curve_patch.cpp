@@ -189,7 +189,9 @@ draw_curve_patch(Recording &doc, Recorded_Primitive &prim, b32 is_right)
  Curve_Patch_Grid grid = {};
  if(not curve_patch_world_grid(tmp, doc, prim, is_right, &grid)){ return; }
  mat4 bone_from_world = current_world_from_bone().inverse;
- argb color = painter->background_color;
+ // NOTE(kv) plan-eye-to-document Q8: the patch group's fill color (replay has set the
+ // group's params), so a patch can be a shade fill. Captured default = background color.
+ argb color = painter->params.fill.color;
  Poly_Flags flags = to_poly_flags(Fill_Flags{});
  i32 stride = grid.rows+1;
  auto at = [&](i32 i, i32 j) -> v3 { return mat4vert(bone_from_world, grid.positions[i*stride+j]); };
@@ -394,10 +396,13 @@ document_delete_selection(Game_State *state)
 }
 
 function b32
-document_make_patch(Game_State *state, i32 *curve_index, i32 count)
-{
+document_make_patch(Game_State *state, i32 *curve_index, i32 count, i32 group_index=-1)
+{// NOTE(kv) group_index -1 = the first curve's group. The group gives the patch its fill
+ // color (plan-eye-to-document Q8).
  Recording &doc = state->model.recordings.document;
  if(count < 2 or count > 4){ log_error("make_patch: need 2-4 curves, got %d", count); return false; }
+ if(group_index < -1 or group_index >= doc.groups.count)
+ { log_error("make_patch: no group %d", group_index); return false; }
  for_i32(i, 0, count)
  {
   if(not curve_patch_is_valid_ref(doc, curve_index[i]))
@@ -415,12 +420,37 @@ document_make_patch(Game_State *state, i32 *curve_index, i32 count)
  history_begin(state, action);
  Recorded_Primitive prim = {};
  prim.type = Primitive_Type_Curve_Patch;
- prim.group_index = doc.primitives[curve_index[0]].group_index;
+ prim.group_index = (group_index == -1 ? doc.primitives[curve_index[0]].group_index : group_index);
  prim.curve_patch.curve_count = count;
  for_i32(i, 0, count){ prim.curve_patch.curve_index[i] = curve_index[i]; }
  push(&doc.primitives, prim);
  doc.captured = true;
  state->document_selection.count = 0;
+ history_commit(state);
+ return save_document_file(state);
+}
+
+function b32
+document_add_helper_curve(Game_State *state, i32 group_index, i32 vertex0, i32 vertex1)
+{// NOTE(kv) plan-eye-to-document Q8: a straight curve between two EXISTING vertices, zero
+ // radius = invisible but selectable. It exists to be a patch side (a fan's spoke).
+ Recording &doc = state->model.recordings.document;
+ if(group_index < 0 or group_index >= doc.groups.count or
+    vertex0 < 0 or vertex0 >= doc.vertices.count or
+    vertex1 < 0 or vertex1 >= doc.vertices.count or vertex0 == vertex1)
+ { log_error("add_curve: bad group %d or vertices %d %d", group_index, vertex0, vertex1); return false; }
+ Document_Action action = {};
+ action.kind       = Document_Action_Add_Line;
+ action.prim_index = doc.primitives.count;
+ history_begin(state, action);
+ Recorded_Primitive prim = {};
+ prim.type = Primitive_Type_Curve;
+ prim.group_index = group_index;
+ prim.vertex_index[0] = vertex0;
+ prim.vertex_index[1] = vertex1;
+ prim.curve.straight = true;
+ push(&doc.primitives, prim);
+ doc.captured = true;
  history_commit(state);
  return save_document_file(state);
 }

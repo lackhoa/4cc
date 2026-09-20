@@ -193,6 +193,8 @@ enum Group_Vis
  Vis_Chin,
  Vis_Cheek,
  Vis_Neck_Junction,
+ // NOTE(kv) plan-eye-to-document: lids + socket fills (the eyeball stays Vis_Eyeball).
+ Vis_Eye,
  // NOTE(kv) plan-move-the-eye: the group of the eye ANCHOR (a point primitive). The driver
  // reads its position in place of the eye-origin slider (eye_origin in driver.kc). Not a
  // region: live value = !Preset_Settings.hide_anchors.

@@ -210,13 +210,14 @@ defer(pop(&model->bone_stack);)
    MakeBoneBlock(mk_bone_id(Bone_Head), headT);
    
    {//-Eyeball
-    // NOTE(kv) plan-eye-to-document Q3: the lids are document data now, so the radius and
-    // the centre's offset from the anchor are frozen (they were derived from eye_in/eye_out
-    // and eye_scale; see archive/driver-2026-09-20.kc.txt). The anchor still moves the eyeball.
     tvert eyeO = eye_origin().origin;
-    eyeball_center = eyeO + mkvec(0.127440f, 0.009981f, -0.292468f);
+    v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+    mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+    tvert eye_in = eyeT*fv(tvert_24);
+    tvert eye_out = eye_in + mkvec(2.f * eye_in.x+(-0.03f), 0, -0.154f);
+    eyeball_center = eyeT*fv(tvert_25);
     mat4i to_eyeball = mat4i_translate(eyeball_center);
-    eyeball_radius = 0.141958f;
+    eyeball_radius = (eye_out.x - eye_in.x)*0.4526f;
     mat4i eyeball_scale = mat4i_scale(eyeball_radius);
     mat4i rot;
     {// NOTE: We don't have theta yet
@@ -1382,9 +1383,80 @@ render_eyes(Pose &pose)
 {
  // NOTE: We use this "eyeT" as a compromise: as a small eye sub-system is small.
  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
- // NOTE(kv) plan-eye-to-document: the lids, socket fills and guide lines are document data
- // now (region Vis_Eye, vertices linked to the anchor). The code that drew them is in
- // archive/driver-2026-09-20.kc.txt. Only the eyeball is still code (stage 2).
+ Eye_Origin eye_origin_pair = eye_origin();
+ tvert eyeO = eye_origin_pair.origin;
+ // NOTE(kv) plan-move-the-eye Q10(b): the brow curves are document data, linked to the
+ // anchor by hand, so they translate with the eye. The brow points the fills below use
+ // are frozen code copies -> shift LOCAL copies by the same amount (the globals feed
+ // other regions). Wrong if the brow is later reshaped on its own.
+ tvec eye_moved = eyeO - eye_origin_pair.rest;
+ tvert brow_out_moved = brow_out + eye_moved;
+ v3 eye_scale = V3(0.8324f, 0.9882f, 0.92f);
+ mat4i eyeT = mat4i_translate(eyeO)*mat4i_scales(eye_scale);
+ // TODO: Having a mini-coordinate system seems over-engineered to me... but idk man!
+ // I think we've managed to dig ourselves out of that situation almost?
+ // because we can use eye_in - eye_out to establish a coord frame
+ tvert eye_in = (eyeT*fv(tvert_178));
+ v1 loomis_eye_inZ = faceZ - loomis_unit/3.f;
+ WARN_DELTA(eye_in.z, loomis_eye_inZ, 0.05f);
+ 
+ b32 show_eye_guideline = painter->show_grid;
+ if(level1 || show_eye_guideline){
+  hl_block;
+  if(level1){ draw(bez_line(eye_in, nose_rootL)); }
+ }
+ tvert eye_out = (eye_in + V3(2.f * eye_in.x+(-0.03f), 0, -0.154f));
+ if(level1){ hl_block; draw_line(eye_out, brow_out_moved); }
+ tvert es_up_in = (bezier_sample(brow_ridge, 0.3668f)) + eye_moved;
+ Bezier eye_up_line = bez_bezd_old(eye_in, 
+                                   V3(0.0814f, 0.3741f, 0.2401f),
+                                   V2(0.0159f, 0.3341f),
+                                   eye_out);
+ fill_point_bez(es_up_in, eye_up_line);
+ argb eye_in_shade = painter->shade_color;
+ {
+  PaintBlock;
+  painter->params.fill.color = eye_in_shade;
+  fill3(nose_rootL, eye_in, es_up_in);
+ }
+ //-
+ v4 eye_up_line_radii_open;
+ v4 eye_up_line_radii_closed;
+ v4 eye_low_line_radii_open;
+ v4 eye_low_line_radii_closed;
+ {// NOTE: Lid radii at eyes open vs closed; the blink shape key blends between them
+  // (stroke width changes with the blink, not just the lid shape).
+  eye_up_line_radii_open   = V4(0.0137f,  0.6426f, 0.f,     0.4791f);
+  eye_up_line_radii_closed = V4(-0.0006f, 0.499f,  0.6154f, 0.17f);
+  eye_low_line_radii_open   = eye_up_line_radii_open;
+  eye_low_line_radii_closed = eye_up_line_radii_closed;
+  eye_low_line_radii_open[1]   = 0.0555f;
+  eye_low_line_radii_closed[1] = 0.0555f;
+ }
+ //-
+ Bez eye_low_line = bez_bezd_old(eye_in,
+                                 V3(0.1735f, -0.2094f, 0.1663f), 
+                                 V2(0.117f, 0.2053f), 
+                                 eye_out);
+ draw_keyed(Weight_Blink, eye_low_line, eye_low_line,
+            eye_low_line_radii_open, eye_low_line_radii_closed);
+ {
+  tvert eye_low_patch = lerp(eye_in, 0.4768f, cheek_low);
+  fill_point_bez(eye_low_patch, eye_low_line);
+  fill3(eye_low_patch, eye_out, cheek_low);
+  fill3(eye_out, brow_out_moved, es_up_in);
+ }
+ {// NOTE: Blinking animation control: the closed upper lid IS the lower line, so the
+  // blink shape key blends eye_up_line toward eye_low_line (shared endpoints -> the
+  // deltas at eye_in/eye_out are zero).
+  draw_keyed(Weight_Blink, eye_up_line, eye_low_line,
+             eye_up_line_radii_open, eye_up_line_radii_closed);
+  {// NOTE: The eyelid
+   PaintBlock;
+   painter->params.fill.color = eye_in_shade;
+   fill_dual_bez_keyed(Weight_Blink, eye_up_line, eye_up_line, eye_up_line, eye_low_line);
+  }
+ }
  {//~NOTE: Eyeball
   BoneBlock(mk_bone_id(Bone_Eyeball));
   {//-Eyeball visualization
@@ -1415,7 +1487,27 @@ render_eyes(Pose &pose)
                 flp(FUI_Line_Params_180));
    }
   }
+  
+  {//-NOTE: Checking
+   for_i32(index,0,2)
+   {
+    Bez line = (index==0) ? eye_up_line : eye_low_line;
+    Eye_Min_Distance_Result result =
+    get_eye_min_distance(eyeball_center, eyeball_radius, line);
+    if(result.min_distance < 0)
+    {
+     DEBUG_VALUE(result.min_distance/millimeter);
+     vv0(result.closest_point);
+    }
+   }
+  }
  }
+ 
+ // NOTE: These fills are most dubious...
+ fill3(nose_wing, cheek_low, eye_in);
+ fill3(nose_root_backL, eye_in, nose_rootL);
+ fill3(nose_root_backL, nose_wing, eye_in);
+ fill3(eye_out, cheek_up, brow_out_moved);
 }
 function void
 render_grid()

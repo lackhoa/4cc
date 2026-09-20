@@ -1034,6 +1034,32 @@ debug_channel_update(Game_State *state, App *app)
   }
   else { fprintf(out, "error: usage: make_patch <i> <j> [k] [l]\n"); }
  }
+ else if(strncmp(cmd, "make_patch_in ", 14) == 0)
+ {// NOTE(kv) plan-eye-to-document Q8: like make_patch, into a chosen group (= fill color).
+  i32 group_index, idx[4];
+  i32 count = sscanf(cmd+14, "%d %d %d %d %d", &group_index, &idx[0], &idx[1], &idx[2], &idx[3]) - 1;
+  if(count >= 2)
+  {
+   b32 ok = document_make_patch(state, idx, count, group_index);
+   fprintf(out, "make_patch_in: %s, document now %d primitives\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: make_patch_in <group> <i> <j> [k] [l]\n"); }
+ }
+ else if(strncmp(cmd, "add_curve ", 10) == 0)
+ {// NOTE(kv) plan-eye-to-document Q8: `add_curve <group> <v0> <v1>`, an invisible straight
+  // helper curve between two existing vertices (a patch side).
+  i32 group_index, vertex0, vertex1;
+  if(sscanf(cmd+10, "%d %d %d", &group_index, &vertex0, &vertex1) == 3)
+  {
+   b32 ok = document_add_helper_curve(state, group_index, vertex0, vertex1);
+   fprintf(out, "add_curve: %s, curve %d\n", ok ? "ok" : "FAILED (see log)",
+           state->model.recordings.document.primitives.count - 1);
+   debug_channel_wants_animate = true;
+  }
+  else { fprintf(out, "error: usage: add_curve <group> <v0> <v1>\n"); }
+ }
  else if(strncmp(cmd, "key_target ", 11) == 0)
  {// NOTE(kv) plan-eye-to-document Q1: `key_target <curve> <target|-1>`, key = Weight_Blink
   // (the only one there is).

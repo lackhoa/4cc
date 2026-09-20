@@ -877,6 +877,7 @@ Vis_Head_Outline,
 Vis_Chin,
 Vis_Cheek,
 Vis_Neck_Junction,
+Vis_Eye,
 Vis_Anchor_Eye,
 Group_Vis_Count,
 Vis_Ref_Front_Last = Vis_Ref_Front_4,
@@ -891,7 +892,7 @@ Type_Info result = {};
 result.name = strlit("Group_Vis");
 result.size = sizeof(Group_Vis);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(25);
+result.enum_members.set_count(26);
 result.enum_members[0] = {.name=strlit("Vis_None"), .value=Vis_None};
 result.enum_members[1] = {.name=strlit("Vis_Skeleton"), .value=Vis_Skeleton};
 result.enum_members[2] = {.name=strlit("Vis_Level1"), .value=Vis_Level1};
@@ -913,10 +914,11 @@ result.enum_members[17] = {.name=strlit("Vis_Head_Outline"), .value=Vis_Head_Out
 result.enum_members[18] = {.name=strlit("Vis_Chin"), .value=Vis_Chin};
 result.enum_members[19] = {.name=strlit("Vis_Cheek"), .value=Vis_Cheek};
 result.enum_members[20] = {.name=strlit("Vis_Neck_Junction"), .value=Vis_Neck_Junction};
-result.enum_members[21] = {.name=strlit("Vis_Anchor_Eye"), .value=Vis_Anchor_Eye};
-result.enum_members[22] = {.name=strlit("Group_Vis_Count"), .value=Group_Vis_Count};
-result.enum_members[23] = {.name=strlit("Vis_Ref_Front_Last"), .value=Vis_Ref_Front_Last};
-result.enum_members[24] = {.name=strlit("Vis_Region_First"), .value=Vis_Region_First};
+result.enum_members[21] = {.name=strlit("Vis_Eye"), .value=Vis_Eye};
+result.enum_members[22] = {.name=strlit("Vis_Anchor_Eye"), .value=Vis_Anchor_Eye};
+result.enum_members[23] = {.name=strlit("Group_Vis_Count"), .value=Group_Vis_Count};
+result.enum_members[24] = {.name=strlit("Vis_Ref_Front_Last"), .value=Vis_Ref_Front_Last};
+result.enum_members[25] = {.name=strlit("Vis_Region_First"), .value=Vis_Region_First};
 return result;
 }
 #if WANT_TYPE_INFO

@@ -4,87 +4,84 @@ global i32 marked_positions_file_1[4] ={
 //-NOTE: driver_animate.kc 
 62,70,1870,1878,
 };
-global i32 marked_positions_file_2[986] ={
+global i32 marked_positions_file_2[950] ={
 //-NOTE: driver.kc 
 102,153,195,241,287,354,401,460,499,550,589,640,687,746,789,844,
 895,958,1007,1068,1116,1176,1217,1270,1304,1350,1397,1456,1497,1550,1591,1644,
 1688,1744,1782,1832,3450,3463,4326,4334,4421,4429,4477,4485,4526,4534,4572,4580,
 4619,4627,4653,4664,4685,4704,4724,4735,4789,4801,4833,4845,5443,5455,5489,5498,
 5575,5584,5730,5784,5818,5830,5864,5873,6065,6122,6146,6171,6470,6500,6547,6574,
-6646,6672,6706,6718,6752,6761,6795,6804,6840,6849,7533,7545,8018,8030,8131,8143,
-9318,9344,9350,9380,9389,9390,9410,9419,9441,9453,9518,9527,9644,9656,9983,10014,
-10279,10288,10367,10379,10604,10639,10656,10668,10675,10687,10734,10743,11374,11386,11704,11716,
-11736,11748,13758,13770,13773,13788,13947,13984,14027,14223,14250,14262,14265,14320,14472,14484,
-14488,14558,14587,14599,14603,14714,14740,14752,14756,14824,14900,14912,14939,14951,14955,15115,
-15142,15154,15158,15270,15274,15403,15407,15527,15533,15592,15607,15625,15632,15728,16040,16091,
-16242,16251,16256,16315,16320,16449,16766,16789,17276,17408,17414,17552,17627,17747,17814,17942,
-18214,18292,18299,18378,18601,18693,18700,18791,19265,19274,19453,19465,19594,19625,19760,19815,
-19824,19826,19859,19871,20054,20089,20134,20146,20208,20217,20222,20246,20255,20284,20289,20434,
-20498,20507,20540,20549,20564,20576,20581,20692,20697,20697,20718,20718,20829,20855,20887,20896,
-20902,20925,20934,20941,20964,20973,20978,21066,21124,21179,21220,21249,21352,21364,21383,21394,
-21399,21419,21433,21442,21447,21484,21489,21516,21546,21558,21579,21591,21765,21774,21811,21820,
-22016,22051,22055,22075,22272,22289,22703,22744,22822,22837,22932,22983,22988,23008,23117,23155,
-23183,23220,23224,23260,23264,23323,23541,23575,23656,23722,23905,23934,23996,24031,24035,24056,
-24092,24155,24186,24198,24389,24399,24403,24442,24532,24544,24637,24646,24649,24689,24698,24699,
-24737,24746,24751,24786,24789,24817,24826,24827,24849,24861,24866,24894,24903,24904,24936,24945,
-24979,24988,25021,25030,25112,25140,25149,25150,25171,25183,25338,25365,25371,25482,25488,25543,
-25549,25605,25694,25738,25745,25797,25802,25844,25886,25928,25937,25939,25948,25950,25959,25961,
-25967,25998,26004,26039,26068,26077,26084,26103,26109,26144,26153,26173,26182,26220,26549,26591,
-26809,26871,26880,26882,26891,26893,26902,26904,27005,27014,27021,27052,27066,27100,27366,27399,
-27404,27452,27457,27510,28017,28056,28136,28168,28181,28207,28221,28291,28460,28618,28641,28700,
-28705,28763,28766,28801,28810,28811,28838,28850,28945,29007,29097,29109,29140,29149,29180,29189,
-29191,29200,29231,29240,29265,29275,29277,29287,29314,29324,29390,29411,29419,29456,29466,29467,
-29495,29508,29842,29855,30031,30066,30102,30115,30168,30178,30205,30215,30256,30266,30327,30337,
-30411,30433,30443,30454,30480,30493,30515,30525,30586,30596,30601,30621,30631,30674,30866,30897,
-30907,30916,30949,30959,30981,30991,30996,31021,31031,31038,31183,31243,31253,31255,31265,31267,
-31277,31279,31325,31335,31359,31369,31389,31400,31424,31425,31429,31443,31571,31584,31601,31614,
-31625,31638,31732,31759,31763,31825,31874,31901,31906,31920,31995,32022,32197,32207,32223,32236,
-32286,32379,32383,32414,32418,32441,32445,32504,32508,32539,32717,32727,32750,32760,32796,32837,
-32872,32899,32909,32910,32934,32944,32948,32991,33030,33078,33083,33133,33210,33261,33271,33273,
-33283,33285,33295,33297,33301,33352,33362,33364,33374,33407,33411,33462,33472,33474,33484,33486,
-33496,33498,33599,33650,33660,33662,33672,33690,33703,33705,33749,33830,33840,33842,33852,33854,
-33857,33912,34094,34121,34125,34159,34379,34392,34396,34503,34507,34624,34741,34776,34780,34854,
-34889,34902,34921,34934,34937,35071,35204,35214,35263,35307,35310,35340,35343,35371,35925,35955,
-35965,35966,35969,35992,36002,36003,36084,36097,36100,36118,36469,36482,36503,36516,36927,36949,
-37208,37241,37269,37323,37789,37964,38068,38084,38089,38104,38799,38824,38833,38870,38875,38914,
-38926,38959,38969,38970,38973,39009,39019,39020,39041,39054,39333,39343,39349,39493,39657,39824,
-39831,39873,39930,40081,40180,40324,40402,40555,40679,40692,41010,41030,41042,41068,41071,41101,
-41111,41112,41153,41163,41203,41216,41251,41405,41434,41468,41476,41515,41522,41552,41811,41830,
-41919,42029,42130,42159,42164,42193,42198,42233,42238,42264,42357,42514,42519,42633,42638,42780,
-42785,42785,42830,42830,42835,42835,42880,42880,42910,42923,42927,42966,43262,43320,43462,43498,
-43502,43539,43773,43821,44121,44173,44399,44412,44434,44447,44512,44555,44559,44737,44754,44767,
-45109,45125,45172,45228,45639,45652,45655,45685,45716,45729,45751,45761,45765,45869,45873,45978,
-46135,46148,46245,46258,46505,46540,46544,46666,46675,46720,46725,46768,46773,46799,48000,48013,
-48217,48251,48350,48384,48669,48706,48815,48850,49677,49793,49858,49901,49905,49945,49949,49989,
-50208,50322,50411,50497,50754,50798,50830,50874,51398,51410,51497,51565,51589,51590,51902,51927,
-51992,52027,52030,52072,52075,52116,52119,52159,52797,52843,52970,53011,53308,53370,53645,53694,
-53815,53859,54011,54065,54218,54260,54341,54404,54424,54437,54721,54745,54852,54884,54966,54993,
-55386,55396,55802,55812,56311,56321,58084,58097,58129,58142,59119,59132,59655,59668,59923,59945,
-60276,60300,60328,60341,60650,60673,60972,60985,61290,61303,62236,62249,62566,62582,62622,62635,
-62651,62664,63117,63127,63159,63169,63370,63387,63391,63447,63541,63554,63749,63761,63771,63772,
-64042,64066,64076,64078,64320,64339,64819,64830,64909,64920,65130,65140,65499,65560,65651,65683,
-65755,65787,65804,65836,66411,66424,66571,66581,67106,67116,68327,68387,68425,68467,68725,68738,
-68787,68835,68841,68912,69046,69081,69124,69137,69274,69313,69356,69369,69477,69527,69570,69583,
-69692,69744,69787,69800,69908,69949,69991,70004,70366,70419,70558,70571,70648,70724,70833,70846,
-70898,70928,71001,71091,71924,71937,72197,72207,72541,72551,73033,73046,73253,73272,73277,73296,
-73470,73483,73488,73506,73935,73953,73958,73977,73982,74001,
+6646,6672,6706,6718,6752,6761,6795,6804,6840,6849,7533,7545,9384,9410,9416,9446,
+9455,9456,9476,9485,9507,9519,9584,9593,9710,9722,10049,10080,10345,10354,10433,10445,
+10670,10705,10722,10734,10741,10753,10800,10809,11440,11452,11770,11782,11802,11814,13824,13836,
+13839,13854,14013,14050,14093,14289,14316,14328,14331,14386,14538,14550,14554,14624,14653,14665,
+14669,14780,14806,14818,14822,14890,14966,14978,15005,15017,15021,15181,15208,15220,15224,15336,
+15340,15469,15473,15593,15599,15658,15673,15691,15698,15794,16106,16157,16308,16317,16322,16381,
+16386,16515,16832,16855,17342,17474,17480,17618,17693,17813,17880,18008,18280,18358,18365,18444,
+18667,18759,18766,18857,19331,19340,19519,19531,19660,19691,19826,19881,19890,19892,19925,19937,
+20120,20155,20200,20212,20274,20283,20288,20312,20321,20350,20355,20500,20564,20573,20606,20615,
+20630,20642,20647,20758,20763,20763,20784,20784,20895,20921,20953,20962,20968,20991,21000,21007,
+21030,21039,21044,21132,21190,21245,21286,21315,21418,21430,21449,21460,21465,21485,21499,21508,
+21513,21550,21555,21582,21612,21624,21645,21657,21831,21840,21877,21886,22082,22117,22121,22141,
+22338,22355,22769,22810,22888,22903,22998,23049,23054,23074,23183,23221,23249,23286,23290,23326,
+23330,23389,23607,23641,23722,23788,23971,24000,24062,24097,24101,24122,24158,24221,24252,24264,
+24455,24465,24469,24508,24598,24610,24703,24712,24715,24755,24764,24765,24803,24812,24817,24852,
+24855,24883,24892,24893,24915,24927,24932,24960,24969,24970,25002,25011,25045,25054,25087,25096,
+25178,25206,25215,25216,25237,25249,25404,25431,25437,25548,25554,25609,25615,25671,25760,25804,
+25811,25863,25868,25910,25952,25994,26003,26005,26014,26016,26025,26027,26033,26064,26070,26105,
+26134,26143,26150,26169,26175,26210,26219,26239,26248,26286,26615,26657,26875,26937,26946,26948,
+26957,26959,26968,26970,27071,27080,27087,27118,27132,27166,27432,27465,27470,27518,27523,27576,
+28083,28122,28202,28234,28247,28273,28287,28357,28526,28684,28707,28766,28771,28829,28832,28867,
+28876,28877,28904,28916,29011,29073,29163,29175,29206,29215,29246,29255,29257,29266,29297,29306,
+29331,29341,29343,29353,29380,29390,29456,29477,29485,29522,29532,29533,29561,29574,29908,29921,
+30097,30132,30168,30181,30234,30244,30271,30281,30322,30332,30393,30403,30477,30499,30509,30520,
+30546,30559,30581,30591,30652,30662,30667,30687,30697,30740,30932,30963,30973,30982,31015,31025,
+31047,31057,31062,31087,31097,31104,31249,31309,31319,31321,31331,31333,31343,31345,31391,31401,
+31425,31435,31455,31466,31490,31491,31495,31509,31637,31650,31667,31680,31691,31704,31798,31825,
+31829,31891,31940,31967,31972,31986,32061,32088,32263,32273,32289,32302,32352,32445,32449,32480,
+32484,32507,32511,32570,32574,32605,32783,32793,32816,32826,32862,32903,32938,32965,32975,32976,
+33000,33010,33014,33057,33096,33144,33149,33199,33276,33327,33337,33339,33349,33351,33361,33363,
+33367,33418,33428,33430,33440,33473,33477,33528,33538,33540,33550,33552,33562,33564,33665,33716,
+33726,33728,33738,33756,33769,33771,33815,33896,33906,33908,33918,33920,33923,33978,34160,34187,
+34191,34225,34445,34458,34462,34569,34573,34690,34807,34842,34846,34920,34955,34968,34987,35000,
+35003,35137,35270,35280,35329,35373,35376,35406,35409,35437,35991,36021,36031,36032,36035,36058,
+36068,36069,36150,36163,36166,36184,36535,36548,36569,36582,36993,37015,37274,37307,37335,37389,
+37855,38030,38134,38150,38155,38170,38865,38890,38899,38936,38941,38980,38992,39025,39035,39036,
+39039,39075,39085,39086,39107,39120,39399,39409,39415,39559,39723,39890,39897,39939,39996,40147,
+40246,40390,40468,40621,40745,40758,41076,41096,41108,41134,41137,41167,41177,41178,41219,41229,
+41269,41282,41317,41471,41500,41534,41542,41581,41588,41618,41877,41896,41985,42095,42196,42225,
+42230,42259,42264,42299,42304,42330,42423,42580,42585,42699,42704,42846,42851,42851,42896,42896,
+42901,42901,42946,42946,42976,42989,42993,43032,43328,43386,43528,43564,43568,43605,43839,43887,
+44187,44239,44465,44478,44500,44513,44578,44621,44625,44803,44820,44833,45175,45191,45238,45294,
+45705,45718,45721,45751,45782,45795,45817,45827,45831,45935,45939,46044,46201,46214,46311,46324,
+46571,46606,46610,46732,46741,46786,46791,46834,46839,46865,47714,47758,47790,47834,48358,48370,
+48457,48525,48549,48550,49200,49246,49373,49414,49711,49773,50048,50097,50218,50262,50414,50468,
+50621,50663,50744,50807,50827,50840,51124,51148,51255,51287,51369,51396,51789,51799,52205,52215,
+52714,52724,54487,54500,54532,54545,55522,55535,56058,56071,56326,56348,56679,56703,56731,56744,
+57053,57076,57375,57388,57693,57706,58639,58652,58969,58985,59025,59038,59054,59067,59520,59530,
+59562,59572,59773,59790,59794,59850,59944,59957,60152,60164,60174,60175,60445,60469,60479,60481,
+60723,60742,61222,61233,61312,61323,61533,61543,61902,61963,62054,62086,62158,62190,62207,62239,
+62814,62827,62974,62984,63509,63519,64730,64790,64828,64870,65128,65141,65190,65238,65244,65315,
+65449,65484,65527,65540,65677,65716,65759,65772,65880,65930,65973,65986,66095,66147,66190,66203,
+66311,66352,66394,66407,66769,66822,66961,66974,67051,67127,67236,67249,67301,67331,67404,67494,
+68327,68340,68600,68610,68944,68954,69436,69449,69656,69675,69680,69699,69873,69886,69891,69909,
+70338,70356,70361,70380,70385,70404,
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1178:
-global Vertex_Info vertices_info_[10] ={
-{{{1, 2}, {110, 111}}, 0,1,},
-{{{1, 2}, {116, 117}}, 0,1,},
-{{{1, 2}, {120, 121}}, 0,},
-{{{1, 2}, {132, 133}}, 0,},
-{{{1, 2}, {182, 183}}, 99,},
-{{{1, 2}, {204, 205}}, 0,1,},
-{{{1, 2}, {632, 633}}, 0,},
-{{{1, 2}, {814, 815}}, 0,},
-{{{1, 2}, {978, 979}}, 0,1,},
-{{{1, 2}, {980, 981}}, 0,1,},};
+global Vertex_Info vertices_info_[9] ={
+{{{1, 2}, {106, 107}}, 0,1,},
+{{{1, 2}, {112, 113}}, 0,1,},
+{{{1, 2}, {116, 117}}, 0,},
+{{{1, 2}, {128, 129}}, 0,},
+{{{1, 2}, {178, 179}}, 99,},
+{{{1, 2}, {200, 201}}, 0,1,},
+{{{1, 2}, {628, 629}}, 0,},
+{{{1, 2}, {942, 943}}, 0,1,},
+{{{1, 2}, {944, 945}}, 0,1,},};
 //-
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1091:
-global Slider global_sliders[211];
+global Slider global_sliders[208];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1096:
 struct Slider_Values{
@@ -113,17 +110,17 @@ v3 v_21;
 v1 v_22;
 v1 v_23;
 tvert v_24;
-tvert v_25;
-tvert v_26;
-v2 v_27;
+v2 v_25;
+v3 v_26;
+tvert v_27;
 v3 v_28;
 tvert v_29;
 v3 v_30;
 tvert v_31;
-v3 v_32;
-tvert v_33;
+tvert v_32;
+v3 v_33;
 tvert v_34;
-v3 v_35;
+tvert v_35;
 tvert v_36;
 tvert v_37;
 tvert v_38;
@@ -133,141 +130,141 @@ tvert v_41;
 tvert v_42;
 tvert v_43;
 tvert v_44;
-tvert v_45;
-tvert v_46;
-v3 v_47;
-v1 v_48;
+v3 v_45;
+v1 v_46;
+tvert v_47;
+v3 v_48;
 tvert v_49;
-v3 v_50;
-tvert v_51;
-tvert v_52;
-v3 v_53;
+tvert v_50;
+v3 v_51;
+v3 v_52;
+v1 v_53;
 v3 v_54;
-v1 v_55;
-v3 v_56;
-tvert v_57;
-Curve v_58;
-v1 v_59;
-v3 v_60;
-v3 v_61;
-tvert v_62;
-tdim v_63;
-tnormal v_64;
-tvert v_65;
-tvert v_66;
-v3 v_67;
-v3 v_68;
-tvert v_69;
-tvert v_70;
+tvert v_55;
+Curve v_56;
+v1 v_57;
+v3 v_58;
+v3 v_59;
+tvert v_60;
+tdim v_61;
+tnormal v_62;
+tvert v_63;
+tvert v_64;
+v3 v_65;
+v3 v_66;
+tvert v_67;
+tvert v_68;
+v3 v_69;
+v2 v_70;
 v3 v_71;
 v2 v_72;
-v3 v_73;
+tvert v_73;
 v2 v_74;
-tvert v_75;
-v2 v_76;
+v3 v_75;
+v3 v_76;
 v3 v_77;
-v3 v_78;
-v3 v_79;
+v2 v_78;
+tvert v_79;
 v2 v_80;
-tvert v_81;
+v2 v_81;
 v2 v_82;
-v2 v_83;
-v2 v_84;
-v1 v_85;
-v3 v_86;
+v1 v_83;
+v3 v_84;
+v2 v_85;
+v2 v_86;
 v2 v_87;
 v2 v_88;
-v2 v_89;
+v1 v_89;
 v2 v_90;
-v1 v_91;
-v2 v_92;
-tvert v_93;
-tvert v_94;
-v3 v_95;
+tvert v_91;
+tvert v_92;
+v3 v_93;
+v3 v_94;
+v2 v_95;
 v3 v_96;
-v2 v_97;
-v3 v_98;
+v3 v_97;
+v2 v_98;
 v3 v_99;
 v2 v_100;
-v3 v_101;
-v2 v_102;
+tvert v_101;
+tvert v_102;
 tvert v_103;
-tvert v_104;
-tvert v_105;
+v3 v_104;
+v3 v_105;
 v3 v_106;
 v3 v_107;
-v3 v_108;
+tvert v_108;
 v3 v_109;
-tvert v_110;
+v1 v_110;
 v3 v_111;
-v1 v_112;
+v3 v_112;
 v3 v_113;
 v3 v_114;
 v3 v_115;
-v3 v_116;
-v3 v_117;
+v2 v_116;
+v2 v_117;
 v2 v_118;
-v2 v_119;
+v3 v_119;
 v2 v_120;
-v3 v_121;
-v2 v_122;
-FUI_Line_Params v_123;
+FUI_Line_Params v_121;
+tvert v_122;
+tvert v_123;
 tvert v_124;
-tvert v_125;
+v3 v_125;
 tvert v_126;
 v3 v_127;
-tvert v_128;
-v3 v_129;
+v3 v_128;
+v2 v_129;
 v3 v_130;
 v2 v_131;
-v3 v_132;
+v2 v_132;
 v2 v_133;
-v2 v_134;
+v3 v_134;
 v2 v_135;
-v3 v_136;
+v2 v_136;
 v2 v_137;
 v2 v_138;
-v2 v_139;
+v3 v_139;
 v2 v_140;
-v3 v_141;
+tvert v_141;
 v2 v_142;
-tvert v_143;
-v2 v_144;
-v2 v_145;
+v2 v_143;
+tvert v_144;
+tvert v_145;
 tvert v_146;
-tvert v_147;
-tvert v_148;
-v2 v_149;
-v2 v_150;
+v2 v_147;
+v2 v_148;
+tvert v_149;
+tvert v_150;
 tvert v_151;
-tvert v_152;
-tvert v_153;
-v2 v_154;
-v2 v_155;
+v2 v_152;
+v2 v_153;
+tvert v_154;
+v1 v_155;
 tvert v_156;
-v1 v_157;
-tvert v_158;
-v2 v_159;
-v3 v_160;
-tvert v_161;
-Curve v_162;
-Curve v_163;
+v2 v_157;
+v3 v_158;
+tvert v_159;
+Curve v_160;
+Curve v_161;
+tvert v_162;
+tvert v_163;
 tvert v_164;
 tvert v_165;
 tvert v_166;
 tvert v_167;
-tvert v_168;
+v3 v_168;
 tvert v_169;
-v3 v_170;
-tvert v_171;
-tvert v_172;
-tvert v_173;
-tdim v_174;
-FUI_Line_Params v_175;
-i1 v_176;
-v3 v_177;
-v3 v_178;
-v1 v_179;
+tvert v_170;
+tdim v_171;
+FUI_Line_Params v_172;
+i1 v_173;
+v3 v_174;
+v3 v_175;
+v1 v_176;
+tvert v_177;
+tvert v_178;
+tvert v_179;
 tvert v_180;
 tvert v_181;
 tvert v_182;
@@ -275,36 +272,30 @@ tvert v_183;
 tvert v_184;
 tvert v_185;
 tvert v_186;
-tvert v_187;
-tvert v_188;
+v3 v_187;
+v3 v_188;
 tvert v_189;
-v3 v_190;
-v3 v_191;
-tvert v_192;
-v4 v_193;
-i2 v_194;
-i1 v_195;
-i1 v_196;
-v3 v_197;
+v4 v_190;
+i2 v_191;
+i1 v_192;
+i1 v_193;
+v3 v_194;
+tvert v_195;
+tvert v_196;
+tvert v_197;
 tvert v_198;
 tvert v_199;
 tvert v_200;
 tvert v_201;
 tvert v_202;
-tvert v_203;
-tvert v_204;
-tvert v_205;
+i1 v_203;
+v1 v_204;
+v1 v_205;
 i1 v_206;
-v1 v_207;
-v1 v_208;
-i1 v_209;
-tvert v_210;
+tvert v_207;
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1108:
 global Slider_Values slider_values ={
-{},
-{},
-{},
 {},
 {},
 {},
@@ -544,196 +535,193 @@ sliders[21] = { .type=types.v3, .location={{1, 2}, {84, 85}}, .options={}, .id=s
 sliders[22] = { .type=types.v1, .location={{1, 2}, {86, 87}}, .options={}, .id=strlit("v1_20"), .value=&ReadSlider(22) };
 sliders[23] = { .type=types.v1, .location={{1, 2}, {88, 89}}, .options={}, .id=strlit("v1_21"), .value=&ReadSlider(23) };
 sliders[24] = { .type=types.tvert, .location={{1, 2}, {90, 91}}, .options={}, .id=strlit("tvert_22"), .value=&ReadSlider(24) };
-sliders[25] = { .type=types.tvert, .location={{1, 2}, {92, 93}}, .options={}, .id=strlit("tvert_24"), .value=&ReadSlider(25) };
-sliders[26] = { .type=types.tvert, .location={{1, 2}, {94, 95}}, .options={}, .id=strlit("tvert_25"), .value=&ReadSlider(26) };
-sliders[27] = { .type=types.v2, .location={{1, 2}, {99, 100}}, .options={}, .id=strlit("v2_26"), .value=&ReadSlider(27) };
-sliders[28] = { .type=types.v3, .location={{1, 2}, {102, 103}}, .options={}, .id=strlit("v3_27"), .value=&ReadSlider(28) };
-sliders[29] = { .type=types.tvert, .location={{1, 2}, {104, 105}}, .options={}, .id=strlit("tvert_28"), .value=&ReadSlider(29) };
-sliders[30] = { .type=types.v3, .location={{1, 2}, {106, 107}}, .options={}, .id=strlit("v3_29"), .value=&ReadSlider(30) };
-sliders[31] = { .type=types.tvert, .location={{1, 2}, {108, 109}}, .options={}, .id=strlit("tvert_30"), .value=&ReadSlider(31) };
-sliders[32] = { .type=types.v3, .location={{1, 2}, {112, 113}}, .options={}, .id=strlit("v3_31"), .value=&ReadSlider(32) };
-sliders[33] = { .type=types.tvert, .location={{1, 2}, {114, 115}}, .options={}, .id=strlit("tvert_32"), .value=&ReadSlider(33) };
-sliders[34] = { .type=types.tvert, .location={{1, 2}, {118, 119}}, .options={}, .id=strlit("tvert_33"), .value=&ReadSlider(34) };
-sliders[35] = { .type=types.v3, .location={{1, 2}, {122, 123}}, .options={}, .id=strlit("v3_34"), .value=&ReadSlider(35) };
-sliders[36] = { .type=types.tvert, .location={{1, 2}, {124, 125}}, .options={}, .id=strlit("tvert_35"), .value=&ReadSlider(36) };
-sliders[37] = { .type=types.tvert, .location={{1, 2}, {126, 127}}, .options={}, .id=strlit("tvert_36"), .value=&ReadSlider(37) };
-sliders[38] = { .type=types.tvert, .location={{1, 2}, {128, 129}}, .options={}, .id=strlit("tvert_37"), .value=&ReadSlider(38) };
-sliders[39] = { .type=types.tvert, .location={{1, 2}, {130, 131}}, .options={}, .id=strlit("tvert_38"), .value=&ReadSlider(39) };
-sliders[40] = { .type=types.tvert, .location={{1, 2}, {138, 139}}, .options={}, .id=strlit("tvert_39"), .value=&ReadSlider(40) };
-sliders[41] = { .type=types.tvert, .location={{1, 2}, {142, 143}}, .options={}, .id=strlit("tvert_40"), .value=&ReadSlider(41) };
-sliders[42] = { .type=types.tvert, .location={{1, 2}, {146, 147}}, .options={}, .id=strlit("tvert_41"), .value=&ReadSlider(42) };
-sliders[43] = { .type=types.tvert, .location={{1, 2}, {150, 151}}, .options={}, .id=strlit("tvert_42"), .value=&ReadSlider(43) };
-sliders[44] = { .type=types.tvert, .location={{1, 2}, {154, 155}}, .options={}, .id=strlit("tvert_43"), .value=&ReadSlider(44) };
-sliders[45] = { .type=types.tvert, .location={{1, 2}, {156, 157}}, .options={}, .id=strlit("tvert_44"), .value=&ReadSlider(45) };
-sliders[46] = { .type=types.tvert, .location={{1, 2}, {160, 161}}, .options={}, .id=strlit("tvert_45"), .value=&ReadSlider(46) };
-sliders[47] = { .type=types.v3, .location={{1, 2}, {176, 177}}, .options={}, .id=strlit("v3_46"), .value=&ReadSlider(47) };
-sliders[48] = { .type=types.v1, .location={{1, 2}, {200, 201}}, .options={}, .id=strlit("v1_47"), .value=&ReadSlider(48) };
-sliders[49] = { .type=types.tvert, .location={{1, 2}, {202, 203}}, .options={}, .id=strlit("tvert_48"), .value=&ReadSlider(49) };
-sliders[50] = { .type=types.v3, .location={{1, 2}, {207, 208}}, .options={}, .id=strlit("v3_49"), .value=&ReadSlider(50) };
-sliders[51] = { .type=types.tvert, .location={{1, 2}, {210, 211}}, .options={}, .id=strlit("tvert_50"), .value=&ReadSlider(51) };
-sliders[52] = { .type=types.tvert, .location={{1, 2}, {214, 215}}, .options={}, .id=strlit("tvert_51"), .value=&ReadSlider(52) };
-sliders[53] = { .type=types.v3, .location={{1, 2}, {216, 217}}, .options={}, .id=strlit("v3_52"), .value=&ReadSlider(53) };
-sliders[54] = { .type=types.v3, .location={{1, 2}, {219, 220}}, .options={}, .id=strlit("v3_53"), .value=&ReadSlider(54) };
-sliders[55] = { .type=types.v1, .location={{1, 2}, {224, 225}}, .options={}, .id=strlit("v1_54"), .value=&ReadSlider(55) };
-sliders[56] = { .type=types.v3, .location={{1, 2}, {226, 227}}, .options={}, .id=strlit("v3_55"), .value=&ReadSlider(56) };
-sliders[57] = { .type=types.tvert, .location={{1, 2}, {228, 229}}, .options={}, .id=strlit("tvert_56"), .value=&ReadSlider(57) };
-sliders[58] = { .type=types.Curve, .location={{1, 2}, {232, 234}}, .options={}, .id=strlit("Curve_0"), .value=&ReadSlider(58) };
-sliders[59] = { .type=types.v1, .location={{1, 2}, {238, 239}}, .options={}, .id=strlit("v1_60"), .value=&ReadSlider(59) };
-sliders[60] = { .type=types.v3, .location={{1, 2}, {241, 242}}, .options={}, .id=strlit("v3_61"), .value=&ReadSlider(60) };
-sliders[61] = { .type=types.v3, .location={{1, 2}, {244, 245}}, .options={}, .id=strlit("v3_62"), .value=&ReadSlider(61) };
-sliders[62] = { .type=types.tvert, .location={{1, 2}, {252, 253}}, .options={}, .id=strlit("tvert_63"), .value=&ReadSlider(62) };
-sliders[63] = { .type=types.tdim, .location={{1, 2}, {254, 255}}, .options={}, .id=strlit("tdim_64"), .value=&ReadSlider(63) };
-sliders[64] = { .type=types.tnormal, .location={{1, 2}, {257, 258}}, .options={}, .id=strlit("tnormal_65"), .value=&ReadSlider(64) };
-sliders[65] = { .type=types.tvert, .location={{1, 2}, {264, 265}}, .options={}, .id=strlit("tvert_66"), .value=&ReadSlider(65) };
-sliders[66] = { .type=types.tvert, .location={{1, 2}, {266, 267}}, .options={}, .id=strlit("tvert_67"), .value=&ReadSlider(66) };
-sliders[67] = { .type=types.v3, .location={{1, 2}, {268, 269}}, .options={}, .id=strlit("v3_68"), .value=&ReadSlider(67) };
-sliders[68] = { .type=types.v3, .location={{1, 2}, {270, 271}}, .options={}, .id=strlit("v3_69"), .value=&ReadSlider(68) };
-sliders[69] = { .type=types.tvert, .location={{1, 2}, {306, 307}}, .options={}, .id=strlit("tvert_70"), .value=&ReadSlider(69) };
-sliders[70] = { .type=types.tvert, .location={{1, 2}, {312, 313}}, .options={}, .id=strlit("tvert_71"), .value=&ReadSlider(70) };
-sliders[71] = { .type=types.v3, .location={{1, 2}, {314, 315}}, .options={}, .id=strlit("v3_72"), .value=&ReadSlider(71) };
-sliders[72] = { .type=types.v2, .location={{1, 2}, {317, 318}}, .options={}, .id=strlit("v2_73"), .value=&ReadSlider(72) };
-sliders[73] = { .type=types.v3, .location={{1, 2}, {320, 321}}, .options={}, .id=strlit("v3_74"), .value=&ReadSlider(73) };
-sliders[74] = { .type=types.v2, .location={{1, 2}, {325, 326}}, .options={}, .id=strlit("v2_75"), .value=&ReadSlider(74) };
-sliders[75] = { .type=types.tvert, .location={{1, 2}, {328, 329}}, .options={}, .id=strlit("tvert_76"), .value=&ReadSlider(75) };
-sliders[76] = { .type=types.v2, .location={{1, 2}, {331, 332}}, .options={}, .id=strlit("v2_77"), .value=&ReadSlider(76) };
-sliders[77] = { .type=types.v3, .location={{1, 2}, {334, 335}}, .options={}, .id=strlit("v3_78"), .value=&ReadSlider(77) };
-sliders[78] = { .type=types.v3, .location={{1, 2}, {336, 337}}, .options={}, .id=strlit("v3_79"), .value=&ReadSlider(78) };
-sliders[79] = { .type=types.v3, .location={{1, 2}, {338, 339}}, .options={}, .id=strlit("v3_80"), .value=&ReadSlider(79) };
-sliders[80] = { .type=types.v2, .location={{1, 2}, {341, 342}}, .options={}, .id=strlit("v2_81"), .value=&ReadSlider(80) };
-sliders[81] = { .type=types.tvert, .location={{1, 2}, {344, 345}}, .options={}, .id=strlit("tvert_82"), .value=&ReadSlider(81) };
-sliders[82] = { .type=types.v2, .location={{1, 2}, {361, 362}}, .options={}, .id=strlit("v2_83"), .value=&ReadSlider(82) };
-sliders[83] = { .type=types.v2, .location={{1, 2}, {363, 364}}, .options={}, .id=strlit("v2_84"), .value=&ReadSlider(83) };
-sliders[84] = { .type=types.v2, .location={{1, 2}, {365, 366}}, .options={}, .id=strlit("v2_85"), .value=&ReadSlider(84) };
-sliders[85] = { .type=types.v1, .location={{1, 2}, {372, 373}}, .options={}, .id=strlit("v1_86"), .value=&ReadSlider(85) };
-sliders[86] = { .type=types.v3, .location={{1, 2}, {377, 378}}, .options={}, .id=strlit("v3_87"), .value=&ReadSlider(86) };
-sliders[87] = { .type=types.v2, .location={{1, 2}, {379, 380}}, .options={}, .id=strlit("v2_88"), .value=&ReadSlider(87) };
-sliders[88] = { .type=types.v2, .location={{1, 2}, {385, 386}}, .options={}, .id=strlit("v2_89"), .value=&ReadSlider(88) };
-sliders[89] = { .type=types.v2, .location={{1, 2}, {387, 388}}, .options={}, .id=strlit("v2_90"), .value=&ReadSlider(89) };
-sliders[90] = { .type=types.v2, .location={{1, 2}, {389, 390}}, .options={}, .id=strlit("v2_91"), .value=&ReadSlider(90) };
-sliders[91] = { .type=types.v1, .location={{1, 2}, {392, 393}}, .options={}, .id=strlit("v1_92"), .value=&ReadSlider(91) };
-sliders[92] = { .type=types.v2, .location={{1, 2}, {419, 420}}, .options={}, .id=strlit("v2_93"), .value=&ReadSlider(92) };
-sliders[93] = { .type=types.tvert, .location={{1, 2}, {422, 423}}, .options={}, .id=strlit("tvert_94"), .value=&ReadSlider(93) };
-sliders[94] = { .type=types.tvert, .location={{1, 2}, {426, 427}}, .options={}, .id=strlit("tvert_95"), .value=&ReadSlider(94) };
-sliders[95] = { .type=types.v3, .location={{1, 2}, {428, 429}}, .options={}, .id=strlit("v3_96"), .value=&ReadSlider(95) };
-sliders[96] = { .type=types.v3, .location={{1, 2}, {430, 431}}, .options={}, .id=strlit("v3_97"), .value=&ReadSlider(96) };
-sliders[97] = { .type=types.v2, .location={{1, 2}, {432, 433}}, .options={}, .id=strlit("v2_98"), .value=&ReadSlider(97) };
-sliders[98] = { .type=types.v3, .location={{1, 2}, {434, 435}}, .options={}, .id=strlit("v3_99"), .value=&ReadSlider(98) };
-sliders[99] = { .type=types.v3, .location={{1, 2}, {436, 437}}, .options={}, .id=strlit("v3_100"), .value=&ReadSlider(99) };
-sliders[100] = { .type=types.v2, .location={{1, 2}, {438, 439}}, .options={}, .id=strlit("v2_101"), .value=&ReadSlider(100) };
-sliders[101] = { .type=types.v3, .location={{1, 2}, {440, 441}}, .options={}, .id=strlit("v3_102"), .value=&ReadSlider(101) };
-sliders[102] = { .type=types.v2, .location={{1, 2}, {445, 446}}, .options={}, .id=strlit("v2_103"), .value=&ReadSlider(102) };
-sliders[103] = { .type=types.tvert, .location={{1, 2}, {448, 449}}, .options={}, .id=strlit("tvert_104"), .value=&ReadSlider(103) };
-sliders[104] = { .type=types.tvert, .location={{1, 2}, {450, 451}}, .options={}, .id=strlit("tvert_105"), .value=&ReadSlider(104) };
-sliders[105] = { .type=types.tvert, .location={{1, 2}, {454, 455}}, .options={}, .id=strlit("tvert_106"), .value=&ReadSlider(105) };
-sliders[106] = { .type=types.v3, .location={{1, 2}, {456, 457}}, .options={}, .id=strlit("v3_107"), .value=&ReadSlider(106) };
-sliders[107] = { .type=types.v3, .location={{1, 2}, {458, 459}}, .options={}, .id=strlit("v3_108"), .value=&ReadSlider(107) };
-sliders[108] = { .type=types.v3, .location={{1, 2}, {460, 461}}, .options={}, .id=strlit("v3_109"), .value=&ReadSlider(108) };
-sliders[109] = { .type=types.v3, .location={{1, 2}, {465, 466}}, .options={}, .id=strlit("v3_110"), .value=&ReadSlider(109) };
-sliders[110] = { .type=types.tvert, .location={{1, 2}, {468, 469}}, .options={}, .id=strlit("tvert_111"), .value=&ReadSlider(110) };
-sliders[111] = { .type=types.v3, .location={{1, 2}, {470, 471}}, .options={}, .id=strlit("v3_112"), .value=&ReadSlider(111) };
-sliders[112] = { .type=types.v1, .location={{1, 2}, {472, 473}}, .options={}, .id=strlit("v1_113"), .value=&ReadSlider(112) };
-sliders[113] = { .type=types.v3, .location={{1, 2}, {475, 476}}, .options={}, .id=strlit("v3_114"), .value=&ReadSlider(113) };
-sliders[114] = { .type=types.v3, .location={{1, 2}, {479, 480}}, .options={}, .id=strlit("v3_115"), .value=&ReadSlider(114) };
-sliders[115] = { .type=types.v3, .location={{1, 2}, {482, 483}}, .options={}, .id=strlit("v3_116"), .value=&ReadSlider(115) };
-sliders[116] = { .type=types.v3, .location={{1, 2}, {484, 485}}, .options={}, .id=strlit("v3_117"), .value=&ReadSlider(116) };
-sliders[117] = { .type=types.v3, .location={{1, 2}, {487, 488}}, .options={}, .id=strlit("v3_118"), .value=&ReadSlider(117) };
-sliders[118] = { .type=types.v2, .location={{1, 2}, {491, 492}}, .options={}, .id=strlit("v2_119"), .value=&ReadSlider(118) };
-sliders[119] = { .type=types.v2, .location={{1, 2}, {493, 494}}, .options={}, .id=strlit("v2_120"), .value=&ReadSlider(119) };
-sliders[120] = { .type=types.v2, .location={{1, 2}, {495, 496}}, .options={}, .id=strlit("v2_121"), .value=&ReadSlider(120) };
-sliders[121] = { .type=types.v3, .location={{1, 2}, {498, 499}}, .options={}, .id=strlit("v3_122"), .value=&ReadSlider(121) };
-sliders[122] = { .type=types.v2, .location={{1, 2}, {500, 501}}, .options={}, .id=strlit("v2_123"), .value=&ReadSlider(122) };
-sliders[123] = { .type=types.FUI_Line_Params, .location={{1, 2}, {503, 504}}, .options={}, .id=strlit("FUI_Line_Params_124"), .value=&ReadSlider(123) };
-sliders[124] = { .type=types.tvert, .location={{1, 2}, {508, 509}}, .options={}, .id=strlit("tvert_125"), .value=&ReadSlider(124) };
-sliders[125] = { .type=types.tvert, .location={{1, 2}, {510, 511}}, .options={}, .id=strlit("tvert_126"), .value=&ReadSlider(125) };
-sliders[126] = { .type=types.tvert, .location={{1, 2}, {512, 513}}, .options={}, .id=strlit("tvert_127"), .value=&ReadSlider(126) };
-sliders[127] = { .type=types.v3, .location={{1, 2}, {524, 525}}, .options={}, .id=strlit("v3_128"), .value=&ReadSlider(127) };
-sliders[128] = { .type=types.tvert, .location={{1, 2}, {526, 527}}, .options={}, .id=strlit("tvert_129"), .value=&ReadSlider(128) };
-sliders[129] = { .type=types.v3, .location={{1, 2}, {538, 539}}, .options={}, .id=strlit("v3_130"), .value=&ReadSlider(129) };
-sliders[130] = { .type=types.v3, .location={{1, 2}, {540, 541}}, .options={}, .id=strlit("v3_131"), .value=&ReadSlider(130) };
-sliders[131] = { .type=types.v2, .location={{1, 2}, {545, 546}}, .options={}, .id=strlit("v2_132"), .value=&ReadSlider(131) };
-sliders[132] = { .type=types.v3, .location={{1, 2}, {548, 549}}, .options={}, .id=strlit("v3_133"), .value=&ReadSlider(132) };
-sliders[133] = { .type=types.v2, .location={{1, 2}, {557, 558}}, .options={}, .id=strlit("v2_134"), .value=&ReadSlider(133) };
-sliders[134] = { .type=types.v2, .location={{1, 2}, {559, 560}}, .options={}, .id=strlit("v2_135"), .value=&ReadSlider(134) };
-sliders[135] = { .type=types.v2, .location={{1, 2}, {561, 562}}, .options={}, .id=strlit("v2_136"), .value=&ReadSlider(135) };
-sliders[136] = { .type=types.v3, .location={{1, 2}, {565, 566}}, .options={}, .id=strlit("v3_137"), .value=&ReadSlider(136) };
-sliders[137] = { .type=types.v2, .location={{1, 2}, {567, 568}}, .options={}, .id=strlit("v2_138"), .value=&ReadSlider(137) };
-sliders[138] = { .type=types.v2, .location={{1, 2}, {571, 572}}, .options={}, .id=strlit("v2_139"), .value=&ReadSlider(138) };
-sliders[139] = { .type=types.v2, .location={{1, 2}, {573, 574}}, .options={}, .id=strlit("v2_140"), .value=&ReadSlider(139) };
-sliders[140] = { .type=types.v2, .location={{1, 2}, {575, 576}}, .options={}, .id=strlit("v2_141"), .value=&ReadSlider(140) };
-sliders[141] = { .type=types.v3, .location={{1, 2}, {579, 580}}, .options={}, .id=strlit("v3_142"), .value=&ReadSlider(141) };
-sliders[142] = { .type=types.v2, .location={{1, 2}, {581, 582}}, .options={}, .id=strlit("v2_143"), .value=&ReadSlider(142) };
-sliders[143] = { .type=types.tvert, .location={{1, 2}, {583, 584}}, .options={}, .id=strlit("tvert_144"), .value=&ReadSlider(143) };
-sliders[144] = { .type=types.v2, .location={{1, 2}, {587, 588}}, .options={}, .id=strlit("v2_145"), .value=&ReadSlider(144) };
-sliders[145] = { .type=types.v2, .location={{1, 2}, {589, 590}}, .options={}, .id=strlit("v2_146"), .value=&ReadSlider(145) };
-sliders[146] = { .type=types.tvert, .location={{1, 2}, {598, 599}}, .options={}, .id=strlit("tvert_147"), .value=&ReadSlider(146) };
-sliders[147] = { .type=types.tvert, .location={{1, 2}, {608, 609}}, .options={}, .id=strlit("tvert_148"), .value=&ReadSlider(147) };
-sliders[148] = { .type=types.tvert, .location={{1, 2}, {610, 611}}, .options={}, .id=strlit("tvert_149"), .value=&ReadSlider(148) };
-sliders[149] = { .type=types.v2, .location={{1, 2}, {623, 624}}, .options={}, .id=strlit("v2_150"), .value=&ReadSlider(149) };
-sliders[150] = { .type=types.v2, .location={{1, 2}, {627, 628}}, .options={}, .id=strlit("v2_151"), .value=&ReadSlider(150) };
-sliders[151] = { .type=types.tvert, .location={{1, 2}, {630, 631}}, .options={}, .id=strlit("tvert_152"), .value=&ReadSlider(151) };
-sliders[152] = { .type=types.tvert, .location={{1, 2}, {634, 635}}, .options={}, .id=strlit("tvert_153"), .value=&ReadSlider(152) };
-sliders[153] = { .type=types.tvert, .location={{1, 2}, {636, 637}}, .options={}, .id=strlit("tvert_154"), .value=&ReadSlider(153) };
-sliders[154] = { .type=types.v2, .location={{1, 2}, {657, 658}}, .options={}, .id=strlit("v2_155"), .value=&ReadSlider(154) };
-sliders[155] = { .type=types.v2, .location={{1, 2}, {661, 662}}, .options={}, .id=strlit("v2_156"), .value=&ReadSlider(155) };
-sliders[156] = { .type=types.tvert, .location={{1, 2}, {664, 665}}, .options={}, .id=strlit("tvert_157"), .value=&ReadSlider(156) };
-sliders[157] = { .type=types.v1, .location={{1, 2}, {666, 667}}, .options={}, .id=strlit("v1_158"), .value=&ReadSlider(157) };
-sliders[158] = { .type=types.tvert, .location={{1, 2}, {680, 681}}, .options={}, .id=strlit("tvert_159"), .value=&ReadSlider(158) };
-sliders[159] = { .type=types.v2, .location={{1, 2}, {687, 688}}, .options={}, .id=strlit("v2_160"), .value=&ReadSlider(159) };
-sliders[160] = { .type=types.v3, .location={{1, 2}, {690, 691}}, .options={}, .id=strlit("v3_161"), .value=&ReadSlider(160) };
-sliders[161] = { .type=types.tvert, .location={{1, 2}, {692, 693}}, .options={}, .id=strlit("tvert_162"), .value=&ReadSlider(161) };
-sliders[162] = { .type=types.Curve, .location={{1, 2}, {720, 722}}, .options={}, .id=strlit("Curve_1"), .value=&ReadSlider(162) };
-sliders[163] = { .type=types.Curve, .location={{1, 2}, {724, 726}}, .options={}, .id=strlit("Curve_2"), .value=&ReadSlider(163) };
-sliders[164] = { .type=types.tvert, .location={{1, 2}, {728, 729}}, .options={}, .id=strlit("tvert_168"), .value=&ReadSlider(164) };
-sliders[165] = { .type=types.tvert, .location={{1, 2}, {742, 743}}, .options={}, .id=strlit("tvert_169"), .value=&ReadSlider(165) };
-sliders[166] = { .type=types.tvert, .location={{1, 2}, {744, 745}}, .options={}, .id=strlit("tvert_170"), .value=&ReadSlider(166) };
-sliders[167] = { .type=types.tvert, .location={{1, 2}, {750, 751}}, .options={}, .id=strlit("tvert_171"), .value=&ReadSlider(167) };
-sliders[168] = { .type=types.tvert, .location={{1, 2}, {756, 757}}, .options={}, .id=strlit("tvert_172"), .value=&ReadSlider(168) };
-sliders[169] = { .type=types.tvert, .location={{1, 2}, {760, 761}}, .options={}, .id=strlit("tvert_173"), .value=&ReadSlider(169) };
-sliders[170] = { .type=types.v3, .location={{1, 2}, {762, 763}}, .options={}, .id=strlit("v3_174"), .value=&ReadSlider(170) };
-sliders[171] = { .type=types.tvert, .location={{1, 2}, {768, 769}}, .options={}, .id=strlit("tvert_175"), .value=&ReadSlider(171) };
-sliders[172] = { .type=types.tvert, .location={{1, 2}, {770, 771}}, .options={}, .id=strlit("tvert_176"), .value=&ReadSlider(172) };
-sliders[173] = { .type=types.tvert, .location={{1, 2}, {782, 783}}, .options={}, .id=strlit("tvert_178"), .value=&ReadSlider(173) };
-sliders[174] = { .type=types.tdim, .location={{1, 2}, {808, 809}}, .options={}, .id=strlit("tdim_179"), .value=&ReadSlider(174) };
-sliders[175] = { .type=types.FUI_Line_Params, .location={{1, 2}, {811, 812}}, .options={}, .id=strlit("FUI_Line_Params_180"), .value=&ReadSlider(175) };
-sliders[176] = { .type=types.i1, .location={{1, 2}, {840, 841}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_181"), .value=&ReadSlider(176) };
-sliders[177] = { .type=types.v3, .location={{1, 2}, {848, 849}}, .options={}, .id=strlit("v3_182"), .value=&ReadSlider(177) };
-sliders[178] = { .type=types.v3, .location={{1, 2}, {850, 851}}, .options={}, .id=strlit("v3_183"), .value=&ReadSlider(178) };
-sliders[179] = { .type=types.v1, .location={{1, 2}, {852, 853}}, .options={}, .id=strlit("v1_184"), .value=&ReadSlider(179) };
-sliders[180] = { .type=types.tvert, .location={{1, 2}, {854, 855}}, .options={}, .id=strlit("tvert_194"), .value=&ReadSlider(180) };
-sliders[181] = { .type=types.tvert, .location={{1, 2}, {856, 857}}, .options={}, .id=strlit("tvert_195"), .value=&ReadSlider(181) };
-sliders[182] = { .type=types.tvert, .location={{1, 2}, {858, 859}}, .options={}, .id=strlit("tvert_200"), .value=&ReadSlider(182) };
-sliders[183] = { .type=types.tvert, .location={{1, 2}, {860, 861}}, .options={}, .id=strlit("tvert_201"), .value=&ReadSlider(183) };
-sliders[184] = { .type=types.tvert, .location={{1, 2}, {866, 867}}, .options={}, .id=strlit("tvert_202"), .value=&ReadSlider(184) };
-sliders[185] = { .type=types.tvert, .location={{1, 2}, {870, 871}}, .options={}, .id=strlit("tvert_208"), .value=&ReadSlider(185) };
-sliders[186] = { .type=types.tvert, .location={{1, 2}, {872, 873}}, .options={}, .id=strlit("tvert_213"), .value=&ReadSlider(186) };
-sliders[187] = { .type=types.tvert, .location={{1, 2}, {874, 875}}, .options={}, .id=strlit("tvert_214"), .value=&ReadSlider(187) };
-sliders[188] = { .type=types.tvert, .location={{1, 2}, {878, 879}}, .options={}, .id=strlit("tvert_215"), .value=&ReadSlider(188) };
-sliders[189] = { .type=types.tvert, .location={{1, 2}, {880, 881}}, .options={}, .id=strlit("tvert_216"), .value=&ReadSlider(189) };
-sliders[190] = { .type=types.v3, .location={{1, 2}, {882, 883}}, .options={}, .id=strlit("v3_217"), .value=&ReadSlider(190) };
-sliders[191] = { .type=types.v3, .location={{1, 2}, {884, 885}}, .options={}, .id=strlit("v3_218"), .value=&ReadSlider(191) };
-sliders[192] = { .type=types.tvert, .location={{1, 2}, {890, 891}}, .options={}, .id=strlit("tvert_219"), .value=&ReadSlider(192) };
-sliders[193] = { .type=types.v4, .location={{1, 2}, {893, 894}}, .options={}, .id=strlit("v4_220"), .value=&ReadSlider(193) };
-sliders[194] = { .type=types.i2, .location={{1, 2}, {897, 898}}, .options={}, .id=strlit("i2_221"), .value=&ReadSlider(194) };
-sliders[195] = { .type=types.i1, .location={{1, 2}, {916, 917}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(195) };
-sliders[196] = { .type=types.i1, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(196) };
-sliders[197] = { .type=types.v3, .location={{1, 2}, {920, 921}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(197) };
-sliders[198] = { .type=types.tvert, .location={{1, 2}, {926, 927}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(198) };
-sliders[199] = { .type=types.tvert, .location={{1, 2}, {934, 935}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(199) };
-sliders[200] = { .type=types.tvert, .location={{1, 2}, {938, 939}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(200) };
-sliders[201] = { .type=types.tvert, .location={{1, 2}, {942, 943}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(201) };
-sliders[202] = { .type=types.tvert, .location={{1, 2}, {946, 947}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(202) };
-sliders[203] = { .type=types.tvert, .location={{1, 2}, {950, 951}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(203) };
-sliders[204] = { .type=types.tvert, .location={{1, 2}, {954, 955}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(204) };
-sliders[205] = { .type=types.tvert, .location={{1, 2}, {958, 959}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(205) };
-sliders[206] = { .type=types.i1, .location={{1, 2}, {964, 965}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(206) };
-sliders[207] = { .type=types.v1, .location={{1, 2}, {966, 967}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(207) };
-sliders[208] = { .type=types.v1, .location={{1, 2}, {968, 969}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(208) };
-sliders[209] = { .type=types.i1, .location={{1, 2}, {970, 971}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(209) };
-sliders[210] = { .type=types.tvert, .location={{1, 2}, {976, 977}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(210) };
+sliders[25] = { .type=types.v2, .location={{1, 2}, {95, 96}}, .options={}, .id=strlit("v2_26"), .value=&ReadSlider(25) };
+sliders[26] = { .type=types.v3, .location={{1, 2}, {98, 99}}, .options={}, .id=strlit("v3_27"), .value=&ReadSlider(26) };
+sliders[27] = { .type=types.tvert, .location={{1, 2}, {100, 101}}, .options={}, .id=strlit("tvert_28"), .value=&ReadSlider(27) };
+sliders[28] = { .type=types.v3, .location={{1, 2}, {102, 103}}, .options={}, .id=strlit("v3_29"), .value=&ReadSlider(28) };
+sliders[29] = { .type=types.tvert, .location={{1, 2}, {104, 105}}, .options={}, .id=strlit("tvert_30"), .value=&ReadSlider(29) };
+sliders[30] = { .type=types.v3, .location={{1, 2}, {108, 109}}, .options={}, .id=strlit("v3_31"), .value=&ReadSlider(30) };
+sliders[31] = { .type=types.tvert, .location={{1, 2}, {110, 111}}, .options={}, .id=strlit("tvert_32"), .value=&ReadSlider(31) };
+sliders[32] = { .type=types.tvert, .location={{1, 2}, {114, 115}}, .options={}, .id=strlit("tvert_33"), .value=&ReadSlider(32) };
+sliders[33] = { .type=types.v3, .location={{1, 2}, {118, 119}}, .options={}, .id=strlit("v3_34"), .value=&ReadSlider(33) };
+sliders[34] = { .type=types.tvert, .location={{1, 2}, {120, 121}}, .options={}, .id=strlit("tvert_35"), .value=&ReadSlider(34) };
+sliders[35] = { .type=types.tvert, .location={{1, 2}, {122, 123}}, .options={}, .id=strlit("tvert_36"), .value=&ReadSlider(35) };
+sliders[36] = { .type=types.tvert, .location={{1, 2}, {124, 125}}, .options={}, .id=strlit("tvert_37"), .value=&ReadSlider(36) };
+sliders[37] = { .type=types.tvert, .location={{1, 2}, {126, 127}}, .options={}, .id=strlit("tvert_38"), .value=&ReadSlider(37) };
+sliders[38] = { .type=types.tvert, .location={{1, 2}, {134, 135}}, .options={}, .id=strlit("tvert_39"), .value=&ReadSlider(38) };
+sliders[39] = { .type=types.tvert, .location={{1, 2}, {138, 139}}, .options={}, .id=strlit("tvert_40"), .value=&ReadSlider(39) };
+sliders[40] = { .type=types.tvert, .location={{1, 2}, {142, 143}}, .options={}, .id=strlit("tvert_41"), .value=&ReadSlider(40) };
+sliders[41] = { .type=types.tvert, .location={{1, 2}, {146, 147}}, .options={}, .id=strlit("tvert_42"), .value=&ReadSlider(41) };
+sliders[42] = { .type=types.tvert, .location={{1, 2}, {150, 151}}, .options={}, .id=strlit("tvert_43"), .value=&ReadSlider(42) };
+sliders[43] = { .type=types.tvert, .location={{1, 2}, {152, 153}}, .options={}, .id=strlit("tvert_44"), .value=&ReadSlider(43) };
+sliders[44] = { .type=types.tvert, .location={{1, 2}, {156, 157}}, .options={}, .id=strlit("tvert_45"), .value=&ReadSlider(44) };
+sliders[45] = { .type=types.v3, .location={{1, 2}, {172, 173}}, .options={}, .id=strlit("v3_46"), .value=&ReadSlider(45) };
+sliders[46] = { .type=types.v1, .location={{1, 2}, {196, 197}}, .options={}, .id=strlit("v1_47"), .value=&ReadSlider(46) };
+sliders[47] = { .type=types.tvert, .location={{1, 2}, {198, 199}}, .options={}, .id=strlit("tvert_48"), .value=&ReadSlider(47) };
+sliders[48] = { .type=types.v3, .location={{1, 2}, {203, 204}}, .options={}, .id=strlit("v3_49"), .value=&ReadSlider(48) };
+sliders[49] = { .type=types.tvert, .location={{1, 2}, {206, 207}}, .options={}, .id=strlit("tvert_50"), .value=&ReadSlider(49) };
+sliders[50] = { .type=types.tvert, .location={{1, 2}, {210, 211}}, .options={}, .id=strlit("tvert_51"), .value=&ReadSlider(50) };
+sliders[51] = { .type=types.v3, .location={{1, 2}, {212, 213}}, .options={}, .id=strlit("v3_52"), .value=&ReadSlider(51) };
+sliders[52] = { .type=types.v3, .location={{1, 2}, {215, 216}}, .options={}, .id=strlit("v3_53"), .value=&ReadSlider(52) };
+sliders[53] = { .type=types.v1, .location={{1, 2}, {220, 221}}, .options={}, .id=strlit("v1_54"), .value=&ReadSlider(53) };
+sliders[54] = { .type=types.v3, .location={{1, 2}, {222, 223}}, .options={}, .id=strlit("v3_55"), .value=&ReadSlider(54) };
+sliders[55] = { .type=types.tvert, .location={{1, 2}, {224, 225}}, .options={}, .id=strlit("tvert_56"), .value=&ReadSlider(55) };
+sliders[56] = { .type=types.Curve, .location={{1, 2}, {228, 230}}, .options={}, .id=strlit("Curve_0"), .value=&ReadSlider(56) };
+sliders[57] = { .type=types.v1, .location={{1, 2}, {234, 235}}, .options={}, .id=strlit("v1_60"), .value=&ReadSlider(57) };
+sliders[58] = { .type=types.v3, .location={{1, 2}, {237, 238}}, .options={}, .id=strlit("v3_61"), .value=&ReadSlider(58) };
+sliders[59] = { .type=types.v3, .location={{1, 2}, {240, 241}}, .options={}, .id=strlit("v3_62"), .value=&ReadSlider(59) };
+sliders[60] = { .type=types.tvert, .location={{1, 2}, {248, 249}}, .options={}, .id=strlit("tvert_63"), .value=&ReadSlider(60) };
+sliders[61] = { .type=types.tdim, .location={{1, 2}, {250, 251}}, .options={}, .id=strlit("tdim_64"), .value=&ReadSlider(61) };
+sliders[62] = { .type=types.tnormal, .location={{1, 2}, {253, 254}}, .options={}, .id=strlit("tnormal_65"), .value=&ReadSlider(62) };
+sliders[63] = { .type=types.tvert, .location={{1, 2}, {260, 261}}, .options={}, .id=strlit("tvert_66"), .value=&ReadSlider(63) };
+sliders[64] = { .type=types.tvert, .location={{1, 2}, {262, 263}}, .options={}, .id=strlit("tvert_67"), .value=&ReadSlider(64) };
+sliders[65] = { .type=types.v3, .location={{1, 2}, {264, 265}}, .options={}, .id=strlit("v3_68"), .value=&ReadSlider(65) };
+sliders[66] = { .type=types.v3, .location={{1, 2}, {266, 267}}, .options={}, .id=strlit("v3_69"), .value=&ReadSlider(66) };
+sliders[67] = { .type=types.tvert, .location={{1, 2}, {302, 303}}, .options={}, .id=strlit("tvert_70"), .value=&ReadSlider(67) };
+sliders[68] = { .type=types.tvert, .location={{1, 2}, {308, 309}}, .options={}, .id=strlit("tvert_71"), .value=&ReadSlider(68) };
+sliders[69] = { .type=types.v3, .location={{1, 2}, {310, 311}}, .options={}, .id=strlit("v3_72"), .value=&ReadSlider(69) };
+sliders[70] = { .type=types.v2, .location={{1, 2}, {313, 314}}, .options={}, .id=strlit("v2_73"), .value=&ReadSlider(70) };
+sliders[71] = { .type=types.v3, .location={{1, 2}, {316, 317}}, .options={}, .id=strlit("v3_74"), .value=&ReadSlider(71) };
+sliders[72] = { .type=types.v2, .location={{1, 2}, {321, 322}}, .options={}, .id=strlit("v2_75"), .value=&ReadSlider(72) };
+sliders[73] = { .type=types.tvert, .location={{1, 2}, {324, 325}}, .options={}, .id=strlit("tvert_76"), .value=&ReadSlider(73) };
+sliders[74] = { .type=types.v2, .location={{1, 2}, {327, 328}}, .options={}, .id=strlit("v2_77"), .value=&ReadSlider(74) };
+sliders[75] = { .type=types.v3, .location={{1, 2}, {330, 331}}, .options={}, .id=strlit("v3_78"), .value=&ReadSlider(75) };
+sliders[76] = { .type=types.v3, .location={{1, 2}, {332, 333}}, .options={}, .id=strlit("v3_79"), .value=&ReadSlider(76) };
+sliders[77] = { .type=types.v3, .location={{1, 2}, {334, 335}}, .options={}, .id=strlit("v3_80"), .value=&ReadSlider(77) };
+sliders[78] = { .type=types.v2, .location={{1, 2}, {337, 338}}, .options={}, .id=strlit("v2_81"), .value=&ReadSlider(78) };
+sliders[79] = { .type=types.tvert, .location={{1, 2}, {340, 341}}, .options={}, .id=strlit("tvert_82"), .value=&ReadSlider(79) };
+sliders[80] = { .type=types.v2, .location={{1, 2}, {357, 358}}, .options={}, .id=strlit("v2_83"), .value=&ReadSlider(80) };
+sliders[81] = { .type=types.v2, .location={{1, 2}, {359, 360}}, .options={}, .id=strlit("v2_84"), .value=&ReadSlider(81) };
+sliders[82] = { .type=types.v2, .location={{1, 2}, {361, 362}}, .options={}, .id=strlit("v2_85"), .value=&ReadSlider(82) };
+sliders[83] = { .type=types.v1, .location={{1, 2}, {368, 369}}, .options={}, .id=strlit("v1_86"), .value=&ReadSlider(83) };
+sliders[84] = { .type=types.v3, .location={{1, 2}, {373, 374}}, .options={}, .id=strlit("v3_87"), .value=&ReadSlider(84) };
+sliders[85] = { .type=types.v2, .location={{1, 2}, {375, 376}}, .options={}, .id=strlit("v2_88"), .value=&ReadSlider(85) };
+sliders[86] = { .type=types.v2, .location={{1, 2}, {381, 382}}, .options={}, .id=strlit("v2_89"), .value=&ReadSlider(86) };
+sliders[87] = { .type=types.v2, .location={{1, 2}, {383, 384}}, .options={}, .id=strlit("v2_90"), .value=&ReadSlider(87) };
+sliders[88] = { .type=types.v2, .location={{1, 2}, {385, 386}}, .options={}, .id=strlit("v2_91"), .value=&ReadSlider(88) };
+sliders[89] = { .type=types.v1, .location={{1, 2}, {388, 389}}, .options={}, .id=strlit("v1_92"), .value=&ReadSlider(89) };
+sliders[90] = { .type=types.v2, .location={{1, 2}, {415, 416}}, .options={}, .id=strlit("v2_93"), .value=&ReadSlider(90) };
+sliders[91] = { .type=types.tvert, .location={{1, 2}, {418, 419}}, .options={}, .id=strlit("tvert_94"), .value=&ReadSlider(91) };
+sliders[92] = { .type=types.tvert, .location={{1, 2}, {422, 423}}, .options={}, .id=strlit("tvert_95"), .value=&ReadSlider(92) };
+sliders[93] = { .type=types.v3, .location={{1, 2}, {424, 425}}, .options={}, .id=strlit("v3_96"), .value=&ReadSlider(93) };
+sliders[94] = { .type=types.v3, .location={{1, 2}, {426, 427}}, .options={}, .id=strlit("v3_97"), .value=&ReadSlider(94) };
+sliders[95] = { .type=types.v2, .location={{1, 2}, {428, 429}}, .options={}, .id=strlit("v2_98"), .value=&ReadSlider(95) };
+sliders[96] = { .type=types.v3, .location={{1, 2}, {430, 431}}, .options={}, .id=strlit("v3_99"), .value=&ReadSlider(96) };
+sliders[97] = { .type=types.v3, .location={{1, 2}, {432, 433}}, .options={}, .id=strlit("v3_100"), .value=&ReadSlider(97) };
+sliders[98] = { .type=types.v2, .location={{1, 2}, {434, 435}}, .options={}, .id=strlit("v2_101"), .value=&ReadSlider(98) };
+sliders[99] = { .type=types.v3, .location={{1, 2}, {436, 437}}, .options={}, .id=strlit("v3_102"), .value=&ReadSlider(99) };
+sliders[100] = { .type=types.v2, .location={{1, 2}, {441, 442}}, .options={}, .id=strlit("v2_103"), .value=&ReadSlider(100) };
+sliders[101] = { .type=types.tvert, .location={{1, 2}, {444, 445}}, .options={}, .id=strlit("tvert_104"), .value=&ReadSlider(101) };
+sliders[102] = { .type=types.tvert, .location={{1, 2}, {446, 447}}, .options={}, .id=strlit("tvert_105"), .value=&ReadSlider(102) };
+sliders[103] = { .type=types.tvert, .location={{1, 2}, {450, 451}}, .options={}, .id=strlit("tvert_106"), .value=&ReadSlider(103) };
+sliders[104] = { .type=types.v3, .location={{1, 2}, {452, 453}}, .options={}, .id=strlit("v3_107"), .value=&ReadSlider(104) };
+sliders[105] = { .type=types.v3, .location={{1, 2}, {454, 455}}, .options={}, .id=strlit("v3_108"), .value=&ReadSlider(105) };
+sliders[106] = { .type=types.v3, .location={{1, 2}, {456, 457}}, .options={}, .id=strlit("v3_109"), .value=&ReadSlider(106) };
+sliders[107] = { .type=types.v3, .location={{1, 2}, {461, 462}}, .options={}, .id=strlit("v3_110"), .value=&ReadSlider(107) };
+sliders[108] = { .type=types.tvert, .location={{1, 2}, {464, 465}}, .options={}, .id=strlit("tvert_111"), .value=&ReadSlider(108) };
+sliders[109] = { .type=types.v3, .location={{1, 2}, {466, 467}}, .options={}, .id=strlit("v3_112"), .value=&ReadSlider(109) };
+sliders[110] = { .type=types.v1, .location={{1, 2}, {468, 469}}, .options={}, .id=strlit("v1_113"), .value=&ReadSlider(110) };
+sliders[111] = { .type=types.v3, .location={{1, 2}, {471, 472}}, .options={}, .id=strlit("v3_114"), .value=&ReadSlider(111) };
+sliders[112] = { .type=types.v3, .location={{1, 2}, {475, 476}}, .options={}, .id=strlit("v3_115"), .value=&ReadSlider(112) };
+sliders[113] = { .type=types.v3, .location={{1, 2}, {478, 479}}, .options={}, .id=strlit("v3_116"), .value=&ReadSlider(113) };
+sliders[114] = { .type=types.v3, .location={{1, 2}, {480, 481}}, .options={}, .id=strlit("v3_117"), .value=&ReadSlider(114) };
+sliders[115] = { .type=types.v3, .location={{1, 2}, {483, 484}}, .options={}, .id=strlit("v3_118"), .value=&ReadSlider(115) };
+sliders[116] = { .type=types.v2, .location={{1, 2}, {487, 488}}, .options={}, .id=strlit("v2_119"), .value=&ReadSlider(116) };
+sliders[117] = { .type=types.v2, .location={{1, 2}, {489, 490}}, .options={}, .id=strlit("v2_120"), .value=&ReadSlider(117) };
+sliders[118] = { .type=types.v2, .location={{1, 2}, {491, 492}}, .options={}, .id=strlit("v2_121"), .value=&ReadSlider(118) };
+sliders[119] = { .type=types.v3, .location={{1, 2}, {494, 495}}, .options={}, .id=strlit("v3_122"), .value=&ReadSlider(119) };
+sliders[120] = { .type=types.v2, .location={{1, 2}, {496, 497}}, .options={}, .id=strlit("v2_123"), .value=&ReadSlider(120) };
+sliders[121] = { .type=types.FUI_Line_Params, .location={{1, 2}, {499, 500}}, .options={}, .id=strlit("FUI_Line_Params_124"), .value=&ReadSlider(121) };
+sliders[122] = { .type=types.tvert, .location={{1, 2}, {504, 505}}, .options={}, .id=strlit("tvert_125"), .value=&ReadSlider(122) };
+sliders[123] = { .type=types.tvert, .location={{1, 2}, {506, 507}}, .options={}, .id=strlit("tvert_126"), .value=&ReadSlider(123) };
+sliders[124] = { .type=types.tvert, .location={{1, 2}, {508, 509}}, .options={}, .id=strlit("tvert_127"), .value=&ReadSlider(124) };
+sliders[125] = { .type=types.v3, .location={{1, 2}, {520, 521}}, .options={}, .id=strlit("v3_128"), .value=&ReadSlider(125) };
+sliders[126] = { .type=types.tvert, .location={{1, 2}, {522, 523}}, .options={}, .id=strlit("tvert_129"), .value=&ReadSlider(126) };
+sliders[127] = { .type=types.v3, .location={{1, 2}, {534, 535}}, .options={}, .id=strlit("v3_130"), .value=&ReadSlider(127) };
+sliders[128] = { .type=types.v3, .location={{1, 2}, {536, 537}}, .options={}, .id=strlit("v3_131"), .value=&ReadSlider(128) };
+sliders[129] = { .type=types.v2, .location={{1, 2}, {541, 542}}, .options={}, .id=strlit("v2_132"), .value=&ReadSlider(129) };
+sliders[130] = { .type=types.v3, .location={{1, 2}, {544, 545}}, .options={}, .id=strlit("v3_133"), .value=&ReadSlider(130) };
+sliders[131] = { .type=types.v2, .location={{1, 2}, {553, 554}}, .options={}, .id=strlit("v2_134"), .value=&ReadSlider(131) };
+sliders[132] = { .type=types.v2, .location={{1, 2}, {555, 556}}, .options={}, .id=strlit("v2_135"), .value=&ReadSlider(132) };
+sliders[133] = { .type=types.v2, .location={{1, 2}, {557, 558}}, .options={}, .id=strlit("v2_136"), .value=&ReadSlider(133) };
+sliders[134] = { .type=types.v3, .location={{1, 2}, {561, 562}}, .options={}, .id=strlit("v3_137"), .value=&ReadSlider(134) };
+sliders[135] = { .type=types.v2, .location={{1, 2}, {563, 564}}, .options={}, .id=strlit("v2_138"), .value=&ReadSlider(135) };
+sliders[136] = { .type=types.v2, .location={{1, 2}, {567, 568}}, .options={}, .id=strlit("v2_139"), .value=&ReadSlider(136) };
+sliders[137] = { .type=types.v2, .location={{1, 2}, {569, 570}}, .options={}, .id=strlit("v2_140"), .value=&ReadSlider(137) };
+sliders[138] = { .type=types.v2, .location={{1, 2}, {571, 572}}, .options={}, .id=strlit("v2_141"), .value=&ReadSlider(138) };
+sliders[139] = { .type=types.v3, .location={{1, 2}, {575, 576}}, .options={}, .id=strlit("v3_142"), .value=&ReadSlider(139) };
+sliders[140] = { .type=types.v2, .location={{1, 2}, {577, 578}}, .options={}, .id=strlit("v2_143"), .value=&ReadSlider(140) };
+sliders[141] = { .type=types.tvert, .location={{1, 2}, {579, 580}}, .options={}, .id=strlit("tvert_144"), .value=&ReadSlider(141) };
+sliders[142] = { .type=types.v2, .location={{1, 2}, {583, 584}}, .options={}, .id=strlit("v2_145"), .value=&ReadSlider(142) };
+sliders[143] = { .type=types.v2, .location={{1, 2}, {585, 586}}, .options={}, .id=strlit("v2_146"), .value=&ReadSlider(143) };
+sliders[144] = { .type=types.tvert, .location={{1, 2}, {594, 595}}, .options={}, .id=strlit("tvert_147"), .value=&ReadSlider(144) };
+sliders[145] = { .type=types.tvert, .location={{1, 2}, {604, 605}}, .options={}, .id=strlit("tvert_148"), .value=&ReadSlider(145) };
+sliders[146] = { .type=types.tvert, .location={{1, 2}, {606, 607}}, .options={}, .id=strlit("tvert_149"), .value=&ReadSlider(146) };
+sliders[147] = { .type=types.v2, .location={{1, 2}, {619, 620}}, .options={}, .id=strlit("v2_150"), .value=&ReadSlider(147) };
+sliders[148] = { .type=types.v2, .location={{1, 2}, {623, 624}}, .options={}, .id=strlit("v2_151"), .value=&ReadSlider(148) };
+sliders[149] = { .type=types.tvert, .location={{1, 2}, {626, 627}}, .options={}, .id=strlit("tvert_152"), .value=&ReadSlider(149) };
+sliders[150] = { .type=types.tvert, .location={{1, 2}, {630, 631}}, .options={}, .id=strlit("tvert_153"), .value=&ReadSlider(150) };
+sliders[151] = { .type=types.tvert, .location={{1, 2}, {632, 633}}, .options={}, .id=strlit("tvert_154"), .value=&ReadSlider(151) };
+sliders[152] = { .type=types.v2, .location={{1, 2}, {653, 654}}, .options={}, .id=strlit("v2_155"), .value=&ReadSlider(152) };
+sliders[153] = { .type=types.v2, .location={{1, 2}, {657, 658}}, .options={}, .id=strlit("v2_156"), .value=&ReadSlider(153) };
+sliders[154] = { .type=types.tvert, .location={{1, 2}, {660, 661}}, .options={}, .id=strlit("tvert_157"), .value=&ReadSlider(154) };
+sliders[155] = { .type=types.v1, .location={{1, 2}, {662, 663}}, .options={}, .id=strlit("v1_158"), .value=&ReadSlider(155) };
+sliders[156] = { .type=types.tvert, .location={{1, 2}, {676, 677}}, .options={}, .id=strlit("tvert_159"), .value=&ReadSlider(156) };
+sliders[157] = { .type=types.v2, .location={{1, 2}, {683, 684}}, .options={}, .id=strlit("v2_160"), .value=&ReadSlider(157) };
+sliders[158] = { .type=types.v3, .location={{1, 2}, {686, 687}}, .options={}, .id=strlit("v3_161"), .value=&ReadSlider(158) };
+sliders[159] = { .type=types.tvert, .location={{1, 2}, {688, 689}}, .options={}, .id=strlit("tvert_162"), .value=&ReadSlider(159) };
+sliders[160] = { .type=types.Curve, .location={{1, 2}, {716, 718}}, .options={}, .id=strlit("Curve_1"), .value=&ReadSlider(160) };
+sliders[161] = { .type=types.Curve, .location={{1, 2}, {720, 722}}, .options={}, .id=strlit("Curve_2"), .value=&ReadSlider(161) };
+sliders[162] = { .type=types.tvert, .location={{1, 2}, {724, 725}}, .options={}, .id=strlit("tvert_168"), .value=&ReadSlider(162) };
+sliders[163] = { .type=types.tvert, .location={{1, 2}, {738, 739}}, .options={}, .id=strlit("tvert_169"), .value=&ReadSlider(163) };
+sliders[164] = { .type=types.tvert, .location={{1, 2}, {740, 741}}, .options={}, .id=strlit("tvert_170"), .value=&ReadSlider(164) };
+sliders[165] = { .type=types.tvert, .location={{1, 2}, {746, 747}}, .options={}, .id=strlit("tvert_171"), .value=&ReadSlider(165) };
+sliders[166] = { .type=types.tvert, .location={{1, 2}, {752, 753}}, .options={}, .id=strlit("tvert_172"), .value=&ReadSlider(166) };
+sliders[167] = { .type=types.tvert, .location={{1, 2}, {756, 757}}, .options={}, .id=strlit("tvert_173"), .value=&ReadSlider(167) };
+sliders[168] = { .type=types.v3, .location={{1, 2}, {758, 759}}, .options={}, .id=strlit("v3_174"), .value=&ReadSlider(168) };
+sliders[169] = { .type=types.tvert, .location={{1, 2}, {764, 765}}, .options={}, .id=strlit("tvert_175"), .value=&ReadSlider(169) };
+sliders[170] = { .type=types.tvert, .location={{1, 2}, {766, 767}}, .options={}, .id=strlit("tvert_176"), .value=&ReadSlider(170) };
+sliders[171] = { .type=types.tdim, .location={{1, 2}, {782, 783}}, .options={}, .id=strlit("tdim_179"), .value=&ReadSlider(171) };
+sliders[172] = { .type=types.FUI_Line_Params, .location={{1, 2}, {785, 786}}, .options={}, .id=strlit("FUI_Line_Params_180"), .value=&ReadSlider(172) };
+sliders[173] = { .type=types.i1, .location={{1, 2}, {804, 805}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_181"), .value=&ReadSlider(173) };
+sliders[174] = { .type=types.v3, .location={{1, 2}, {812, 813}}, .options={}, .id=strlit("v3_182"), .value=&ReadSlider(174) };
+sliders[175] = { .type=types.v3, .location={{1, 2}, {814, 815}}, .options={}, .id=strlit("v3_183"), .value=&ReadSlider(175) };
+sliders[176] = { .type=types.v1, .location={{1, 2}, {816, 817}}, .options={}, .id=strlit("v1_184"), .value=&ReadSlider(176) };
+sliders[177] = { .type=types.tvert, .location={{1, 2}, {818, 819}}, .options={}, .id=strlit("tvert_194"), .value=&ReadSlider(177) };
+sliders[178] = { .type=types.tvert, .location={{1, 2}, {820, 821}}, .options={}, .id=strlit("tvert_195"), .value=&ReadSlider(178) };
+sliders[179] = { .type=types.tvert, .location={{1, 2}, {822, 823}}, .options={}, .id=strlit("tvert_200"), .value=&ReadSlider(179) };
+sliders[180] = { .type=types.tvert, .location={{1, 2}, {824, 825}}, .options={}, .id=strlit("tvert_201"), .value=&ReadSlider(180) };
+sliders[181] = { .type=types.tvert, .location={{1, 2}, {830, 831}}, .options={}, .id=strlit("tvert_202"), .value=&ReadSlider(181) };
+sliders[182] = { .type=types.tvert, .location={{1, 2}, {834, 835}}, .options={}, .id=strlit("tvert_208"), .value=&ReadSlider(182) };
+sliders[183] = { .type=types.tvert, .location={{1, 2}, {836, 837}}, .options={}, .id=strlit("tvert_213"), .value=&ReadSlider(183) };
+sliders[184] = { .type=types.tvert, .location={{1, 2}, {838, 839}}, .options={}, .id=strlit("tvert_214"), .value=&ReadSlider(184) };
+sliders[185] = { .type=types.tvert, .location={{1, 2}, {842, 843}}, .options={}, .id=strlit("tvert_215"), .value=&ReadSlider(185) };
+sliders[186] = { .type=types.tvert, .location={{1, 2}, {844, 845}}, .options={}, .id=strlit("tvert_216"), .value=&ReadSlider(186) };
+sliders[187] = { .type=types.v3, .location={{1, 2}, {846, 847}}, .options={}, .id=strlit("v3_217"), .value=&ReadSlider(187) };
+sliders[188] = { .type=types.v3, .location={{1, 2}, {848, 849}}, .options={}, .id=strlit("v3_218"), .value=&ReadSlider(188) };
+sliders[189] = { .type=types.tvert, .location={{1, 2}, {854, 855}}, .options={}, .id=strlit("tvert_219"), .value=&ReadSlider(189) };
+sliders[190] = { .type=types.v4, .location={{1, 2}, {857, 858}}, .options={}, .id=strlit("v4_220"), .value=&ReadSlider(190) };
+sliders[191] = { .type=types.i2, .location={{1, 2}, {861, 862}}, .options={}, .id=strlit("i2_221"), .value=&ReadSlider(191) };
+sliders[192] = { .type=types.i1, .location={{1, 2}, {880, 881}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(192) };
+sliders[193] = { .type=types.i1, .location={{1, 2}, {882, 883}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(193) };
+sliders[194] = { .type=types.v3, .location={{1, 2}, {884, 885}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(194) };
+sliders[195] = { .type=types.tvert, .location={{1, 2}, {890, 891}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(195) };
+sliders[196] = { .type=types.tvert, .location={{1, 2}, {898, 899}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(196) };
+sliders[197] = { .type=types.tvert, .location={{1, 2}, {902, 903}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(197) };
+sliders[198] = { .type=types.tvert, .location={{1, 2}, {906, 907}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(198) };
+sliders[199] = { .type=types.tvert, .location={{1, 2}, {910, 911}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(199) };
+sliders[200] = { .type=types.tvert, .location={{1, 2}, {914, 915}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(200) };
+sliders[201] = { .type=types.tvert, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(201) };
+sliders[202] = { .type=types.tvert, .location={{1, 2}, {922, 923}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(202) };
+sliders[203] = { .type=types.i1, .location={{1, 2}, {928, 929}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(203) };
+sliders[204] = { .type=types.v1, .location={{1, 2}, {930, 931}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(204) };
+sliders[205] = { .type=types.v1, .location={{1, 2}, {932, 933}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(205) };
+sliders[206] = { .type=types.i1, .location={{1, 2}, {934, 935}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(206) };
+sliders[207] = { .type=types.tvert, .location={{1, 2}, {940, 941}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(207) };
 }
 //-
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1334:
-global_decl Text_Object text_objects_[274];
+global_decl Text_Object text_objects_[260];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1339:
 global FUI_File_Data fui_files_[3] ={
@@ -750,8 +738,8 @@ global FUI_File_Data fui_files_[3] ={
  .index = 2,
  .name = strlit("driver.kc"),
  .marked_positions = {ArrayAndCount(marked_positions_file_2)},
- .text_objects = make_slice(text_objects_, {0,274}),
- .sliders = make_slice(global_sliders, {2,211}),
- .vertices_info = make_slice(vertices_info_, {0,10}),
+ .text_objects = make_slice(text_objects_, {0,260}),
+ .sliders = make_slice(global_sliders, {2,208}),
+ .vertices_info = make_slice(vertices_info_, {0,9}),
  },
 };

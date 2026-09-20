@@ -135,6 +135,12 @@ export_group_to_document(Game_State *state, Group_Vis tag)
   {// NOTE(kv) Curve patches reference primitives by index: follow the compaction.
    // A side whose curve was dropped (re-exported region) is removed from the patch.
    Recorded_Primitive &prim = primitives.items[ip];
+   if(prim.type == Primitive_Type_Curve and prim.curve.key_has_target)
+   {// NOTE(kv) plan-eye-to-document: same for a key target; a dropped target clears it.
+    i32 new_index = prim_remap[prim.curve.key_target_curve_index];
+    prim.curve.key_target_curve_index = new_index;
+    if(new_index == -1){ prim.curve.key_has_target = false; prim.curve.key_target_curve_index = 0; }
+   }
    if(prim.type != Primitive_Type_Curve_Patch){ continue; }
    i32 kept = 0;
    for_i32(ic,0,prim.curve_patch.curve_count)

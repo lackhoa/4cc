@@ -90,8 +90,10 @@ draw_bezier_inner(tvert P[4], Line_Params &params, argb base_color)
  // If you optimize for one case, you're gonna screw something else.
  // Of course we should optimize curves, but we're far from optimized anyway so who cares.
  Paint_Params &cparams = painter->params;
+ // NOTE(kv) Zero radii means zero width (an invisible helper curve), NOT "the default":
+ // defaults come from get_line_params().
  v4 radii = params.radii;
- if(radii == v4{}){ radii = V4(.25, 1, 1, .25); }
+ if(radii == v4{}){ return; }
  radii *= cparams.radius_mult * default_line_radius_unit;
  
  b32 is_straight = params.flags & Line_Straight;
