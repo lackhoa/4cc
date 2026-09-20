@@ -75,21 +75,28 @@ line_tool_snap_vertex(Game_State *state, Live_Viewport *viewport, v2 mouse_px, v
  return best;
 }
 
-function b32
-line_tool_group_always_visible(Recorded_Group &group)
-{// NOTE(kv) A group whose curves show in every view: no live vis binding (Vis_None or
- // a region tag, which only names an export region) and no camera condition. A
- // Vis_Level1 guide-line group would swallow the new curve invisibly (found 2026-09-12).
- b32 plain_tag = (group.vis_tag == Vis_None or group.vis_tag >= Vis_Region_First);
- return plain_tag and not group.cam_vis.active and group.params.painting;
-}
-
 function i32
-line_tool_pick_group(Recording &doc, i32 start_snap)
-{// NOTE(kv) Which group (paint params + bone) the new curve joins: the group of a
- // curve already ending on the snapped start vertex, else the last curve's group --
- // always-visible groups only (see above), else the first always-visible group, else
- // group 0. TODO(kv) A user-chosen "current group" once the document has many.
+line_tool_pick_group(Game_State *state, i32 start_snap)
+{// NOTE(kv) Which group (paint params + bone) the new curve joins
+ // (plan-line-tool-wrong-group), first usable of: the group of a curve already ending on
+ // the snapped start vertex, the selected primitive's group (the cheap "current group"),
+ // the last curve's group, the first group. Usable = painting and its vis tag is live (a
+ // Vis_Level1 guide group swallowed the new curve invisibly, found 2026-09-12; a camera
+ // condition is NOT checked: you continue what you see) AND, when
+ // the start snapped, it sits on the bone that vertex is drawn in: a table vertex
+ // without a bone of its own is read in the READER's group bone, so a group on another
+ // bone would re-read the shared vertex somewhere else (2026-09-20: a nose line landed in
+ // the iris group = eyeball bone, start and end flew off). -1 = no usable group.
+ Recording &doc = state->model.recordings.document;
+ b32 check_bone = (start_snap >= 0 and doc.vertices[start_snap].bone.type == Bone_None);
+ Bone_ID snap_bone = check_bone ? document_vertex_index_bone(doc, start_snap) : Bone_ID{};
+ auto usable = [&](i32 group_index) -> b32
+ {
+  Recorded_Group &group = doc.groups[group_index];
+  if(HasFlag(group.params.line.flags, Line_Invisible)){ return false; }
+  if(check_bone and not (group.bone_id == snap_bone)){ return false; }
+  return (group.params.painting and state->model.vis_live[group.vis_tag]);
+ };
  if(start_snap >= 0)
  {
   for_i32(iprim, 0, doc.primitives.count)
@@ -97,21 +104,27 @@ line_tool_pick_group(Recording &doc, i32 start_snap)
    Recorded_Primitive &prim = doc.primitives[iprim];
    if(prim.type != Primitive_Type_Curve){ continue; }
    if((prim.vertex_index[0] == start_snap or prim.vertex_index[1] == start_snap) and
-      line_tool_group_always_visible(doc.groups[prim.group_index]))
+      usable(prim.group_index))
    { return prim.group_index; }
   }
+ }
+ Document_Selection &sel = state->document_selection;
+ for_i32(i, 0, sel.count)
+ {
+  i32 iprim = sel.prim_index[i];
+  if(iprim >= 0 and iprim < doc.primitives.count and usable(doc.primitives[iprim].group_index))
+  { return doc.primitives[iprim].group_index; }
  }
  for(i32 iprim = doc.primitives.count-1; iprim >= 0; iprim--)
  {
   Recorded_Primitive &prim = doc.primitives[iprim];
-  if(prim.type == Primitive_Type_Curve and line_tool_group_always_visible(doc.groups[prim.group_index]))
-  { return prim.group_index; }
+  if(prim.type == Primitive_Type_Curve and usable(prim.group_index)){ return prim.group_index; }
  }
  for_i32(igroup, 0, doc.groups.count)
  {
-  if(line_tool_group_always_visible(doc.groups[igroup])){ return igroup; }
+  if(usable(igroup)){ return igroup; }
  }
- return doc.groups.count > 0 ? 0 : -1;
+ return -1;
 }
 
 // NOTE(kv) Least-squares fit of the two interior control points to the pen path
@@ -205,10 +218,13 @@ line_tool_create_curve(Game_State *state)
  // New vertices are Bone_None (= the group's bone), positions in that bone's space.
  Line_Tool_State &tool = state->line_tool;
  Recording &doc = state->model.recordings.document;
- i32 group_index = line_tool_pick_group(doc, tool.start_snap);
+ i32 group_index = line_tool_pick_group(state, tool.start_snap);
  if(group_index < 0)
  {
-  log_error("line_tool: the document has no groups to add a curve to");
+  log_error("line_tool: no visible group on the start vertex's bone to add a curve to");
+  Document_History &history = state->document_history;
+  snprintf(history.status, sizeof(history.status), "line tool: no group on this vertex's bone");
+  history.status_frames = 120;
   line_tool_reset(state);
   return;
  }
