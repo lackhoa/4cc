@@ -2034,8 +2034,7 @@ driver_render(Arena *tmp, Painter *painter0)
    pp.line_color = default_line_color;
   }
   p->viz_level            = viz_level;
-  p->ignore_radii         = preset_settings.ignore_radii;
-  p->ignore_alignment_min = preset_settings.ignore_alignment_min;
+  p->show_all_lines       = preset_settings.show_all_lines;
  }
  
  render_character(pose);

@@ -448,6 +448,14 @@ read_text_struct_body(Text_Reader *r, Type_Info *type, u8 *pointer, b32 top_leve
   text_expect_punct(r, '=');
   if(not r->ok){ break; }
   i32 member_index = find_member_index_by_name(type, token.text);
+  if(member_index < 0 and (token.text == strlit("ignore_radii") or
+                           token.text == strlit("ignore_alignment_min")))
+  {// NOTE(kv) 2026-09-20: Preset_Settings.ignore_radii + ignore_alignment_min were folded
+   // into show_all_lines; an old state.txt row with either one set gets it (false members
+   // are never written, so the two can't overwrite each other with a 0).
+   // TODO(kv) Delete once every state.txt has been rewritten.
+   member_index = find_member_index_by_name(type, strlit("show_all_lines"));
+  }
   if(member_index < 0)
   {
    log_error("%s: line %d: unknown member \"%.*s\" of %.*s, skipped",

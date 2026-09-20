@@ -176,8 +176,7 @@ migrate_read_recording_presets_v29(Game_State *state, Stringz path)
   row.show_eyeball          = old.show_eyeball;
   row.show_loomis_ball      = old.show_loomis_ball;
   row.show_grid             = old.show_grid;
-  row.ignore_radii          = old.ignore_radii;
-  row.ignore_alignment_min  = old.ignore_alignment_min;
+  row.show_all_lines        = (old.ignore_radii or old.ignore_alignment_min);
   row.show_arm_medial_right = old.show_arm_medial_right;
   row.show_arm_back_bone    = old.show_arm_back_bone;
   row.show_arm_profile_left = old.show_arm_profile_left;

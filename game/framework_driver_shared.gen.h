@@ -1501,8 +1501,7 @@ b32 show_loomis_ball;
 b32 show_grid;
 b32 hide_hair;
 b32 hide_anchors;
-b32 ignore_radii;
-b32 ignore_alignment_min;
+b32 show_all_lines;
 b32 show_arm_medial_right;
 b32 show_arm_back_bone;
 b32 show_arm_profile_left;
@@ -1516,7 +1515,7 @@ Type_Info result = {};
 result.name = strlit("Preset_Settings");
 result.size = sizeof(Preset_Settings);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(15);
+result.members.set_count(14);
 {
 local_persist Type_Info member_type_value;
 Type_Info *member_type = &member_type_value;
@@ -1562,27 +1561,23 @@ result.members[8] = {.type=member_type, .name=strlit("hide_anchors"), .offset=of
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[9] = {.type=member_type, .name=strlit("ignore_radii"), .offset=offsetof(Preset_Settings, ignore_radii)};
+result.members[9] = {.type=member_type, .name=strlit("show_all_lines"), .offset=offsetof(Preset_Settings, show_all_lines)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[10] = {.type=member_type, .name=strlit("ignore_alignment_min"), .offset=offsetof(Preset_Settings, ignore_alignment_min)};
+result.members[10] = {.type=member_type, .name=strlit("show_arm_medial_right"), .offset=offsetof(Preset_Settings, show_arm_medial_right)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[11] = {.type=member_type, .name=strlit("show_arm_medial_right"), .offset=offsetof(Preset_Settings, show_arm_medial_right)};
+result.members[11] = {.type=member_type, .name=strlit("show_arm_back_bone"), .offset=offsetof(Preset_Settings, show_arm_back_bone)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[12] = {.type=member_type, .name=strlit("show_arm_back_bone"), .offset=offsetof(Preset_Settings, show_arm_back_bone)};
+result.members[12] = {.type=member_type, .name=strlit("show_arm_profile_left"), .offset=offsetof(Preset_Settings, show_arm_profile_left)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[13] = {.type=member_type, .name=strlit("show_arm_profile_left"), .offset=offsetof(Preset_Settings, show_arm_profile_left)};
-}
-{
-Type_Info *member_type = & Type_Info_b32;
-result.members[14] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
+result.members[13] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
 }
 return result;
 }
@@ -1655,17 +1650,11 @@ read_binary_b32(r, &m_hide_anchors);
 }
 dst->hide_anchors = m_hide_anchors;
 
-b32 m_ignore_radii = {};
+b32 m_show_all_lines = {};
 {
-read_binary_b32(r, &m_ignore_radii);
+read_binary_b32(r, &m_show_all_lines);
 }
-dst->ignore_radii = m_ignore_radii;
-
-b32 m_ignore_alignment_min = {};
-{
-read_binary_b32(r, &m_ignore_alignment_min);
-}
-dst->ignore_alignment_min = m_ignore_alignment_min;
+dst->show_all_lines = m_show_all_lines;
 
 b32 m_show_arm_medial_right = {};
 {

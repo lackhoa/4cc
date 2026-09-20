@@ -609,8 +609,7 @@ struct Painter
  Render_Target *target;
  v1 profile_score;  // TODO: @Cleanup axe this?
  i32 viz_level;
- b32 ignore_radii;
- b32 ignore_alignment_min;
+ b32 show_all_lines;  // view Preset_Settings
  Viewport *viewport;
  b32 show_grid;
  argb shade_color;  // NOTE(kv) Useful enough to keep I guess.

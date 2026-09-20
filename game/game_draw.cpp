@@ -71,11 +71,11 @@ current_location_is_active_shape()
 }
 //-
 myinline b32
-is_painting_enabled()
+is_painting_enabled(b32 ignore_cam_vis=false)
 {
  Painter *p = painter;
  b32 visible = (p->params.painting and the_model->vis_live[p->live_vis_tag]);
- if(visible and p->live_cam_vis.active)
+ if(visible and p->live_cam_vis.active and not ignore_cam_vis)
  {
   v1 alignment = dot(p->live_cam_vis.normal, get_view_vector());
   if(p->live_cam_vis.symmetric){ alignment = absolute(alignment); }
@@ -84,7 +84,8 @@ is_painting_enabled()
  return (visible or (current_location_is_hot() and is_left()));
 }
 myinline b32 is_fill_enabled(){ return is_painting_enabled(); }
-myinline b32 is_line_enabled(){ return is_painting_enabled(); }
+// NOTE(kv) show_all_lines: lines skip the group's camera condition, fills keep it.
+myinline b32 is_line_enabled(){ return is_painting_enabled(painter->show_all_lines); }
 //-
 // NOTE(kv) Set while replay_recording() (game_replay.cpp) re-issues draw calls:
 // suppresses send_primitive so the replay doesn't re-record what it reads.
@@ -941,7 +942,7 @@ draw_bezier_rec(tvert P_rec[4], Line_Params params)
   b32 is_straight = params.flags & Line_Straight;
   b32 do_check_alignment = (do_draw and
                             not is_straight and
-                            not painter->ignore_alignment_min and
+                            not painter->show_all_lines and
                             not is_hot and
                             params.alignment_min > 0.f);
   if(do_check_alignment)
@@ -971,7 +972,7 @@ draw_bezier_rec(tvert P_rec[4], Line_Params params)
    argb color = (current_location_is_selected() ? selection_color
                  : is_hot ? hot_color
                  : painter->params.line_color);
-   if(painter->ignore_radii)
+   if(painter->show_all_lines)
    {// NOTE(kv) Preset knob: uniform default radii so every line reads clearly (the
     // tapered ends of real radii hide where a line actually goes). Lost in a3875d75
     // when draw_cparams went away; restored here so live, keyed and replay share it.

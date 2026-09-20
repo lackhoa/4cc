@@ -55,8 +55,7 @@ seed_preset_settings(Model_Recordings *recordings)
    row.show_arm_back_bone    = (preset == 4);
    row.show_arm_profile_left = (preset >= 4);
   }
-  row.ignore_radii         = (row.viz_level != 0);
-  row.ignore_alignment_min = (row.viz_level != 0);
+  row.show_all_lines       = (row.viz_level != 0);
  }
 }
 

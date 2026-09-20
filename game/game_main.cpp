@@ -2894,7 +2894,7 @@ game_update(Game_Update_Params params)
     };
 #define X(field) \
 { preset_checkbox(get_member_index_by_name(preset_type, strlit(#field))); }
-    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(hide_hair) X(hide_anchors) X(ignore_radii) X(ignore_alignment_min)
+    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(hide_hair) X(hide_anchors) X(show_all_lines)
     ImGui::SeparatorText("Reference images");
     {// NOTE(kv) Scene combo from the enum's reflection, so new scenes show up for free.
      Type_Info *scene_type = &Type_Info_Reference_Scene;
@@ -3081,9 +3081,9 @@ game_update(Game_Update_Params params)
      Recorded_Curve &first = doc.primitives[curves[0]].curve;
      ImGui::Text("%d curve%s:", curve_count, curve_count == 1 ? "" : "s");
      for_i32(i, 0, curve_count){ ImGui::SameLine(); ImGui::Text("%d", curves[i]); }
-     if(state->model.recordings.preset_settings[state->viewports[0].preset].ignore_radii)
+     if(state->model.recordings.preset_settings[state->viewports[0].preset].show_all_lines)
      {// NOTE(kv) Q5: the knob forces uniform radii, so edits below don't show.
-      ImGui::TextColored(ImVec4(1,.6f,.2f,1), "ignore_radii is on: radii edits are invisible");
+      ImGui::TextColored(ImVec4(1,.6f,.2f,1), "show_all_lines is on: radii edits are invisible");
      }
      // NOTE(kv) One history entry per slider drag: begin on activation, commit on the
      // release that followed an edit, discard a release without one.

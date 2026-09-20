@@ -329,8 +329,10 @@ struct Preset_Settings
  b32 show_grid;
  b32 hide_hair;             // inverted so zero (= every existing preset) keeps the hair
  b32 hide_anchors;          // inverted likewise: anchors (Vis_Anchor_Eye) show by default
- b32 ignore_radii;
- b32 ignore_alignment_min;
+ // NOTE(kv) 2026-09-20, was ignore_radii + ignore_alignment_min: every line draws, with
+ // uniform default radii -- no per-line alignment_min test, no group cam_vis test (fills
+ // still obey cam_vis). Line_Invisible lines stay invisible.
+ b32 show_all_lines;
  //-Reference images (side cameras)
  b32 show_arm_medial_right; // right-camera reference image
  b32 show_arm_back_bone;    // back-camera reference image
