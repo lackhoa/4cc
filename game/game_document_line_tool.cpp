@@ -330,6 +330,8 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  document_curve_set_handle_point(doc, prim, 0, {.v = line_tool_world_to_bone(bone_id, p1)});
  document_curve_set_handle_point(doc, prim, 1, {.v = line_tool_world_to_bone(bone_id, p2)});
  document_curve_apply_midline(doc, tool.prim_index);
+ document_merge_preview_vertex   = document_find_merge_target(state, viewport, tool.temp_end_vertex, false);
+ document_merge_preview_is_right = false;
 }
 
 function void
@@ -337,6 +339,7 @@ line_tool_release(Game_State *state, Live_Viewport *viewport)
 {
  Line_Tool_State &tool = state->line_tool;
  if(not tool.active){ return; }
+ document_merge_preview_vertex = -1;
  if(not tool.created)
  {// NOTE(kv) A tap: exit the tool (tablet Q27).
   line_tool_reset(state);

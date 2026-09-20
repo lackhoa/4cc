@@ -688,12 +688,23 @@ document_vertex_index_world_pos(Recording &doc, i32 vertex_index, b32 is_right)
  Bone_ID bone_id = document_vertex_index_bone(doc, vertex_index);
  return mat4vert(get_bone(bone_id, is_right)->world_from_bone, doc.vertices[vertex_index].p);
 }
+// NOTE(kv) 2026-09-20 The vertex a release would merge into right now (-1 = none), set on
+// every move of a vertex drag / line tool stroke, cleared on release. Drawn as a big disk
+// so the merge is announced before it happens.
+global i32 document_merge_preview_vertex = -1;
+global b32 document_merge_preview_is_right;
+function i32 document_find_merge_target(Game_State *state, Live_Viewport *viewport, i32 dragged, b32 is_right);
 function void
 document_hover_draw(Game_State *state, Camera &camera)
 {// NOTE(kv) World-space disks facing the camera, overlaid (they mark positions, depth
  // would hide the ones behind a fill). Same depth-scaled sizing as the kb cursor.
- if(not document_hover_valid){ return; }
  Recording &doc = state->model.recordings.document;
+ if(document_merge_preview_vertex >= 0 and document_merge_preview_vertex < doc.vertices.count)
+ {// NOTE(kv) Before the hover check: a line tool stroke has no hover.
+  v3 center = document_vertex_index_world_pos(doc, document_merge_preview_vertex, document_merge_preview_is_right);
+  document_hover_draw_disk(camera, center, 8.f, linear_argb_blue);
+ }
+ if(not document_hover_valid){ return; }
  Document_Pick picks[document_selection_pick_cap];
  i32 pick_count = document_selection_pick_list(state, picks, ArrayCount(picks));
  b32 hovered_drawn = false;
@@ -1330,6 +1341,12 @@ document_mouse_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
   if(free_handle){ document_curve_swing_other_handle(doc, prim, pick.slot-1); }
  }
  document_apply_constraints(doc);
+ document_merge_preview_vertex = -1;
+ if(not edit.whole_stroke and not pick.is_handle)
+ {
+  document_merge_preview_vertex   = document_find_merge_target(state, viewport, document_pick_vertex_index(doc, pick), pick.is_right);
+  document_merge_preview_is_right = pick.is_right;
+ }
 }
 
 //~ NOTE(kv) 2026-09-20 Vertex merge, port of the tablet's merge_vertex_if_near_another
@@ -1431,6 +1448,7 @@ document_mouse_release(Game_State *state, Live_Viewport *viewport)
 {
  Document_Mouse_Drag_State &edit = state->document_mouse_drag;
  if(not edit.active){ return; }
+ document_merge_preview_vertex = -1;
  if(edit.moved)
  {
   if(not edit.whole_stroke and not edit.pick.is_handle)
