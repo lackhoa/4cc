@@ -1384,38 +1384,11 @@ render_eyes(Pose &pose)
  // TODO: The 5-eyes rule is still elusive to me, I only have like 4 eyes.
  // NOTE(kv) plan-eye-to-document: the lids, socket fills and guide lines are document data
  // now (region Vis_Eye, vertices linked to the anchor). The code that drew them is in
- // archive/driver-2026-09-20.kc.txt. Only the eyeball is still code (stage 2).
- {//~NOTE: Eyeball
-  BoneBlock(mk_bone_id(Bone_Eyeball));
-  {//-Eyeball visualization
-   ShowGroup(Vis_Eyeball);
-   hl_block;
-   v4 eyeball_radii;
-   {
-    v1 big   = 0.5f;
-    v1 small = 0.25f;
-    eyeball_radii = V4(big,small,small,big);
-   }
-   draw_circle(V3(),{V3z(1)},{1},eyeball_radii);  // NOTE: A prime meridian
-   draw_circle(V3(),{V3x(1)},{1},eyeball_radii);
-  }
-  {//-Iris (featuring Mr. Depth-Offset-Hack)
-   PaintBlock;
-   painter->params.nslice_per_meter = 128.f*(7.6378f);
-   v1 iris_depth_offset = painter->params.fill_depth_offset + 1*centimeter;
-   painter->params.line_depth_offset += iris_depth_offset;
-   painter->params.fill_depth_offset += iris_depth_offset;
-   
-   {// NOTE https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
-    // iris radius is [0.5, 0.6] that of eyeball
-    mat4 irisRelT;
-    tdim iris_radius = fv(tdim_179);
-    tvert iris_rel_center = mkvert( V3z(square_root(1.f-squared(iris_radius))));
-    draw_circle(iris_rel_center, normal_z, iris_radius,
-                flp(FUI_Line_Params_180));
-   }
-  }
- }
+ // archive/driver-2026-09-20.kc.txt.
+ // Q11: the eyeball circles + iris too (region Vis_Iris, in Bone_Eyeball space, four arc
+ // curves per circle). Only the BONE is still code: the anchor places it, the pose turns it.
+ // NOTE https://blenderartists.org/t/just-how-big-should-the-iris-be-relative-to-the-actual-eyeball/1214393/3
+ // iris radius is [0.5, 0.6] that of eyeball
 }
 function void
 render_grid()
