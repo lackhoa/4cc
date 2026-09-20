@@ -496,6 +496,11 @@ struct Model_Recordings
  Recording document;
  i32 preset_count;  // rows in use, 1..PRESET_CAP
  Preset_Settings preset_settings[PRESET_CAP];
+ // NOTE(kv) plan-eye-to-document step 1: the Recording drawn as the document THIS frame --
+ // `document`, or the compare checkpoint while flipped. Set by the game right before
+ // driver_update, so driver code that reads the document (eye_origin) flips with it.
+ // Never kept across frames (a checkpoint can be freed by a document reload).
+ Recording *displayed_document;
 };
 struct Model
 {

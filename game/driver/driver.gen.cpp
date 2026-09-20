@@ -65,7 +65,8 @@ eye_origin(){
 Eye_Origin result = {};
 result.rest = ReadSlider(2);
 result.origin = result.rest;
-Recording &doc = the_model->recordings.document;
+Recording *displayed = the_model->recordings.displayed_document;
+Recording &doc = displayed ? *displayed : the_model->recordings.document;
 for_i32(iprim, 0, doc.primitives.count)
  {
 Recorded_Primitive &prim = doc.primitives[iprim];

@@ -68,7 +68,10 @@ eye_origin()
  Eye_Origin result = {};
  result.rest   = fv(tvert_177);
  result.origin = result.rest;
- Recording &doc = the_model->recordings.document;
+ // NOTE(kv) plan-eye-to-document step 1: the DISPLAYED document, so the eye flips with a
+ // checkpoint flip. Null before the first game update.
+ Recording *displayed = the_model->recordings.displayed_document;
+ Recording &doc = (displayed ? *displayed : the_model->recordings.document);
  for_i32(iprim, 0, doc.primitives.count)
  {
   Recorded_Primitive &prim = doc.primitives[iprim];

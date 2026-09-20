@@ -3190,6 +3190,12 @@ game_update(Game_Update_Params params)
 
    v1 anim_time = state->looping_time;
    game_update_result.anim_time = anim_time;
+   {// NOTE(kv) plan-eye-to-document step 1: same choice the document replay makes.
+    Document_Checkpoint *flipped_checkpoint = (state->document_checkpoints.is_flipped_to_checkpoint ?
+                                               document_checkpoint_compare(state) : 0);
+    the_model->recordings.displayed_document = (flipped_checkpoint ? &flipped_checkpoint->recording :
+                                                &the_model->recordings.document);
+   }
    driver->driver_update(the_model, anim_time);
   }
 
