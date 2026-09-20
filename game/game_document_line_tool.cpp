@@ -23,6 +23,7 @@
 
 global v1 const line_tool_snap_px = 12.f;
 global v1 const line_tool_tap_px  = 3.f;   // press->release travel below this = a tap
+global v1 const line_tool_midline_px = 8.f;  // pen end this close to the mirror plane = midline curve
 
 function Bone_ID
 line_tool_group_bone(Recording &doc, i32 group_index)
@@ -268,11 +269,7 @@ line_tool_create_curve(Game_State *state)
    }
   }
  }
- if(tool.start_snap >= 0 and doc.vertices[tool.start_snap].p.x == 0)
- {// NOTE(kv) plan-focus-radii-midline Q9: continuing from a vertex that sits on the
-  // mirror plane (a pinned midline vertex has exactly x=0) keeps the new curve there.
-  prim.curve.midline = true;
- }
+ // NOTE(kv) The midline flag is decided on every move (line_tool_move), not here.
  tool.prim_index  = doc.primitives.count;
  tool.group_index = group_index;
  push(&doc.primitives, prim);
@@ -305,6 +302,23 @@ line_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Recorded_Primitive &prim = doc.primitives[tool.prim_index];
  Bone_ID bone_id = line_tool_group_bone(doc, tool.group_index);
  doc.vertices[tool.temp_end_vertex].p = line_tool_world_to_bone(bone_id, tool.end_world);
+ {// NOTE(kv) plan-focus-radii-midline Q9, revised 2026-09-20: continuing from a vertex on
+  // the mirror plane (a pinned midline vertex has exactly x=0) keeps the new curve there
+  // ONLY while the pen end is also on the plane, within line_tool_midline_px on screen.
+  // Decided at press before, which pinned every stroke from a midline vertex: in frontal
+  // view a sideways branch (vertex 59 towards 9) collapsed to a 3 px stub.
+  b32 midline = false;
+  if(tool.start_snap >= 0 and doc.vertices[tool.start_snap].p.x == 0)
+  {
+   v3 pinned_bone = doc.vertices[tool.temp_end_vertex].p;
+   pinned_bone.x = 0;
+   v3 pinned_world = mat4vert(get_bone(bone_id, false)->world_from_bone, pinned_bone);
+   Screen_Projection_Data proj = mk_screen_projection_data(state, viewport);
+   v2 off_plane_px = project(proj, tool.end_world) - project(proj, pinned_world);
+   midline = (lengthof(V3(off_plane_px, 0)) < line_tool_midline_px);
+  }
+  prim.curve.midline = midline;
+ }
  // NOTE(kv) Path and both endpoints lie on the stroke plane (the start defines the
  // plane, the end is unprojected onto it), so the raw 3D fit stays flat.
  v3 p1, p2;
