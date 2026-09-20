@@ -104,6 +104,10 @@ struct Camera_Drag
 // in the channel file, because document_file_path (ad_serialize_recording.cpp, included
 // earlier) picks the agent's own document off it (plan-selection-followups Q3).
 global b32 debug_channel_enabled;
+// NOTE(kv) Channel `set show_panels 1`: the agent instance draws the ImGui panels too (off
+// by default -- they clutter screenshots), to check a panel's layout. A DLL global, so a
+// hot reload turns it back off.
+global b32 debug_channel_show_panels;
 global i32 const Document_Selection_Cap = 4;  // at most this many primitives selected at once
 struct Document_Selection
 {// NOTE(kv) What commands act on (plan-active-primitive-delete-key.md): curves AND

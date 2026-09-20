@@ -918,6 +918,12 @@ debug_channel_update(Game_State *state, App *app)
     fprintf(out, "set reference_mode: %d\n", state->reference_mode);
     debug_channel_wants_animate = true;
    }
+   else if(strcmp(field, "show_panels") == 0)
+   {// NOTE(kv) Agent instance only: draw the ImGui panels (see debug_channel_show_panels).
+    debug_channel_show_panels = (value != 0);
+    fprintf(out, "set show_panels: %d\n", debug_channel_show_panels);
+    debug_channel_wants_animate = true;
+   }
    else if(strcmp(field, "preset") == 0)
    {
     if(0 <= value and value < state->model.recordings.preset_count)

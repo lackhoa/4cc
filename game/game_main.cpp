@@ -2788,8 +2788,8 @@ game_update(Game_Update_Params params)
   }
 
   // NOTE(kv) Agent mode has no mouse user; the debug channel sets these knobs and
-  // the panels would only clutter screenshots.
-  if(not debug_channel_enabled)
+  // the panels would only clutter screenshots. `set show_panels 1` brings them back.
+  if(not debug_channel_enabled or debug_channel_show_panels)
   {//-Replay panel (draw-as-data step 3, Q23)
    Replay_State &replay = state->replay;
    im_begin("Replay", 0, ImGuiWindowFlags_NoFocusOnAppearing);
@@ -2828,7 +2828,7 @@ game_update(Game_Update_Params params)
    im_end();
   }
 
-  if(not debug_channel_enabled)
+  if(not debug_channel_enabled or debug_channel_show_panels)
   {//-Presets panel (plan-settings-ui): list on the left, the ACTIVE preset's fields on the right.
    Model_Recordings &rec = state->model.recordings;
    i32 active = state->viewports[0].preset;
