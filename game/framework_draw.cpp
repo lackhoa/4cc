@@ -54,7 +54,9 @@ poly3_inner(Poly3 points,
  if(current_location_is_hot())
  {
   for_i32(i,0,3){ colors[i] = hot_color; }
-  is_overlay = true;
+  // NOTE(kv) Only lines pop on top: a hot *fill* drawn as overlay paints the whole
+  // screen red whenever the mouse grazes something at the back. It's tinted in place.
+  if(is_line){ is_overlay = true; }
  }
  
  for_i32(i,0,3){ vertices[i].color = colors[i]; }
