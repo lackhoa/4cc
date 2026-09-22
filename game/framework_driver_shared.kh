@@ -216,6 +216,7 @@ enum Reference_Scene
  Scene_Eco_Skeleton = 3,
  Scene_Head_Profile = 4,
  Scene_Skull = 5,  // NOTE(kv) the reference skull mesh, no image (plan-reference-skull-toggle)
+ Scene_Head_Layers = 6,  // NOTE(kv) Z-Anatomy skull/teeth/eyeball/skin/muscles, per-layer show_reference_* flags (plan-reference-head-skin-pair)
 };
 [info]
 // NOTE(kv) Global reference z-order (state.txt; Q toggles it). References (images + the
@@ -268,49 +269,6 @@ framework_api_xlist_2(X) \
 memory_functions_xlist(X)
 }
 
-struct Reference_Image
-{
- Stringz filename;
- Reference_Placement placement;
-};
-struct Reference_Scene_Data
-{
- // NOTE @Camera_Data
- v1 camera_phi2;
- v1 camera_theta2;
- Reference_Image image;
- // NOTE(kv) Optional reference mesh (the skull): empty filename = the scene has none.
- // Drawn under Bone_Head (unlike the image, which sits under Bone_References).
- Stringz mesh_filename;
- Reference_Mesh_Placement mesh_placement;
- Pose pose;
-};
-
-api_table driver_api
-{
- void driver_render(Arena *arena, Painter *painter);
- void driver_update(Model *model, v1 anim_time);
- void driver_shutdown(void);
- void driver_update_tweaks();
- Reference_Scene_Data driver_get_scene_data(Reference_Scene scene);
-}
-
-generate
-{
- gen_for(driver_api)
- {
-#define `(name)__return `return
-#define `(name)__params `params
-  
- }
- 
-#define driver_api_xlist(X) \
-gen_for(driver_api)
- {
-  X(`name) \
- }
-}
-
 [info]
 // NOTE(kv) One preset ("draw preset") = a named bundle of small display settings over
 // the ONE model (Q57/Q61, plan-settings-ui). Live rows sit in Model_Recordings (shared
@@ -346,6 +304,63 @@ struct Preset_Settings
  //-Picking
  b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
 };
+
+// NOTE(kv) Declared after Preset_Settings: Reference_Mesh_Layer points at one of its flags.
+struct Reference_Image
+{
+ Stringz filename;
+ Reference_Placement placement;
+};
+struct Reference_Mesh_Layer
+{// NOTE(kv) One reference mesh of a scene (plan-reference-head-skin-pair Q8): drawn opaque
+ // in `color` when the preset's `show_flag` is set (null = always drawn, the lone skull of
+ // Scene_Skull). All layers of a scene share the scene's one Reference_Mesh_Placement.
+ Stringz filename;
+ v3 color;
+ Preset_Flag show_flag;  // NOTE(kv) typedef in framework_driver_shared.h (pointer-to-member)
+};
+struct Reference_Scene_Data
+{
+ // NOTE @Camera_Data
+ v1 camera_phi2;
+ v1 camera_theta2;
+ Reference_Image image;
+ // NOTE(kv) Optional reference meshes: mesh_layer_count == 0 = the scene has none.
+ // Drawn under Bone_Head (unlike the image, which sits under Bone_References). Layer 0
+ // is the one the gizmo bounds itself on, whether or not it is shown (Q13).
+ // mesh_placement_id names the slider the placement was read from, so the gizmo can
+ // find the one to drag (the value here is a copy).
+ Reference_Mesh_Layer mesh_layers[reference_mesh_layer_cap];
+ i32 mesh_layer_count;
+ Reference_Mesh_Placement mesh_placement;
+ Stringz mesh_placement_id;
+ Pose pose;
+};
+
+api_table driver_api
+{
+ void driver_render(Arena *arena, Painter *painter);
+ void driver_update(Model *model, v1 anim_time);
+ void driver_shutdown(void);
+ void driver_update_tweaks();
+ Reference_Scene_Data driver_get_scene_data(Reference_Scene scene);
+}
+
+generate
+{
+ gen_for(driver_api)
+ {
+#define `(name)__return `return
+#define `(name)__params `params
+
+ }
+
+#define driver_api_xlist(X) \
+gen_for(driver_api)
+ {
+  X(`name) \
+ }
+}
 
 [info embed]
 struct Saved_Viewport

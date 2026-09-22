@@ -164,8 +164,29 @@ driver_get_scene_data(Reference_Scene scene)
   case Scene_Skull:
   {// NOTE(kv) plan-reference-skull-toggle: the skull is opt-in like any other reference.
    result.camera_phi2 = 0.25f;
-   result.mesh_filename  = fmesh(strlit("G:/My Drive/autodraw/reference-models/female-skull-hangar79-10k.obj"));
-   result.mesh_placement = fv(Reference_Mesh_Placement_0);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/female-skull-hangar79-10k.obj")),
+                            V3(0.85f, 0.8f, 0.7f), 0);
+   result.mesh_placement    = fv(Reference_Mesh_Placement_0);
+   result.mesh_placement_id = strlit("Reference_Mesh_Placement_0");
+  }break;
+
+  case Scene_Head_Layers:
+  {// NOTE(kv) plan-reference-head-skin-pair: the Z-Anatomy head, one layer per show_reference_*
+   // flag, all sharing one placement (the files were exported recentered on the skull's
+   // bbox center, in mm like the hangar79 skull). Layer 0 = the skull = the gizmo's bounds.
+   result.camera_phi2 = 0.25f;
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-skull.obj")),
+                            V3(0.85f, 0.8f, 0.7f), &Preset_Settings::show_reference_skull);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-teeth.obj")),
+                            V3(0.95f, 0.95f, 0.9f), &Preset_Settings::show_reference_teeth);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-eyeball.obj")),
+                            V3(0.9f, 0.9f, 0.95f), &Preset_Settings::show_reference_eyeball);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-skin_head.obj")),
+                            V3(0.9f, 0.75f, 0.65f), &Preset_Settings::show_reference_skin);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-facial_muscles.obj")),
+                            V3(0.75f, 0.35f, 0.35f), &Preset_Settings::show_reference_muscles);
+   result.mesh_placement    = fv(Reference_Mesh_Placement_1);
+   result.mesh_placement_id = strlit("Reference_Mesh_Placement_1");
   }break;
 
   case Scene_Eco_Skeleton:
@@ -1883,12 +1904,12 @@ show_reference_images()
  {//-Reference scene path (image + optional mesh come with the scene)
   Reference_Scene_Data data = driver_get_scene_data(scene);
   if(scene_has_mesh(data))
-  {//-Reference skull (plan-reference-skull.md): follows the head bone, left side only
-   // (the mesh is a whole skull; the right head bone is just the mirror). A plain if,
-   // not ShowGroup: the mesh is pushed directly, vis_live can't gate it.
+  {//-Reference meshes (plan-reference-skull.md): follow the head bone, left side only
+   // (each mesh is a whole head part; the right head bone is just the mirror). A plain if,
+   // not ShowGroup: the meshes are pushed directly, vis_live can't gate them.
    SetInBlock(the_model->is_right, 0);
    BoneBlock(mk_bone_id(Bone_Head));
-   draw_reference_mesh(data.mesh_filename, data.mesh_placement);
+   draw_reference_mesh_layers(data);
   }
   BoneBlock(Bone_References);
   draw_reference_image_from_data(data.image);

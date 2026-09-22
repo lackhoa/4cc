@@ -26,6 +26,13 @@ typedef v3 tvec;
 #define PRESET_NAME_CAP 32    // Preset_Settings.name, in framework_driver_shared.kh
 // NOTE(kv) Recorded_Primitive.vertex_index cap (ad_file_formats.kh); see primitive_vertex_count.
 global i32 const recorded_vertex_cap = 4;
+// NOTE(kv) Reference_Scene_Data.mesh_layers cap (framework_driver_shared.kh): the five head layers.
+global i32 const reference_mesh_layer_cap = 5;
+// NOTE(kv) A b32 flag of Preset_Settings, by pointer-to-member (Reference_Mesh_Layer.show_flag
+// in the .kh). Typedef'd here because klang doesn't parse `b32 Preset_Settings::*`; a
+// pointer-to-member of a not-yet-defined class is fine, the class comes from the gen.h.
+struct Preset_Settings;
+typedef b32 Preset_Settings::*Preset_Flag;
 // NOTE(kv) Order matters: ad_file_formats.kh holds the recorded-drawing structs, which
 // use tvert/Bezier/Bone_ID/Location from framework_driver_shared.kh.
 #include "framework_driver_shared.gen.h"
@@ -35,8 +42,8 @@ global i32 const recorded_vertex_cap = 4;
 //-
 myinline b32
 scene_has_mesh(Reference_Scene_Data &data)
-{// NOTE(kv) A scene carries a reference mesh (the skull) iff it names a file.
- return data.mesh_filename.len > 0;
+{// NOTE(kv) A scene carries reference meshes iff it lists at least one layer.
+ return data.mesh_layer_count > 0;
 }
 myinline tdim mkdim(v1 x){ return {x}; }
 

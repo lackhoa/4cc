@@ -500,8 +500,6 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
  if(not is_fill_enabled()) { return; }
  Reference_Mesh *mesh = load_reference_mesh(filename);
  if(mesh->load_failed){ return; }
- painter->reference_mesh_obj_radius = mesh->bound_radius;  // NOTE(kv) for the gizmo
- painter->reference_mesh_obj_center = mesh->bound_center;
  v1 alpha = 1.0f;  // NOTE(kv) opaque, z-ordered by reference_mode (@reference_depth_offset)
  u64 cycle_start = __rdtsc();
  i32 triangle_count = mesh->indices.count / 3;
@@ -553,6 +551,38 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
                   mesh->face_normals.items, triangle_count, view, V4(color, alpha),
                   reference_depth_offset(), hot);
  painter->reference_mesh_cycles += u32(__rdtsc() - cycle_start);
+}
+
+function void
+add_reference_mesh_layer(Reference_Scene_Data *data, Stringz filename, v3 color,
+                         Preset_Flag show_flag)
+{// NOTE(kv) Appends a layer to the scene (driver_get_scene_data); see Reference_Mesh_Layer.
+ kv_assert(data->mesh_layer_count < reference_mesh_layer_cap);
+ data->mesh_layers[data->mesh_layer_count++] = {filename, color, show_flag};
+}
+
+function void
+draw_reference_mesh_layers(Reference_Scene_Data &data)
+{// NOTE(kv) Every shown layer of the scene, all in the scene's one placement. The gizmo's
+ // bounding sphere comes from layer 0 whether it is shown or not (plan-reference-head-skin-pair
+ // Q13): the skull is the layer whose bounds stay put, the skin would grow the sphere.
+ if(not is_fill_enabled()) { return; }
+ Preset_Settings &settings = active_preset_settings();
+ for_i32(layer_index, 0, data.mesh_layer_count)
+ {
+  Reference_Mesh_Layer &layer = data.mesh_layers[layer_index];
+  if(layer_index == 0)
+  {
+   Reference_Mesh *mesh = load_reference_mesh(layer.filename);
+   if(not mesh->load_failed)
+   {
+    painter->reference_mesh_obj_radius = mesh->bound_radius;
+    painter->reference_mesh_obj_center = mesh->bound_center;
+   }
+  }
+  b32 shown = (layer.show_flag == 0 or settings.*layer.show_flag);
+  if(shown){ draw_reference_mesh(layer.filename, data.mesh_placement, layer.color); }
+ }
 }
 
 //~ EOF

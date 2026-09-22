@@ -82,8 +82,9 @@ get_reference_plane(Reference_Placement &placement, Stringz filename, Reference_
 
 function Reference_Mesh_Placement *
 get_reference_mesh_placement(Game_State *state)
-{// NOTE(kv) The sole driver-side Reference_Mesh_Placement slider (the skull), null until
- // the driver has drawn the mesh once (that's when its bounding radius gets published).
+{// NOTE(kv) The active scene's Reference_Mesh_Placement slider (named by the scene data,
+ // one per mesh scene), null until the driver has drawn the scene once (that's when its
+ // bounding radius gets published).
  // Reads state, not the painter: the painter is null outside call_driver_render.
  // Also null when the active scene carries no mesh (plan-reference-skull-toggle Q2): the
  // radius stays set after one draw, so a hidden skull would otherwise stay pickable.
@@ -94,18 +95,9 @@ get_reference_mesh_placement(Game_State *state)
  if(not is_valid(driver)){ return 0; }
  Reference_Scene_Data data = driver->driver_get_scene_data(scene);
  if(not scene_has_mesh(data)){ return 0; }
- sarray(FUI_File_Data) files = get_file_array({1, 0});
- for_i32(file_index, 1, files.count)
- {
-  for_each(slider, files[file_index].sliders)
-  {
-   if(type_info_equals(slider->type, Reference_Mesh_Placement))
-   {
-    return (Reference_Mesh_Placement *)slider->value;
-   }
-  }
- }
- return 0;
+ Slider *slider = find_slider_by_id(/*is_driver*/true, data.mesh_placement_id);
+ if(slider == 0){ return 0; }
+ return (Reference_Mesh_Placement *)slider->value;
 }
 
 myinline v1

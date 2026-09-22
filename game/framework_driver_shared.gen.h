@@ -1339,7 +1339,8 @@ Scene_Back = 1,
 Scene_Arm_Profile = 2,
 Scene_Eco_Skeleton = 3,
 Scene_Head_Profile = 4,
-Scene_Skull = 5,};
+Scene_Skull = 5,
+Scene_Head_Layers = 6,};
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:579:
 function Type_Info
@@ -1350,13 +1351,14 @@ Type_Info result = {};
 result.name = strlit("Reference_Scene");
 result.size = sizeof(Reference_Scene);
 result.kind = I_Type_Kind_Enum;
-result.enum_members.set_count(6);
+result.enum_members.set_count(7);
 result.enum_members[0] = {.name=strlit("Scene_None"), .value=Scene_None};
 result.enum_members[1] = {.name=strlit("Scene_Back"), .value=Scene_Back};
 result.enum_members[2] = {.name=strlit("Scene_Arm_Profile"), .value=Scene_Arm_Profile};
 result.enum_members[3] = {.name=strlit("Scene_Eco_Skeleton"), .value=Scene_Eco_Skeleton};
 result.enum_members[4] = {.name=strlit("Scene_Head_Profile"), .value=Scene_Head_Profile};
 result.enum_members[5] = {.name=strlit("Scene_Skull"), .value=Scene_Skull};
+result.enum_members[6] = {.name=strlit("Scene_Head_Layers"), .value=Scene_Head_Layers};
 return result;
 }
 #if WANT_TYPE_INFO
@@ -1447,48 +1449,6 @@ static_assert( sizeof(Reference_Mode) <= sizeof(i32) );
 framework_api_xlist_1(X) \
 framework_api_xlist_2(X) \
 memory_functions_xlist(X)
-
-
-struct Reference_Image{
-Stringz filename;
-Reference_Placement placement;
-};
-;
-struct Reference_Scene_Data{
-v1 camera_phi2;
-v1 camera_theta2;
-Reference_Image image;
-Stringz mesh_filename;
-Reference_Mesh_Placement mesh_placement;
-Pose pose;
-};
-;
-
-
- #define driver_render__return void
-#define driver_render__params Arena *arena, Painter *painter
-  
- #define driver_update__return void
-#define driver_update__params Model *model, v1 anim_time
-  
- #define driver_shutdown__return void
-#define driver_shutdown__params void
-  
- #define driver_update_tweaks__return void
-#define driver_update_tweaks__params 
-  
- #define driver_get_scene_data__return Reference_Scene_Data
-#define driver_get_scene_data__params Reference_Scene scene
-  
- 
- 
-#define driver_api_xlist(X) \
-  X(driver_render) \
-   X(driver_update) \
-   X(driver_shutdown) \
-   X(driver_update_tweaks) \
-   X(driver_get_scene_data) \
- 
 
 
 struct Preset_Settings{
@@ -1739,6 +1699,57 @@ dst->fill_only_picking = m_fill_only_picking;
 }
 #endif
 ;
+
+
+struct Reference_Image{
+Stringz filename;
+Reference_Placement placement;
+};
+;
+struct Reference_Mesh_Layer{
+Stringz filename;
+v3 color;
+Preset_Flag show_flag;
+};
+;
+struct Reference_Scene_Data{
+v1 camera_phi2;
+v1 camera_theta2;
+Reference_Image image;
+Reference_Mesh_Layer mesh_layers[reference_mesh_layer_cap];
+i32 mesh_layer_count;
+Reference_Mesh_Placement mesh_placement;
+Stringz mesh_placement_id;
+Pose pose;
+};
+;
+
+
+ #define driver_render__return void
+#define driver_render__params Arena *arena, Painter *painter
+
+ #define driver_update__return void
+#define driver_update__params Model *model, v1 anim_time
+
+ #define driver_shutdown__return void
+#define driver_shutdown__params void
+
+ #define driver_update_tweaks__return void
+#define driver_update_tweaks__params 
+
+ #define driver_get_scene_data__return Reference_Scene_Data
+#define driver_get_scene_data__params Reference_Scene scene
+
+ 
+
+#define driver_api_xlist(X) \
+  X(driver_render) \
+   X(driver_update) \
+   X(driver_shutdown) \
+   X(driver_update_tweaks) \
+   X(driver_get_scene_data) \
+ 
+
 
 struct Saved_Viewport{
 Camera_Data target_camera;
