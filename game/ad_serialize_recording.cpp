@@ -11,7 +11,7 @@
 // struct change keep stale files from being misread. The preset table moved to
 // data/state.txt at Version_PresetsInStateFile (plan-presets-text-file).
 //
-// NOTE(kv) The *document* (game/driver/driver.document.ad, git-tracked) is drawing data,
+// NOTE(kv) The *document* (game/driver/documents/<name>.ad, git-tracked) is drawing data,
 // not debug state; it used to share this header and block, and since 2026-09-12 it is
 // written and read in the self-describing schema form (ad_serialize_schema.cpp). Only
 // the file path and the save/load entry points live here.
@@ -23,21 +23,44 @@ recording_file_path(Arena *arena, Game_State *state)
 {
  return pjoin(arena, state->save_dir, strlit("recording.ad"));
 }
+function String
+current_document_name(Game_State *state)
+{// NOTE(kv) plan-checkpoints-as-files Q5: an empty name (state.txt without the key) = "main".
+ String name = SCu8(state->current_document_name);
+ if(name.len == 0){ return strlit("main"); }
+ return name;
+}
+function Stringz
+live_document_directory(Arena *arena, Game_State *state)
+{
+ return pjoin(arena, state->code_dir, strlit("game/driver/documents"));
+}
+function Stringz
+document_directory(Arena *arena, Game_State *state)
+{// NOTE(kv) plan-selection-followups Q3: the agent instance (-debug-cmd) edits its own
+ // copies (documents-agent/), so channel tests never dirty a live document. Refresh the
+ // open one with the `document_copy_from_live` channel command.
+ if(debug_channel_enabled)
+ {
+  return pjoin(arena, state->code_dir, strlit("game/driver/documents-agent"));
+ }
+ return live_document_directory(arena, state);
+}
+function Stringz
+document_file_path_from_name(Arena *arena, Game_State *state, String name)
+{
+ return pjoin(arena, document_directory(arena, state), push_stringf(arena, "%S.ad", name));
+}
 function Stringz
 live_document_file_path(Arena *arena, Game_State *state)
 {
- return pjoin(arena, state->code_dir, strlit("game/driver/driver.document.ad"));
+ return pjoin(arena, live_document_directory(arena, state),
+              push_stringf(arena, "%S.ad", current_document_name(state)));
 }
 function Stringz
 document_file_path(Arena *arena, Game_State *state)
-{// NOTE(kv) plan-selection-followups Q3: the agent instance (-debug-cmd) edits its own
- // git-tracked copy, so channel test drags never dirty the live document. Refresh it
- // with the `document_copy_from_live` channel command.
- if(debug_channel_enabled)
- {
-  return pjoin(arena, state->code_dir, strlit("game/driver/driver.document.agent.ad"));
- }
- return live_document_file_path(arena, state);
+{// NOTE(kv) The open document's file.
+ return document_file_path_from_name(arena, state, current_document_name(state));
 }
 
 //~ Writing
@@ -152,6 +175,7 @@ save_document_file(Game_State *state)
  // NOTE(kv) plan-keyboard-vertex-move Q7: an uncommitted keyboard nudge never reaches the file.
  history_nudge_cancel(state);
  Scratch_Scope tmp;
+ mkdir_p(document_directory(tmp, state));  // NOTE(kv) the agent's documents-agent/ on a fresh clone
  b32 ok = save_file_via_temp(state, document_file_path(tmp, state),
                              pjoin(tmp, state->save_dir, strlit("document_temp.ad")),
                              write_document_schema_file, "document");
@@ -275,7 +299,7 @@ load_recording_file(Game_State *state)
  return r->ok;
 }
 
-function void document_checkpoint_load_all(Game_State *state);  // game_document_checkpoint.cpp
+function void document_file_list(Game_State *state);  // game_document_file.cpp
 function b32
 load_document_file(Game_State *state)
 {
@@ -294,8 +318,8 @@ load_document_file(Game_State *state)
  // NOTE(kv) The file replaced the document from outside: the undo snapshots describe a
  // different document now (plan-document-undo-redo Q6).
  if(ok){ history_clear(state); state->document_selection.count = 0; }
- // NOTE(kv) plan-document-checkpoints: the checkpoint files sit next to the document.
- document_checkpoint_load_all(state);
+ // NOTE(kv) plan-checkpoints-as-files: the panel's list of document files.
+ document_file_list(state);
  // NOTE(kv) The day's backup is taken here, of the files as they were before today's
  // edits. A rejected document doesn't use up the day's backup.
  if(ok){ document_backup(state); }

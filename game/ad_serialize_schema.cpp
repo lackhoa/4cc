@@ -804,8 +804,8 @@ function b32
 load_document_schema_file_into(Recording &doc, Stringz path, String file_data,
                                u64 *optional_timestamp=0)
 {// NOTE(kv) Reads into a fresh arena and swaps it in only on success, so a rejected
- // file leaves `doc` untouched. `doc` is the live document or a checkpoint's recording
- // (plan-document-checkpoints); it must stay at this address (darray arena pointers).
+ // file leaves `doc` untouched. `doc` is the live document or the compare document
+ // (plan-checkpoints-as-files); it must stay at this address (darray arena pointers).
  Binary_Reader reader = make_binary_reader(file_data.data, file_data.size);
  Arena arena = make_arena();
  Document_File value = {};

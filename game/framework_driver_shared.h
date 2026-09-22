@@ -24,6 +24,7 @@ typedef v3 tvec;
 #define Game_Preset_Count 10  // presets seeded on first run; digit keys select presets 0-9 (game_main.cpp key handler)
 #define PRESET_CAP 32         // fixed storage cap for the preset rows (panel enforces it)
 #define PRESET_NAME_CAP 32    // Preset_Settings.name, in framework_driver_shared.kh
+#define DOCUMENT_NAME_CAP 64  // a document's file name without ".ad" (game_document_file.cpp)
 // NOTE(kv) Recorded_Primitive.vertex_index cap (ad_file_formats.kh); see primitive_vertex_count.
 global i32 const recorded_vertex_cap = 4;
 // NOTE(kv) Reference_Scene_Data.mesh_layers cap (framework_driver_shared.kh): the five head layers.
@@ -498,15 +499,15 @@ struct Model_Recordings
 {
  Recording recording;  // live capture of the code path, recaptured every frame (debug/diff)
  // NOTE(kv) The *document*: regions already migrated out of code (plan-data-only-region-poc
- // Q92). Loaded from game/driver/driver.document.ad at startup, never recaptured,
- // replayed every frame with rendering on. "Is it data?" == "is it in here".
+ // Q92). Loaded from game/driver/documents/<current_document_name>.ad at startup, never
+ // recaptured, replayed every frame with rendering on. "Is it data?" == "is it in here".
  Recording document;
  i32 preset_count;  // rows in use, 1..PRESET_CAP
  Preset_Settings preset_settings[PRESET_CAP];
  // NOTE(kv) plan-eye-to-document step 1: the Recording drawn as the document THIS frame --
- // `document`, or the compare checkpoint while flipped. Set by the game right before
+ // `document`, or the compare document while flipped. Set by the game right before
  // driver_update, so driver code that reads the document (eye_origin) flips with it.
- // Never kept across frames (a checkpoint can be freed by a document reload).
+ // Never kept across frames (the compare document can be reloaded or cleared).
  Recording *displayed_document;
 };
 struct Model

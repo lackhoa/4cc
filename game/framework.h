@@ -176,8 +176,6 @@ enum Document_Action_Kind
  Document_Action_Unlink_Vertices,
  // NOTE(kv) plan-point-primitive: new group + vertex + point primitive `prim_index`.
  Document_Action_Add_Point,
- // NOTE(kv) plan-document-checkpoints Q5: `index` = the checkpoint's number.
- Document_Action_Go_Back_To_Checkpoint,
  // NOTE(kv) plan-eye-to-document Q1: curve `prim_index` closes onto curve `index` (-1 = none).
  Document_Action_Set_Key_Target,
 };
@@ -250,23 +248,25 @@ struct Document_History
  char status[160];  // "undo: move vertex 12 (nose)", shown on screen for status_frames
  i32 status_frames;
 };
-// NOTE(kv) Document checkpoints (game_document_checkpoint.cpp, plan-document-checkpoints.md):
-// copies of the document the user chose to keep, one plain document file each
-// (driver.document.checkpoint-NN.ad), all loaded in memory so a flip costs nothing.
-#define DOCUMENT_CHECKPOINT_CAP 99
-struct Document_Checkpoint
+// NOTE(kv) Document files (game_document_file.cpp, plan-checkpoints-as-files.md): every
+// document is one named file in game/driver/documents/; the app edits one of them
+// (current_document_name, in Serialized_State) and can flip to another (the compare document).
+#define DOCUMENT_FILE_CAP 256
+struct Document_File_Entry
 {
- Recording recording;  // NOTE(kv) its darrays point at recording.arena: never move an entry
- i32 number;           // the NN of the file name, 1-based
- u64 time;             // from the file header (time_t)
+ char name[DOCUMENT_NAME_CAP];  // file name without ".ad"
+ u64 modified_time;             // file mtime
 };
-struct Document_Checkpoint_State
+struct Document_File_State
 {
- Document_Checkpoint entries[DOCUMENT_CHECKPOINT_CAP];  // ascending number
+ Document_File_Entry entries[DOCUMENT_FILE_CAP];  // from document_file_list, sorted by name
  i32 count;
- i32 compare_checkpoint_index;   // the entry the flip shows; -1 when there is none
- b32 is_flipped_to_checkpoint;   // this frame the compare checkpoint is drawn, not the document
- b32 is_flipped_by_debug_channel;  // `checkpoint_flip 1` holds the flip without the key
+ char compare_document_name[DOCUMENT_NAME_CAP];  // the document the flip shows; "" = none
+ Recording compare_recording;  // NOTE(kv) loaded copy of it; darrays point at its arena, never move it
+ u64 compare_recording_modified_time;  // mtime it was loaded at; a newer file reloads on the next flip
+ b32 is_flipped_to_compare_document;   // this frame the compare document is drawn, not the open one
+ b32 is_flipped_by_debug_channel;      // `document_file_flip 1` holds the flip without the key
+ char name_input[DOCUMENT_NAME_CAP];   // the panel's text field (save-as-copy / rename)
 };
 struct Game_State
 {// NOTE The state that is saved between reloads.
@@ -326,7 +326,7 @@ struct Game_State
  Line_Tool_State line_tool;
  Split_Tool_State split_tool;
  Document_Vertex_Selection document_vertex_selection;
- Document_Checkpoint_State document_checkpoints;
+ Document_File_State document_files;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

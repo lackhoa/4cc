@@ -1,11 +1,11 @@
 // NOTE(kv) Document backup (2026-09-20): once a day, at the first document load (or save,
-// when the app stayed open overnight), the document, its checkpoints, driver.values.ad,
+// when the app stayed open overnight), every document file (documents/*.ad), driver.values.ad,
 // state.txt and recording.ad are copied into a folder on Google Drive
 // (~/personal-drive/autodraw-backup/YYYY-MM-DD/). A day that already has a folder is left
 // alone. Retention is by size, not age, so a long break deletes nothing: the oldest day
 // folders go only while the total is over DOCUMENT_BACKUP_MAX_BYTES.
 // Personal app: the location is hard-coded. Windows only.
-// Not the same thing as a checkpoint: backups are automatic and never loaded by the app.
+// Not the same thing as a document copy: backups are automatic and never loaded by the app.
 
 #define DOCUMENT_BACKUP_MAX_BYTES (100ull*1024ull*1024ull)
 
@@ -134,10 +134,15 @@ document_backup(Game_State *state)
  b32 ok = mkdir_p(root) and mkdir_p(day_dir);
  if(ok)
  {
-  document_backup_copy(tmp, document_file_path(tmp, state), day_dir, &ok);
-  for_i32(number, 1, DOCUMENT_CHECKPOINT_CAP + 1)
+  // NOTE(kv) plan-checkpoints-as-files: every document file, in a documents/ subfolder
+  // (a document named "recording" must not collide with recording.ad).
+  Stringz documents_dir = pjoin(tmp, day_dir, strlit("documents"));
+  ok = ok and mkdir_p(documents_dir);
+  document_file_list(state);
+  for_i32(index, 0, state->document_files.count)
   {
-   document_backup_copy(tmp, document_checkpoint_file_path(tmp, state, number), day_dir, &ok);
+   String name = SCu8(state->document_files.entries[index].name);
+   document_backup_copy(tmp, document_file_path_from_name(tmp, state, name), documents_dir, &ok);
   }
   document_backup_copy(tmp, pjoin(tmp, state->code_dir, strlit("game/driver/driver.values.ad")), day_dir, &ok);
   document_backup_copy(tmp, pjoin(tmp, state->save_dir, strlit("state.txt")), day_dir, &ok);

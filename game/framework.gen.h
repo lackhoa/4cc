@@ -80,6 +80,7 @@ b32 user_wants_orthographic;
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];
 Preset_Settings presets[PRESET_CAP];
 i32 presets_count;
+char current_document_name[DOCUMENT_NAME_CAP];
 };
 #if WANT_TYPE_INFO
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
@@ -89,7 +90,7 @@ Type_Info result = {};
 result.name = strlit("Serialized_State");
 result.size = sizeof(Serialized_State);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(6);
+result.members.set_count(7);
 {
 Type_Info *member_type = & Type_Info_Keyboard_Cursor;
 result.members[0] = {.type=member_type, .name=strlit("kb_cursor"), .offset=offsetof(Serialized_State, kb_cursor)};
@@ -127,6 +128,17 @@ result.members[4] = {.type=member_type, .name=strlit("presets"), .offset=offseto
 {
 Type_Info *member_type = & Type_Info_i32;
 result.members[5] = {.type=member_type, .name=strlit("presets_count"), .offset=offsetof(Serialized_State, presets_count)};
+}
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
+member_type->name = strlit("char[DOCUMENT_NAME_CAP]");
+member_type->kind = I_Type_Kind_Array;
+member_type->size = DOCUMENT_NAME_CAP * Type_Info_char.size;
+member_type->array_item_type = & Type_Info_char;
+member_type->count = DOCUMENT_NAME_CAP;
+result.members[6] = {.type=member_type, .name=strlit("current_document_name"), .offset=offsetof(Serialized_State, current_document_name)};
 }
 return result;
 }
@@ -183,6 +195,14 @@ read_binary_i32(r, &m_presets_count);
 }
 dst->presets_count = m_presets_count;
 
+char m_current_document_name[DOCUMENT_NAME_CAP] = {};
+{
+for_i32(i,0,DOCUMENT_NAME_CAP){
+read_binary_char(r, &m_current_document_name[i]);
+}
+}
+copy_array_dst(dst->current_document_name, m_current_document_name);
+
 
 }
 #endif
@@ -196,6 +216,7 @@ b32 user_wants_orthographic;\
 Saved_Viewport saved_viewports[GAME_VIEWPORT_COUNT];\
 Preset_Settings presets[PRESET_CAP];\
 i32 presets_count;\
+char current_document_name[DOCUMENT_NAME_CAP];\
 \
 };\
 ;

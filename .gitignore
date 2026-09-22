@@ -8,6 +8,7 @@ dont_check_in/*
 # App-written data; backed up to Google Drive by game/game_document_backup.cpp
 data/recording.ad
 data/state.txt
-game/driver/driver.document.checkpoint-*.ad
-game/driver/driver.document.agent.checkpoint-*.ad
-game/driver/checkpoint-trash/
+# plan-checkpoints-as-files: documents/*.ad are tracked; the trash and the agent's extra copies are not
+game/driver/documents/trash/
+game/driver/documents-agent/*
+!game/driver/documents-agent/main.ad

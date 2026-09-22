@@ -429,7 +429,7 @@ read_debug_string(Binary_Reader *r, Stringz string)
 #include "ad_serialize_schema.cpp"
 #include "ad_serialize_state.cpp"
 #include "game_document_history.cpp"
-#include "game_document_checkpoint.cpp"
+#include "game_document_file.cpp"
 #include "game_document_backup.cpp"
 #include "game_document.cpp"
 #include "ad_serialize_slider_values.cpp"
@@ -776,10 +776,9 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
     }
    }
 
-   // NOTE(kv) plan-document-checkpoints Q1: the flip swaps which Recording is replayed.
-   Document_Checkpoint *flipped_checkpoint = (state->document_checkpoints.is_flipped_to_checkpoint ?
-                                              document_checkpoint_compare(state) : 0);
-   Recording &document = (flipped_checkpoint ? flipped_checkpoint->recording :
+   // NOTE(kv) plan-checkpoints-as-files: the flip swaps which Recording is replayed.
+   Recording &document = (state->document_files.is_flipped_to_compare_document ?
+                          state->document_files.compare_recording :
                           the_model->recordings.document);
    if(document.captured)
    {// NOTE(kv) The document is drawing, not debug state: replayed in every viewport,
@@ -1938,10 +1937,10 @@ game_update(Game_Update_Params params)
    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true, false);
   }
 
-  // NOTE(kv) plan-document-checkpoints: while flipped the document is hidden, so a press
+  // NOTE(kv) plan-checkpoints-as-files: while flipped the document is hidden, so a press
   // must not pick or edit it.
   if(params.mouse.press_left and not state->document_mouse_drag.active and not state->camera_drag.active
-     and not state->document_checkpoints.is_flipped_to_checkpoint)
+     and not state->document_files.is_flipped_to_compare_document)
   {// NOTE(kv) Hot code item: jump to code. Near a control point of a SELECTED document
    // primitive: start a drag (Q6, explicit selection since 2026-09-13). Hot unselected
    // document item: select it, no drag. Nothing hot: camera drag (orbit, alt = pan).
@@ -2336,14 +2335,17 @@ game_update(Game_Update_Params params)
    seconds_since_last_keystroke_2 = 0;
   }
 
-  {// NOTE(kv) plan-document-checkpoints Q1: hold C = the compare checkpoint is drawn
-   // instead of the document. Recomputed every frame, so a release always flips back.
-   Document_Checkpoint_State &checkpoints = state->document_checkpoints;
-   b32 was_flipped = checkpoints.is_flipped_to_checkpoint;
+  {// NOTE(kv) plan-checkpoints-as-files: hold C = the compare document is drawn instead
+   // of the open one. Recomputed every frame, so a release always flips back.
+   Document_File_State &files = state->document_files;
+   b32 was_flipped = files.is_flipped_to_compare_document;
    b32 wants_flip = ((viewport_focused and key_is_down(input, Key_Code_C)) or
-                     checkpoints.is_flipped_by_debug_channel);
-   checkpoints.is_flipped_to_checkpoint = (wants_flip and document_checkpoint_compare(state) != 0);
-   if(was_flipped != checkpoints.is_flipped_to_checkpoint){ should_animate_next_frame = true; }
+                     files.is_flipped_by_debug_channel);
+   // NOTE(kv) The compare file may have changed since it was picked (step 4): reload it
+   // when a flip starts, if its mtime moved.
+   if(wants_flip and not was_flipped){ document_file_refresh_compare(state); }
+   files.is_flipped_to_compare_document = (wants_flip and document_file_has_compare(state));
+   if(was_flipped != files.is_flipped_to_compare_document){ should_animate_next_frame = true; }
   }
 
   u32 mods = input->active_mods;
@@ -2414,8 +2416,9 @@ game_update(Game_Update_Params params)
       // NOTE(kv) Document undo/redo (plan-document-undo-redo Q5).
       case C|Key_Code_Z:{ history_undo(state); }break;
       case C|S|Key_Code_Z: case C|Key_Code_Y:{ history_redo(state); }break;
-      // NOTE(kv) plan-document-checkpoints Q3: checkpoint now (plain C held = flip, above).
-      case S|Key_Code_C:{ document_checkpoint_create(state); }break;
+      // NOTE(kv) plan-checkpoints-as-files: save a copy as <open>-NN, which becomes the
+      // compare document (plain C held = flip, above).
+      case S|Key_Code_C:{ document_file_save_as_copy_auto_name(state); }break;
       case Key_Code_A:
       {
        snap_camera(cam_data, update_viewport);
@@ -2626,7 +2629,7 @@ game_update(Game_Update_Params params)
 
   if(input_dir.xyz != v3{} and viewport_focused and not cursor_on and not fui_is_active() and
      state->document_vertex_selection.count > 0 and
-     not state->document_checkpoints.is_flipped_to_checkpoint and
+     not state->document_files.is_flipped_to_compare_document and
      (mods & ~u32(Key_Mod_Sft|Key_Mod_Alt)) == 0)
   {//-NOTE(kv) plan-keyboard-vertex-move: nudge the vertex selection, same feel as a tvert
    // slider (held keys, camera-aligned, Shift = x10). Alt = solo (link members stay, Q5).
@@ -2732,11 +2735,17 @@ game_update(Game_Update_Params params)
    if (state->load_failed) { DEBUG_TEXT("state.txt REJECTED (syntax) -- see log"); }
    if (state->save_failed) { DEBUG_TEXT("Save failed!"); }
    if (state->recording_load_failed) { DEBUG_TEXT("recording.ad REJECTED (version/corrupt) -- see log"); }
-   if (state->document_load_failed)  { DEBUG_TEXT("driver.document.ad REJECTED (version/corrupt) -- see log"); }
-   if (state->document_checkpoints.is_flipped_to_checkpoint)
+   if (state->document_load_failed)
    {
-    char flip_text[64];
-    snprintf(flip_text, sizeof(flip_text), "showing checkpoint %d", document_checkpoint_compare(state)->number);
+    char rejected_text[128];
+    snprintf(rejected_text, sizeof(rejected_text), "document %.*s REJECTED (version/corrupt) -- see log",
+             string_expand(current_document_name(state)));
+    DEBUG_TEXT(rejected_text);
+   }
+   if (state->document_files.is_flipped_to_compare_document)
+   {
+    char flip_text[128];
+    snprintf(flip_text, sizeof(flip_text), "showing %s", state->document_files.compare_document_name);
     DEBUG_TEXT(flip_text);
    }
    if (state->document_history.pending_nudge) { DEBUG_TEXT("vertex move pending -- Enter commits, Esc cancels"); }
@@ -2974,41 +2983,79 @@ game_update(Game_Update_Params params)
     }
     ImGui::EndChild();
     if(jump_to != -1){ history_jump(state, jump_to); }
-    {//-Checkpoints (plan-document-checkpoints Q4): `>` = the compare checkpoint (hold C
-     // to see it); click a row to make it that; "go back" makes the document equal it.
-     Document_Checkpoint_State &checkpoints = state->document_checkpoints;
+    {//-Documents (plan-checkpoints-as-files step 5): `*` = the open document, `>` = the
+     // compare document (hold C to see it). Click a row to make it the compare one;
+     // "open" switches which file the app edits (nothing is copied over).
+     Document_File_State &files = state->document_files;
      ImGui::Separator();
-     if(ImGui::Button("checkpoint now (Shift+C)")){ document_checkpoint_create(state); }
-     ImGui::BeginChild("checkpoint_list", ImVec2(300, 160), true);
-     i32 go_back_to = -1;
-     i32 delete_index = -1;
-     for_i32(index, 0, checkpoints.count)
+     ImGui::Text("documents (open: %.*s)", string_expand(current_document_name(state)));
+     ImGui::SetNextItemWidth(160);
+     ImGui::InputText("##document_name_input", files.name_input, sizeof(files.name_input));
+     String name_input = SCu8(files.name_input);
+     ImGui::SameLine();
+     if(ImGui::SmallButton("save as copy"))
      {
-      Document_Checkpoint &checkpoint = checkpoints.entries[index];
-      time_t time_value = cast(time_t)checkpoint.time;
+      if(name_input.size == 0){ document_file_save_as_copy_auto_name(state); }
+      else if(document_file_save_as_copy(state, name_input)){ files.name_input[0] = 0; }
+      else{ document_file_set_status(state, "save as copy: bad name or it exists (a-z 0-9 - _)"); }
+     }
+     if(ImGui::IsItemHovered()){ ImGui::SetTooltip("empty name = <open>-NN (Shift+C)"); }
+     ImGui::SameLine();
+     if(ImGui::SmallButton("rename open"))
+     {
+      char old_name[DOCUMENT_NAME_CAP];
+      snprintf(old_name, sizeof(old_name), "%.*s", string_expand(current_document_name(state)));
+      if(document_file_rename(state, SCu8(old_name), name_input)){ files.name_input[0] = 0; }
+      else{ document_file_set_status(state, "rename: bad name or it exists (a-z 0-9 - _)"); }
+     }
+     ImGui::BeginChild("document_file_list", ImVec2(320, 160), true);
+     i32 open_index    = -1;
+     i32 delete_index  = -1;
+     i32 compare_index = -1;
+     for_i32(index, 0, files.count)
+     {
+      Document_File_Entry &entry = files.entries[index];
+      // NOTE(kv) FILETIME: 100 ns ticks since 1601.
+      time_t time_value = cast(time_t)(entry.modified_time/10000000ull - 11644473600ull);
       char time_text[32] = "?";
       tm *local = localtime(&time_value);
       if(local){ strftime(time_text, sizeof(time_text), "%m-%d %H:%M", local); }
-      b32 is_compare = (index == checkpoints.compare_checkpoint_index);
-      char label[96];
-      snprintf(label, sizeof(label), "go back##checkpoint_go_back%d", index);
-      if(ImGui::SmallButton(label)){ go_back_to = index; }
+      b32 is_open    = string_match(SCu8(entry.name), current_document_name(state));
+      b32 is_compare = (strcmp(entry.name, files.compare_document_name) == 0);
+      char label[128];
+      snprintf(label, sizeof(label), "open##document_open%d", index);
+      if(is_open){ ImGui::BeginDisabled(); }
+      if(ImGui::SmallButton(label)){ open_index = index; }
+      if(is_open){ ImGui::EndDisabled(); }
       ImGui::SameLine();
-      snprintf(label, sizeof(label), "%c checkpoint %d  %s##checkpoint%d", is_compare ? '>' : ' ',
-               checkpoint.number, time_text, index);
-      // NOTE(kv) Q12c: the row stops short so the `x` sits at the right end, far from "go back".
+      snprintf(label, sizeof(label), "%c%c %s  %s##document%d", is_open ? '*' : ' ', is_compare ? '>' : ' ',
+               entry.name, time_text, index);
+      // NOTE(kv) The row stops short so the `x` sits at the right end, far from "open".
       if(ImGui::Selectable(label, is_compare, 0, ImVec2(ImGui::GetContentRegionAvail().x - 24, 0)))
       {
-       checkpoints.compare_checkpoint_index = index;
+       compare_index = index;
       }
       ImGui::SameLine();
-      snprintf(label, sizeof(label), "x##checkpoint_delete%d", index);
+      snprintf(label, sizeof(label), "x##document_delete%d", index);
+      if(is_open){ ImGui::BeginDisabled(); }
       if(ImGui::SmallButton(label)){ delete_index = index; }
-      if(ImGui::IsItemHovered()){ ImGui::SetTooltip("move to checkpoint-trash/"); }
+      if(is_open){ ImGui::EndDisabled(); }
+      if(ImGui::IsItemHovered()){ ImGui::SetTooltip("move to documents/trash/"); }
      }
      ImGui::EndChild();
-     if(go_back_to != -1){ document_checkpoint_go_back_to(state, go_back_to); }
-     if(delete_index != -1){ document_checkpoint_delete(state, delete_index); }
+     // NOTE(kv) Acted on after the loop: each of these refreshes the list. Copy the name first.
+     i32 acted_index = (open_index != -1 ? open_index : delete_index != -1 ? delete_index : compare_index);
+     if(acted_index != -1)
+     {
+      char name[DOCUMENT_NAME_CAP];
+      block_copy(name, files.entries[acted_index].name, sizeof(name));
+      if(open_index != -1){ document_file_open(state, SCu8(name)); }
+      else if(delete_index != -1){ document_file_delete(state, SCu8(name)); }
+      else if(not document_file_set_compare(state, SCu8(name)))
+      {
+       document_file_set_status(state, "could not load %s (see log)", name);
+      }
+     }
     }
     im_end();
    }
@@ -3217,9 +3264,8 @@ game_update(Game_Update_Params params)
    v1 anim_time = state->looping_time;
    game_update_result.anim_time = anim_time;
    {// NOTE(kv) plan-eye-to-document step 1: same choice the document replay makes.
-    Document_Checkpoint *flipped_checkpoint = (state->document_checkpoints.is_flipped_to_checkpoint ?
-                                               document_checkpoint_compare(state) : 0);
-    the_model->recordings.displayed_document = (flipped_checkpoint ? &flipped_checkpoint->recording :
+    the_model->recordings.displayed_document = (state->document_files.is_flipped_to_compare_document ?
+                                                &state->document_files.compare_recording :
                                                 &the_model->recordings.document);
    }
    driver->driver_update(the_model, anim_time);

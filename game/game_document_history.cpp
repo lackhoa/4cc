@@ -235,8 +235,6 @@ document_action_text(char *buf, i32 cap, Document_Action &action, Recording &doc
   case Document_Action_Add_Point:
    return snprintf(buf, cap, "add point %d (%.*s)", action.prim_index,
                    strexpand(document_group_name(doc, action.prim_index)));
-  case Document_Action_Go_Back_To_Checkpoint:
-   return snprintf(buf, cap, "go back to checkpoint %d", action.index);
   case Document_Action_Set_Key_Target:
    return snprintf(buf, cap, "key target of curve %d = %d", action.prim_index, action.index);
   case Document_Action_Delete_Selection:

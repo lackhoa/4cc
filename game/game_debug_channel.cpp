@@ -702,8 +702,9 @@ debug_channel_update(Game_State *state, App *app)
  }
  else if(strcmp(cmd, "document_copy_from_live") == 0)
  {// NOTE(kv) plan-selection-followups Q3: refresh the agent's own document
-  // (driver.document.agent.ad) from the live driver.document.ad, then reload it.
+  // (documents-agent/<name>.ad) from the live documents/<name>.ad, then reload it.
   Scratch_Scope tmp;
+  mkdir_p(document_directory(tmp, state));
   Stringz src = live_document_file_path(tmp, state);
   Stringz dst = document_file_path(tmp, state);
   Stringz data = read_entire_file(tmp, src);
@@ -768,46 +769,55 @@ debug_channel_update(Game_State *state, App *app)
  {
   history_dump(out, state);
  }
- //-NOTE(kv) plan-document-checkpoints. <n> is the checkpoint's NUMBER (file name), not an index.
- else if(strcmp(cmd, "checkpoint_create") == 0)
+ //-NOTE(kv) plan-checkpoints-as-files: same names as the functions (game_document_file.cpp).
+ // <name> = file name without ".ad"; the agent works on its own copies in documents-agent/.
+ else if(strcmp(cmd, "document_file_list") == 0)
  {
-  i32 number = document_checkpoint_create(state);
-  fprintf(out, "checkpoint_create: %s (%d)\n", number ? "ok" : "FAILED", number);
+  document_file_list(state);
+  document_file_dump(out, state);
+ }
+ else if(strncmp(cmd, "document_file_open ", 19) == 0)
+ {
+  b32 ok = document_file_open(state, SCu8(cmd + 19));
+  fprintf(out, "document_file_open: %s\n", ok ? "ok" : "FAILED (bad name, no such file, flipped, or rejected)");
   debug_channel_wants_animate = true;
  }
- else if(strcmp(cmd, "checkpoint_list") == 0)
- {
-  document_checkpoint_dump(out, state);
- }
- else if(strncmp(cmd, "checkpoint_compare_with ", 24) == 0)
- {
-  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 24));
-  if(index != -1){ state->document_checkpoints.compare_checkpoint_index = index; }
-  fprintf(out, "checkpoint_compare_with: %s\n", index != -1 ? "ok" : "no such checkpoint");
+ else if(strncmp(cmd, "document_file_save_as_copy", 26) == 0)
+ {// NOTE(kv) No name = the Shift+C auto name <open>-NN.
+  b32 ok = (cmd[26] == ' ' ? document_file_save_as_copy(state, SCu8(cmd + 27)) :
+            document_file_save_as_copy_auto_name(state));
+  fprintf(out, "document_file_save_as_copy: %s (compare = %s)\n", ok ? "ok" : "FAILED (bad name or exists)",
+          state->document_files.compare_document_name);
   debug_channel_wants_animate = true;
  }
- else if(strncmp(cmd, "checkpoint_flip ", 16) == 0)
+ else if(strncmp(cmd, "document_file_rename ", 21) == 0)
  {
-  state->document_checkpoints.is_flipped_by_debug_channel = (atoi(cmd + 16) != 0);
-  fprintf(out, "checkpoint_flip: %d\n", state->document_checkpoints.is_flipped_by_debug_channel);
+  char old_name[DOCUMENT_NAME_CAP] = {}, new_name[DOCUMENT_NAME_CAP] = {};
+  b32 ok = (sscanf(cmd + 21, "%63s %63s", old_name, new_name) == 2 and
+            document_file_rename(state, SCu8(old_name), SCu8(new_name)));
+  fprintf(out, "document_file_rename: %s\n", ok ? "ok" : "FAILED (bad name, no such file, or new name exists)");
+ }
+ else if(strncmp(cmd, "document_file_delete ", 21) == 0)
+ {
+  b32 ok = document_file_delete(state, SCu8(cmd + 21));
+  fprintf(out, "document_file_delete: %s\n", ok ? "ok" : "refused (no such file, open, flipped, or move failed)");
   debug_channel_wants_animate = true;
  }
- else if(strncmp(cmd, "checkpoint_go_back_to ", 22) == 0)
+ else if(strncmp(cmd, "document_file_compare_with ", 27) == 0)
  {
-  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 22));
-  b32 ok = document_checkpoint_go_back_to(state, index);
-  fprintf(out, "checkpoint_go_back_to: %s\n", ok ? "ok" : "no such checkpoint");
+  document_file_list(state);
+  b32 ok = document_file_set_compare(state, SCu8(cmd + 27));
+  fprintf(out, "document_file_compare_with: %s\n", ok ? "ok" : "FAILED (no such file or rejected)");
   debug_channel_wants_animate = true;
  }
- else if(strncmp(cmd, "checkpoint_delete ", 18) == 0)
- {// NOTE(kv) Q12: moves the file to game/driver/checkpoint-trash/.
-  i32 index = document_checkpoint_index_from_number(state, atoi(cmd + 18));
-  b32 ok = document_checkpoint_delete(state, index);
-  fprintf(out, "checkpoint_delete: %s\n", ok ? "ok" : "refused (no such checkpoint, flipped, or move failed)");
+ else if(strncmp(cmd, "document_file_flip ", 19) == 0)
+ {
+  state->document_files.is_flipped_by_debug_channel = (atoi(cmd + 19) != 0);
+  fprintf(out, "document_file_flip: %d\n", state->document_files.is_flipped_by_debug_channel);
   debug_channel_wants_animate = true;
  }
  else if(strcmp(cmd, "document_schema_dump") == 0)
- {// NOTE(kv) The type table stored in driver.document.ad, as text (ad_serialize_schema.cpp).
+ {// NOTE(kv) The type table stored in the open document file, as text (ad_serialize_schema.cpp).
   dump_document_schema_file(out, state);
  }
  else if(strncmp(cmd, "recapture", 9) == 0)

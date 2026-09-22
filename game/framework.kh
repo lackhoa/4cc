@@ -31,6 +31,10 @@ struct Serialized_State
  // the walker writes only that many items and sets it to the number read back.
  Preset_Settings presets[PRESET_CAP];
  i32 presets_count;
+
+ // NOTE(kv) plan-checkpoints-as-files Q5: the document the app edits,
+ // game/driver/documents/<name>.ad. Empty = "main".
+ char current_document_name[DOCUMENT_NAME_CAP];
 };
 
 //-
