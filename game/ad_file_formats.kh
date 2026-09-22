@@ -200,7 +200,7 @@ enum Group_Vis
  Vis_Iris,
  // NOTE(kv) plan-move-the-eye: the group of the eye ANCHOR (a point primitive). The driver
  // reads its position in place of the eye-origin slider (eye_origin in driver.kc). Not a
- // region: live value = !Preset_Settings.hide_anchors.
+ // region: live value = Preset_Settings.show_anchors.
  Vis_Anchor_Eye,
  //
  Group_Vis_Count,

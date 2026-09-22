@@ -1499,12 +1499,17 @@ Reference_Scene scene;
 b32 show_eyeball;
 b32 show_loomis_ball;
 b32 show_grid;
-b32 hide_hair;
-b32 hide_anchors;
+b32 show_hair;
+b32 show_anchors;
 b32 show_all_lines;
 b32 show_arm_medial_right;
 b32 show_arm_back_bone;
 b32 show_arm_profile_left;
+b32 show_reference_skull;
+b32 show_reference_teeth;
+b32 show_reference_eyeball;
+b32 show_reference_skin;
+b32 show_reference_muscles;
 b32 fill_only_picking;
 };
 #if WANT_TYPE_INFO
@@ -1515,7 +1520,7 @@ Type_Info result = {};
 result.name = strlit("Preset_Settings");
 result.size = sizeof(Preset_Settings);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(14);
+result.members.set_count(19);
 {
 local_persist Type_Info member_type_value;
 Type_Info *member_type = &member_type_value;
@@ -1553,11 +1558,11 @@ result.members[6] = {.type=member_type, .name=strlit("show_grid"), .offset=offse
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[7] = {.type=member_type, .name=strlit("hide_hair"), .offset=offsetof(Preset_Settings, hide_hair)};
+result.members[7] = {.type=member_type, .name=strlit("show_hair"), .offset=offsetof(Preset_Settings, show_hair)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[8] = {.type=member_type, .name=strlit("hide_anchors"), .offset=offsetof(Preset_Settings, hide_anchors)};
+result.members[8] = {.type=member_type, .name=strlit("show_anchors"), .offset=offsetof(Preset_Settings, show_anchors)};
 }
 {
 Type_Info *member_type = & Type_Info_b32;
@@ -1577,7 +1582,27 @@ result.members[12] = {.type=member_type, .name=strlit("show_arm_profile_left"), 
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[13] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
+result.members[13] = {.type=member_type, .name=strlit("show_reference_skull"), .offset=offsetof(Preset_Settings, show_reference_skull)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[14] = {.type=member_type, .name=strlit("show_reference_teeth"), .offset=offsetof(Preset_Settings, show_reference_teeth)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[15] = {.type=member_type, .name=strlit("show_reference_eyeball"), .offset=offsetof(Preset_Settings, show_reference_eyeball)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[16] = {.type=member_type, .name=strlit("show_reference_skin"), .offset=offsetof(Preset_Settings, show_reference_skin)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[17] = {.type=member_type, .name=strlit("show_reference_muscles"), .offset=offsetof(Preset_Settings, show_reference_muscles)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[18] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
 }
 return result;
 }
@@ -1638,17 +1663,17 @@ read_binary_b32(r, &m_show_grid);
 }
 dst->show_grid = m_show_grid;
 
-b32 m_hide_hair = {};
+b32 m_show_hair = {};
 {
-read_binary_b32(r, &m_hide_hair);
+read_binary_b32(r, &m_show_hair);
 }
-dst->hide_hair = m_hide_hair;
+dst->show_hair = m_show_hair;
 
-b32 m_hide_anchors = {};
+b32 m_show_anchors = {};
 {
-read_binary_b32(r, &m_hide_anchors);
+read_binary_b32(r, &m_show_anchors);
 }
-dst->hide_anchors = m_hide_anchors;
+dst->show_anchors = m_show_anchors;
 
 b32 m_show_all_lines = {};
 {
@@ -1673,6 +1698,36 @@ b32 m_show_arm_profile_left = {};
 read_binary_b32(r, &m_show_arm_profile_left);
 }
 dst->show_arm_profile_left = m_show_arm_profile_left;
+
+b32 m_show_reference_skull = {};
+{
+read_binary_b32(r, &m_show_reference_skull);
+}
+dst->show_reference_skull = m_show_reference_skull;
+
+b32 m_show_reference_teeth = {};
+{
+read_binary_b32(r, &m_show_reference_teeth);
+}
+dst->show_reference_teeth = m_show_reference_teeth;
+
+b32 m_show_reference_eyeball = {};
+{
+read_binary_b32(r, &m_show_reference_eyeball);
+}
+dst->show_reference_eyeball = m_show_reference_eyeball;
+
+b32 m_show_reference_skin = {};
+{
+read_binary_b32(r, &m_show_reference_skin);
+}
+dst->show_reference_skin = m_show_reference_skin;
+
+b32 m_show_reference_muscles = {};
+{
+read_binary_b32(r, &m_show_reference_muscles);
+}
+dst->show_reference_muscles = m_show_reference_muscles;
 
 b32 m_fill_only_picking = {};
 {

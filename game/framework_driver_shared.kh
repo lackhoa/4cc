@@ -327,8 +327,8 @@ struct Preset_Settings
  b32 show_eyeball;
  b32 show_loomis_ball;
  b32 show_grid;
- b32 hide_hair;             // inverted so zero (= every existing preset) keeps the hair
- b32 hide_anchors;          // inverted likewise: anchors (Vis_Anchor_Eye) show by default
+ b32 show_hair;             // NOTE(kv) positive like the rest; presets in state.txt set it explicitly
+ b32 show_anchors;          // anchors (Vis_Anchor_Eye)
  // NOTE(kv) 2026-09-20, was ignore_radii + ignore_alignment_min: every line draws, with
  // uniform default radii -- no per-line alignment_min test, no group cam_vis test (fills
  // still obey cam_vis). Line_Invisible lines stay invisible.
@@ -337,6 +337,12 @@ struct Preset_Settings
  b32 show_arm_medial_right; // right-camera reference image
  b32 show_arm_back_bone;    // back-camera reference image
  b32 show_arm_profile_left; // left-camera reference image
+ //-Reference mesh layers (Scene_Head_Layers, plan-reference-head-skin-pair Q9/Q11)
+ b32 show_reference_skull;
+ b32 show_reference_teeth;
+ b32 show_reference_eyeball;
+ b32 show_reference_skin;
+ b32 show_reference_muscles;
  //-Picking
  b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
 };

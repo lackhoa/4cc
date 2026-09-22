@@ -27,6 +27,8 @@ seed_preset_settings(Model_Recordings *recordings)
   snprintf(row.name, sizeof(row.name), "preset %d", preset);
   row.reference_image = -1;
   row.scene = Scene_None;
+  row.show_hair    = true;  // NOTE(kv) hair + eye anchor show unless a preset opts out
+  row.show_anchors = true;
   switch(preset)
   {
    case 1:

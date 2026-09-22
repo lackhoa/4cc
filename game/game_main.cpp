@@ -2894,7 +2894,7 @@ game_update(Game_Update_Params params)
     };
 #define X(field) \
 { preset_checkbox(get_member_index_by_name(preset_type, strlit(#field))); }
-    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(hide_hair) X(hide_anchors) X(show_all_lines)
+    X(show_eyeball) X(show_loomis_ball) X(show_grid) X(show_hair) X(show_anchors) X(show_all_lines)
     ImGui::SeparatorText("Reference images");
     {// NOTE(kv) Scene combo from the enum's reflection, so new scenes show up for free.
      Type_Info *scene_type = &Type_Info_Reference_Scene;
@@ -2918,6 +2918,8 @@ game_update(Game_Update_Params params)
     }
     ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
     X(show_arm_medial_right) X(show_arm_back_bone) X(show_arm_profile_left)
+    ImGui::SeparatorText("Reference mesh layers");
+    X(show_reference_skull) X(show_reference_teeth) X(show_reference_eyeball) X(show_reference_skin) X(show_reference_muscles)
     ImGui::SeparatorText("Picking");
     X(fill_only_picking)
 #undef X
@@ -3185,8 +3187,8 @@ game_update(Game_Update_Params params)
      m->vis_live[Vis_Level1]               = (row.viz_level >= 1);
      m->vis_live[Vis_Eyeball]              = row.show_eyeball;
      m->vis_live[Vis_Loomis_Ball]          = row.show_loomis_ball;
-     m->vis_live[Vis_Hair]                 = !row.hide_hair;
-     m->vis_live[Vis_Anchor_Eye]           = !row.hide_anchors;
+     m->vis_live[Vis_Hair]                 = row.show_hair;
+     m->vis_live[Vis_Anchor_Eye]           = row.show_anchors;
      m->vis_live[Vis_Ref_Arm_Medial_Right] = row.show_arm_medial_right;
      m->vis_live[Vis_Ref_Arm_Back_Bone]    = row.show_arm_back_bone;
      m->vis_live[Vis_Ref_Arm_Profile_Left] = row.show_arm_profile_left;
