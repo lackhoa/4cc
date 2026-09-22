@@ -2919,7 +2919,14 @@ game_update(Game_Update_Params params)
     ImGui::SliderInt("reference_image", &row.reference_image, -1, 4);
     X(show_arm_medial_right) X(show_arm_back_bone) X(show_arm_profile_left)
     ImGui::SeparatorText("Reference mesh layers");
-    X(show_reference_skull) X(show_reference_teeth) X(show_reference_eyeball) X(show_reference_skin) X(show_reference_muscles)
+    {// NOTE(kv) The flags only pick layers OF the scene; without the scene they do nothing,
+     // so grey them out instead of letting the user wonder why nothing shows.
+     b32 layers_active = (row.scene == Scene_Head_Layers);
+     if(not layers_active){ ImGui::TextDisabled("(scene must be Scene_Head_Layers)"); }
+     ImGui::BeginDisabled(not layers_active);
+     X(show_reference_skull) X(show_reference_teeth) X(show_reference_eyeball) X(show_reference_skin) X(show_reference_muscles)
+     ImGui::EndDisabled();
+    }
     ImGui::SeparatorText("Picking");
     X(fill_only_picking)
 #undef X
