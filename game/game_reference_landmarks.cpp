@@ -89,11 +89,27 @@ reference_landmark_world_from_mesh(Game_State *state, Reference_Mesh_Placement &
  return world_from_bone * bone_from_mesh;
 }
 
+function Reference_Landmark *
+reference_landmark_find_any_layer(Game_State *state, String name)
+{// NOTE(kv) First layer (scene order) whose set has the name.
+ for_i32(layer_index, 0, reference_mesh_layer_cap)
+ {
+  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
+  if(set == 0){ break; }
+  Reference_Landmark *landmark = reference_landmark_find(set, name);
+  if(landmark){ return landmark; }
+ }
+ return 0;
+}
+
 //~ NOTE(kv) Step 4: the jaw hinge (plan Q6). The mandible layer is flagged `hinged` in the
 // scene; its transform is a rotation about the condyle axis (landmarks `condyle_l` /
-// `condyle_r` on the mandible mesh) by the angle that brings `incisor_lower` (mandible mesh)
-// onto `incisor_upper` (any other layer). All Z-Anatomy layers share one .obj frame, so the
-// four points live in the same space. Missing landmarks = no hinge (identity).
+// `condyle_r` on the mandible mesh). Missing landmarks = no hinge (identity).
+// NOTE(kv) Closed = the mesh as exported (fixed 2026-09-23). The first version turned the jaw
+// until `incisor_lower` met `incisor_upper`, i.e. an edge-to-edge bite. A normal closed bite
+// has the upper incisors ~2-3 mm in front of (overjet) and over (overbite) the lower ones,
+// and what stops the closing is the molars meeting, which Z-Anatomy already models. So the
+// incisor landmarks no longer drive the angle; reference_jaw_bite reports the bite they show.
 
 function mat3
 mat3_rotate_axis(v3 u, v1 radians)
@@ -120,25 +136,28 @@ reference_jaw_hinge(Game_State *state, i32 layer_index, mat4i *hinge_out, v1 *ra
  if(set == 0){ return false; }
  Reference_Landmark *condyle_l = reference_landmark_find(set, strlit("condyle_l"));
  Reference_Landmark *condyle_r = reference_landmark_find(set, strlit("condyle_r"));
- Reference_Landmark *incisor_lower = reference_landmark_find(set, strlit("incisor_lower"));
- Reference_Landmark *incisor_upper = 0;
- for_i32(other, 0, data.mesh_layer_count)
- {
-  if(other == layer_index){ continue; }
-  Reference_Landmarks_One_Layer *other_set = reference_landmark_set_for_layer(state, other);
-  if(other_set){ incisor_upper = reference_landmark_find(other_set, strlit("incisor_upper")); }
-  if(incisor_upper){ break; }
- }
- if(not (condyle_l and condyle_r and incisor_lower and incisor_upper)){ return false; }
+ if(not (condyle_l and condyle_r)){ return false; }
  v3 pivot = 0.5f*(condyle_l->p + condyle_r->p);
  v3 axis = noz(condyle_r->p - condyle_l->p);
- // NOTE(kv) Angle between the two incisors seen down the axis (components along it dropped).
- v3 a = incisor_lower->p - pivot; a -= axis*dot(a, axis);
- v3 b = incisor_upper->p - pivot; b -= axis*dot(b, axis);
- if(lengthof(a) < 1e-6f or lengthof(b) < 1e-6f){ return false; }
- v1 radians = atan2f(dot(cross(a, b), axis), dot(a, b));
+ // NOTE(kv) Opening angle; 0 = the mesh's own closed bite. TODO(kv) a jaw-open control, only
+ // if open-mouth poses are ever wanted (plan Q6). Pure rotation is only right for small
+ // openings: past ~20 mm at the incisors the condyles also slide forward.
+ v1 radians = 0.f;
  *hinge_out = mat4i_translate(pivot) * mat4i_rotate(mat3_rotate_axis(axis, radians)) * mat4i_translate(-pivot);
  if(radians_out){ *radians_out = radians; }
+ return true;
+}
+
+function b32
+reference_jaw_bite(Game_State *state, v1 *overjet_mm_out, v1 *overbite_mm_out)
+{// NOTE(kv) The bite the incisor landmarks show, mesh units (mm): overjet = how far
+ // `incisor_upper` sits in front of `incisor_lower`, overbite = how far it hangs below it
+ // (mesh: -y front, +z up). Normal is ~2-3 mm each. Diagnostic only (landmark_dump).
+ Reference_Landmark *upper = reference_landmark_find_any_layer(state, strlit("incisor_upper"));
+ Reference_Landmark *lower = reference_landmark_find_any_layer(state, strlit("incisor_lower"));
+ if(not (upper and lower)){ return false; }
+ *overjet_mm_out  = lower->p.y - upper->p.y;
+ *overbite_mm_out = lower->p.z - upper->p.z;
  return true;
 }
 
@@ -364,19 +383,6 @@ landmark_tool_release(Game_State *state)
 // Bone_Head space (= world axes at rest: x side, +y up, +z front, see get_camera /
 // mat4i_rotate_tpr), porion_r - porion_l is along +x, the plane normal is +y and the front
 // is +z. Center/scale stay as they are (set_reference_mesh_scale_rotation re-anchors).
-
-function Reference_Landmark *
-reference_landmark_find_any_layer(Game_State *state, String name)
-{// NOTE(kv) First layer (scene order) whose set has the name.
- for_i32(layer_index, 0, reference_mesh_layer_cap)
- {
-  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
-  if(set == 0){ break; }
-  Reference_Landmark *landmark = reference_landmark_find(set, name);
-  if(landmark){ return landmark; }
- }
- return 0;
-}
 
 function b32
 reference_level(Game_State *state, v3 *rotation_out, v1 *error_out)

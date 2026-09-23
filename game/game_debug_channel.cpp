@@ -575,7 +575,15 @@ debug_channel_landmark_dump(FILE *out, Game_State *state)
   mat4i hinge; v1 hinge_radians = 0;
   b32 hinged = reference_jaw_hinge(state, layer_index, &hinge, &hinge_radians);
   fprintf(out, "layer %d: %s (%d landmarks)", layer_index, set->mesh_path, set->file.landmarks_count);
-  if(hinged){ fprintf(out, " hinge %.2f deg", hinge_radians*180.f/3.14159265f); }
+  if(hinged)
+  {
+   fprintf(out, " hinge %.2f deg", hinge_radians*180.f/3.14159265f);
+   v1 overjet = 0, overbite = 0;
+   if(reference_jaw_bite(state, &overjet, &overbite))
+   {
+    fprintf(out, ", incisor bite: overjet %.1f mm, overbite %.1f mm (normal ~2-3 each)", overjet, overbite);
+   }
+  }
   fprintf(out, "\n");
   for_i32(i, 0, set->file.landmarks_count)
   {
