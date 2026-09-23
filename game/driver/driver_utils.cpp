@@ -391,6 +391,7 @@ struct Reference_Mesh
  // bone-space vertices and face normals are computed once per placement change and the
  // per-frame work is one dot product + the push. Storage is reused across placements.
  Reference_Mesh_Placement cached_placement;
+ mat4 cached_pre;           // NOTE(kv) the per-layer pre-transform (hinge) the cache was built with
  b32 cache_valid;
  sarray(v3) bone_vertices;  // vertices.count entries
  sarray(v3) face_normals;   // indices.count/3 entries, unit, bone space
@@ -494,17 +495,20 @@ load_reference_mesh(Stringz filename)
 
 function void
 draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
-                    v3 color=V3(0.85f, 0.8f, 0.7f))
+                    v3 color=V3(0.85f, 0.8f, 0.7f), mat4i const *pre=0)
 {// NOTE(kv) Drawn under whatever bone the caller pushed (the skull goes under Bone_Head so
- // it follows the head pose). Coordinates: bone = center + scale * rotate(obj).
+ // it follows the head pose). Coordinates: bone = center + scale * rotate(pre * obj), `pre`
+ // = optional mesh-space transform (the mandible hinge), identity when null.
  if(not is_fill_enabled()) { return; }
  Reference_Mesh *mesh = load_reference_mesh(filename);
  if(mesh->load_failed){ return; }
  v1 alpha = 1.0f;  // NOTE(kv) opaque, z-ordered by reference_mode (@reference_depth_offset)
  u64 cycle_start = __rdtsc();
  i32 triangle_count = mesh->indices.count / 3;
+ mat4 pre_m = pre ? pre->forward : mat4_identity;
  if(not mesh->cache_valid or
-    not block_match(&mesh->cached_placement, &placement, sizeof(placement)))
+    not block_match(&mesh->cached_placement, &placement, sizeof(placement)) or
+    not block_match(&mesh->cached_pre, &pre_m, sizeof(pre_m)))
  {// NOTE(kv) Placement changed (or first draw): transform once, in bone space.
   if(mesh->bone_vertices.items == 0)
   {
@@ -518,6 +522,7 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
   mat4i T = (mat4i_translate(placement.center) *
              mat4i_scale(scale) *
              mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
+  if(pre){ T = T * (*pre); }
   for_i32(vi, 0, mesh->vertices.count)
   {
    mesh->bone_vertices[vi] = mat4vert(T, mesh->vertices[vi]);
@@ -535,6 +540,7 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
    mesh->face_normals[ti] = normal;  // NOTE(kv) zero normal = bad triangle, skipped below
   }
   mesh->cached_placement = placement;
+  mesh->cached_pre = pre_m;
   mesh->cache_valid = true;
  }
 
@@ -555,10 +561,10 @@ draw_reference_mesh(Stringz filename, Reference_Mesh_Placement placement,
 
 function void
 add_reference_mesh_layer(Reference_Scene_Data *data, Stringz filename, v3 color,
-                         Preset_Flag show_flag)
+                         Preset_Flag show_flag, b32 hinged=false)
 {// NOTE(kv) Appends a layer to the scene (driver_get_scene_data); see Reference_Mesh_Layer.
  kv_assert(data->mesh_layer_count < reference_mesh_layer_cap);
- data->mesh_layers[data->mesh_layer_count++] = {filename, color, show_flag};
+ data->mesh_layers[data->mesh_layer_count++] = {filename, color, show_flag, hinged};
 }
 
 function Reference_Mesh_Triangles
@@ -597,7 +603,9 @@ draw_reference_mesh_layers(Reference_Scene_Data &data)
    }
   }
   b32 shown = (layer.show_flag == 0 or settings.*layer.show_flag);
-  if(shown){ draw_reference_mesh(layer.filename, data.mesh_placement, layer.color); }
+  mat4i const *pre = ((layer.hinged and painter->reference_layer_hinge_valid[layer_index]) ?
+                      &painter->reference_layer_hinge[layer_index] : 0);
+  if(shown){ draw_reference_mesh(layer.filename, data.mesh_placement, layer.color, pre); }
  }
 }
 

@@ -79,13 +79,85 @@ function mat4i
 reference_landmark_world_from_mesh(Game_State *state, Reference_Mesh_Placement &placement)
 {// NOTE(kv) Mesh (.obj) space -> world: the shared placement (same math as
  // draw_reference_mesh / reference_mesh_bone_center), lifted through the LEFT Bone_Head the
- // meshes are drawn under.
+ // meshes are drawn under. Layer-independent; see reference_layer_world_from_mesh for the
+ // hinged mandible.
  mat4i world_from_bone = get_bone(mk_bone_id(Bone_Head), /*is_right*/false)->world_from_bone;
  mat4i bone_from_mesh = (mat4i_translate(placement.center) *
                          mat4i_scale(reference_mesh_effective_scale(placement)) *
                          mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y,
                                           placement.rotation.z));
  return world_from_bone * bone_from_mesh;
+}
+
+//~ NOTE(kv) Step 4: the jaw hinge (plan Q6). The mandible layer is flagged `hinged` in the
+// scene; its transform is a rotation about the condyle axis (landmarks `condyle_l` /
+// `condyle_r` on the mandible mesh) by the angle that brings `incisor_lower` (mandible mesh)
+// onto `incisor_upper` (any other layer). All Z-Anatomy layers share one .obj frame, so the
+// four points live in the same space. Missing landmarks = no hinge (identity).
+
+function mat3
+mat3_rotate_axis(v3 u, v1 radians)
+{// NOTE(kv) Rodrigues, u unit, right-handed about u.
+ v1 c = cosf(radians), s = sinf(radians), t = 1.f - c;
+ mat3 R;
+ R.rows[0] = V3(t*u.x*u.x + c,     t*u.x*u.y - s*u.z, t*u.x*u.z + s*u.y);
+ R.rows[1] = V3(t*u.x*u.y + s*u.z, t*u.y*u.y + c,     t*u.y*u.z - s*u.x);
+ R.rows[2] = V3(t*u.x*u.z - s*u.y, t*u.y*u.z + s*u.x, t*u.z*u.z + c);
+ return R;
+}
+
+function b32
+reference_jaw_hinge(Game_State *state, i32 layer_index, mat4i *hinge_out, v1 *radians_out=0)
+{// NOTE(kv) The hinged layer's mesh-space transform; false (identity) when the layer is not
+ // hinged or a landmark is missing.
+ *hinge_out = mat4i_identity;
+ if(get_reference_mesh_placement(state) == 0){ return false; }
+ Driver_API *driver = &state->driver_api;
+ Reference_Scene_Data data = driver->driver_get_scene_data(active_preset_row(state).scene);
+ if(layer_index < 0 or layer_index >= data.mesh_layer_count){ return false; }
+ if(not data.mesh_layers[layer_index].hinged){ return false; }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ if(set == 0){ return false; }
+ Reference_Landmark *condyle_l = reference_landmark_find(set, strlit("condyle_l"));
+ Reference_Landmark *condyle_r = reference_landmark_find(set, strlit("condyle_r"));
+ Reference_Landmark *incisor_lower = reference_landmark_find(set, strlit("incisor_lower"));
+ Reference_Landmark *incisor_upper = 0;
+ for_i32(other, 0, data.mesh_layer_count)
+ {
+  if(other == layer_index){ continue; }
+  Reference_Landmark_Set *other_set = reference_landmark_set_for_layer(state, other);
+  if(other_set){ incisor_upper = reference_landmark_find(other_set, strlit("incisor_upper")); }
+  if(incisor_upper){ break; }
+ }
+ if(not (condyle_l and condyle_r and incisor_lower and incisor_upper)){ return false; }
+ v3 pivot = 0.5f*(condyle_l->p + condyle_r->p);
+ v3 axis = noz(condyle_r->p - condyle_l->p);
+ // NOTE(kv) Angle between the two incisors seen down the axis (components along it dropped).
+ v3 a = incisor_lower->p - pivot; a -= axis*dot(a, axis);
+ v3 b = incisor_upper->p - pivot; b -= axis*dot(b, axis);
+ if(lengthof(a) < 1e-6f or lengthof(b) < 1e-6f){ return false; }
+ v1 radians = atan2f(dot(cross(a, b), axis), dot(a, b));
+ *hinge_out = mat4i_translate(pivot) * mat4i_rotate(mat3_rotate_axis(axis, radians)) * mat4i_translate(-pivot);
+ if(radians_out){ *radians_out = radians; }
+ return true;
+}
+
+function mat4i
+reference_layer_world_from_mesh(Game_State *state, Reference_Mesh_Placement &placement, i32 layer_index)
+{// NOTE(kv) world_from_mesh for one layer: the shared placement, plus the hinge for the mandible.
+ mat4i hinge;
+ reference_jaw_hinge(state, layer_index, &hinge);
+ return reference_landmark_world_from_mesh(state, placement) * hinge;
+}
+
+function void
+reference_fill_painter_hinges(Game_State *state, Painter *out_painter)
+{// NOTE(kv) Called right before driver_render: the driver draws hinged layers through these.
+ for_i32(layer_index, 0, reference_mesh_layer_cap)
+ {
+  out_painter->reference_layer_hinge_valid[layer_index] =
+   reference_jaw_hinge(state, layer_index, &out_painter->reference_layer_hinge[layer_index]);
+ }
 }
 
 function void
@@ -95,13 +167,13 @@ draw_reference_landmarks(Game_State *state, Camera &camera, v2 clip_center)
  // world-space text of its own).
  Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
  if(placement == 0){ return; }
- mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
  Screen_Projection_Data proj = mk_screen_projection_data(state, clip_center);
  argb color = argb_pack(V4(1.f, 0.6f, 0.1f, 1.f));
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
   Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
+  mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
   for_i32(i, 0, set->file.landmarks_count)
   {
    Reference_Landmark &landmark = set->file.landmarks[i];
@@ -136,19 +208,20 @@ reference_landmark_pick_mesh(Game_State *state, Screen_Projection_Data const &pr
  Driver_API *driver = &state->driver_api;
  Preset_Settings &settings = active_preset_row(state);
  Reference_Scene_Data data = driver->driver_get_scene_data(settings.scene);
- mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
- // NOTE(kv) camera-space pick ray -> world -> mesh (direction: difference of two points).
+ // NOTE(kv) camera-space pick ray -> world -> each layer's mesh space (direction: difference
+ // of two points). The hinge is rigid, so t is comparable across layers.
  Screen_Ray r = screen_ray(proj, px - proj.center);
  v3 world_P   = mat4vert(proj.camera.world_from_cam, r.P);
  v3 world_dir = mat4vert(proj.camera.world_from_cam, r.P + r.dir) - world_P;
- v3 mesh_P   = mat4vert(world_from_mesh.inverse, world_P);
- v3 mesh_dir = mat4vert(world_from_mesh.inverse, world_P + world_dir) - mesh_P;
  v1 best_t = INFINITY;
  for_i32(layer_index, 0, data.mesh_layer_count)
  {
   Reference_Mesh_Layer &layer = data.mesh_layers[layer_index];
   b32 shown = (layer.show_flag == 0 or settings.*layer.show_flag);
   if(not shown){ continue; }
+  mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
+  v3 mesh_P   = mat4vert(world_from_mesh.inverse, world_P);
+  v3 mesh_dir = mat4vert(world_from_mesh.inverse, world_P + world_dir) - mesh_P;
   Reference_Mesh_Triangles tris = driver->driver_get_reference_mesh(layer.filename);
   if(not tris.ok){ continue; }
   for(i32 i = 0; i+2 < tris.index_count; i += 3)
@@ -174,13 +247,13 @@ reference_landmark_pick_landmark(Game_State *state, Screen_Projection_Data const
 {// NOTE(kv) Nearest landmark within document_pick_radius_px of the mouse.
  Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
  if(placement == 0){ return false; }
- mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
  v1 best = document_pick_radius_px;
  b32 found = false;
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
   Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
+  mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
   for_i32(i, 0, set->file.landmarks_count)
   {
    v2 lpx = project(proj, mat4vert(world_from_mesh, set->file.landmarks[i].p));

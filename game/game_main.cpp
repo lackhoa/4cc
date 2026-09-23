@@ -733,6 +733,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
    global_replay_display = replay.display_replay;
    {
     u64 cycle_start = __rdtsc();
+    reference_fill_painter_hinges(state, painter);  // NOTE(kv) mandible hinge from landmarks
     driver->driver_render(tmp, painter);
     debug_cycles.driver_render    = u32(__rdtsc() - cycle_start);
     debug_cycles.render_character = painter->render_cycles;

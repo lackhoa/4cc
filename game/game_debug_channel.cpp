@@ -564,13 +564,17 @@ debug_channel_landmark_dump(FILE *out, Game_State *state)
  // (projected through the virtual mouse's viewport box, like `hot`).
  Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
  if(placement == 0){ fprintf(out, "landmark_dump: no mesh scene drawn\n"); return; }
- mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
  Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
   Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
-  fprintf(out, "layer %d: %s (%d landmarks)\n", layer_index, set->mesh_path, set->file.landmarks_count);
+  mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
+  mat4i hinge; v1 hinge_radians = 0;
+  b32 hinged = reference_jaw_hinge(state, layer_index, &hinge, &hinge_radians);
+  fprintf(out, "layer %d: %s (%d landmarks)", layer_index, set->mesh_path, set->file.landmarks_count);
+  if(hinged){ fprintf(out, " hinge %.2f deg", hinge_radians*180.f/3.14159265f); }
+  fprintf(out, "\n");
   for_i32(i, 0, set->file.landmarks_count)
   {
    Reference_Landmark &landmark = set->file.landmarks[i];

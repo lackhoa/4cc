@@ -28,7 +28,7 @@ typedef v3 tvec;
 // NOTE(kv) Recorded_Primitive.vertex_index cap (ad_file_formats.kh); see primitive_vertex_count.
 global i32 const recorded_vertex_cap = 4;
 // NOTE(kv) Reference_Scene_Data.mesh_layers cap (framework_driver_shared.kh): the five head layers.
-global i32 const reference_mesh_layer_cap = 5;
+global i32 const reference_mesh_layer_cap = 8;  // NOTE(kv) Scene_Head_Layers uses 6 since the jaw split (plan-reference-landmarks)
 // NOTE(kv) plan-reference-landmarks: labeled mesh-space points stored beside each reference
 // .obj (Reference_Landmark_File in framework_driver_shared.kh).
 #define REFERENCE_LANDMARK_NAME_CAP 32
@@ -646,6 +646,12 @@ struct Painter
  // drawn yet.
  v1 reference_mesh_obj_radius;
  v3 reference_mesh_obj_center;  // NOTE(kv) bbox center in obj units, the sphere's center
+ // NOTE(kv) plan-reference-landmarks step 4: per-layer mesh-space transform applied BEFORE
+ // the shared placement (the mandible's hinge). Solved game-side from the landmarks
+ // (reference_jaw_hinge, game_reference_landmarks.cpp) and written here before each
+ // driver_render; the driver only applies it to layers flagged `hinged`.
+ mat4i reference_layer_hinge[reference_mesh_layer_cap];
+ b32   reference_layer_hinge_valid[reference_mesh_layer_cap];
 };
 
 global Painter *painter;  // see @init_painter

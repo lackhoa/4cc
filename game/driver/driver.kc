@@ -177,7 +177,11 @@ driver_get_scene_data(Reference_Scene scene)
    result.camera_phi2 = 0.25f;
    add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-skull.obj")),
                             V3(0.85f, 0.8f, 0.7f), &Preset_Settings::show_reference_skull);
-   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-teeth.obj")),
+   // NOTE(kv) plan-reference-landmarks: the jaw is its own layer (hinged, solved from the
+   // landmarks condyle_l / condyle_r / incisor_lower / incisor_upper); lower teeth are in it.
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-mandible.obj")),
+                            V3(0.85f, 0.8f, 0.7f), &Preset_Settings::show_reference_skull, /*hinged*/true);
+   add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-teeth-upper.obj")),
                             V3(0.95f, 0.95f, 0.9f), &Preset_Settings::show_reference_teeth);
    add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-eyeball.obj")),
                             V3(0.9f, 0.9f, 0.95f), &Preset_Settings::show_reference_eyeball);

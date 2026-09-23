@@ -1833,6 +1833,7 @@ struct Reference_Mesh_Layer{
 Stringz filename;
 v3 color;
 Preset_Flag show_flag;
+b32 hinged;
 };
 ;
 struct Reference_Scene_Data{

@@ -334,6 +334,7 @@ struct Reference_Mesh_Layer
  Stringz filename;
  v3 color;
  Preset_Flag show_flag;  // NOTE(kv) typedef in framework_driver_shared.h (pointer-to-member)
+ b32 hinged;             // NOTE(kv) the mandible: drawn through painter->reference_layer_hinge (plan-reference-landmarks step 4)
 };
 struct Reference_Scene_Data
 {
