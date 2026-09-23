@@ -268,6 +268,16 @@ struct Document_File_State
  b32 is_flipped_by_debug_channel;      // `document_file_flip 1` holds the flip without the key
  char name_input[DOCUMENT_NAME_CAP];   // the panel's text field (save-as-copy / rename)
 };
+struct Landmark_Tool_State
+{// NOTE(kv) plan-reference-landmarks step 2: armed from the right-click menu (or debug
+ // `landmark_tool`); a press on an existing landmark drags it over the mesh, a press on
+ // the mesh with a name adds (or moves) the landmark of that name.
+ b32 armed;
+ char name[REFERENCE_LANDMARK_NAME_CAP];  // the menu's text field: name for the next added landmark
+ b32 dragging;
+ i32 drag_layer;
+ i32 drag_index;
+};
 struct Reference_Landmark_Set
 {// NOTE(kv) The landmarks of one reference mesh layer of the active scene, read from the
  // mesh's sidecar on first use (game_reference_landmarks.cpp). Keyed by the mesh path: a
@@ -336,6 +346,7 @@ struct Game_State
  Document_Vertex_Selection document_vertex_selection;
  Document_File_State document_files;
  Reference_Landmark_Set reference_landmark_sets[reference_mesh_layer_cap];  // plan-reference-landmarks
+ Landmark_Tool_State landmark_tool;
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

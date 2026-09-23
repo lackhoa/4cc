@@ -1863,6 +1863,9 @@ Pose pose;
  #define driver_get_scene_data__return Reference_Scene_Data
 #define driver_get_scene_data__params Reference_Scene scene
 
+ #define driver_get_reference_mesh__return Reference_Mesh_Triangles
+#define driver_get_reference_mesh__params Stringz filename
+
  
 
 #define driver_api_xlist(X) \
@@ -1871,6 +1874,7 @@ Pose pose;
    X(driver_shutdown) \
    X(driver_update_tweaks) \
    X(driver_get_scene_data) \
+   X(driver_get_reference_mesh) \
  
 
 

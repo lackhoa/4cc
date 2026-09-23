@@ -360,6 +360,7 @@ api_table driver_api
  void driver_shutdown(void);
  void driver_update_tweaks();
  Reference_Scene_Data driver_get_scene_data(Reference_Scene scene);
+ Reference_Mesh_Triangles driver_get_reference_mesh(Stringz filename);
 }
 
 generate

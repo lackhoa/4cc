@@ -1895,7 +1895,19 @@ game_update(Game_Update_Params params)
   // NOTE(kv) Agent mode (-debug-cmd): the mouse sits wherever the user left it, so
   // hover-highlighting would just paint random red fills into every screenshot.
   // Reference edit mode owns the mouse: the image is the only pickable thing (plan Q5).
-  if(state->line_tool.active)
+  if(state->landmark_tool.dragging)
+  {// NOTE(kv) A landmark drag owns the mouse: the point follows the pen over the mesh.
+   if(params.mouse.left)
+   {
+    landmark_tool_move(state, mouse_viewport, V2(params.mouse.p));
+    should_animate_next_frame = true;
+   }
+   if(params.mouse.release_left or not params.mouse.left)
+   {
+    landmark_tool_release(state);
+   }
+  }
+  else if(state->line_tool.active)
   {// NOTE(kv) A line-tool drag owns the mouse: nothing is hot, the curve follows the pen.
    if(params.mouse.left)
    {
@@ -1937,7 +1949,7 @@ game_update(Game_Update_Params params)
                    (params.mouse.release_left or not params.mouse.left));
    if(released){ camera_drag_release(state); }
   }
-  else if(params.mouse.middle and mouse_viewport and not state->document_mouse_drag.active and not state->line_tool.active)
+  else if(params.mouse.middle and mouse_viewport and not state->document_mouse_drag.active and not state->line_tool.active and not state->landmark_tool.dragging)
   {// NOTE(kv) Middle button held: pan drag, regardless of what is hot.
    camera_drag_press(state, mouse_viewport->id - 1, V2(params.mouse.p), true, true, false);
   }
@@ -1988,6 +2000,10 @@ game_update(Game_Update_Params params)
     {
      split_tool_reset(state);
     }
+   }
+   else if(state->landmark_tool.armed and mouse_viewport and
+           landmark_tool_press(state, mouse_viewport, V2(params.mouse.p)))
+   {// NOTE(kv) Consumed: grabbed or placed a landmark. A miss falls through to the orbit.
    }
    else if(state->line_tool.armed and mouse_viewport)
    {
@@ -2119,6 +2135,19 @@ game_update(Game_Update_Params params)
       b32 arm = not tool.armed;
       line_tool_reset(state);
       tool.armed = arm;
+     }
+     ImGui::Separator();
+    }
+    if(get_reference_mesh_placement(state))
+    {// NOTE(kv) Landmark tool (game_reference_landmarks.cpp): type a name, arm, click the
+     // mesh to place it; drag an existing landmark to move it.
+     Landmark_Tool_State &tool = state->landmark_tool;
+     ImGui::SetNextItemWidth(120.f);
+     ImGui::InputText("landmark", tool.name, sizeof(tool.name));
+     if(ImGui::Selectable(tool.armed ? "Cancel landmark tool" : "Place landmark"))
+     {
+      landmark_tool_reset(state);
+      tool.armed = not tool.armed;
      }
      ImGui::Separator();
     }

@@ -561,6 +561,22 @@ add_reference_mesh_layer(Reference_Scene_Data *data, Stringz filename, v3 color,
  data->mesh_layers[data->mesh_layer_count++] = {filename, color, show_flag};
 }
 
+function Reference_Mesh_Triangles
+driver_get_reference_mesh(Stringz filename)
+{// @driver_api NOTE(kv) The game picks landmarks against these (game_reference_landmarks.cpp).
+ Reference_Mesh_Triangles result = {};
+ Reference_Mesh *mesh = load_reference_mesh(filename);
+ if(mesh and not mesh->load_failed)
+ {
+  result.vertices     = mesh->vertices.items;
+  result.vertex_count = mesh->vertices.count;
+  result.indices      = mesh->indices.items;
+  result.index_count  = mesh->indices.count;
+  result.ok = true;
+ }
+ return result;
+}
+
 function void
 draw_reference_mesh_layers(Reference_Scene_Data &data)
 {// NOTE(kv) Every shown layer of the scene, all in the scene's one placement. The gizmo's

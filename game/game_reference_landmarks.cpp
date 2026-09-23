@@ -113,3 +113,173 @@ draw_reference_landmarks(Game_State *state, Camera &camera, v2 clip_center)
   }
  }
 }
+
+//~ NOTE(kv) Step 2: placement UX. Picking runs in MESH space (the ray is pulled through
+// world_from_mesh.inverse) against the driver's triangles (driver_get_reference_mesh), so
+// the hit point is directly the landmark's stored `p`. All shown layers are tested, nearest
+// hit wins.
+
+function v1 hit_test_ray_triangle(v3 ray_P, v3 ray_dir, v3 O, v3 A, v3 B);  // game_main.cpp
+
+struct Reference_Landmark_Mesh_Hit
+{
+ i32 layer_index;  // -1 = miss
+ v3 mesh_p;
+};
+
+function Reference_Landmark_Mesh_Hit
+reference_landmark_pick_mesh(Game_State *state, Screen_Projection_Data const &proj, v2 px)
+{
+ Reference_Landmark_Mesh_Hit hit = {.layer_index = -1};
+ Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
+ if(placement == 0){ return hit; }
+ Driver_API *driver = &state->driver_api;
+ Preset_Settings &settings = active_preset_row(state);
+ Reference_Scene_Data data = driver->driver_get_scene_data(settings.scene);
+ mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
+ // NOTE(kv) camera-space pick ray -> world -> mesh (direction: difference of two points).
+ Screen_Ray r = screen_ray(proj, px - proj.center);
+ v3 world_P   = mat4vert(proj.camera.world_from_cam, r.P);
+ v3 world_dir = mat4vert(proj.camera.world_from_cam, r.P + r.dir) - world_P;
+ v3 mesh_P   = mat4vert(world_from_mesh.inverse, world_P);
+ v3 mesh_dir = mat4vert(world_from_mesh.inverse, world_P + world_dir) - mesh_P;
+ v1 best_t = INFINITY;
+ for_i32(layer_index, 0, data.mesh_layer_count)
+ {
+  Reference_Mesh_Layer &layer = data.mesh_layers[layer_index];
+  b32 shown = (layer.show_flag == 0 or settings.*layer.show_flag);
+  if(not shown){ continue; }
+  Reference_Mesh_Triangles tris = driver->driver_get_reference_mesh(layer.filename);
+  if(not tris.ok){ continue; }
+  for(i32 i = 0; i+2 < tris.index_count; i += 3)
+  {
+   v3 O = tris.vertices[tris.indices[i+0]];
+   v3 A = tris.vertices[tris.indices[i+1]];
+   v3 B = tris.vertices[tris.indices[i+2]];
+   v1 t = hit_test_ray_triangle(mesh_P, mesh_dir, O, A, B);
+   if(t < best_t)
+   {
+    best_t = t;
+    hit.layer_index = layer_index;
+    hit.mesh_p = mesh_P + mesh_dir*t;
+   }
+  }
+ }
+ return hit;
+}
+
+function b32
+reference_landmark_pick_landmark(Game_State *state, Screen_Projection_Data const &proj, v2 px,
+                                 i32 *layer_out, i32 *index_out)
+{// NOTE(kv) Nearest landmark within document_pick_radius_px of the mouse.
+ Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
+ if(placement == 0){ return false; }
+ mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
+ v1 best = document_pick_radius_px;
+ b32 found = false;
+ for_i32(layer_index, 0, reference_mesh_layer_cap)
+ {
+  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  if(set == 0){ break; }
+  for_i32(i, 0, set->file.landmarks_count)
+  {
+   v2 lpx = project(proj, mat4vert(world_from_mesh, set->file.landmarks[i].p));
+   v1 d = lengthof(lpx - px);
+   if(d < best){ best = d; found = true; *layer_out = layer_index; *index_out = i; }
+  }
+ }
+ return found;
+}
+
+function void
+landmark_tool_reset(Game_State *state)
+{
+ Landmark_Tool_State &tool = state->landmark_tool;
+ tool.armed = false;
+ tool.dragging = false;
+ tool.drag_layer = -1;
+ tool.drag_index = -1;
+}
+
+function b32
+landmark_tool_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
+{// NOTE(kv) Returns true when the press was consumed (a drag started or a landmark was
+ // placed); a miss returns false so the caller can fall through to the camera orbit.
+ Landmark_Tool_State &tool = state->landmark_tool;
+ if(not tool.armed or viewport == 0){ return false; }
+ Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(viewport->clip_box));
+ i32 layer_index = -1, index = -1;
+ if(reference_landmark_pick_landmark(state, proj, mouse_px, &layer_index, &index))
+ {
+  tool.dragging = true;
+  tool.drag_layer = layer_index;
+  tool.drag_index = index;
+  return true;
+ }
+ if(tool.name[0] == 0)
+ {
+  log_error("landmark tool: no name set, press ignored (type one in the right-click menu)");
+  return false;
+ }
+ Reference_Landmark_Mesh_Hit hit = reference_landmark_pick_mesh(state, proj, mouse_px);
+ if(hit.layer_index < 0){ return false; }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, hit.layer_index);
+ Reference_Landmark *landmark = reference_landmark_find(set, SCu8(tool.name));
+ if(landmark == 0)
+ {
+  if(set->file.landmarks_count >= REFERENCE_LANDMARK_CAP)
+  {
+   log_error("landmark tool: layer %d is full (%d landmarks)", hit.layer_index, REFERENCE_LANDMARK_CAP);
+   return false;
+  }
+  landmark = &set->file.landmarks[set->file.landmarks_count++];
+  block_zero_struct(landmark);
+  snprintf(landmark->name, sizeof(landmark->name), "%s", tool.name);
+ }
+ landmark->p = hit.mesh_p;
+ reference_landmark_set_save(set);
+ // NOTE(kv) The new point is grabbed right away, so press-drag-release places it in one go.
+ tool.dragging = true;
+ tool.drag_layer = hit.layer_index;
+ tool.drag_index = (i32)(landmark - set->file.landmarks);
+ return true;
+}
+
+function void
+landmark_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
+{// NOTE(kv) Re-raycast every move: the landmark slides over whichever layer is under the
+ // mouse. Off the mesh it stays where it was.
+ Landmark_Tool_State &tool = state->landmark_tool;
+ if(not tool.dragging or viewport == 0){ return; }
+ Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(viewport->clip_box));
+ Reference_Landmark_Mesh_Hit hit = reference_landmark_pick_mesh(state, proj, mouse_px);
+ if(hit.layer_index < 0){ return; }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, tool.drag_layer);
+ if(set == 0 or tool.drag_index < 0 or tool.drag_index >= set->file.landmarks_count){ tool.dragging = false; return; }
+ if(hit.layer_index != tool.drag_layer)
+ {// NOTE(kv) Crossed onto another layer: the landmark moves file (name kept).
+  Reference_Landmark_Set *to = reference_landmark_set_for_layer(state, hit.layer_index);
+  if(to == 0 or to->file.landmarks_count >= REFERENCE_LANDMARK_CAP){ return; }
+  Reference_Landmark moved = set->file.landmarks[tool.drag_index];
+  for_i32(i, tool.drag_index, set->file.landmarks_count-1){ set->file.landmarks[i] = set->file.landmarks[i+1]; }
+  set->file.landmarks_count--;
+  reference_landmark_set_save(set);
+  to->file.landmarks[to->file.landmarks_count] = moved;
+  tool.drag_index = to->file.landmarks_count++;
+  tool.drag_layer = hit.layer_index;
+  set = to;
+ }
+ set->file.landmarks[tool.drag_index].p = hit.mesh_p;
+}
+
+function void
+landmark_tool_release(Game_State *state)
+{
+ Landmark_Tool_State &tool = state->landmark_tool;
+ if(not tool.dragging){ return; }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, tool.drag_layer);
+ if(set){ reference_landmark_set_save(set); }
+ tool.dragging = false;
+ tool.drag_layer = -1;
+ tool.drag_index = -1;
+}

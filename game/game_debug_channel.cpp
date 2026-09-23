@@ -42,6 +42,9 @@
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
 //   prim_px <i>       -> control-point px of document primitive i (same block as `hot`)
+//   landmark_tool 0|1 [name] -> arm the landmark tool (right-click "Place landmark"); then
+//                        mouse_down on the mesh adds landmark <name> (mesh-space ray hit),
+//                        mouse_down within 12 px of a landmark + mouse_move drags it
 //   landmark_dump     -> every reference mesh layer's landmarks: mesh space, world, px
 //   landmark_set <layer> <name> x y z / landmark_delete <layer> <name>
 //                     -> add/move/remove a landmark (mesh space) and save the layer's
@@ -1583,6 +1586,15 @@ debug_channel_update(Game_State *state, App *app)
   {
    fprintf(out, "error: usage: set_camera <theta> <phi> [distance [pivot_x pivot_y pivot_z]]\n");
   }
+ }
+ else if(strncmp(cmd, "landmark_tool", 13) == 0)
+ {// landmark_tool 0|1 [name]
+  int on = 0; char name[REFERENCE_LANDMARK_NAME_CAP] = {};
+  int n = sscanf(cmd+13, "%d %31s", &on, name);
+  landmark_tool_reset(state);
+  state->landmark_tool.armed = (n >= 1 and on != 0);
+  if(n >= 2){ snprintf(state->landmark_tool.name, sizeof(state->landmark_tool.name), "%s", name); }
+  fprintf(out, "landmark_tool armed=%d name=%s\n", state->landmark_tool.armed, state->landmark_tool.name);
  }
  else if(strcmp(cmd, "landmark_dump") == 0)
  {

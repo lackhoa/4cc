@@ -33,6 +33,16 @@ global i32 const reference_mesh_layer_cap = 5;
 // .obj (Reference_Landmark_File in framework_driver_shared.kh).
 #define REFERENCE_LANDMARK_NAME_CAP 32
 #define REFERENCE_LANDMARK_CAP 32
+struct Reference_Mesh_Triangles
+{// NOTE(kv) A reference mesh's triangles for game-side picking (landmark placement), in
+ // .obj units. Borrowed from the driver's mesh cache: use within the frame, never keep
+ // (the cache is rebuilt on driver reload).
+ v3  *vertices;
+ i32  vertex_count;
+ i32 *indices;      // 3 per triangle, 0-based
+ i32  index_count;
+ b32  ok;
+};
 // NOTE(kv) A b32 flag of Preset_Settings, by pointer-to-member (Reference_Mesh_Layer.show_flag
 // in the .kh). Typedef'd here because klang doesn't parse `b32 Preset_Settings::*`; a
 // pointer-to-member of a not-yet-defined class is fine, the class comes from the gen.h.
