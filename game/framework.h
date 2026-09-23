@@ -268,6 +268,14 @@ struct Document_File_State
  b32 is_flipped_by_debug_channel;      // `document_file_flip 1` holds the flip without the key
  char name_input[DOCUMENT_NAME_CAP];   // the panel's text field (save-as-copy / rename)
 };
+struct Reference_Landmark_Set
+{// NOTE(kv) The landmarks of one reference mesh layer of the active scene, read from the
+ // mesh's sidecar on first use (game_reference_landmarks.cpp). Keyed by the mesh path: a
+ // scene switch that changes the layer's file reloads the slot.
+ char mesh_path[256];
+ b32 loaded;
+ Reference_Landmark_File file;
+};
 struct Game_State
 {// NOTE The state that is saved between reloads.
  // NOTE See also @game_init
@@ -327,6 +335,7 @@ struct Game_State
  Split_Tool_State split_tool;
  Document_Vertex_Selection document_vertex_selection;
  Document_File_State document_files;
+ Reference_Landmark_Set reference_landmark_sets[reference_mesh_layer_cap];  // plan-reference-landmarks
 };
 
 // TODO(kv) Just hacking around the limitation of update & render being separate

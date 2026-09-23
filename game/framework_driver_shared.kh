@@ -190,6 +190,22 @@ struct Reference_Mesh_Placement
 };
 
 [info]
+struct Reference_Landmark
+{// NOTE(kv) A labeled point on a reference mesh, in the mesh's own .obj coordinates, so it
+ // stays glued to the mesh whatever the placement does (plan-reference-landmarks Q1/Q2).
+ // Free names (Q4); the ones reference_level / reference_jaw_hinge read are documented there.
+ char name[REFERENCE_LANDMARK_NAME_CAP];
+ v3 p;
+};
+[info]
+struct Reference_Landmark_File
+{// NOTE(kv) The sidecar `<mesh>.landmarks.txt` next to the .obj (Q3), struct-literal text
+ // like state.txt. `landmarks_count` pairs with `landmarks` by the `<name>_count` convention.
+ Reference_Landmark landmarks[REFERENCE_LANDMARK_CAP];
+ i32 landmarks_count;
+};
+
+[info]
 struct Curve
 {// One stroke as data (@fcurve): the shape as @bez_offset control offsets from the
  // code-side anchors (p1 = p0+d0, p2 = p3+d3), then the line params (mirrors

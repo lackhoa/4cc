@@ -42,6 +42,10 @@
 //   mouse_off         -> release the virtual mouse
 //   hot               -> the hot location picked on the last frame (document prim / code range)
 //   prim_px <i>       -> control-point px of document primitive i (same block as `hot`)
+//   landmark_dump     -> every reference mesh layer's landmarks: mesh space, world, px
+//   landmark_set <layer> <name> x y z / landmark_delete <layer> <name>
+//                     -> add/move/remove a landmark (mesh space) and save the layer's
+//                        <mesh>.landmarks.txt sidecar (game_reference_landmarks.cpp)
 //   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -549,6 +553,87 @@ debug_channel_slider_set(FILE *out, Game_State *state, char *args)
 }
 
 // NOTE(kv) Called at the top of game_update, every frame.
+//~ Reference landmarks (game_reference_landmarks.cpp holds the data side)
+
+function void
+debug_channel_landmark_dump(FILE *out, Game_State *state)
+{// NOTE(kv) `landmark_dump`: every layer's landmarks, mesh space + world + window px
+ // (projected through the virtual mouse's viewport box, like `hot`).
+ Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
+ if(placement == 0){ fprintf(out, "landmark_dump: no mesh scene drawn\n"); return; }
+ mat4i world_from_mesh = reference_landmark_world_from_mesh(state, *placement);
+ Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
+ for_i32(layer_index, 0, reference_mesh_layer_cap)
+ {
+  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  if(set == 0){ break; }
+  fprintf(out, "layer %d: %s (%d landmarks)\n", layer_index, set->mesh_path, set->file.landmarks_count);
+  for_i32(i, 0, set->file.landmarks_count)
+  {
+   Reference_Landmark &landmark = set->file.landmarks[i];
+   v3 world = mat4vert(world_from_mesh, landmark.p);
+   v2 px = project(proj, world);
+   fprintf(out, "  %-24s mesh (%.3f %.3f %.3f) world (%.4f %.4f %.4f) px (%.0f %.0f)\n",
+           landmark.name, landmark.p.x, landmark.p.y, landmark.p.z, world.x, world.y, world.z, px.x, px.y);
+  }
+ }
+}
+
+function void
+debug_channel_landmark_set(FILE *out, Game_State *state, char *args)
+{// NOTE(kv) `landmark_set <layer> <name> x y z` (mesh space): add or move by name, then save
+ // the layer's sidecar.
+ i32 layer_index = 0;
+ char name[REFERENCE_LANDMARK_NAME_CAP] = {};
+ v3 p = {};
+ if(sscanf(args, "%d %31s %f %f %f", &layer_index, name, &p.x, &p.y, &p.z) != 5)
+ {
+  fprintf(out, "error: usage: landmark_set <layer> <name> x y z\n");
+  return;
+ }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ if(set == 0){ fprintf(out, "error: no mesh layer %d in the active scene\n", layer_index); return; }
+ Reference_Landmark *landmark = reference_landmark_find(set, SCu8(name));
+ if(landmark == 0)
+ {
+  if(set->file.landmarks_count >= REFERENCE_LANDMARK_CAP)
+  {
+   fprintf(out, "error: layer %d already has %d landmarks (cap)\n", layer_index, REFERENCE_LANDMARK_CAP);
+   return;
+  }
+  landmark = &set->file.landmarks[set->file.landmarks_count++];
+  snprintf(landmark->name, sizeof(landmark->name), "%s", name);
+ }
+ landmark->p = p;
+ b32 saved = reference_landmark_set_save(set);
+ fprintf(out, "landmark_set: layer %d %s = (%.3f %.3f %.3f)%s\n", layer_index, name, p.x, p.y, p.z,
+         saved ? "" : " (SAVE FAILED)");
+ debug_channel_wants_animate = true;
+}
+
+function void
+debug_channel_landmark_delete(FILE *out, Game_State *state, char *args)
+{// NOTE(kv) `landmark_delete <layer> <name>`
+ i32 layer_index = 0;
+ char name[REFERENCE_LANDMARK_NAME_CAP] = {};
+ if(sscanf(args, "%d %31s", &layer_index, name) != 2)
+ {
+  fprintf(out, "error: usage: landmark_delete <layer> <name>\n");
+  return;
+ }
+ Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ if(set == 0){ fprintf(out, "error: no mesh layer %d in the active scene\n", layer_index); return; }
+ Reference_Landmark *landmark = reference_landmark_find(set, SCu8(name));
+ if(landmark == 0){ fprintf(out, "error: no landmark %s on layer %d\n", name, layer_index); return; }
+ i32 index = i32(landmark - set->file.landmarks);
+ for_i32(i, index, set->file.landmarks_count-1){ set->file.landmarks[i] = set->file.landmarks[i+1]; }
+ set->file.landmarks_count--;
+ block_zero_struct(&set->file.landmarks[set->file.landmarks_count]);
+ b32 saved = reference_landmark_set_save(set);
+ fprintf(out, "landmark_delete: layer %d %s%s\n", layer_index, name, saved ? "" : " (SAVE FAILED)");
+ debug_channel_wants_animate = true;
+}
+
 function void
 debug_channel_update(Game_State *state, App *app)
 {
@@ -1498,6 +1583,18 @@ debug_channel_update(Game_State *state, App *app)
   {
    fprintf(out, "error: usage: set_camera <theta> <phi> [distance [pivot_x pivot_y pivot_z]]\n");
   }
+ }
+ else if(strcmp(cmd, "landmark_dump") == 0)
+ {
+  debug_channel_landmark_dump(out, state);
+ }
+ else if(strncmp(cmd, "landmark_set ", 13) == 0)
+ {
+  debug_channel_landmark_set(out, state, cmd+13);
+ }
+ else if(strncmp(cmd, "landmark_delete ", 16) == 0)
+ {
+  debug_channel_landmark_delete(out, state, cmd+16);
  }
  else
  {

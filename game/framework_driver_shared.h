@@ -29,6 +29,10 @@ typedef v3 tvec;
 global i32 const recorded_vertex_cap = 4;
 // NOTE(kv) Reference_Scene_Data.mesh_layers cap (framework_driver_shared.kh): the five head layers.
 global i32 const reference_mesh_layer_cap = 5;
+// NOTE(kv) plan-reference-landmarks: labeled mesh-space points stored beside each reference
+// .obj (Reference_Landmark_File in framework_driver_shared.kh).
+#define REFERENCE_LANDMARK_NAME_CAP 32
+#define REFERENCE_LANDMARK_CAP 32
 // NOTE(kv) A b32 flag of Preset_Settings, by pointer-to-member (Reference_Mesh_Layer.show_flag
 // in the .kh). Typedef'd here because klang doesn't parse `b32 Preset_Settings::*`; a
 // pointer-to-member of a not-yet-defined class is fine, the class comes from the gen.h.

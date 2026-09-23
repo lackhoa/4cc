@@ -640,7 +640,11 @@ convert_primitives_to_camera_space(Camera &camera)
 #include "game_document_edit.cpp"
 #include "game_curve_patch.cpp"
 #include "game_document_line_tool.cpp"
+#include "game_reference_landmarks.cpp"
 
+// NOTE(kv) The viewport being rendered, window px: the landmark labels project through it
+// (mk_screen_projection_data needs a center; call_driver_render only gets clip_radius).
+global v2 game_render_clip_center;
 function void
 call_driver_render(Game_State *state, App *app, Render_Target *target,
                    i32 viewport_id, Mouse_State mouse, v2 clip_radius)
@@ -878,6 +882,7 @@ call_driver_render(Game_State *state, App *app, Render_Target *target,
   {
    draw_reference_edit_gizmo(state, camera);
   }
+  draw_reference_landmarks(state, camera, game_render_clip_center);  // NOTE(kv) labeled mesh points (every viewport)
 
   if(state->is_dev_editor)
   {
@@ -3296,6 +3301,7 @@ game_update(Game_Update_Params params)
     v1 meter_to_pixel = default_meter_to_pixel;
     v1 pixel_to_meter = 1.f / meter_to_pixel;
     v2 clip_radius = pixel_to_meter*get_radius(clip_box);
+    game_render_clip_center = get_center(clip_box);
 
     call_driver_render(state, app, live_viewport.target, live_viewport.id,
                        params.mouse, clip_radius);

@@ -1236,6 +1236,129 @@ dst->rotation = m_rotation;
 #endif
 ;
 
+struct Reference_Landmark{
+char name[REFERENCE_LANDMARK_NAME_CAP];
+v3 p;
+};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
+function Type_Info
+get_type_info_Reference_Landmark(){
+Type_Info result = {};
+result.name = strlit("Reference_Landmark");
+result.size = sizeof(Reference_Landmark);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(2);
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
+member_type->name = strlit("char[REFERENCE_LANDMARK_NAME_CAP]");
+member_type->kind = I_Type_Kind_Array;
+member_type->size = REFERENCE_LANDMARK_NAME_CAP * Type_Info_char.size;
+member_type->array_item_type = & Type_Info_char;
+member_type->count = REFERENCE_LANDMARK_NAME_CAP;
+result.members[0] = {.type=member_type, .name=strlit("name"), .offset=offsetof(Reference_Landmark, name)};
+}
+{
+Type_Info *member_type = & Type_Info_v3;
+result.members[1] = {.type=member_type, .name=strlit("p"), .offset=offsetof(Reference_Landmark, p)};
+}
+return result;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:117:
+global Type_Info Type_Info_Reference_Landmark;
+
+function Type_Info *type_info_from_pointer(Reference_Landmark*pointer){
+return &Type_Info_Reference_Landmark;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
+function void
+read_binary_Reference_Landmark(Binary_Reader *r, Reference_Landmark *dst){
+char m_name[REFERENCE_LANDMARK_NAME_CAP] = {};
+{
+for_i32(i,0,REFERENCE_LANDMARK_NAME_CAP){
+read_binary_char(r, &m_name[i]);
+}
+}
+copy_array_dst(dst->name, m_name);
+
+v3 m_p = {};
+{
+read_binary_v3(r, &m_p);
+}
+dst->p = m_p;
+
+
+}
+#endif
+;
+struct Reference_Landmark_File{
+Reference_Landmark landmarks[REFERENCE_LANDMARK_CAP];
+i32 landmarks_count;
+};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
+function Type_Info
+get_type_info_Reference_Landmark_File(){
+Type_Info result = {};
+result.name = strlit("Reference_Landmark_File");
+result.size = sizeof(Reference_Landmark_File);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(2);
+{
+local_persist Type_Info member_type_value;
+Type_Info *member_type = &member_type_value;
+*member_type = {};
+member_type->name = strlit("Reference_Landmark[REFERENCE_LANDMARK_CAP]");
+member_type->kind = I_Type_Kind_Array;
+member_type->size = REFERENCE_LANDMARK_CAP * Type_Info_Reference_Landmark.size;
+member_type->array_item_type = & Type_Info_Reference_Landmark;
+member_type->count = REFERENCE_LANDMARK_CAP;
+result.members[0] = {.type=member_type, .name=strlit("landmarks"), .offset=offsetof(Reference_Landmark_File, landmarks)};
+}
+{
+Type_Info *member_type = & Type_Info_i32;
+result.members[1] = {.type=member_type, .name=strlit("landmarks_count"), .offset=offsetof(Reference_Landmark_File, landmarks_count)};
+}
+return result;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:117:
+global Type_Info Type_Info_Reference_Landmark_File;
+
+function Type_Info *type_info_from_pointer(Reference_Landmark_File*pointer){
+return &Type_Info_Reference_Landmark_File;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
+function void
+read_binary_Reference_Landmark_File(Binary_Reader *r, Reference_Landmark_File *dst){
+Reference_Landmark m_landmarks[REFERENCE_LANDMARK_CAP] = {};
+{
+for_i32(i,0,REFERENCE_LANDMARK_CAP){
+read_binary_Reference_Landmark(r, &m_landmarks[i]);
+}
+}
+copy_array_dst(dst->landmarks, m_landmarks);
+
+i32 m_landmarks_count = {};
+{
+read_binary_i32(r, &m_landmarks_count);
+}
+dst->landmarks_count = m_landmarks_count;
+
+
+}
+#endif
+;
+
 struct Curve{
 v3 d0;
 v3 d3;
