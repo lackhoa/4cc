@@ -2196,6 +2196,12 @@ game_update(Game_Update_Params params)
         set_reference_mesh_scale_rotation(state, *mesh_placement, mesh_placement->scale, rotation);
         save_slider_values_file(state, /*is_driver*/1);
        }
+       if(ImGui::Selectable("Level skull from landmarks"))
+       {// NOTE(kv) plan-reference-landmarks Q7 (porion_l / porion_r / orbitale); no-op
+        // without them, see reference_level in game_reference_landmarks.cpp.
+        v3 rotation = {}; v1 error = 0;
+        reference_level_apply(state, &rotation, &error);
+       }
       }
       ImGui::Separator();
      }

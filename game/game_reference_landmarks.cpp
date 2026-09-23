@@ -356,3 +356,85 @@ landmark_tool_release(Game_State *state)
  tool.drag_layer = -1;
  tool.drag_index = -1;
 }
+
+//~ NOTE(kv) Step 5: level the skull from its own landmarks (plan Q7). The Frankfurt
+// horizontal (left/right porion = top of the ear canal, orbitale = lowest point of an orbit
+// rim) is level in a standard upright head, and the porion-porion line is the side axis.
+// Solves the placement's `rotation` (tilt/pan/roll turns for mat4i_rotate_tpr) so that, in
+// Bone_Head space (= world axes at rest: x side, +y up, +z front, see get_camera /
+// mat4i_rotate_tpr), porion_r - porion_l is along +x, the plane normal is +y and the front
+// is +z. Center/scale stay as they are (set_reference_mesh_scale_rotation re-anchors).
+
+function Reference_Landmark *
+reference_landmark_find_any_layer(Game_State *state, String name)
+{// NOTE(kv) First layer (scene order) whose set has the name.
+ for_i32(layer_index, 0, reference_mesh_layer_cap)
+ {
+  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  if(set == 0){ break; }
+  Reference_Landmark *landmark = reference_landmark_find(set, name);
+  if(landmark){ return landmark; }
+ }
+ return 0;
+}
+
+function b32
+reference_level(Game_State *state, v3 *rotation_out, v1 *error_out)
+{// NOTE(kv) false when a landmark is missing. `error_out` = max abs entry difference
+ // between the wanted rotation and mat4i_rotate_tpr(*rotation_out): the tilt/pan/roll
+ // decomposition is checked by recomposing, so a convention slip shows up as a big error
+ // instead of a wrong skull.
+ Reference_Landmark *porion_l = reference_landmark_find_any_layer(state, strlit("porion_l"));
+ Reference_Landmark *porion_r = reference_landmark_find_any_layer(state, strlit("porion_r"));
+ Reference_Landmark *orbitale = reference_landmark_find_any_layer(state, strlit("orbitale"));
+ if(not (porion_l and porion_r and orbitale)){ return false; }
+ // NOTE(kv) The level frame in mesh space: side s, front f, up u (mesh: z up, -y front).
+ v3 s = noz(porion_r->p - porion_l->p);
+ v3 toward_orbit = orbitale->p - 0.5f*(porion_l->p + porion_r->p);
+ v3 u = noz(cross(toward_orbit, s));
+ v3 f = cross(s, u);
+ if(lengthof(s) < 0.5f or lengthof(u) < 0.5f){ return false; }
+ // NOTE(kv) F = bone_from_mesh rotation: rows are the bone axes expressed in mesh space.
+ mat3 F;
+ F.rows[0] = s;  // bone x (side)
+ F.rows[1] = u;  // bone y (up)
+ F.rows[2] = f;  // bone z (front)
+ // NOTE(kv) mat4i_rotate_tpr(phi, theta, roll) builds inverse = rotateZ(roll) * M(phi, -theta)
+ // with M rows (cp,0,-sp), (st sp, ct, cp st), (ct sp, -st, ct cp); inverse = F^T, and row 2
+ // of the inverse (= column 2 of F) is untouched by rotateZ, so it gives phi and t = -theta.
+ v3 inv2 = V3(F.e[0][2], F.e[1][2], F.e[2][2]);
+ v1 phi = arctan2(inv2.x, inv2.z);
+ v1 t   = arctan2(-inv2.y, sqrtf(inv2.x*inv2.x + inv2.z*inv2.z));
+ v1 cp = cosine(phi), sp = sine(phi), ct = cosine(t), st = sine(t);
+ mat3 M;
+ M.rows[0] = V3(cp,    0,   -sp);
+ M.rows[1] = V3(st*sp, ct,   cp*st);
+ M.rows[2] = V3(ct*sp, -st,  ct*cp);
+ // NOTE(kv) rotateZ(roll) = inverse * M^T; its first column is (cos, sin).
+ v1 rz00 = 0, rz10 = 0;
+ for_i32(k, 0, 3)
+ {
+  rz00 += F.e[k][0] * M.e[0][k];  // inverse[0][k] = F[k][0]
+  rz10 += F.e[k][1] * M.e[0][k];  // inverse[1][k] = F[k][1]
+ }
+ v1 roll = arctan2(rz10, rz00);
+ if(phi < -0.5f + 1e-6f){ phi += 1.f; }  // NOTE(kv) the flip lands on -0.5 and the sliders say 0.5
+ v3 rotation = V3(phi, -t, roll);
+ mat4 check = mat4i_rotate_tpr(rotation.x, rotation.y, rotation.z).forward;
+ v1 error = 0;
+ for_i32(r, 0, 3){ for_i32(c, 0, 3){ error = max(error, absolute(check.e[r][c] - F.e[r][c])); } }
+ *rotation_out = rotation;
+ *error_out = error;
+ return true;
+}
+
+function b32
+reference_level_apply(Game_State *state, v3 *rotation_out, v1 *error_out)
+{// NOTE(kv) reference_level + write it into the active placement and save the values file.
+ Reference_Mesh_Placement *placement = get_reference_mesh_placement(state);
+ if(placement == 0){ return false; }
+ if(not reference_level(state, rotation_out, error_out)){ return false; }
+ set_reference_mesh_scale_rotation(state, *placement, placement->scale, *rotation_out);
+ save_slider_values_file(state, /*is_driver*/1);
+ return true;
+}

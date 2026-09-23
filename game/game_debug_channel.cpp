@@ -49,6 +49,8 @@
 //   landmark_set <layer> <name> x y z / landmark_delete <layer> <name>
 //                     -> add/move/remove a landmark (mesh space) and save the layer's
 //                        <mesh>.landmarks.txt sidecar (game_reference_landmarks.cpp)
+//   reference_level   -> set the placement rotation so the Frankfurt plane (landmarks
+//                        porion_l, porion_r, orbitale) is level; saves driver.values.ad
 //   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -1611,6 +1613,27 @@ debug_channel_update(Game_State *state, App *app)
  else if(strncmp(cmd, "landmark_delete ", 16) == 0)
  {
   debug_channel_landmark_delete(out, state, cmd+16);
+ }
+ else if(strcmp(cmd, "reference_level") == 0)
+ {// NOTE(kv) plan-reference-landmarks Q7: rotation from porion_l / porion_r / orbitale.
+  v3 rotation = {}; v1 error = 0;
+  if(reference_level_apply(state, &rotation, &error))
+  {
+   fprintf(out, "reference_level: rotation = (%.4f %.4f %.4f) turns, recompose error %.2e\n",
+           rotation.x, rotation.y, rotation.z, error);
+   mat4 bone_from_mesh = mat4i_rotate_tpr(rotation.x, rotation.y, rotation.z).forward;
+   mat4 world_from_bone = get_bone(mk_bone_id(Bone_Head), /*is_right*/false)->world_from_bone.forward;
+   for_i32(r, 0, 3)
+   {
+    fprintf(out, "  bone_from_mesh (%+.3f %+.3f %+.3f)   world_from_bone (%+.4f %+.4f %+.4f %+.4f)\n",
+            bone_from_mesh.e[r][0], bone_from_mesh.e[r][1], bone_from_mesh.e[r][2],
+            world_from_bone.e[r][0], world_from_bone.e[r][1], world_from_bone.e[r][2], world_from_bone.e[r][3]);
+   }
+  }
+  else
+  {
+   fprintf(out, "reference_level: needs a drawn mesh scene and landmarks porion_l, porion_r, orbitale\n");
+  }
  }
  else
  {
