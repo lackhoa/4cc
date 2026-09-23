@@ -145,7 +145,8 @@ result.mesh_placement_id = strlit("Reference_Mesh_Placement_0");
 case Scene_Head_Layers: {
 result.camera_phi2 = 0.25f;
 add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-skull.obj")), V3(0.85f, 0.8f, 0.7f), &Preset_Settings::show_reference_skull);
-add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-teeth.obj")), V3(0.95f, 0.95f, 0.9f), &Preset_Settings::show_reference_teeth);
+add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-mandible.obj")), V3(0.85f, 0.8f, 0.7f), &Preset_Settings::show_reference_skull, true);
+add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-teeth-upper.obj")), V3(0.95f, 0.95f, 0.9f), &Preset_Settings::show_reference_teeth);
 add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-eyeball.obj")), V3(0.9f, 0.9f, 0.95f), &Preset_Settings::show_reference_eyeball);
 add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-skin_head.obj")), V3(0.9f, 0.75f, 0.65f), &Preset_Settings::show_reference_skin);
 add_reference_mesh_layer(&result, fmesh(strlit("G:/My Drive/autodraw/reference-models/z-anatomy-head-facial_muscles.obj")), V3(0.75f, 0.35f, 0.35f), &Preset_Settings::show_reference_muscles);
