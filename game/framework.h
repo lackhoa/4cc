@@ -278,7 +278,7 @@ struct Landmark_Tool_State
  i32 drag_layer;
  i32 drag_index;
 };
-struct Reference_Landmark_Set
+struct Reference_Landmarks_One_Layer
 {// NOTE(kv) The landmarks of one reference mesh layer of the active scene, read from the
  // mesh's sidecar on first use (game_reference_landmarks.cpp). Keyed by the mesh path: a
  // scene switch that changes the layer's file reloads the slot.
@@ -345,7 +345,7 @@ struct Game_State
  Split_Tool_State split_tool;
  Document_Vertex_Selection document_vertex_selection;
  Document_File_State document_files;
- Reference_Landmark_Set reference_landmark_sets[reference_mesh_layer_cap];  // plan-reference-landmarks
+ Reference_Landmarks_One_Layer reference_landmark_sets[reference_mesh_layer_cap];  // plan-reference-landmarks
  Landmark_Tool_State landmark_tool;
 };
 

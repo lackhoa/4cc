@@ -569,7 +569,7 @@ debug_channel_landmark_dump(FILE *out, Game_State *state)
  Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(debug_channel_mouse_viewport_box));
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
-  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
   mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
   mat4i hinge; v1 hinge_radians = 0;
@@ -600,7 +600,7 @@ debug_channel_landmark_set(FILE *out, Game_State *state, char *args)
   fprintf(out, "error: usage: landmark_set <layer> <name> x y z\n");
   return;
  }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
  if(set == 0){ fprintf(out, "error: no mesh layer %d in the active scene\n", layer_index); return; }
  Reference_Landmark *landmark = reference_landmark_find(set, SCu8(name));
  if(landmark == 0)
@@ -630,7 +630,7 @@ debug_channel_landmark_delete(FILE *out, Game_State *state, char *args)
   fprintf(out, "error: usage: landmark_delete <layer> <name>\n");
   return;
  }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
  if(set == 0){ fprintf(out, "error: no mesh layer %d in the active scene\n", layer_index); return; }
  Reference_Landmark *landmark = reference_landmark_find(set, SCu8(name));
  if(landmark == 0){ fprintf(out, "error: no landmark %s on layer %d\n", name, layer_index); return; }

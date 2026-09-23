@@ -11,7 +11,7 @@ reference_landmark_sidecar_path(Arena *arena, String mesh_path)
 }
 
 function b32
-reference_landmark_set_load(Reference_Landmark_Set *set, Stringz mesh_path)
+reference_landmark_set_load(Reference_Landmarks_One_Layer *set, Stringz mesh_path)
 {// NOTE(kv) Missing sidecar = no landmarks (not an error). A rejected file logs and leaves
  // the set empty rather than half-read.
  Scratch_Scope tmp;
@@ -29,7 +29,7 @@ reference_landmark_set_load(Reference_Landmark_Set *set, Stringz mesh_path)
 }
 
 function b32
-reference_landmark_set_save(Reference_Landmark_Set *set)
+reference_landmark_set_save(Reference_Landmarks_One_Layer *set)
 {
  Scratch_Scope tmp;
  Stringz path = reference_landmark_sidecar_path(tmp, SCu8(set->mesh_path));
@@ -47,7 +47,7 @@ reference_landmark_set_save(Reference_Landmark_Set *set)
  return ok;
 }
 
-function Reference_Landmark_Set *
+function Reference_Landmarks_One_Layer *
 reference_landmark_set_for_layer(Game_State *state, i32 layer_index)
 {// NOTE(kv) The active scene's layer `layer_index`, sidecar read on first touch; null when
  // the scene has no such mesh layer (same gate as get_reference_mesh_placement).
@@ -56,7 +56,7 @@ reference_landmark_set_for_layer(Game_State *state, i32 layer_index)
  Reference_Scene_Data data = driver->driver_get_scene_data(active_preset_row(state).scene);
  if(layer_index < 0 or layer_index >= data.mesh_layer_count){ return 0; }
  Stringz mesh_path = data.mesh_layers[layer_index].filename;
- Reference_Landmark_Set *set = &state->reference_landmark_sets[layer_index];
+ Reference_Landmarks_One_Layer *set = &state->reference_landmark_sets[layer_index];
  if(not set->loaded or not string_match(SCu8(set->mesh_path), mesh_path))
  {
   reference_landmark_set_load(set, mesh_path);
@@ -65,7 +65,7 @@ reference_landmark_set_for_layer(Game_State *state, i32 layer_index)
 }
 
 function Reference_Landmark *
-reference_landmark_find(Reference_Landmark_Set *set, String name)
+reference_landmark_find(Reference_Landmarks_One_Layer *set, String name)
 {
  for_i32(i, 0, set->file.landmarks_count)
  {
@@ -116,7 +116,7 @@ reference_jaw_hinge(Game_State *state, i32 layer_index, mat4i *hinge_out, v1 *ra
  Reference_Scene_Data data = driver->driver_get_scene_data(active_preset_row(state).scene);
  if(layer_index < 0 or layer_index >= data.mesh_layer_count){ return false; }
  if(not data.mesh_layers[layer_index].hinged){ return false; }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
  if(set == 0){ return false; }
  Reference_Landmark *condyle_l = reference_landmark_find(set, strlit("condyle_l"));
  Reference_Landmark *condyle_r = reference_landmark_find(set, strlit("condyle_r"));
@@ -125,7 +125,7 @@ reference_jaw_hinge(Game_State *state, i32 layer_index, mat4i *hinge_out, v1 *ra
  for_i32(other, 0, data.mesh_layer_count)
  {
   if(other == layer_index){ continue; }
-  Reference_Landmark_Set *other_set = reference_landmark_set_for_layer(state, other);
+  Reference_Landmarks_One_Layer *other_set = reference_landmark_set_for_layer(state, other);
   if(other_set){ incisor_upper = reference_landmark_find(other_set, strlit("incisor_upper")); }
   if(incisor_upper){ break; }
  }
@@ -171,7 +171,7 @@ draw_reference_landmarks(Game_State *state, Camera &camera, v2 clip_center)
  argb color = argb_pack(V4(1.f, 0.6f, 0.1f, 1.f));
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
-  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
   mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
   for_i32(i, 0, set->file.landmarks_count)
@@ -251,7 +251,7 @@ reference_landmark_pick_landmark(Game_State *state, Screen_Projection_Data const
  b32 found = false;
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
-  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
   mat4i world_from_mesh = reference_layer_world_from_mesh(state, *placement, layer_index);
   for_i32(i, 0, set->file.landmarks_count)
@@ -296,7 +296,7 @@ landmark_tool_press(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  }
  Reference_Landmark_Mesh_Hit hit = reference_landmark_pick_mesh(state, proj, mouse_px);
  if(hit.layer_index < 0){ return false; }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, hit.layer_index);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, hit.layer_index);
  Reference_Landmark *landmark = reference_landmark_find(set, SCu8(tool.name));
  if(landmark == 0)
  {
@@ -327,11 +327,11 @@ landmark_tool_move(Game_State *state, Live_Viewport *viewport, v2 mouse_px)
  Screen_Projection_Data proj = mk_screen_projection_data(state, get_center(viewport->clip_box));
  Reference_Landmark_Mesh_Hit hit = reference_landmark_pick_mesh(state, proj, mouse_px);
  if(hit.layer_index < 0){ return; }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, tool.drag_layer);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, tool.drag_layer);
  if(set == 0 or tool.drag_index < 0 or tool.drag_index >= set->file.landmarks_count){ tool.dragging = false; return; }
  if(hit.layer_index != tool.drag_layer)
  {// NOTE(kv) Crossed onto another layer: the landmark moves file (name kept).
-  Reference_Landmark_Set *to = reference_landmark_set_for_layer(state, hit.layer_index);
+  Reference_Landmarks_One_Layer *to = reference_landmark_set_for_layer(state, hit.layer_index);
   if(to == 0 or to->file.landmarks_count >= REFERENCE_LANDMARK_CAP){ return; }
   Reference_Landmark moved = set->file.landmarks[tool.drag_index];
   for_i32(i, tool.drag_index, set->file.landmarks_count-1){ set->file.landmarks[i] = set->file.landmarks[i+1]; }
@@ -350,7 +350,7 @@ landmark_tool_release(Game_State *state)
 {
  Landmark_Tool_State &tool = state->landmark_tool;
  if(not tool.dragging){ return; }
- Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, tool.drag_layer);
+ Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, tool.drag_layer);
  if(set){ reference_landmark_set_save(set); }
  tool.dragging = false;
  tool.drag_layer = -1;
@@ -370,7 +370,7 @@ reference_landmark_find_any_layer(Game_State *state, String name)
 {// NOTE(kv) First layer (scene order) whose set has the name.
  for_i32(layer_index, 0, reference_mesh_layer_cap)
  {
-  Reference_Landmark_Set *set = reference_landmark_set_for_layer(state, layer_index);
+  Reference_Landmarks_One_Layer *set = reference_landmark_set_for_layer(state, layer_index);
   if(set == 0){ break; }
   Reference_Landmark *landmark = reference_landmark_find(set, name);
   if(landmark){ return landmark; }
