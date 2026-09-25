@@ -24,6 +24,7 @@ Type_Info_Location = get_type_info_Location();
 Type_Info_FUI_Line_Params = get_type_info_FUI_Line_Params();
 Type_Info_Reference_Placement = get_type_info_Reference_Placement();
 Type_Info_Reference_Mesh_Placement = get_type_info_Reference_Mesh_Placement();
+Type_Info_Skull_Ball = get_type_info_Skull_Ball();
 Type_Info_Reference_Landmark = get_type_info_Reference_Landmark();
 Type_Info_Reference_Landmark_File = get_type_info_Reference_Landmark_File();
 Type_Info_Curve = get_type_info_Curve();

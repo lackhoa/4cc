@@ -51,6 +51,9 @@
 //                        <mesh>.landmarks.txt sidecar (game_reference_landmarks.cpp)
 //   reference_level   -> set the placement rotation so the Frankfurt plane (landmarks
 //                        porion_l, porion_r, orbitale) is level; saves driver.values.ad
+//   construction_fit  -> plan-simplified-skull: least-squares Skull_Ball on the skull vault
+//                        (above the Frankfurt plane), residuals in mm, writes Skull_Ball_1
+//   construction_dump -> residuals of the current Skull_Ball_1, no refit
 //   quit              -> exit this instance
 //
 // cdb remains the fallback for crashes/breakpoints/ad-hoc struct inspection.
@@ -1621,6 +1624,14 @@ debug_channel_update(Game_State *state, App *app)
  else if(strncmp(cmd, "landmark_delete ", 16) == 0)
  {
   debug_channel_landmark_delete(out, state, cmd+16);
+ }
+ else if(strcmp(cmd, "construction_fit") == 0)
+ {// NOTE(kv) plan-simplified-skull step 2 (game_construction_fit.cpp)
+  debug_channel_construction_fit(out, state);
+ }
+ else if(strcmp(cmd, "construction_dump") == 0)
+ {
+  debug_channel_construction_dump(out, state);
  }
  else if(strcmp(cmd, "reference_level") == 0)
  {// NOTE(kv) plan-reference-landmarks Q7: rotation from porion_l / porion_r / orbitale.

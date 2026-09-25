@@ -609,4 +609,30 @@ draw_reference_mesh_layers(Reference_Scene_Data &data)
  }
 }
 
+function void
+draw_skull_construction(Reference_Scene_Data &data, Skull_Ball ball)
+{// NOTE(kv) plan-simplified-skull step 1: the fitted cranium ball as three great circles,
+ // mesh space -> bone space through the scene's placement (same transform as
+ // draw_reference_mesh, no hinge: the ball is on the skull layer). Under the caller's
+ // bone (Bone_Head). Nothing until construction_fit has run (radius <= 0).
+ if(ball.radius <= 0.f){ return; }
+ if(not active_preset_settings().show_construction){ return; }
+ Reference_Mesh_Placement placement = data.mesh_placement;
+ v1 scale = placement.scale;
+ if(scale <= 0.f){ scale = 1.f; }
+ mat4i bone_from_mesh = (mat4i_translate(placement.center) *
+                         mat4i_scale(scale) *
+                         mat4i_rotate_tpr(placement.rotation.x, placement.rotation.y, placement.rotation.z));
+ v3 center = mat4vert(bone_from_mesh, ball.center);
+ tdim radius = {ball.radius * scale};
+ Line_Params params = get_line_params();
+ params.radii = V4(0.5f, 0.5f, 0.5f, 0.5f);
+ v3 axes[3] = {V3x(1.f), V3y(1.f), V3z(1.f)};
+ for_i32(axis_index, 0, 3)
+ {// NOTE(kv) The mesh axes rotated into bone space: circle normals follow the placement.
+  v3 normal = noz(mat4vert(bone_from_mesh, ball.center + axes[axis_index]) - center);
+  draw_circle(center, mk_normal(normal), radius, params);
+ }
+}
+
 //~ EOF

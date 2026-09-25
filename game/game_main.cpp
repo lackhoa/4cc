@@ -641,6 +641,7 @@ convert_primitives_to_camera_space(Camera &camera)
 #include "game_curve_patch.cpp"
 #include "game_document_line_tool.cpp"
 #include "game_reference_landmarks.cpp"
+#include "game_construction_fit.cpp"
 
 // NOTE(kv) The viewport being rendered, window px: the landmark labels project through it
 // (mk_screen_projection_data needs a center; call_driver_render only gets clip_radius).
@@ -2975,6 +2976,7 @@ game_update(Game_Update_Params params)
      if(not layers_active){ ImGui::TextDisabled("(scene must be Scene_Head_Layers)"); }
      ImGui::BeginDisabled(not layers_active);
      X(show_reference_skull) X(show_reference_teeth) X(show_reference_eyeball) X(show_reference_skin) X(show_reference_muscles)
+     X(show_construction)
      ImGui::EndDisabled();
     }
     ImGui::SeparatorText("Picking");

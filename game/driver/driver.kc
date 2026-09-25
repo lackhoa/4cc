@@ -1914,6 +1914,7 @@ show_reference_images()
    SetInBlock(the_model->is_right, 0);
    BoneBlock(mk_bone_id(Bone_Head));
    draw_reference_mesh_layers(data);
+   draw_skull_construction(data, fv(Skull_Ball_1));  // plan-simplified-skull
   }
   BoneBlock(Bone_References);
   draw_reference_image_from_data(data.image);

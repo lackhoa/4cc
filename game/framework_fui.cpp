@@ -548,6 +548,7 @@ union Slider_Value_Storage
  v4 v; i4 i; tvert vert; FUI_Line_Params line_params; Curve curve;
  Reference_Placement reference_placement;
  Reference_Mesh_Placement reference_mesh_placement;
+ Skull_Ball skull_ball;
 };
 global Slider_Value_Storage global_fui_saved_value;  // TODO(kv) why is this a global?
 

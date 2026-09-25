@@ -4,7 +4,7 @@ global i32 marked_positions_file_1[4] ={
 //-NOTE: driver_animate.kc 
 62,70,1870,1878,
 };
-global i32 marked_positions_file_2[942] ={
+global i32 marked_positions_file_2[946] ={
 //-NOTE: driver.kc 
 102,153,195,241,287,354,401,460,499,550,589,640,687,746,789,844,
 895,958,1007,1068,1116,1176,1217,1270,1304,1350,1397,1456,1497,1550,1591,1644,
@@ -61,10 +61,11 @@ global i32 marked_positions_file_2[942] ={
 60282,60298,60338,60351,60367,60380,60833,60843,60875,60885,61086,61103,61107,61163,61257,61270,
 61465,61477,61487,61488,61758,61782,61792,61794,62036,62055,62535,62546,62625,62636,62846,62856,
 63215,63276,63367,63399,63471,63503,63520,63552,64127,64140,64287,64297,64822,64832,66053,66085,
-66123,66165,66423,66436,66485,66533,66539,66610,66744,66779,66822,66835,66972,67011,67054,67067,
-67175,67225,67268,67281,67390,67442,67485,67498,67606,67647,67689,67702,68064,68117,68256,68269,
-68346,68422,68531,68544,68596,68626,68699,68789,69622,69635,69895,69905,70239,70249,70667,70680,
-70887,70906,70911,70930,71104,71117,71122,71140,71569,71587,71592,71611,71616,71635,
+66090,66120,66136,66137,66201,66243,66501,66514,66563,66611,66617,66688,66822,66857,66900,66913,
+67050,67089,67132,67145,67253,67303,67346,67359,67468,67520,67563,67576,67684,67725,67767,67780,
+68142,68195,68334,68347,68424,68500,68609,68622,68674,68704,68777,68867,69700,69713,69973,69983,
+70317,70327,70745,70758,70965,70984,70989,71008,71182,71195,71200,71218,71647,71665,71670,71689,
+71694,71713,
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1178:
 global Vertex_Info vertices_info_[9] ={
@@ -75,12 +76,12 @@ global Vertex_Info vertices_info_[9] ={
 {{{1, 2}, {180, 181}}, 99,},
 {{{1, 2}, {202, 203}}, 0,1,},
 {{{1, 2}, {630, 631}}, 0,},
-{{{1, 2}, {934, 935}}, 0,1,},
-{{{1, 2}, {936, 937}}, 0,1,},};
+{{{1, 2}, {938, 939}}, 0,1,},
+{{{1, 2}, {940, 941}}, 0,1,},};
 //-
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1091:
-global Slider global_sliders[207];
+global Slider global_sliders[208];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1096:
 struct Slider_Values{
@@ -278,7 +279,7 @@ i2 v_190;
 i1 v_191;
 i1 v_192;
 v3 v_193;
-tvert v_194;
+Skull_Ball v_194;
 tvert v_195;
 tvert v_196;
 tvert v_197;
@@ -286,14 +287,16 @@ tvert v_198;
 tvert v_199;
 tvert v_200;
 tvert v_201;
-i1 v_202;
-v1 v_203;
+tvert v_202;
+i1 v_203;
 v1 v_204;
-i1 v_205;
-tvert v_206;
+v1 v_205;
+i1 v_206;
+tvert v_207;
 };
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1108:
 global Slider_Values slider_values ={
+{},
 {},
 {},
 {},
@@ -701,23 +704,24 @@ sliders[190] = { .type=types.i2, .location={{1, 2}, {853, 854}}, .options={}, .i
 sliders[191] = { .type=types.i1, .location={{1, 2}, {872, 873}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_222"), .value=&ReadSlider(191) };
 sliders[192] = { .type=types.i1, .location={{1, 2}, {874, 875}}, .options={}, .id=strlit("i1_223"), .value=&ReadSlider(192) };
 sliders[193] = { .type=types.v3, .location={{1, 2}, {876, 877}}, .options={}, .id=strlit("v3_224"), .value=&ReadSlider(193) };
-sliders[194] = { .type=types.tvert, .location={{1, 2}, {882, 883}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(194) };
-sliders[195] = { .type=types.tvert, .location={{1, 2}, {890, 891}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(195) };
-sliders[196] = { .type=types.tvert, .location={{1, 2}, {894, 895}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(196) };
-sliders[197] = { .type=types.tvert, .location={{1, 2}, {898, 899}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(197) };
-sliders[198] = { .type=types.tvert, .location={{1, 2}, {902, 903}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(198) };
-sliders[199] = { .type=types.tvert, .location={{1, 2}, {906, 907}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(199) };
-sliders[200] = { .type=types.tvert, .location={{1, 2}, {910, 911}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(200) };
-sliders[201] = { .type=types.tvert, .location={{1, 2}, {914, 915}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(201) };
-sliders[202] = { .type=types.i1, .location={{1, 2}, {920, 921}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(202) };
-sliders[203] = { .type=types.v1, .location={{1, 2}, {922, 923}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(203) };
-sliders[204] = { .type=types.v1, .location={{1, 2}, {924, 925}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(204) };
-sliders[205] = { .type=types.i1, .location={{1, 2}, {926, 927}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(205) };
-sliders[206] = { .type=types.tvert, .location={{1, 2}, {932, 933}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(206) };
+sliders[194] = { .type=types.Skull_Ball, .location={{1, 2}, {881, 882}}, .options={}, .id=strlit("Skull_Ball_1"), .value=&ReadSlider(194) };
+sliders[195] = { .type=types.tvert, .location={{1, 2}, {886, 887}}, .options={}, .id=strlit("tvert_225"), .value=&ReadSlider(195) };
+sliders[196] = { .type=types.tvert, .location={{1, 2}, {894, 895}}, .options={}, .id=strlit("tvert_226"), .value=&ReadSlider(196) };
+sliders[197] = { .type=types.tvert, .location={{1, 2}, {898, 899}}, .options={}, .id=strlit("tvert_227"), .value=&ReadSlider(197) };
+sliders[198] = { .type=types.tvert, .location={{1, 2}, {902, 903}}, .options={}, .id=strlit("tvert_228"), .value=&ReadSlider(198) };
+sliders[199] = { .type=types.tvert, .location={{1, 2}, {906, 907}}, .options={}, .id=strlit("tvert_229"), .value=&ReadSlider(199) };
+sliders[200] = { .type=types.tvert, .location={{1, 2}, {910, 911}}, .options={}, .id=strlit("tvert_230"), .value=&ReadSlider(200) };
+sliders[201] = { .type=types.tvert, .location={{1, 2}, {914, 915}}, .options={}, .id=strlit("tvert_231"), .value=&ReadSlider(201) };
+sliders[202] = { .type=types.tvert, .location={{1, 2}, {918, 919}}, .options={}, .id=strlit("tvert_232"), .value=&ReadSlider(202) };
+sliders[203] = { .type=types.i1, .location={{1, 2}, {924, 925}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_233"), .value=&ReadSlider(203) };
+sliders[204] = { .type=types.v1, .location={{1, 2}, {926, 927}}, .options={}, .id=strlit("v1_234"), .value=&ReadSlider(204) };
+sliders[205] = { .type=types.v1, .location={{1, 2}, {928, 929}}, .options={}, .id=strlit("v1_235"), .value=&ReadSlider(205) };
+sliders[206] = { .type=types.i1, .location={{1, 2}, {930, 931}}, .options={.flags = Slider_Clamp_01}, .id=strlit("i1_236"), .value=&ReadSlider(206) };
+sliders[207] = { .type=types.tvert, .location={{1, 2}, {936, 937}}, .options={}, .id=strlit("tvert_237"), .value=&ReadSlider(207) };
 }
 //-
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1334:
-global_decl Text_Object text_objects_[257];
+global_decl Text_Object text_objects_[258];
 
 // C:\Users\vodan\4ed\code\meta\meta_print.cpp:1339:
 global FUI_File_Data fui_files_[3] ={
@@ -734,8 +738,8 @@ global FUI_File_Data fui_files_[3] ={
  .index = 2,
  .name = strlit("driver.kc"),
  .marked_positions = {ArrayAndCount(marked_positions_file_2)},
- .text_objects = make_slice(text_objects_, {0,257}),
- .sliders = make_slice(global_sliders, {2,207}),
+ .text_objects = make_slice(text_objects_, {0,258}),
+ .sliders = make_slice(global_sliders, {2,208}),
  .vertices_info = make_slice(vertices_info_, {0,9}),
  },
 };

@@ -384,27 +384,47 @@ landmark_tool_release(Game_State *state)
 // mat4i_rotate_tpr), porion_r - porion_l is along +x, the plane normal is +y and the front
 // is +z. Center/scale stay as they are (set_reference_mesh_scale_rotation re-anchors).
 
+struct Reference_Frankfurt_Frame
+{// NOTE(kv) The level frame in mesh space, from the landmarks porion_l / porion_r /
+ // orbitale: unit side (porion_l -> porion_r), up (normal of the Frankfurt plane, toward
+ // the vault), front (side x up); `porion_middle` is the point the plane goes through
+ // (mesh: z up, -y front). Shared by reference_level and construction_fit.
+ v3 porion_middle;
+ v3 side;
+ v3 up;
+ v3 front;
+};
+
+function b32
+reference_frankfurt_frame(Game_State *state, Reference_Frankfurt_Frame *frame_out)
+{// NOTE(kv) false when a landmark is missing or the three are (nearly) collinear.
+ Reference_Landmark *porion_l = reference_landmark_find_any_layer(state, strlit("porion_l"));
+ Reference_Landmark *porion_r = reference_landmark_find_any_layer(state, strlit("porion_r"));
+ Reference_Landmark *orbitale = reference_landmark_find_any_layer(state, strlit("orbitale"));
+ if(not (porion_l and porion_r and orbitale)){ return false; }
+ v3 porion_middle = 0.5f*(porion_l->p + porion_r->p);
+ v3 s = noz(porion_r->p - porion_l->p);
+ v3 toward_orbit = orbitale->p - porion_middle;
+ v3 u = noz(cross(toward_orbit, s));
+ v3 f = cross(s, u);
+ if(lengthof(s) < 0.5f or lengthof(u) < 0.5f){ return false; }
+ *frame_out = {.porion_middle = porion_middle, .side = s, .up = u, .front = f};
+ return true;
+}
+
 function b32
 reference_level(Game_State *state, v3 *rotation_out, v1 *error_out)
 {// NOTE(kv) false when a landmark is missing. `error_out` = max abs entry difference
  // between the wanted rotation and mat4i_rotate_tpr(*rotation_out): the tilt/pan/roll
  // decomposition is checked by recomposing, so a convention slip shows up as a big error
  // instead of a wrong skull.
- Reference_Landmark *porion_l = reference_landmark_find_any_layer(state, strlit("porion_l"));
- Reference_Landmark *porion_r = reference_landmark_find_any_layer(state, strlit("porion_r"));
- Reference_Landmark *orbitale = reference_landmark_find_any_layer(state, strlit("orbitale"));
- if(not (porion_l and porion_r and orbitale)){ return false; }
- // NOTE(kv) The level frame in mesh space: side s, front f, up u (mesh: z up, -y front).
- v3 s = noz(porion_r->p - porion_l->p);
- v3 toward_orbit = orbitale->p - 0.5f*(porion_l->p + porion_r->p);
- v3 u = noz(cross(toward_orbit, s));
- v3 f = cross(s, u);
- if(lengthof(s) < 0.5f or lengthof(u) < 0.5f){ return false; }
+ Reference_Frankfurt_Frame frame;
+ if(not reference_frankfurt_frame(state, &frame)){ return false; }
  // NOTE(kv) F = bone_from_mesh rotation: rows are the bone axes expressed in mesh space.
  mat3 F;
- F.rows[0] = s;  // bone x (side)
- F.rows[1] = u;  // bone y (up)
- F.rows[2] = f;  // bone z (front)
+ F.rows[0] = frame.side;   // bone x (side)
+ F.rows[1] = frame.up;     // bone y (up)
+ F.rows[2] = frame.front;  // bone z (front)
  // NOTE(kv) mat4i_rotate_tpr(phi, theta, roll) builds inverse = rotateZ(roll) * M(phi, -theta)
  // with M rows (cp,0,-sp), (st sp, ct, cp st), (ct sp, -st, ct cp); inverse = F^T, and row 2
  // of the inverse (= column 2 of F) is untouched by rotateZ, so it gives phi and t = -theta.

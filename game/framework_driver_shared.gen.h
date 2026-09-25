@@ -1236,6 +1236,59 @@ dst->rotation = m_rotation;
 #endif
 ;
 
+struct Skull_Ball{
+v3 center;
+v1 radius;
+};
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:327:
+function Type_Info
+get_type_info_Skull_Ball(){
+Type_Info result = {};
+result.name = strlit("Skull_Ball");
+result.size = sizeof(Skull_Ball);
+result.kind = I_Type_Kind_Struct;
+result.members.set_count(2);
+{
+Type_Info *member_type = & Type_Info_v3;
+result.members[0] = {.type=member_type, .name=strlit("center"), .offset=offsetof(Skull_Ball, center)};
+}
+{
+Type_Info *member_type = & Type_Info_v1;
+result.members[1] = {.type=member_type, .name=strlit("radius"), .offset=offsetof(Skull_Ball, radius)};
+}
+return result;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:117:
+global Type_Info Type_Info_Skull_Ball;
+
+function Type_Info *type_info_from_pointer(Skull_Ball*pointer){
+return &Type_Info_Skull_Ball;
+}
+#endif
+#if WANT_TYPE_INFO
+// C:\Users\vodan\4ed\code\meta\meta_print.cpp:349:
+function void
+read_binary_Skull_Ball(Binary_Reader *r, Skull_Ball *dst){
+v3 m_center = {};
+{
+read_binary_v3(r, &m_center);
+}
+dst->center = m_center;
+
+v1 m_radius = {};
+{
+read_binary_v1(r, &m_radius);
+}
+dst->radius = m_radius;
+
+
+}
+#endif
+;
+
 struct Reference_Landmark{
 char name[REFERENCE_LANDMARK_NAME_CAP];
 v3 p;
@@ -1593,6 +1646,7 @@ b32 show_reference_teeth;
 b32 show_reference_eyeball;
 b32 show_reference_skin;
 b32 show_reference_muscles;
+b32 show_construction;
 b32 fill_only_picking;
 };
 #if WANT_TYPE_INFO
@@ -1603,7 +1657,7 @@ Type_Info result = {};
 result.name = strlit("Preset_Settings");
 result.size = sizeof(Preset_Settings);
 result.kind = I_Type_Kind_Struct;
-result.members.set_count(19);
+result.members.set_count(20);
 {
 local_persist Type_Info member_type_value;
 Type_Info *member_type = &member_type_value;
@@ -1685,7 +1739,11 @@ result.members[17] = {.type=member_type, .name=strlit("show_reference_muscles"),
 }
 {
 Type_Info *member_type = & Type_Info_b32;
-result.members[18] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
+result.members[18] = {.type=member_type, .name=strlit("show_construction"), .offset=offsetof(Preset_Settings, show_construction)};
+}
+{
+Type_Info *member_type = & Type_Info_b32;
+result.members[19] = {.type=member_type, .name=strlit("fill_only_picking"), .offset=offsetof(Preset_Settings, fill_only_picking)};
 }
 return result;
 }
@@ -1811,6 +1869,12 @@ b32 m_show_reference_muscles = {};
 read_binary_b32(r, &m_show_reference_muscles);
 }
 dst->show_reference_muscles = m_show_reference_muscles;
+
+b32 m_show_construction = {};
+{
+read_binary_b32(r, &m_show_construction);
+}
+dst->show_construction = m_show_construction;
 
 b32 m_fill_only_picking = {};
 {

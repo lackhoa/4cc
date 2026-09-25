@@ -190,6 +190,17 @@ struct Reference_Mesh_Placement
 };
 
 [info]
+struct Skull_Ball
+{// NOTE(kv) The simplified skull's cranium ball (plan-simplified-skull step 1): a sphere in
+ // the skull reference mesh's own coordinates (Z-Anatomy: mm), so it follows the layer's
+ // placement like a landmark does. Written by the `construction_fit` debug command (least
+ // squares on the vault vertices), drawn as three great circles when show_construction is
+ // on. radius <= 0 = not fitted yet, nothing drawn.
+ v3 center;
+ v1 radius;
+};
+
+[info]
 struct Reference_Landmark
 {// NOTE(kv) A labeled point on a reference mesh, in the mesh's own .obj coordinates, so it
  // stays glued to the mesh whatever the placement does (plan-reference-landmarks Q1/Q2).
@@ -317,6 +328,7 @@ struct Preset_Settings
  b32 show_reference_eyeball;
  b32 show_reference_skin;
  b32 show_reference_muscles;
+ b32 show_construction;     // the fitted simplified-skull shapes (Skull_Ball), plan-simplified-skull
  //-Picking
  b32 fill_only_picking;     // mouse-pick tests fills only, skipping curve vertices
 };

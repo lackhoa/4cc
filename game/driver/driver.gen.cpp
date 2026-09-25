@@ -1355,45 +1355,46 @@ if(scene_has_mesh(data)){
 SetInBlock(the_model->is_right, 0);
 BoneBlock(mk_bone_id(Bone_Head));
 (set_draw_location_unresolved({2,240}), draw_reference_mesh_layers(data), clear_draw_location());
+(set_draw_location_unresolved({2,241}), draw_skull_construction(data, ReadSlider(194)), clear_draw_location());
 }
 BoneBlock(Bone_References);
-(set_draw_location_unresolved({2,241}), draw_reference_image_from_data(data.image), clear_draw_location());
+(set_draw_location_unresolved({2,242}), draw_reference_image_from_data(data.image), clear_draw_location());
 }else {
 BoneBlock(Bone_References);
 Preset_Settings &settings = active_preset_settings();
 {
 if(camera_is_right()){
 ShowGroup(Vis_Ref_Arm_Medial_Right);
-tvert center = ReadSlider(194);
+tvert center = ReadSlider(195);
 v1 width = 0.7966f;
 Stringz filename = fimage(strlit("G:/My Drive/Art/arm medial.jpg"));
-(set_draw_location_unresolved({2,243}), draw_image(filename, center, V3z(width), V3y(1.f), 0.5f), clear_draw_location());
+(set_draw_location_unresolved({2,244}), draw_image(filename, center, V3z(width), V3y(1.f), 0.5f), clear_draw_location());
 }
 if(camera_is_front()){
-Reference_Image references[] = {{.filename = fimage(image_skeletal_meat_outline), .placement = {.center = ReadSlider(195), .x_axis = V3x(1.8194f), .alpha = 0.3033f}}, {.filename = fimage(image_mm_full_body_muslce_front), .placement = {.center = ReadSlider(196), .x_axis = V3x(1.8695f), .alpha = 0.3033f}}, {.filename = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")), .placement = {.center = ReadSlider(197), .x_axis = V3x(-1.3938f), .alpha = 0.1421f}}, {.filename = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")), .placement = {.center = ReadSlider(198), .x_axis = V3x(-1.0668f), .alpha = 0.1421f}}, {.filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")), .placement = {.center = ReadSlider(199), .x_axis = V3x(2.6661f), .alpha = 0.4221f}}};
+Reference_Image references[] = {{.filename = fimage(image_skeletal_meat_outline), .placement = {.center = ReadSlider(196), .x_axis = V3x(1.8194f), .alpha = 0.3033f}}, {.filename = fimage(image_mm_full_body_muslce_front), .placement = {.center = ReadSlider(197), .x_axis = V3x(1.8695f), .alpha = 0.3033f}}, {.filename = fimage(strlit("G:/My Drive/Art/AM arm front.JPG")), .placement = {.center = ReadSlider(198), .x_axis = V3x(-1.3938f), .alpha = 0.1421f}}, {.filename = fimage(strlit("G:/My Drive/Art/loomis 6 heads.JPG")), .placement = {.center = ReadSlider(199), .x_axis = V3x(-1.0668f), .alpha = 0.1421f}}, {.filename = fimage(strlit("G:/My Drive/Art/hpc.JPG")), .placement = {.center = ReadSlider(200), .x_axis = V3x(2.6661f), .alpha = 0.4221f}}};
 for_i32(ref_index, 0, alen(references))
     {
 ShowGroup(cast(Group_Vis)(Vis_Ref_Front_0 + ref_index));
-(set_draw_location_unresolved({2,249}), draw_reference_image_from_data(references[ref_index]), clear_draw_location());
+(set_draw_location_unresolved({2,250}), draw_reference_image_from_data(references[ref_index]), clear_draw_location());
 }
 }
 if(camera_is_back()){
 ShowGroup(Vis_Ref_Arm_Back_Bone);
 {
-tvert center = ReadSlider(200);
+tvert center = ReadSlider(201);
 v1 width = 2.4645f;
 Stringz filename = file_arm_back_bone;
-(set_draw_location_unresolved({2,250}), draw_image(filename, center, V3x(-width), V3y(1.f), 0.3033f), clear_draw_location());
+(set_draw_location_unresolved({2,251}), draw_image(filename, center, V3x(-width), V3y(1.f), 0.3033f), clear_draw_location());
 }
 }
 if(camera_is_left()){
 ShowGroup(Vis_Ref_Arm_Profile_Left);
 {
-tvert center = ReadSlider(201);
+tvert center = ReadSlider(202);
 v1 width = 1.1454f;
 Stringz filename = fimage(image_arm_profile_full);
 v3 x = V3z(1);
-(set_draw_location_unresolved({2,252}), draw_image(filename, center, -width * x, V3y(1.f), 1.f, V3(1, 1, 1), reference_depth_offset()), clear_draw_location());
+(set_draw_location_unresolved({2,253}), draw_image(filename, center, -width * x, V3y(1.f), 1.f, V3(1, 1, 1), reference_depth_offset()), clear_draw_location());
 }
 }
 }
@@ -1412,7 +1413,7 @@ bs_cycle_counter = 0;
 argb default_fill = painter->background_color;
 v1 default_line_radius_min = 0.5089f;
 v1 default_line_end_radius = default_line_radius_min;
-if(ReadSlider(202)){
+if(ReadSlider(203)){
 default_line_end_radius = i2f6(2);
 }
 {
@@ -1422,10 +1423,10 @@ p->params.painting = true;
 Paint_Params &pp = painter->params;
 pp.fill_depth_offset = millimeter * 1.f;
 pp.radius_mult = 1.f;
-pp.nslice_per_meter = ReadSlider(203) * 100.f;
+pp.nslice_per_meter = ReadSlider(204) * 100.f;
 pp.fill.color = default_fill;
 pp.line.radii = V4(default_line_radius_min, 1.f, i2f6(5), default_line_end_radius);
-argb default_line_color = argb_gray(ReadSlider(204));
+argb default_line_color = argb_gray(ReadSlider(205));
 pp.line_color = default_line_color;
 }
 p->viz_level = viz_level;
@@ -1437,22 +1438,22 @@ u64 end_cycle = __rdtsc();
 painter->render_cycles = u32(end_cycle - start_cycle);
 }
 show_reference_images();
-if(ReadSlider(205)){
+if(ReadSlider(206)){
 BoneBlock(mk_bone_id(Bone_References));
 hl_block_color(linear_argb_blue);
 tvert a = mkvert(0, 0, 0);
 tvert b = mkvert(1, 0, 0);
 tvert c = mkvert(0, .5f, 0);
 {
-(set_draw_location_unresolved({2,253}), draw(bez_line(a, b)), clear_draw_location());
-(set_draw_location_unresolved({2,254}), draw(bez_line(a, c)), clear_draw_location());
+(set_draw_location_unresolved({2,254}), draw(bez_line(a, b)), clear_draw_location());
+(set_draw_location_unresolved({2,255}), draw(bez_line(a, c)), clear_draw_location());
 }
 tvert pivot;
 {
 tvert translate = mkvert(1, 1, 0);
 mat4i rotate = mat4i_rotate_tpr(0, 0, painter->looping_time);
 v1 scale = 2.f;
-pivot = ReadSlider(206);
+pivot = ReadSlider(207);
 send_vert(7, pivot);
 mat4i translate_scale = mat4i_translate(translate) * mat4i_scale(scale);
 mat4i mom_from_kid = mat4i_translate(pivot) * rotate * translate_scale * mat4i_translate(-pivot);
@@ -1462,8 +1463,8 @@ make_bone(mk_bone_id(Bone_Test), mom_from_kid);
 hl_block_color(argb_black);
 BoneBlock(Bone_Test);
 send_vert(8, pivot);
-(set_draw_location_unresolved({2,255}), draw(bez_line(a, b)), clear_draw_location());
-(set_draw_location_unresolved({2,256}), draw(bez_line(a, c)), clear_draw_location());
+(set_draw_location_unresolved({2,256}), draw(bez_line(a, b)), clear_draw_location());
+(set_draw_location_unresolved({2,257}), draw(bez_line(a, c)), clear_draw_location());
 }
 }
 painter = 0;
