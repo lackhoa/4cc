@@ -44,23 +44,22 @@
   <section>
     <h2>Numbers</h2>
     <table class="numbers" id="numbers">
-      <thead><tr><th>landmark</th><th>up</th><th>from the brow line</th><th>in radii</th><th>from the <a href="#g-cranium-ball">cranium ball</a>'s equator</th><th>in its radii</th><th>Loomis says</th></tr></thead>
+      <thead><tr><th>landmark</th><th>up</th><th>from the brow line</th><th>in radii</th><th>Loomis says</th></tr></thead>
       <tbody>
-        <tr id="row-brow-line"><td>brow line (ball center)</td><td colspan="6">loading…</td></tr>
-        <tr id="row-glabella"><td><a href="#g-glabella">glabella</a></td><td colspan="6">loading…</td></tr>
-        <tr id="row-orbit-rim"><td><a href="#g-orbit-rim">orbit rim</a> (top of the eye socket)</td><td colspan="6">loading…</td></tr>
-        <tr id="row-orbitale"><td><a href="#g-orbitale">orbitale</a> (bottom of the eye socket)</td><td colspan="6">loading…</td></tr>
-        <tr id="row-porion"><td><a href="#g-porion">porion</a> (ear hole)</td><td colspan="6">loading…</td></tr>
+        <tr id="row-brow-line"><td>brow line (ball center)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-glabella"><td><a href="#g-glabella">glabella</a></td><td colspan="4">loading…</td></tr>
+        <tr id="row-orbit-rim"><td><a href="#g-orbit-rim">orbit rim</a> (top of the eye socket)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-orbitale"><td><a href="#g-orbitale">orbitale</a> (bottom of the eye socket)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-porion"><td><a href="#g-porion">porion</a> (ear hole)</td><td colspan="4">loading…</td></tr>
       </tbody>
     </table>
-    <p class="hint">up = height above the porion middle, mm; from the brow line = up minus the line's height, positive above; in radii = that divided by the ball's radius. The ball: <span id="ball_text"></span>. The last two columns repeat the measurement against the <a href="#g-cranium-ball">cranium ball</a>'s equator (<span style="color: #ff8fb1">pink</span>, dashed in the section): <span id="cranium_ball_text"></span>.</p>
+    <p class="hint">up = height above the porion middle, mm; from the brow line = up minus the line's height, positive above; in radii = that divided by the ball's radius. The ball: <span id="ball_text"></span>.</p>
   </section>
 
   <section>
     <h2>Does his line land on the brow?</h2>
     <ul>
       <li><strong>Glabella and orbit rim.</strong> Loomis puts the eyebrows on the line. On this skull the line runs through the brow: the glabella a few mm above it, the top of the eye socket a couple of mm below. Close enough to keep as he drew it.</li>
-      <li><strong>But the length ball is rigged.</strong> It passes through the midline's front-most point, and the front-most point of a skull is the glabella; a sphere's front-most point sits at its center's height, so the equator lands on the glabella by construction. The honest check is the <a href="#g-cranium-ball">cranium ball</a>, fitted to the whole vault without ever seeing the glabella: its equator sits 6 mm higher (the last two columns), with the glabella 3 mm and the top of the eye socket 8 mm below it. Still the brow, just its upper edge rather than its middle. The ear hole drops to −0.65 r, past the bottom of his 0.5 r ear, so on that ball the ear would have to be drawn taller than the book says. The length ball wins on both counts; the point of the control is that the brow line survives it.</li>
       <li><strong>Orbitale.</strong> The bottom of the eye socket is on the Frankfurt plane by definition (up 0), so its distance below the line is the ball center's height. The eye sits in the socket's upper half; the book does not give an eye line, the ear does that job.</li>
       <li><strong>Porion.</strong> The ear hole is also on the Frankfurt plane. Loomis hangs the ear from the brow line, one unit tall (0.5 r on Plate 1); the hole is inside the ear, so it should come out well below the line and above −0.5 r.</li>
     </ul>
@@ -71,7 +70,6 @@
     <h2>Glossary</h2>
     <dl class="glossary">
       <dt id="g-brow-line">brow line</dt><dd>Loomis: the horizontal center line of the side plane, carried around the ball. Here: the ball's horizontal section at the height of its center, a circle clipped by the two cut planes.</dd>
-      <dt id="g-cranium-ball">cranium ball</dt><dd>The cranium sphere of <a href="../skull-ball/">skull-ball</a>: a least-squares sphere through every vertex above the cranium cut. It is fitted to the whole vault, not to the glabella, so its equator is an independent test of the brow line.</dd>
       <dt id="g-glabella">glabella</dt><dd>The brow point, the most forward point of the forehead between the eyebrows; picked by hand on the skull-ball page and stored in the landmarks file.</dd>
       <dt id="g-orbit-rim">orbit rim</dt><dd>The top edge of the right eye socket, where the eyebrow sits: found on the mesh as the last brow band before the surface falls into the socket (same rule as the eyebrow ruler on skull-ball).</dd>
       <dt id="g-orbitale">orbitale</dt><dd>The lowest point of the right eye socket's rim, one of the three landmarks that define the Frankfurt plane.</dd>

@@ -9,7 +9,7 @@ import { attach_orbit_controls, bind_controls } from "../../src/explainer/orbit_
 import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/canvas_view";
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
 import { find_landmark, frankfurt_coordinates } from "../../src/reference";
-import { LengthSphereFit, SidePlanesFit, SphereFit, fit_side_planes_mirrored, fit_sphere_algebraic, fit_sphere_through_midline_extremes } from "../../src/construction_fit";
+import { LengthSphereFit, SidePlanesFit, fit_side_planes_mirrored, fit_sphere_through_midline_extremes } from "../../src/construction_fit";
 import { MeshBuilder, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, push_landmark_marker, push_side_plane, push_skull, push_sphere_with_side_cuts, side_cut_rim, size_gl_canvas, skull_view_colors as colors, sphere_outline, supraorbital_rim_point, vault_vertices } from "../../src/reference_skull_view";
 
 const MIDLINE_BAND_MM = 10; // same length ball as skull-side-cuts
@@ -24,10 +24,6 @@ type Construction = {
   length: LengthSphereFit;
   side_planes: SidePlanesFit;
   brow_up: number; // the brow line's height = the ball center's, mm
-  // The cranium sphere of skull-ball (least squares on the same vault), as a control: the
-  // length ball passes through the front-most midline point, which is the glabella, so its
-  // equator lands at brow height almost by construction. The cranium ball never saw the glabella.
-  cranium: SphereFit;
   landmarks: BrowLandmark[];
 };
 
@@ -42,17 +38,15 @@ function compute_construction(skull: Skull, glabella: V3): Construction | null {
   const vault = vault_vertices(skull, cut_normal);
   const length = fit_sphere_through_midline_extremes(vault, MIDLINE_BAND_MM);
   const side_planes = fit_side_planes_mirrored(vault);
-  const cranium = fit_sphere_algebraic(vault);
   const orbit_rim = supraorbital_rim_point(skull);
   const orbitale_in_file = find_landmark(skull.landmarks, "orbitale");
   const porion_in_file = find_landmark(skull.landmarks, "porion_r");
-  if (length === null || side_planes === null || cranium === null || orbit_rim === null || orbitale_in_file === null || porion_in_file === null) return null;
+  if (length === null || side_planes === null || orbit_rim === null || orbitale_in_file === null || porion_in_file === null) return null;
   return {
     cut_normal,
     length,
     side_planes,
     brow_up: length.sphere.center.y,
-    cranium,
     landmarks: [
       { row_id: "row-glabella", p: glabella, loomis: "the eyebrows sit on the line" },
       { row_id: "row-orbit-rim", p: orbit_rim, loomis: "the eyebrows sit on the line" },
@@ -169,13 +163,12 @@ function stroke_segments(view: SectionView, segments: SectionSegment[], style: s
   ctx.stroke();
 }
 
-function stroke_circle(view: SectionView, center: SectionPoint, radius_mm: number, style: string, line_width: number, dash: number[]): void {
+function stroke_circle(view: SectionView, center: SectionPoint, radius_mm: number, style: string, line_width: number): void {
   const { ctx } = view;
   const c = view.px(center);
   ctx.strokeStyle = style; ctx.lineWidth = line_width * view.dpr;
-  ctx.setLineDash(dash.map((d) => d * view.dpr));
-  ctx.beginPath(); ctx.arc(c.x, c.y, radius_mm * view.scale, 0, 2 * Math.PI); ctx.stroke();
   ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(c.x, c.y, radius_mm * view.scale, 0, 2 * Math.PI); ctx.stroke();
 }
 
 function stroke_line(view: SectionView, a: SectionPoint, b: SectionPoint, style: string, line_width: number, dash: number[]): void {
@@ -204,7 +197,7 @@ function label(view: SectionView, p: SectionPoint, text: string, style: string, 
 }
 
 const profile_canvas = document.getElementById("profile_canvas") as HTMLCanvasElement;
-const ball_style = "#ffd166", plane_style = "#7fb3ff", cut_style = "rgba(255, 168, 77, 0.7)", landmark_style = "#8cffa0", cranium_style = "#ff8fb1";
+const ball_style = "#ffd166", plane_style = "#7fb3ff", cut_style = "rgba(255, 168, 77, 0.7)", landmark_style = "#8cffa0";
 const ACROSS_MIN = -120, ACROSS_MAX = 110;
 
 function draw_profile(): void {
@@ -214,14 +207,8 @@ function draw_profile(): void {
   stroke_segments(view, midline_cut_segments(skull), "#8a8f9a", 1);
   const n = construction.cut_normal;
   if (Math.abs(n.y) > 1e-6) stroke_line(view, { across: ACROSS_MIN, up: -(n.z * ACROSS_MIN) / n.y }, { across: ACROSS_MAX, up: -(n.z * ACROSS_MAX) / n.y }, cut_style, 1, []);
-  stroke_circle(view, { across: ball.center.z, up: ball.center.y }, ball.radius, ball_style, 1.5, []);
+  stroke_circle(view, { across: ball.center.z, up: ball.center.y }, ball.radius, ball_style, 1.5);
   stroke_line(view, { across: ACROSS_MIN, up: construction.brow_up }, { across: ACROSS_MAX, up: construction.brow_up }, ball_style, 2, []);
-  // The control: the cranium ball and its own equator, dashed.
-  const cranium = construction.cranium;
-  const cranium_center = { across: cranium.center.z, up: cranium.center.y };
-  stroke_line(view, { across: cranium_center.across - cranium.radius, up: cranium_center.up }, { across: cranium_center.across + cranium.radius, up: cranium_center.up }, cranium_style, 1.2, [6, 4]);
-  stroke_circle(view, cranium_center, cranium.radius, cranium_style, 1.2, [6, 4]);
-  label(view, { across: ACROSS_MIN + 5, up: cranium_center.up }, `cranium ball's equator up ${cranium_center.up.toFixed(1)}`, cranium_style, 0, -6);
   // The porions are behind the midline plane; the profile shows them projected onto it.
   for (const landmark of construction.landmarks) {
     const p = { across: landmark.p.z, up: landmark.p.y };
@@ -231,8 +218,7 @@ function draw_profile(): void {
     const dx = -6; // the face landmarks sit at the right edge, so every label goes leftwards
     label(view, p, `${name} ${format_signed(p.up - construction.brow_up, 1)}`, landmark_style, dx, landmark.p.y > construction.brow_up ? -6 : 14);
   }
-  // The cranium label goes above its line, this one below, so the two do not collide when the equators are close.
-  label(view, { across: ACROSS_MIN + 5, up: construction.brow_up }, `brow line up ${construction.brow_up.toFixed(1)}`, ball_style, 0, 14);
+  label(view, { across: ACROSS_MIN + 5, up: construction.brow_up }, `brow line up ${construction.brow_up.toFixed(1)}`, ball_style, 0, -6);
   label(view, { across: ACROSS_MIN + 5, up: -40 }, `length ball r ${ball.radius.toFixed(1)}, cut at ±${construction.side_planes.half_width.toFixed(1)}`, plane_style, 0, 0);
 }
 
@@ -247,17 +233,13 @@ function fill_row(id: string, cells: string[]): void {
 function update_numbers_table(): void {
   if (construction === null) return;
   const radius = construction.length.sphere.radius;
-  const cranium = construction.cranium;
-  const cranium_up = cranium.center.y;
-  fill_row("row-brow-line", [format_signed(construction.brow_up, 1), "0", "0", format_signed(construction.brow_up - cranium_up, 1), `${format_signed((construction.brow_up - cranium_up) / cranium.radius, 2)} r`, "the ball's equator"]);
+  fill_row("row-brow-line", [format_signed(construction.brow_up, 1), "0", "0", "the ball's equator"]);
   for (const landmark of construction.landmarks) {
     const offset = landmark.p.y - construction.brow_up;
-    const cranium_offset = landmark.p.y - cranium_up;
-    fill_row(landmark.row_id, [format_signed(landmark.p.y, 1), format_signed(offset, 1), `${format_signed(offset / radius, 2)} r`, format_signed(cranium_offset, 1), `${format_signed(cranium_offset / cranium.radius, 2)} r`, landmark.loomis]);
+    fill_row(landmark.row_id, [format_signed(landmark.p.y, 1), format_signed(offset, 1), `${format_signed(offset / radius, 2)} r`, landmark.loomis]);
   }
   const center = construction.length.sphere.center;
   document.getElementById("ball_text")!.textContent = `center up ${center.y.toFixed(1)} / front ${center.z.toFixed(1)}, r ${radius.toFixed(1)}, half_width ${construction.side_planes.half_width.toFixed(1)}`;
-  document.getElementById("cranium_ball_text")!.textContent = `center up ${cranium_up.toFixed(1)} / front ${cranium.center.z.toFixed(1)}, r ${cranium.radius.toFixed(1)}`;
 }
 
 // ---- wiring -------------------------------------------------------------------------
