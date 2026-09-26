@@ -7,7 +7,6 @@ import { OrbitCamera } from "./camera";
 import { Stroke, TabletDocument, Vertex, fallback_perpendicular, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
-export const DEFAULT_DOCUMENT_NAME = "untitled";
 // Version 4 (2026-09-05): stable ids — vertices are {id, position}, strokes
 // carry an id, every cross-reference holds ids, and the document stores the
 // two id counters. Versions 1-3 referenced strokes/vertices by array index
@@ -19,11 +18,13 @@ export const DEFAULT_DOCUMENT_NAME = "untitled";
 const DOCUMENT_FORMAT_VERSION = 4;
 const LOADABLE_VERSIONS = [1, 2, 3, DOCUMENT_FORMAT_VERSION];
 const AUTOSAVE_DEBOUNCE_MS = 2000;
-const CURRENT_NAME_STORAGE_KEY = "autodraw_tablet_current_document";
-const BUFFER_STORAGE_KEY = "autodraw_tablet_crash_buffer";
 
 export type PersistenceState = {
   current_document_name: string;
+  // localStorage keys, from the sketchpad setup's prefix (each sketchpad page keeps its
+  // own current document and crash buffer, so two pages never autosave into one file).
+  current_name_storage_key: string;
+  crash_buffer_storage_key: string;
   last_saved_json: string | null; // skip autosaves when nothing changed
   autosave_timer: number | null;
   // False until the startup load (or a document switch) finishes — blocks
@@ -39,12 +40,21 @@ export type PersistenceState = {
 // a document edited elsewhere since.
 type CrashBuffer = { name: string; json: string; server_saved: boolean; saved_at_ms: number };
 
-export function create_persistence_state(): PersistenceState {
-  let name = DEFAULT_DOCUMENT_NAME;
+// `default_document_name` is opened when localStorage remembers no current document.
+export function create_persistence_state(default_document_name: string, storage_key_prefix: string): PersistenceState {
+  const current_name_storage_key = `${storage_key_prefix}_current_document`;
+  let name = default_document_name;
   try {
-    name = localStorage.getItem(CURRENT_NAME_STORAGE_KEY) ?? DEFAULT_DOCUMENT_NAME;
+    name = localStorage.getItem(current_name_storage_key) ?? default_document_name;
   } catch { /* storage unavailable (private mode) — default name */ }
-  return { current_document_name: name, last_saved_json: null, autosave_timer: null, ready: false };
+  return {
+    current_document_name: name,
+    current_name_storage_key,
+    crash_buffer_storage_key: `${storage_key_prefix}_crash_buffer`,
+    last_saved_json: null,
+    autosave_timer: null,
+    ready: false,
+  };
 }
 
 export function serialize_document_state(tablet_document: TabletDocument, camera: OrbitCamera): string {
@@ -131,7 +141,7 @@ function document_from_indexed(parsed_version: number, stored: any, tablet_docum
 }
 
 // Parse + apply a stored snapshot into the live document/camera (in place —
-// main.ts holds references to both). Returns false on a bad payload.
+// sketchpad.ts holds references to both). Returns false on a bad payload.
 export function apply_document_state(json: string, tablet_document: TabletDocument, camera: OrbitCamera): boolean {
   let parsed;
   try {
@@ -171,24 +181,24 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   return true;
 }
 
-function read_crash_buffer(): CrashBuffer | null {
+function read_crash_buffer(state: PersistenceState): CrashBuffer | null {
   try {
-    const raw = localStorage.getItem(BUFFER_STORAGE_KEY);
+    const raw = localStorage.getItem(state.crash_buffer_storage_key);
     return raw === null ? null : JSON.parse(raw);
   } catch {
     return null;
   }
 }
 
-function write_crash_buffer(buffer: CrashBuffer): void {
+function write_crash_buffer(state: PersistenceState, buffer: CrashBuffer): void {
   try {
-    localStorage.setItem(BUFFER_STORAGE_KEY, JSON.stringify(buffer));
+    localStorage.setItem(state.crash_buffer_storage_key, JSON.stringify(buffer));
   } catch { /* storage unavailable — server save still happens */ }
 }
 
-function remember_current_name(name: string): void {
+function remember_current_name(state: PersistenceState, name: string): void {
   try {
-    localStorage.setItem(CURRENT_NAME_STORAGE_KEY, name);
+    localStorage.setItem(state.current_name_storage_key, name);
   } catch { /* storage unavailable */ }
 }
 
@@ -212,10 +222,10 @@ async function save_now(state: PersistenceState, tablet_document: TabletDocument
   if (json === state.last_saved_json) return;
   const name = state.current_document_name;
   const saved_at_ms = Date.now();
-  write_crash_buffer({ name, json, server_saved: false, saved_at_ms });
+  write_crash_buffer(state, { name, json, server_saved: false, saved_at_ms });
   const saved = await save_to_server(name, json);
   if (saved) {
-    write_crash_buffer({ name, json, server_saved: true, saved_at_ms });
+    write_crash_buffer(state, { name, json, server_saved: true, saved_at_ms });
     state.last_saved_json = json;
   }
   // Not saved: last_saved_json stays stale so the next autosave retries the server.
@@ -250,7 +260,7 @@ export async function load_current_document_on_startup(
   state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera,
 ): Promise<void> {
   const name = state.current_document_name;
-  const buffer = read_crash_buffer();
+  const buffer = read_crash_buffer(state);
   const server_list = await list_documents_from_server();
   try {
     await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
@@ -315,8 +325,8 @@ export async function rename_document(
   if (!(await save_to_server(new_name, json))) return false;
   state.current_document_name = new_name;
   state.last_saved_json = json;
-  remember_current_name(new_name);
-  write_crash_buffer({ name: new_name, json, server_saved: true, saved_at_ms: Date.now() });
+  remember_current_name(state, new_name);
+  write_crash_buffer(state, { name: new_name, json, server_saved: true, saved_at_ms: Date.now() });
   // The old file only exists if it was saved at least once.
   if (existing.some((entry) => entry.name === old_name)) {
     try {
@@ -344,7 +354,7 @@ export async function switch_document(
 
   state.current_document_name = name;
   state.last_saved_json = null;
-  remember_current_name(name);
+  remember_current_name(state, name);
   clear_document_in_place(tablet_document);
   try {
     const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);

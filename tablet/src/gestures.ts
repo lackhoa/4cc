@@ -10,7 +10,7 @@
 import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
 import { V2 } from "./math";
 
-export const ORBIT_RADIANS_PER_PIXEL = 0.006; // shared with pen-drag orbiting in main.ts
+export const ORBIT_RADIANS_PER_PIXEL = 0.006; // shared with pen-drag orbiting in sketchpad.ts
 
 // Tap thresholds (Q7, tune by feel): every finger stays within this
 // displacement of where it landed, and the last finger lifts within this time

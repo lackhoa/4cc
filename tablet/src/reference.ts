@@ -76,6 +76,15 @@ function normalize_reference_mesh(mesh: ReferenceMesh): void {
   }
 }
 
+// A reference mesh from positions already in world units (no normalization), e.g. the
+// Z-Anatomy skull in Frankfurt-frame mm * WORLD_PER_MM. Several meshes (skull + mandible)
+// concatenate by calling this once each and joining the arrays.
+export function reference_mesh_from_positions(positions_world: V3[], triangle_indices: number[]): ReferenceMesh {
+  const mesh: ReferenceMesh = { triangle_positions: triangle_indices.map((index) => positions_world[index]), triangle_normals: [] };
+  compute_triangle_normals(mesh);
+  return mesh;
+}
+
 function compute_triangle_normals(mesh: ReferenceMesh): void {
   for (let i = 0; i < mesh.triangle_positions.length; i += 3) {
     const edge_ab = v3_sub(mesh.triangle_positions[i + 1], mesh.triangle_positions[i]);

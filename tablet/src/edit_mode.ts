@@ -210,9 +210,29 @@ export function edit_pen_down(
   return state.last_screen !== null;
 }
 
+// Nearest document vertex within control-point pick range, or null. Any vertex
+// (a stroke endpoint or a landmark) — sketchpad.ts checks it before the strokes so
+// a tap on a vertex selects the vertex.
+export function pick_vertex(
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+): VertexId | null {
+  let best: VertexId | null = null;
+  let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
+  for (const vertex of tablet_document.vertices) {
+    const projected = camera_world_to_screen(camera, vertex.position, canvas.clientWidth, canvas.clientHeight);
+    if (projected === null) continue;
+    const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best = vertex.id;
+    }
+  }
+  return best;
+}
+
 // Screen-space pen delta mapped into the camera plane at pivot depth. All
 // drags share this 1:1-with-the-pen feel (parallax off pivot depth accepted).
-function camera_plane_drag(
+export function camera_plane_drag(
   camera: OrbitCamera, from_screen: V2, to_screen: V2, canvas: HTMLCanvasElement,
 ): V3 {
   const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);

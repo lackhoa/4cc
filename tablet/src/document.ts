@@ -22,7 +22,11 @@ import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_
 export type StrokeId = number;
 export type VertexId = number;
 
-export type Vertex = { id: VertexId; position: V3 };
+export type Vertex = {
+  id: VertexId;
+  position: V3;
+  name?: string; // a named vertex is a landmark: it survives garbage collection with no stroke using it
+};
 
 export type Stroke = {
   id: StrokeId;
@@ -253,7 +257,7 @@ export function enforce_smooth_knots_of_stroke(tablet_document: TabletDocument, 
   }
 }
 
-// Drop vertices that no stroke endpoint and no pin references.
+// Drop vertices that no stroke endpoint and no pin references. Named vertices (landmarks) stay.
 export function garbage_collect_vertices(tablet_document: TabletDocument): void {
   const used_vertices = new Set<VertexId>();
   for (const stroke of tablet_document.strokes) {
@@ -263,7 +267,7 @@ export function garbage_collect_vertices(tablet_document: TabletDocument): void 
   for (const pin of tablet_document.vertex_pins) {
     used_vertices.add(pin.vertex);
   }
-  tablet_document.vertices = tablet_document.vertices.filter((vertex) => used_vertices.has(vertex.id));
+  tablet_document.vertices = tablet_document.vertices.filter((vertex) => used_vertices.has(vertex.id) || vertex.name !== undefined);
 }
 
 // Re-derive every pinned vertex's position from its host curve. Called once

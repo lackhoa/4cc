@@ -1,0 +1,890 @@
+// autodraw tablet — iPad drawing companion prototype.
+// Sketchpad rework (plan step 7): strokes are single cubics put down with the
+// armed line tool and shaped afterwards; endpoints live in a shared vertex
+// table so joined strokes can never tear. Bare pen drags orbit (Q27/Q35); a
+// drag starting on the selected stroke translates it; vertex/handle drags
+// reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
+//
+// The whole editor is `start_sketchpad(setup)`: one page calls it with its own
+// reference mesh, document name and localStorage keys (plan-sketchpad-landmarks.md
+// Q66/Q67) — `draw/main.ts` is the plain sketchpad, `pages/skull-draw/main.ts` the
+// same editor over the Z-Anatomy skull. The page's HTML supplies the canvas and
+// the toolbar buttons by id.
+
+import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
+import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_by_id, vertex_position } from "./document";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
+import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
+import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
+import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
+import { merge_adjacent_strokes } from "./stroke_merge";
+import { append_patch_mesh, patch_surface_grid } from "./patch";
+import { extract_contour_chains } from "./contour";
+import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
+import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
+import { VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
+import { ReferenceMesh, append_reference_mesh } from "./reference";
+import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
+import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
+
+// What differs between the pages that run the sketchpad.
+export type SketchpadSetup = {
+  // The mesh behind the drawing, already in world units; null = none (fetch failed).
+  load_reference_mesh: () => Promise<ReferenceMesh | null>;
+  default_document_name: string; // opened when localStorage remembers no current document
+  storage_key_prefix: string; // localStorage keys `<prefix>_current_document`, `<prefix>_crash_buffer`
+  // True: the docs panel lists every server document plus "new…"/"rename…". False: the
+  // page is tied to its one document, the panel only names it.
+  can_switch_documents: boolean;
+};
+
+// Ported from the desktop app (driver.kc default_line_color = gray 0.03
+// linear -> 0.196 sRGB; we write sRGB straight to the framebuffer).
+const STROKE_COLOR = { r: 0.196, g: 0.196, b: 0.196 };
+const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
+const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
+const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
+const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
+const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
+const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
+const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
+const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
+const NAMED_VERTEX_COLOR = { r: 0.55, g: 1.0, b: 0.6 }; // landmarks (vertices with a name), always drawn
+const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
+// "surf" off: same opaque fill, painted in the clear color (render.ts) so the
+// patch still occludes what's behind it but reads as background.
+const SURFACE_BACKGROUND_COLOR = { r: 0.384, g: 0.384, b: 0.384 };
+const ANCHOR_SIZE_PIXELS = 12;
+const HANDLE_SIZE_PIXELS = 9;
+const HOT_SIZE_SCALE = 1.5; // hot markers grow by this much
+
+export function start_sketchpad(setup: SketchpadSetup): void {
+  const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  const gl = canvas.getContext("webgl");
+  if (!gl) {
+    document.body.textContent = "WebGL not available";
+    throw new Error("WebGL not available");
+  }
+
+  const camera = default_camera();
+  const tablet_document = empty_document();
+  const renderer = create_line_renderer(gl);
+  const persistence = create_persistence_state(setup.default_document_name, setup.storage_key_prefix);
+  const history = create_history_state();
+  let reference_mesh: ReferenceMesh | null = null;
+  let reference_visible = true;
+  let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
+  let vertex_names_visible = true; // "names" button: landmark dots + labels
+  let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
+  // Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
+  // Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
+  // act on primary + extras. Kept apart from EditState so the selection can
+  // later widen to vertices/patches without touching stroke editing.
+  let extra_selection: StrokeId[] = [];
+  // Vertex selection (plan-sketchpad-landmarks.md Q63): a tap on any vertex — a
+  // stroke endpoint or a landmark — selects it instead of a stroke. Exclusive with
+  // the stroke selection: selecting either clears the other. The selected vertex
+  // drags on the camera plane and is the target of the name/delete buttons.
+  let selected_vertex: VertexId | null = null;
+  let selected_vertex_drag_last_screen: V2 | null = null; // non-null while the pen drags the selected vertex
+  // Armed tools: "line" creates strokes. "pin" waits for a tap on the selected
+  // stroke's curve and creates a vertex pinned there. "split" waits for a tap on
+  // the selected curve and splits it there into two strokes joined by a smooth
+  // knot.
+  type ArmedTool = "line" | "pin" | "split";
+  let armed_tool: ArmedTool | null = null;
+  // Tilt is a sticky mode, not a tap tool. Two variants to compare, mutually
+  // exclusive: "dial" — any drag rolls the selected stroke about its chord;
+  // "swing" — a handle drag tilts the plane by swinging the other handle
+  // (edit_pen_down/move).
+  let handle_mode: HandleMode = "plane";
+  let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
+  let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
+  let frame_requested = false;
+  // Pen tap detection (tap = select/deselect instead of moving anything).
+  // Displacement from the down point, not path length — pencil taps jitter.
+  let pen_down_screen: V2 | null = null;
+  let pen_max_displacement_pixels = 0;
+  // Hot item: what a pen-down at the hovering pen's position would grab,
+  // resolved every frame (the camera can move under a still pen) with the same
+  // picks and priority as edit_pen_down / the tap handlers, and drawn in
+  // HOT_COLOR so the user knows before committing.
+  type HotItem =
+    | { kind: "stroke"; stroke_id: StrokeId }
+    | { kind: "point"; key: StrokePointKey } // control point of the selected stroke
+    | { kind: "pin"; vertex: VertexId } // pin riding the selected stroke
+    | { kind: "vertex"; vertex: VertexId }; // any document vertex, when no stroke is selected
+  let hover_screen: V2 | null = null; // null while the pen is down or off the canvas
+  let hot_item: HotItem | null = null;
+
+  function resolve_hot_item(): HotItem | null {
+    if (hover_screen === null || armed_tool === "line") return null;
+    if (edit_state !== null && armed_tool === null && handle_mode !== "dial") {
+      const pin = pick_pin_on_stroke(edit_state.stroke_id, hover_screen);
+      if (pin !== null) return { kind: "pin", vertex: pin.vertex };
+      const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+      const key = pick_stroke_point(stroke, tablet_document, camera, hover_screen, canvas);
+      if (key !== null) return { kind: "point", key };
+    }
+    if (edit_state === null && armed_tool === null) {
+      const vertex = pick_vertex(tablet_document, camera, hover_screen, canvas);
+      if (vertex !== null) return { kind: "vertex", vertex };
+    }
+    const picked = pick_stroke(tablet_document, camera, hover_screen, canvas);
+    return picked === null ? null : { kind: "stroke", stroke_id: picked };
+  }
+
+  function request_render(): void {
+    // Anything that changes what's on screen (strokes, surfaces, camera) goes
+    // through here — piggyback the debounced autosave on it; identical
+    // serializations are skipped inside. Before the early return: a pending
+    // frame must not swallow the save (rAF pauses entirely in hidden tabs).
+    // Pinned vertices are derived data — re-derive synchronously (NOT in the
+    // rAF, which pauses in hidden tabs) so any host reshape carries its riders
+    // before history snapshots and autosave see the document.
+    update_pinned_vertex_positions(tablet_document);
+    refresh_pin_button_armed();
+    schedule_autosave(persistence, tablet_document, camera);
+    if (frame_requested) return;
+    frame_requested = true;
+    requestAnimationFrame(() => {
+      frame_requested = false;
+      hot_item = resolve_hot_item();
+      // Ribbons are camera-facing (desktop parity) — retessellate every frame.
+      rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
+      rebuild_surface_mesh();
+      rebuild_reference_mesh();
+      rebuild_edit_overlay();
+      render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
+      rebuild_stroke_labels();
+    });
+  }
+
+  // Names live in an HTML overlay (no text rendering in WebGL): only the selected
+  // stroke's name shows, placed at the curve's midpoint each frame; every named
+  // vertex (landmark) shows its name beside its dot, unless names are hidden.
+  const stroke_labels = document.getElementById("stroke_labels") as HTMLDivElement;
+  function rebuild_stroke_labels(): void {
+    const labels: HTMLDivElement[] = [];
+    const push_label = (text: string, world: V3, offset_pixels: number) => {
+      const screen = camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
+      if (screen === null) return;
+      const label = document.createElement("div");
+      label.textContent = text;
+      label.style.left = `${screen.x + offset_pixels}px`;
+      label.style.top = `${screen.y}px`;
+      labels.push(label);
+    };
+    const stroke = edit_state === null ? null : stroke_by_id(tablet_document, edit_state.stroke_id);
+    if (stroke !== null && stroke.name !== undefined) {
+      push_label(stroke.name, bezier_point(stroke_control_points(stroke, tablet_document), 0.5), 0);
+    }
+    if (vertex_names_visible) {
+      for (const vertex of tablet_document.vertices) {
+        if (vertex.name !== undefined) push_label(vertex.name, vertex.position, ANCHOR_SIZE_PIXELS * 2);
+      }
+    }
+    stroke_labels.replaceChildren(...labels);
+  }
+
+  function resize_canvas_to_display(): void {
+    const dpr = window.devicePixelRatio;
+    canvas.width = Math.round(canvas.clientWidth * dpr);
+    canvas.height = Math.round(canvas.clientHeight * dpr);
+    gl!.viewport(0, 0, canvas.width, canvas.height);
+    request_render();
+  }
+  window.addEventListener("resize", resize_canvas_to_display);
+
+  // The stroke a dragged vertex would get pinned to on release (drag-time
+  // warning, same function as the release so they can never disagree), or null.
+  function drag_snap_target_stroke(): StrokeId | null {
+    if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
+    const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+    if (find_merge_target_vertex(tablet_document, dragged_vertex) !== null) return null; // weld wins
+    const target = find_snap_target_stroke(tablet_document, dragged_vertex);
+    return target === null ? null : target.stroke_id;
+  }
+
+  // Per-frame meshes reuse one sink each so a frame allocates nothing for them.
+  const stroke_sink = create_vertex_sink(1 << 15);
+  const surface_sink = create_vertex_sink(1 << 15);
+  const reference_sink = create_vertex_sink(1 << 15);
+
+  function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_stroke: StrokeId | null): void {
+    const vertices = stroke_sink;
+    reset_vertex_sink(vertices);
+    for (const stroke of tablet_document.strokes) {
+      const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
+      const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
+      const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
+      append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
+    }
+    append_contour_ribbons(vertices);
+    set_stroke_mesh(renderer, vertex_sink_view(vertices));
+  }
+
+  // Computed contours share the stroke mesh so they get the same depth bias
+  // and draw order as drawn strokes; they are derived per frame, never stored.
+  function append_contour_ribbons(vertices: VertexSink): void {
+    const eye = camera_eye(camera);
+    for (const patch of tablet_document.patches) {
+      const grid = patch_surface_grid(patch, tablet_document);
+      if (grid === null) continue;
+      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, STROKE_COLOR, vertices);
+    }
+  }
+
+  function rebuild_surface_mesh(): void {
+    const vertices = surface_sink;
+    reset_vertex_sink(vertices);
+    for (const patch of tablet_document.patches) {
+      append_patch_mesh(patch, tablet_document, camera, surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR, vertices);
+    }
+    set_surface_mesh(renderer, vertex_sink_view(vertices));
+  }
+
+  // Camera-facing square marker, two triangles.
+  function append_billboard_square(
+    center: V3, half_size: number, right: V3, up: V3,
+    color: { r: number; g: number; b: number }, out: number[],
+  ): void {
+    const right_half = v3_scale(right, half_size);
+    const up_half = v3_scale(up, half_size);
+    const corner_a = v3_sub(v3_sub(center, right_half), up_half);
+    const corner_b = v3_sub(v3_add(center, right_half), up_half);
+    const corner_c = v3_add(v3_add(center, right_half), up_half);
+    const corner_d = v3_add(v3_sub(center, right_half), up_half);
+    for (const corner of [corner_a, corner_b, corner_c, corner_a, corner_c, corner_d]) {
+      out.push(corner.x, corner.y, corner.z, color.r, color.g, color.b);
+    }
+  }
+
+  // Headlight shading is camera-dependent — rebuilt per frame like the surfaces.
+  function rebuild_reference_mesh(): void {
+    if (reference_mesh === null || !reference_visible) {
+      set_reference_mesh(renderer, new Float32Array(0));
+      return;
+    }
+    const vertices = reference_sink;
+    reset_vertex_sink(vertices);
+    append_reference_mesh(reference_mesh, camera, vertices);
+    set_reference_mesh(renderer, vertex_sink_view(vertices));
+  }
+
+  function rebuild_edit_overlay(): void {
+    const basis = camera_basis(camera);
+    const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
+    const anchor_half = (ANCHOR_SIZE_PIXELS / 2) * units_per_pixel;
+    const handle_half = (HANDLE_SIZE_PIXELS / 2) * units_per_pixel;
+    const line_vertices: number[] = [];
+    const triangle_vertices: number[] = [];
+
+    // Landmarks (named vertices) draw whether or not anything is selected; the hot
+    // vertex grows, the selected vertex draws anchor-sized in the highlight colour
+    // (a selected unnamed vertex is otherwise invisible).
+    for (const vertex of tablet_document.vertices) {
+      const hot = hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex.id;
+      if (vertex.id === selected_vertex) {
+        append_billboard_square(vertex.position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
+      } else if (hot) {
+        append_billboard_square(vertex.position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
+      } else if (vertex.name !== undefined && vertex_names_visible) {
+        append_billboard_square(vertex.position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
+      }
+    }
+    if (edit_state === null) {
+      set_overlay_lines(renderer, new Float32Array(0));
+      set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
+      return;
+    }
+    const selected_stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    const points = stroke_control_points(selected_stroke, tablet_document);
+    const push_line = (a: V3, b: V3, color: { r: number; g: number; b: number } = HANDLE_LINE_COLOR) => {
+      line_vertices.push(a.x, a.y, a.z, color.r, color.g, color.b);
+      line_vertices.push(b.x, b.y, b.z, color.r, color.g, color.b);
+    };
+    push_line(points.p0, points.p1);
+    push_line(points.p3, points.p2);
+    // Hot control points / pins draw bigger and in HOT_COLOR.
+    const is_hot_point = (key: StrokePointKey) => hot_item !== null && hot_item.kind === "point" && hot_item.key === key;
+    const is_hot_pin = (vertex: VertexId) => hot_item !== null && hot_item.kind === "pin" && hot_item.vertex === vertex;
+    const push_marker = (center: V3, half_size: number, color: { r: number; g: number; b: number }, hot: boolean) => {
+      append_billboard_square(
+        center, hot ? half_size * HOT_SIZE_SCALE : half_size, basis.right, basis.up,
+        hot ? HOT_COLOR : color, triangle_vertices,
+      );
+    };
+    push_marker(points.p1, handle_half, HANDLE_COLOR, is_hot_point("p1"));
+    push_marker(points.p2, handle_half, HANDLE_COLOR, is_hot_point("p2"));
+    // Endpoints that are pinned vertices (riding some other stroke) show in the
+    // pin color so it's clear they'll slide, not translate, when grabbed; smooth
+    // knots in the knot color so it's clear the neighbour's handle will follow.
+    const anchor_color = (vertex: VertexId) => {
+      if (pin_by_vertex(tablet_document, vertex) !== null) return PIN_COLOR;
+      if (smooth_knots_at_vertex(tablet_document, vertex).length > 0) return KNOT_COLOR;
+      return ANCHOR_COLOR;
+    };
+    push_marker(points.p0, anchor_half, anchor_color(selected_stroke.p0_vertex), is_hot_point("p0"));
+    push_marker(points.p3, anchor_half, anchor_color(selected_stroke.p3_vertex), is_hot_point("p3"));
+    // Pinned vertices riding the selected stroke; the selected pin (the unpin
+    // button's target) draws larger.
+    for (const pin of tablet_document.vertex_pins) {
+      if (pin.host_stroke !== edit_state.stroke_id) continue;
+      const half_size = pin.vertex === edit_state.selected_pin ? anchor_half : handle_half;
+      push_marker(vertex_position(tablet_document, pin.vertex), half_size, PIN_COLOR, is_hot_pin(pin.vertex));
+    }
+    // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
+    // vertex it would weld into on release so the merge is never a surprise.
+    if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
+      const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
+      const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
+      if (target_vertex !== null) {
+        append_billboard_square(
+          vertex_position(tablet_document, target_vertex), anchor_half * 2, basis.right, basis.up,
+          HIGHLIGHT_COLOR, triangle_vertices,
+        );
+      }
+    }
+    set_overlay_lines(renderer, new Float32Array(line_vertices));
+    set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
+  }
+
+  function update_preview_line(): void {
+    if (line_state === null) {
+      set_preview_line(renderer, new Float32Array(0));
+      return;
+    }
+    // The freehand path, plus the snapped end point so snapping is visible.
+    const vertices: number[] = [];
+    for (const point of [line_state.start_world, ...line_state.path_world, line_state.end_world]) {
+      vertices.push(point.x, point.y, point.z, PREVIEW_COLOR.r, PREVIEW_COLOR.g, PREVIEW_COLOR.b);
+    }
+    set_preview_line(renderer, new Float32Array(vertices));
+  }
+
+  // Line-tool pen-up: a drag commits a stroke fitted to the pen path and
+  // auto-selects it; a tap exits the tool (Q27). Either way the tool disarms, so
+  // the very next drag adjusts the fresh stroke instead of creating another.
+  function line_mode_pen_up(): void {
+    const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+    if (!was_tap && line_state !== null) {
+      const stroke_id = line_pen_up(line_state, tablet_document);
+      if (stroke_id !== null) select_stroke_by_tap(stroke_id, false);
+    }
+    set_armed_tool(null); // also clears line_state
+    update_preview_line();
+  }
+
+  // The pin riding `host_stroke` under the pen (within control-point pick
+  // range), or null.
+  function pick_pin_on_stroke(host_stroke: StrokeId, screen: V2): VertexPin | null {
+    let best: VertexPin | null = null;
+    let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
+    for (const pin of tablet_document.vertex_pins) {
+      if (pin.host_stroke !== host_stroke) continue;
+      const projected = camera_world_to_screen(camera, vertex_position(tablet_document, pin.vertex), canvas.clientWidth, canvas.clientHeight);
+      if (projected === null) continue;
+      const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = pin;
+      }
+    }
+    return best;
+  }
+
+  // Plain tap on a stroke: it becomes the sole selection. Ctrl-tap: toggles it
+  // in the selection — on the primary, the first extra is promoted (Q4).
+  function select_stroke_by_tap(picked: StrokeId, multi: boolean): void {
+    selected_vertex = null;
+    if (!multi) {
+      extra_selection = [];
+      edit_state = begin_edit_state(picked);
+      return;
+    }
+    if (edit_state === null) {
+      edit_state = begin_edit_state(picked);
+    } else if (picked === edit_state.stroke_id) {
+      const promoted = extra_selection.shift();
+      edit_state = promoted === undefined ? null : begin_edit_state(promoted);
+    } else if (extra_selection.includes(picked)) {
+      extra_selection = extra_selection.filter((id) => id !== picked);
+    } else {
+      extra_selection.push(picked);
+    }
+  }
+
+  // Selected-stroke pen-up: a tap on another stroke switches (or ctrl: extends)
+  // the selection, or with a pick tool armed, feeds it; a tap on empty space
+  // deselects. Drags (control point, whole-stroke move, or orbit) just end.
+  function edit_mode_pen_up(position: V2, multi: boolean): void {
+    if (edit_state === null) return;
+    const was_control_drag =
+      edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke ||
+      edit_state.tilting;
+    edit_pen_up(edit_state, tablet_document);
+    const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+    if (!was_tap || was_control_drag) return;
+    if (armed_tool === "pin") {
+      // Pin creation (Q2): a tap on the selected stroke's curve drops a new
+      // vertex at the nearest curve point, constrained there permanently.
+      const nearest = nearest_t_on_stroke_screen(tablet_document, edit_state.stroke_id, camera, position, canvas);
+      if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) {
+        const points = stroke_control_points(stroke_by_id(tablet_document, edit_state.stroke_id), tablet_document);
+        const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t));
+        tablet_document.vertex_pins.push({ vertex, host_stroke: edit_state.stroke_id, t: nearest.t });
+        edit_state.selected_pin = vertex;
+      }
+      set_armed_tool(null); // tap off the curve = cancel, selection kept
+      return;
+    }
+    if (armed_tool === "split") {
+      // Split (Q4): the selected stroke is cut at the tapped point into two
+      // strokes joined by a smooth knot; the [0, t] half stays selected. Only
+      // the selection is a candidate so a tap at a junction is unambiguous. A
+      // tap on a vertex pinned to the selection cuts exactly there, reusing it.
+      const selected_id = edit_state.stroke_id;
+      const pinned = pick_pin_on_stroke(selected_id, position);
+      if (pinned !== null) {
+        split_stroke(tablet_document, selected_id, pinned.t, pinned.vertex);
+      } else {
+        const nearest = nearest_t_on_stroke_screen(tablet_document, selected_id, camera, position, canvas);
+        if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) split_stroke(tablet_document, selected_id, nearest.t);
+      }
+      set_armed_tool(null); // tap off the curve = cancel, selection kept
+      return;
+    }
+    const picked = pick_stroke(tablet_document, camera, position, canvas);
+    if (picked === null) {
+      edit_state = null;
+      extra_selection = [];
+      return;
+    }
+    select_stroke_by_tap(picked, multi);
+  }
+
+  const line_button = document.getElementById("line_button") as HTMLButtonElement;
+  const patch_button = document.getElementById("patch_button") as HTMLButtonElement;
+  const join_button = document.getElementById("join_button") as HTMLButtonElement;
+  const split_button = document.getElementById("split_button") as HTMLButtonElement;
+  const smooth_button = document.getElementById("smooth_button") as HTMLButtonElement;
+  const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
+  const tilt_button = document.getElementById("tilt_button") as HTMLButtonElement;
+  const swing_button = document.getElementById("swing_button") as HTMLButtonElement;
+  function set_handle_mode(mode: HandleMode): void {
+    handle_mode = handle_mode === mode ? "plane" : mode;
+    tilt_button.classList.toggle("armed", handle_mode === "dial");
+    swing_button.classList.toggle("armed", handle_mode === "swing");
+  }
+  tilt_button.addEventListener("click", () => set_handle_mode("dial"));
+  swing_button.addEventListener("click", () => set_handle_mode("swing"));
+  // The pin button also lights up while a pinned vertex is selected — in that
+  // state tapping it unpins (Q11). Re-checked every frame since pin selection
+  // changes on pen gestures, not just button presses.
+  function refresh_pin_button_armed(): void {
+    pin_button.classList.toggle(
+      "armed", armed_tool === "pin" || (edit_state !== null && edit_state.selected_pin !== null),
+    );
+  }
+  function set_armed_tool(tool: ArmedTool | null): void {
+    armed_tool = tool;
+    if (tool !== "line") line_state = null;
+    line_button.classList.toggle("armed", tool === "line");
+    split_button.classList.toggle("armed", tool === "split");
+    refresh_pin_button_armed();
+  }
+  line_button.addEventListener("click", () => {
+    set_armed_tool(armed_tool === "line" ? null : "line");
+  });
+  // Patch: fill the selected strokes (primary + extras, 2 or more). Which fill
+  // they get is derived per frame from their corners (patch.ts).
+  patch_button.addEventListener("click", () => {
+    if (edit_state === null || extra_selection.length === 0) return;
+    begin_history_step(history, tablet_document);
+    tablet_document.patches.push({ strokes: [edit_state.stroke_id, ...extra_selection] });
+    end_history_step(history, tablet_document);
+    edit_state = null;
+    extra_selection = [];
+    request_render();
+  });
+
+  // The one extra stroke of a two-stroke selection, or null (join/smooth need
+  // exactly a primary and one extra; the primary leads).
+  function single_extra_stroke(): StrokeId | null {
+    return edit_state !== null && extra_selection.length === 1 ? extra_selection[0] : null;
+  }
+
+  // Join: the primary and the one extra merge into one cubic (they must share
+  // a vertex); the merged stroke keeps the primary's id and stays selected.
+  join_button.addEventListener("click", () => {
+    const other = single_extra_stroke();
+    if (edit_state === null || other === null) return;
+    begin_history_step(history, tablet_document);
+    const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, other);
+    end_history_step(history, tablet_document);
+    if (merged_id === null) return; // not adjacent (or a closed loop): selection kept
+    edit_state = begin_edit_state(merged_id);
+    extra_selection = [];
+    request_render();
+  });
+
+  // Split: the next tap on the selected curve cuts it there into two strokes
+  // joined by a smooth knot.
+  split_button.addEventListener("click", () => {
+    if (edit_state === null) return;
+    set_armed_tool(armed_tool === "split" ? null : "split");
+  });
+
+  // Smooth: the one extra becomes smooth with the primary at their shared
+  // endpoint (the primary keeps its tangent, the extra is re-aimed).
+  smooth_button.addEventListener("click", () => {
+    const other = single_extra_stroke();
+    if (edit_state === null || other === null) return;
+    begin_history_step(history, tablet_document);
+    smooth_strokes(tablet_document, edit_state.stroke_id, other); // no shared vertex: nothing
+    end_history_step(history, tablet_document);
+    request_render();
+  });
+
+  // Pin: with a pinned vertex selected, unpin it (frozen in place as a free
+  // vertex); otherwise arm pin creation — the next tap on the selected stroke's
+  // curve drops a vertex constrained there.
+  pin_button.addEventListener("click", () => {
+    if (edit_state === null) return; // needs a selected host stroke
+    if (edit_state.selected_pin !== null) {
+      begin_history_step(history, tablet_document);
+      const unpinned_vertex = edit_state.selected_pin;
+      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== unpinned_vertex);
+      end_history_step(history, tablet_document);
+      edit_state.selected_pin = null;
+      request_render();
+      return;
+    }
+    set_armed_tool(armed_tool === "pin" ? null : "pin");
+  });
+
+  function pen_orbit(position: V2): void {
+    if (pen_orbit_last_screen === null) return;
+    camera_orbit(
+      camera,
+      -(position.x - pen_orbit_last_screen.x) * ORBIT_RADIANS_PER_PIXEL,
+      (position.y - pen_orbit_last_screen.y) * ORBIT_RADIANS_PER_PIXEL,
+    );
+    pen_orbit_last_screen = position;
+  }
+
+  // Undo/redo (plan-tablet-undo-redo.md): restore drops the selection — the
+  // selected stroke may not survive the snapshot.
+  function perform_undo(): void {
+    if (!undo(history, tablet_document)) return;
+    edit_state = null;
+    extra_selection = [];
+    selected_vertex = null;
+    set_armed_tool(null);
+    request_render();
+  }
+  function perform_redo(): void {
+    if (!redo(history, tablet_document)) return;
+    edit_state = null;
+    extra_selection = [];
+    selected_vertex = null;
+    set_armed_tool(null);
+    request_render();
+  }
+
+  attach_gestures(canvas, camera, {
+    on_pen_down: (position) => {
+      begin_history_step(history, tablet_document);
+      pen_down_screen = position;
+      pen_max_displacement_pixels = 0;
+      pen_orbit_last_screen = null;
+      hover_screen = null; // nothing is hot while the pen is down
+      if (armed_tool === "line") {
+        line_state = line_pen_down(tablet_document, camera, position, canvas);
+        update_preview_line();
+      } else if (edit_state !== null && armed_tool === null) {
+        // Consumed only when the pen lands on the selection; otherwise orbit.
+        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas, handle_mode)) {
+          pen_orbit_last_screen = position;
+        }
+      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas) === selected_vertex) {
+        // Landing on the selected vertex drags it on the camera plane.
+        selected_vertex_drag_last_screen = position;
+      } else {
+        // No selection, or a pick tool armed (pure tap tool): bare drags orbit.
+        pen_orbit_last_screen = position;
+      }
+      request_render();
+    },
+    on_pen_move: (position) => {
+      if (pen_down_screen !== null) {
+        pen_max_displacement_pixels = Math.max(
+          pen_max_displacement_pixels,
+          Math.hypot(position.x - pen_down_screen.x, position.y - pen_down_screen.y),
+        );
+      }
+      if (armed_tool === "line") {
+        if (line_state !== null) {
+          line_pen_move(line_state, tablet_document, camera, position, canvas);
+          update_preview_line();
+        }
+      } else if (pen_orbit_last_screen !== null) {
+        pen_orbit(position);
+      } else if (selected_vertex_drag_last_screen !== null && selected_vertex !== null) {
+        const vertex = vertex_by_id(tablet_document, selected_vertex);
+        vertex.position = v3_add(vertex.position, camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas));
+        selected_vertex_drag_last_screen = position;
+      } else if (edit_state !== null) {
+        edit_pen_move(edit_state, tablet_document, camera, position, canvas, handle_mode);
+      }
+      request_render();
+    },
+    on_pen_up: (position, event) => {
+      const multi = event.ctrlKey || event.metaKey; // ctrl/cmd-tap extends the selection (Q1)
+      if (armed_tool === "line") {
+        line_mode_pen_up();
+      } else if (edit_state !== null) {
+        edit_mode_pen_up(position, multi);
+      } else if (selected_vertex_drag_last_screen !== null) {
+        // A vertex drag just ends (no weld/pin on release — landmarks are free points).
+      } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
+        // Tap with nothing (or a vertex) selected: vertex first, then stroke, else clear.
+        const picked_vertex = pick_vertex(tablet_document, camera, position, canvas);
+        const picked_stroke = picked_vertex === null ? pick_stroke(tablet_document, camera, position, canvas) : null;
+        if (picked_vertex !== null) selected_vertex = picked_vertex;
+        else if (picked_stroke !== null) select_stroke_by_tap(picked_stroke, multi);
+        else selected_vertex = null;
+      }
+      pen_down_screen = null;
+      pen_orbit_last_screen = null;
+      selected_vertex_drag_last_screen = null;
+      hover_screen = position;
+      end_history_step(history, tablet_document);
+      request_render();
+    },
+    on_pen_hover: (position) => {
+      hover_screen = position;
+      request_render();
+    },
+    on_undo_tap: perform_undo,
+    on_redo_tap: perform_redo,
+  }, () => {
+    request_render();
+  });
+
+  // Name (or rename; empty clears) the selected vertex or stroke. A named vertex
+  // is a landmark and survives garbage collection.
+  const name_button = document.getElementById("name_button") as HTMLButtonElement;
+  name_button.addEventListener("click", () => {
+    const named = selected_vertex !== null
+      ? vertex_by_id(tablet_document, selected_vertex)
+      : edit_state !== null ? stroke_by_id(tablet_document, edit_state.stroke_id) : null;
+    if (named === null) return;
+    const what = selected_vertex !== null ? "Vertex" : "Line";
+    const name = window.prompt(`${what} name (empty to clear):`, named.name ?? "");
+    if (name === null) return;
+    begin_history_step(history, tablet_document);
+    if (name.trim() === "") delete named.name;
+    else named.name = name.trim();
+    end_history_step(history, tablet_document);
+    request_render();
+  });
+
+  // Delete the whole selection (patches built on any of it go with it). For a
+  // vertex: clear its name, then garbage-collect — a vertex some stroke still
+  // uses stays (unnamed), a landmark goes.
+  const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
+  delete_button.addEventListener("click", () => {
+    if (selected_vertex !== null) {
+      begin_history_step(history, tablet_document);
+      delete vertex_by_id(tablet_document, selected_vertex).name;
+      garbage_collect_vertices(tablet_document);
+      end_history_step(history, tablet_document);
+      selected_vertex = null;
+      request_render();
+      return;
+    }
+    if (edit_state === null) return;
+    begin_history_step(history, tablet_document);
+    for (const stroke_id of [edit_state.stroke_id, ...extra_selection]) delete_stroke(tablet_document, stroke_id);
+    end_history_step(history, tablet_document);
+    edit_state = null;
+    extra_selection = [];
+    selected_vertex = null;
+    set_armed_tool(null);
+    request_render();
+  });
+
+  const clear_button = document.getElementById("clear_button") as HTMLButtonElement;
+  clear_button.addEventListener("click", () => {
+    if (tablet_document.strokes.length === 0) return;
+    if (!window.confirm("Erase all strokes?")) return;
+    begin_history_step(history, tablet_document);
+    clear_document_in_place(tablet_document);
+    end_history_step(history, tablet_document);
+    edit_state = null;
+    extra_selection = [];
+    selected_vertex = null;
+    set_armed_tool(null);
+    request_render();
+  });
+
+  // Snap the camera to the nearest frontal/profile/back view (desktop key A);
+  // snapping again toggles back to the previous view. previous starts at
+  // profile so the very first snap from frontal has somewhere to toggle to.
+  const camera_snap_state: CameraSnapState = { previous_snap_yaw: Math.PI / 2, current_snap_yaw: 0 };
+  const view_button = document.getElementById("view_button") as HTMLButtonElement;
+  view_button.addEventListener("click", () => {
+    camera_snap_to_axis_view(camera, camera_snap_state);
+    request_render();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "a" && !event.repeat && !event.ctrlKey && !event.metaKey) {
+      camera_snap_to_axis_view(camera, camera_snap_state);
+      request_render();
+    }
+  });
+
+  // Undo/redo buttons + desktop shortcuts (the iPad path is the two/three-finger
+  // tap in gestures.ts).
+  const undo_button = document.getElementById("undo_button") as HTMLButtonElement;
+  const redo_button = document.getElementById("redo_button") as HTMLButtonElement;
+  undo_button.addEventListener("click", perform_undo);
+  redo_button.addEventListener("click", perform_redo);
+  window.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      if (event.shiftKey) perform_redo();
+      else perform_undo();
+    }
+  });
+
+  const reference_button = document.getElementById("reference_button") as HTMLButtonElement;
+  reference_button.addEventListener("click", () => {
+    reference_visible = !reference_visible;
+    reference_button.classList.toggle("armed", reference_visible);
+    request_render();
+  });
+  reference_button.classList.toggle("armed", reference_visible);
+
+  const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
+  surface_button.addEventListener("click", () => {
+    surface_colored = !surface_colored;
+    surface_button.classList.toggle("armed", surface_colored);
+    request_render();
+  });
+  surface_button.classList.toggle("armed", surface_colored);
+
+  const names_button = document.getElementById("names_button") as HTMLButtonElement;
+  names_button.addEventListener("click", () => {
+    vertex_names_visible = !vertex_names_visible;
+    names_button.classList.toggle("armed", vertex_names_visible);
+    request_render();
+  });
+  names_button.classList.toggle("armed", vertex_names_visible);
+
+  // Docs panel: lists server documents to switch between, plus "new…" (prompt
+  // for a name; unknown names start empty) and "rename…" for the current one.
+  // Autosave keeps targeting whichever document is current. A page tied to one
+  // document (setup.can_switch_documents = false) only sees that document's name.
+  const DOCUMENT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/; // mirrors is_safe_document_name in vite.config.ts
+
+  function prompt_document_name(message: string, initial: string): string | null {
+    const name = window.prompt(message, initial);
+    if (name === null) return null;
+    if (!DOCUMENT_NAME_PATTERN.test(name)) {
+      window.alert("Bad name — letters, digits, - and _ only.");
+      return null;
+    }
+    return name;
+  }
+  const docs_button = document.getElementById("docs_button") as HTMLButtonElement;
+  const docs_panel = document.getElementById("docs_panel") as HTMLDivElement;
+
+  async function switch_to_document_and_rerender(name: string): Promise<void> {
+    docs_panel.classList.remove("open");
+    edit_state = null;
+    extra_selection = [];
+    selected_vertex = null;
+    set_armed_tool(null);
+    clear_history(history); // history is per-document (Q5)
+    await switch_document(persistence, tablet_document, camera, name);
+    request_render();
+  }
+
+  async function open_docs_panel(): Promise<void> {
+    docs_panel.replaceChildren();
+    if (!setup.can_switch_documents) {
+      const current_button = document.createElement("button");
+      current_button.textContent = persistence.current_document_name;
+      current_button.classList.add("current");
+      current_button.disabled = true;
+      docs_panel.appendChild(current_button);
+      docs_panel.classList.add("open");
+      return;
+    }
+    const entries = await list_documents_from_server();
+    if (entries === null) {
+      const note = document.createElement("button");
+      note.textContent = "server unreachable";
+      note.disabled = true;
+      docs_panel.appendChild(note);
+    } else {
+      const names = entries.map((entry) => entry.name);
+      if (!names.includes(persistence.current_document_name)) names.push(persistence.current_document_name);
+      for (const name of names.sort()) {
+        const entry_button = document.createElement("button");
+        entry_button.textContent = name;
+        entry_button.classList.toggle("current", name === persistence.current_document_name);
+        entry_button.addEventListener("click", () => void switch_to_document_and_rerender(name));
+        docs_panel.appendChild(entry_button);
+      }
+      const new_button = document.createElement("button");
+      new_button.textContent = "new…";
+      new_button.addEventListener("click", () => {
+        const name = prompt_document_name("Document name (letters, digits, - and _):", "");
+        if (name !== null) void switch_to_document_and_rerender(name);
+      });
+      docs_panel.appendChild(new_button);
+      const rename_button = document.createElement("button");
+      rename_button.textContent = "rename…";
+      rename_button.addEventListener("click", () => {
+        const name = prompt_document_name("New document name:", persistence.current_document_name);
+        if (name === null) return;
+        void rename_document(persistence, tablet_document, camera, name).then((renamed) => {
+          if (renamed) docs_panel.classList.remove("open");
+        });
+      });
+      docs_panel.appendChild(rename_button);
+    }
+    docs_panel.classList.add("open");
+  }
+
+  document.getElementById("pages_button")!.addEventListener("click", () => {
+    window.location.href = "/";
+  });
+
+  docs_button.addEventListener("click", () => {
+    if (docs_panel.classList.contains("open")) {
+      docs_panel.classList.remove("open");
+    } else {
+      void open_docs_panel();
+    }
+  });
+
+  resize_canvas_to_display();
+  void load_current_document_on_startup(persistence, tablet_document, camera).then(() => {
+    request_render();
+  });
+  void setup.load_reference_mesh().then((mesh) => {
+    reference_mesh = mesh;
+    request_render();
+  });
+  // Debug hook: inspect the document from the browser console / automated tests.
+  (window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
+  (window as unknown as { debug_camera: unknown }).debug_camera = camera;
+  (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
+  console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");
+}
