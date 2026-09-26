@@ -6,4 +6,5 @@ landmarks = [
   {name = "glabella", p = {0.05200005, -87.6182772, 14.9532913}},
   {name = "nasal_spine", p = {0.052, -90.198, -48.527}},
   {name = "zygion", p = {62.267, -38.59, -26.576}},
+  {name = "zygomatic_arch_bottom", p = {45.85, -62.213, -45.428}},
 ]

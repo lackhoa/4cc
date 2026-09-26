@@ -65,9 +65,10 @@ function guess_zygion(skull: Skull, nose_up: number, brow_up: number): V3 | null
   return best;
 }
 
-// First guess for the arch's underside: the lowest vertex of the arch within a few mm of the
-// zygion, front to back. The arch is the band of vertices well out to the side; without the
-// side floor the guess slides down the cheek body to the teeth.
+// First guess for the arch's underside when the file has none: the lowest vertex of the arch
+// within a few mm of the zygion, front to back. The arch is the band of vertices well out to
+// the side; without the side floor the guess slides down the cheek body to the teeth. Khoa's
+// pick is further forward, the arch's front end at the cheek body, which is ~7 mm lower.
 const ARCH_MIN_SIDE_MM = 45;
 const ARCH_BOTTOM_FRONT_BAND_MM = 5;
 function guess_arch_bottom(skull: Skull, zygion: V3, nose_up: number): V3 | null {
