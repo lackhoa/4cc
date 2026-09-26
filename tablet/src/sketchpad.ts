@@ -149,15 +149,20 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     frame_requested = true;
     requestAnimationFrame(() => {
       frame_requested = false;
-      hot_item = resolve_hot_item();
-      // Ribbons are camera-facing (desktop parity) — retessellate every frame.
-      rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
-      rebuild_surface_mesh();
-      rebuild_reference_mesh();
-      rebuild_edit_overlay();
-      render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
-      rebuild_stroke_labels();
+      render_now();
     });
+  }
+  // One frame, synchronously. Also the debug hook `window.debug_render_now` for
+  // automated tests in a hidden tab, where requestAnimationFrame never fires.
+  function render_now(): void {
+    hot_item = resolve_hot_item();
+    // Ribbons are camera-facing (desktop parity) — retessellate every frame.
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
+    rebuild_surface_mesh();
+    rebuild_reference_mesh();
+    rebuild_edit_overlay();
+    render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
+    rebuild_stroke_labels();
   }
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
@@ -886,5 +891,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
+  (window as unknown as { debug_render_now: unknown }).debug_render_now = render_now;
   console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");
 }
