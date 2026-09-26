@@ -66,8 +66,16 @@ export function cranium_cut_normal(glabella: V3): V3 {
   return v3_normalize(v3(0, glabella.z, -glabella.y));
 }
 
+// The vertices the fits see: above the cranium cut AND on the outer surface. The mesh is
+// a closed shell (outer and inner table), and the inner table is a second surface 5-10 mm
+// inside the one we draw; outer = normal pointing away from the centroid of the vault.
 export function vault_vertices(skull: Skull, cut_normal: V3): V3[] {
-  return skull.positions.filter((p) => v3_dot(p, cut_normal) > 0);
+  const above_cut = skull.positions.map((p) => v3_dot(p, cut_normal) > 0);
+  const centroid = v3(0, 0, 0);
+  let count = 0;
+  skull.positions.forEach((p, index) => { if (above_cut[index]) { centroid.x += p.x; centroid.y += p.y; centroid.z += p.z; count++; } });
+  centroid.x /= count; centroid.y /= count; centroid.z /= count;
+  return skull.positions.filter((p, index) => above_cut[index] && v3_dot(skull.vertex_normals[index], v3_sub(p, centroid)) > 0);
 }
 
 // ---- mesh building ------------------------------------------------------------------

@@ -145,7 +145,7 @@ function fit_candidates(skull: Skull, glabella: V3): Candidate[] {
       ? (p: V3) => sphere_residual(shape.fit, p)
       : (p: V3) => ellipsoid_residual(shape.fit, p);
     const residuals = skull.positions.map(residual);
-    const vault_residuals = skull.positions.filter((p) => v3_dot(p, cut_normal) > 0).map(residual);
+    const vault_residuals = vault_of(cut_normal).map(residual);
     return { id, cut_normal, vault_count: vault_residuals.length, shape, residuals, stats: residual_stats(vault_residuals) };
   };
   const result: Candidate[] = [];

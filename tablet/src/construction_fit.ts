@@ -146,20 +146,34 @@ export function ellipsoid_residual(fit: EllipsoidFit, point: V3): number {
   return s > 0 ? distance - distance / s : -Math.min(fit.semi_axes.x, fit.semi_axes.y, fit.semi_axes.z);
 }
 
-// Loomis's side slices (plan-skull-construction-docs.md Q15): two planes parallel to the
-// midline, mirrored, side = ±half_width. `flat_count` = how many vertices defined it.
-export type SidePlanesFit = { half_width: number; flat_count: number };
+// Loomis's ball as he states it (plan-skull-construction-docs.md Q16): its diameter is the
+// skull's length. The sphere through the front-most and back-most points within
+// `midline_band_mm` of the midline, centered between them; two points fix it, no least
+// squares. `front_most` / `back_most` are the two points, for drawing.
+export type LengthSphereFit = { sphere: SphereFit; front_most: V3; back_most: V3 };
 
-// The flats are the vertices sitting inside the sphere by more than `flat_threshold_mm`
-// (residual below -threshold); half_width = least squares of |side| over them, i.e. their
-// mean distance from the midline, one number for both sides.
-export function fit_side_planes_mirrored(points: V3[], sphere: SphereFit, flat_threshold_mm: number): SidePlanesFit | null {
-  let sum = 0, count = 0;
+export function fit_sphere_through_midline_extremes(points: V3[], midline_band_mm: number): LengthSphereFit | null {
+  let front_most: V3 | null = null, back_most: V3 | null = null;
   for (const p of points) {
-    if (sphere_residual(sphere, p) < -flat_threshold_mm) { sum += Math.abs(p.x); count++; }
+    if (Math.abs(p.x) >= midline_band_mm) continue;
+    if (front_most === null || p.z > front_most.z) front_most = p;
+    if (back_most === null || p.z < back_most.z) back_most = p;
   }
-  if (count === 0) return null;
-  return { half_width: sum / count, flat_count: count };
+  if (front_most === null || back_most === null || front_most === back_most) return null;
+  const center = v3(0, (front_most.y + back_most.y) / 2, (front_most.z + back_most.z) / 2);
+  return { sphere: { center, radius: v3_length(v3_sub(front_most, back_most)) / 2 }, front_most, back_most };
+}
+
+// Loomis's side slices (plan-skull-construction-docs.md Q15/Q16): two planes parallel to
+// the midline, mirrored, side = ±half_width, where the skull is widest. `widest` = the
+// vertex that set it, for drawing.
+export type SidePlanesFit = { half_width: number; widest: V3 };
+
+export function fit_side_planes_mirrored(points: V3[]): SidePlanesFit | null {
+  let widest: V3 | null = null;
+  for (const p of points) if (widest === null || Math.abs(p.x) > Math.abs(widest.x)) widest = p;
+  if (widest === null) return null;
+  return { half_width: Math.abs(widest.x), widest };
 }
 
 // Signed distance to the sphere clipped by the two side planes (the sphere ∩ the slab

@@ -58,3 +58,42 @@ for (let up = 0; up < 130; up += 10) {
   const band = outer.filter((p) => p.y >= up && p.y < up + 10);
   if (band.length > 0) console.log(`  up ${up}-${up + 10}: max |side| ${Math.max(...band.map((p) => Math.abs(p.x))).toFixed(1)} (${band.length} vertices)`);
 }
+
+// Khoa's order (2026-09-26): size the ball on the profile (near-midline outer vault), so it
+// touches the forehead and the back, THEN cut the sides; the flats are what is left inside.
+for (const midline_band of [10, 20]) {
+  const profile = outer.filter((p) => Math.abs(p.x) < midline_band);
+  const s = fit_sphere_algebraic(profile)!;
+  const profile_stats = residual_stats(profile.map((p) => sphere_residual(s, p)));
+  const all_stats = residual_stats(outer.map((p) => sphere_residual(s, p)));
+  console.log(`E profile sphere (|side| < ${midline_band}, ${profile.length} vertices): center up ${s.center.y.toFixed(1)} front ${s.center.z.toFixed(1)} r ${s.radius.toFixed(1)}; rms on profile ${profile_stats.rms.toFixed(1)}, on outer vault ${all_stats.rms.toFixed(1)} min ${all_stats.min.toFixed(1)} max ${all_stats.max.toFixed(1)}`);
+  report(`  E + Q15 rule (inside > profile rms ${profile_stats.rms.toFixed(1)})`, outer.filter((p) => sphere_residual(s, p) < -profile_stats.rms), outer, s);
+  for (const threshold of [5, 10]) report(`  E + inside > ${threshold} mm`, outer.filter((p) => sphere_residual(s, p) < -threshold), outer, s);
+  for (const q of [0.95, 0.99]) {
+    const half_width = widths[Math.floor(q * (widths.length - 1))];
+    const stats = residual_stats(outer.map((p) => residuals_sphere_with_side_cuts(s, half_width, p)));
+    console.log(`  E + widest percentile ${q}: half_width ${half_width.toFixed(1)} = ${(half_width / s.radius).toFixed(2)} r, clipped rms ${stats.rms.toFixed(1)} min ${stats.min.toFixed(1)} max ${stats.max.toFixed(1)}`);
+  }
+}
+
+// "Touches the forehead and the back": not least squares -- the sphere whose diameter is
+// the front-to-back length of the outer vault near the midline, centered on that segment.
+{
+  const profile = outer.filter((p) => Math.abs(p.x) < 10);
+  const front_most = profile.reduce((a, b) => (b.z > a.z ? b : a));
+  const back_most = profile.reduce((a, b) => (b.z < a.z ? b : a));
+  const top_most = profile.reduce((a, b) => (b.y > a.y ? b : a));
+  console.log(`F midline extremes: front ${front_most.z.toFixed(1)} (up ${front_most.y.toFixed(1)}), back ${back_most.z.toFixed(1)} (up ${back_most.y.toFixed(1)}), top up ${top_most.y.toFixed(1)} (front ${top_most.z.toFixed(1)})`);
+  const length = front_most.z - back_most.z;
+  for (const center_up of [sphere.center.y, (front_most.y + back_most.y) / 2]) {
+    const s = { center: { x: 0, y: center_up, z: (front_most.z + back_most.z) / 2 }, radius: length / 2 };
+    const all_stats = residual_stats(outer.map((p) => sphere_residual(s, p)));
+    console.log(`F length sphere: center up ${s.center.y.toFixed(1)} front ${s.center.z.toFixed(1)} r ${s.radius.toFixed(1)}; rms on outer vault ${all_stats.rms.toFixed(1)} min ${all_stats.min.toFixed(1)} max ${all_stats.max.toFixed(1)}; top of sphere up ${(s.center.y + s.radius).toFixed(1)} vs skull top ${top_most.y.toFixed(1)}`);
+    for (const threshold of [5, 10]) report(`  F + inside > ${threshold} mm`, outer.filter((p) => sphere_residual(s, p) < -threshold), outer, s);
+    for (const q of [0.95, 0.99]) {
+      const half_width = widths[Math.floor(q * (widths.length - 1))];
+      const stats = residual_stats(outer.map((p) => residuals_sphere_with_side_cuts(s, half_width, p)));
+      console.log(`  F + widest percentile ${q}: half_width ${half_width.toFixed(1)} = ${(half_width / s.radius).toFixed(2)} r, clipped rms ${stats.rms.toFixed(1)} min ${stats.min.toFixed(1)} max ${stats.max.toFixed(1)}`);
+    }
+  }
+}
