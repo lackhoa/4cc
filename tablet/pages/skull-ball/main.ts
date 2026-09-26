@@ -10,7 +10,7 @@ import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/ca
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
 import { Landmark, find_landmark, frankfurt_coordinates, frankfurt_to_mesh } from "../../src/reference";
 import { EllipsoidFit, ResidualStats, SphereFit, ellipsoid_residual, fit_ellipsoid_algebraic, fit_sphere_algebraic, residual_stats, sphere_residual } from "../../src/construction_fit";
-import { LANDMARKS_URL, MeshBuilder, SKULL_NAME, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, push_ellipsoid, push_landmark_marker, push_plane, push_skull, size_gl_canvas, skull_view_colors as colors, sphere_outline, vault_vertices } from "../../src/reference_skull_view";
+import { LANDMARKS_URL, MeshBuilder, SKULL_NAME, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, push_ellipsoid, push_landmark_marker, push_plane, push_skull, size_gl_canvas, skull_view_colors as colors, sphere_outline, supraorbital_rim_point, vault_vertices } from "../../src/reference_skull_view";
 
 type CandidateId = "frankfurt-sphere" | "cranium-sphere" | "cranium-ellipsoid";
 type CandidateShape = { kind: "sphere"; fit: SphereFit } | { kind: "ellipsoid"; fit: EllipsoidFit };
@@ -100,29 +100,12 @@ function silhouette_extrema(silhouette: SilhouetteSample[], sign: 1 | -1): Profi
   return result;
 }
 
-// The supraorbital margin: through the right orbit (side 25..37), coming down from the
-// forehead in 2 mm bands, the most forward vertex sits on the brow bone until the band
-// falls into the orbit cavity, where it jumps back by tens of mm. The rim is the last brow
-// band before that jump.
-function supraorbital_rim_up(skull: Skull): number | null {
-  let previous: { up: number; front: number } | null = null;
-  for (let up = 60; up >= 20; up -= 2) {
-    let front: number | null = null;
-    for (const p of skull.positions) {
-      if (p.x >= 25 && p.x <= 37 && p.y >= up && p.y < up + 2 && (front === null || p.z > front)) front = p.z;
-    }
-    if (front === null) continue;
-    if (previous !== null && previous.front - front > 15) return previous.up;
-    previous = { up, front };
-  }
-  return null;
-}
-
 function compute_profile(skull: Skull): Profile {
   const segments = midline_cut_segments(skull);
   const silhouette: SilhouetteSample[] = [];
   for (let up = SILHOUETTE_UP_MIN; up <= SILHOUETTE_UP_MAX; up += SILHOUETTE_STEP_MM) silhouette.push({ up, front: silhouette_front_at(segments, up) });
-  return { segments, silhouette, bumps: silhouette_extrema(silhouette, 1), dips: silhouette_extrema(silhouette, -1), orbit_rim_up: supraorbital_rim_up(skull) };
+  const orbit_rim = supraorbital_rim_point(skull); // shared with skull-brow-line
+  return { segments, silhouette, bumps: silhouette_extrema(silhouette, 1), dips: silhouette_extrema(silhouette, -1), orbit_rim_up: orbit_rim === null ? null : orbit_rim.y };
 }
 
 // Where the marker starts when the landmarks file has no glabella: on the silhouette at

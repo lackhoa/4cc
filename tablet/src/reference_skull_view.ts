@@ -78,6 +78,25 @@ export function vault_vertices(skull: Skull, cut_normal: V3): V3[] {
   return skull.positions.filter((p, index) => above_cut[index] && v3_dot(skull.vertex_normals[index], v3_sub(p, centroid)) > 0);
 }
 
+// The supraorbital margin (the top edge of the eye socket, where the eyebrow sits): through
+// the right orbit (side 25..37), coming down from the forehead in 2 mm bands, the most
+// forward vertex sits on the brow bone until the band falls into the orbit cavity, where
+// it jumps back by tens of mm. The rim is the last brow band before that jump, returned as
+// a point in the middle of the side band.
+export function supraorbital_rim_point(skull: Skull): V3 | null {
+  let previous: { up: number; front: number } | null = null;
+  for (let up = 60; up >= 20; up -= 2) {
+    let front: number | null = null;
+    for (const p of skull.positions) {
+      if (p.x >= 25 && p.x <= 37 && p.y >= up && p.y < up + 2 && (front === null || p.z > front)) front = p.z;
+    }
+    if (front === null) continue;
+    if (previous !== null && previous.front - front > 15) return v3(31, previous.up, previous.front);
+    previous = { up, front };
+  }
+  return null;
+}
+
 // ---- mesh building ------------------------------------------------------------------
 
 export type MeshBuilder = { data: number[] };

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-brow-line</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .views { display: flex; gap: 10px; }
+  .views figure { flex: 1; margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+  table.numbers td:last-child, table.numbers th:last-child { text-align: left; font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The brow line</h1>
+  <p class="sub">Loomis's next step after the side cuts (see <a href="../loomis-head/">loomis-head</a>, step 3): the horizontal center line of the side plane, carried around the front of the ball. It is the ball's equator, and the eyebrows are supposed to sit on it. This page draws that line on the ball of <a href="../skull-side-cuts/">skull-side-cuts</a> (the length ball with side cuts) and measures how far the real brow, the eye socket and the ear hole are from it. No fit, no new shape. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>The line on the skull</h2>
+    <div class="views">
+      <figure>
+        <div class="stack"><canvas class="pane" height="440"></canvas><canvas class="overlay" height="440"></canvas></div>
+        <figcaption>the length ball with side cuts, the brow line as a ring, markers at the landmarks</figcaption>
+      </figure>
+      <figure>
+        <div class="stack"><canvas id="profile_canvas" height="440"></canvas></div>
+        <figcaption>midline cut, from the right: front → right, up → up</figcaption>
+      </figure>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> ring = the <a href="#g-brow-line">brow line</a>, at the height of the ball's center; on the side planes it is their horizontal center line, at the front and back it is the ball's equator. <span style="color: #7fb3ff">blue</span> = the cut planes and their rims. Markers: <a href="#g-glabella">glabella</a>, <a href="#g-orbit-rim">orbit rim</a>, <a href="#g-orbitale">orbitale</a>, the two <a href="#g-porion">porions</a>. In the section the same landmarks are dots with their height above (+) or below (−) the line.</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.25"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>landmark</th><th>up</th><th>from the brow line</th><th>in radii</th><th>Loomis says</th></tr></thead>
+      <tbody>
+        <tr id="row-brow-line"><td>brow line (ball center)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-glabella"><td><a href="#g-glabella">glabella</a></td><td colspan="4">loading…</td></tr>
+        <tr id="row-orbit-rim"><td><a href="#g-orbit-rim">orbit rim</a> (top of the eye socket)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-orbitale"><td><a href="#g-orbitale">orbitale</a> (bottom of the eye socket)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-porion"><td><a href="#g-porion">porion</a> (ear hole)</td><td colspan="4">loading…</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">up = height above the porion middle, mm; from the brow line = up minus the line's height, positive above; in radii = that divided by the ball's radius. The ball: <span id="ball_text"></span>.</p>
+  </section>
+
+  <section>
+    <h2>Does his line land on the brow?</h2>
+    <ul>
+      <li><strong>Glabella and orbit rim.</strong> Loomis puts the eyebrows on the line. On this skull the line runs through the brow: the glabella a few mm above it, the top of the eye socket a couple of mm below. Close enough to keep as he drew it.</li>
+      <li><strong>Orbitale.</strong> The bottom of the eye socket is on the Frankfurt plane by definition (up 0), so its distance below the line is the ball center's height. The eye sits in the socket's upper half; the book does not give an eye line, the ear does that job.</li>
+      <li><strong>Porion.</strong> The ear hole is also on the Frankfurt plane. Loomis hangs the ear from the brow line, one unit tall (0.5 r on Plate 1); the hole is inside the ear, so it should come out well below the line and above −0.5 r.</li>
+    </ul>
+    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code> (<code>fit_sphere_through_midline_extremes</code>, <code>fit_side_planes_mirrored</code>), the orbit rim from <code>tablet/src/reference_skull_view.ts</code> (<code>supraorbital_rim_point</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q19, Q20).</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-brow-line">brow line</dt><dd>Loomis: the horizontal center line of the side plane, carried around the ball. Here: the ball's horizontal section at the height of its center, a circle clipped by the two cut planes.</dd>
+      <dt id="g-glabella">glabella</dt><dd>The brow point, the most forward point of the forehead between the eyebrows; picked by hand on the skull-ball page and stored in the landmarks file.</dd>
+      <dt id="g-orbit-rim">orbit rim</dt><dd>The top edge of the right eye socket, where the eyebrow sits: found on the mesh as the last brow band before the surface falls into the socket (same rule as the eyebrow ruler on skull-ball).</dd>
+      <dt id="g-orbitale">orbitale</dt><dd>The lowest point of the right eye socket's rim, one of the three landmarks that define the Frankfurt plane.</dd>
+      <dt id="g-porion">porion</dt><dd>The top of the ear hole, one on each side; the Frankfurt frame's origin is halfway between them.</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
