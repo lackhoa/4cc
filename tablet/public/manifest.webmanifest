@@ -5,6 +5,6 @@
   "orientation": "landscape",
   "background_color": "#19191e",
   "theme_color": "#19191e",
-  "start_url": "/",
+  "start_url": "/draw/",
   "icons": []
 }

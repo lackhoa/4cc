@@ -759,7 +759,7 @@ async function open_docs_panel(): Promise<void> {
 }
 
 document.getElementById("pages_button")!.addEventListener("click", () => {
-  window.location.href = "/pages/";
+  window.location.href = "/";
 });
 
 docs_button.addEventListener("click", () => {

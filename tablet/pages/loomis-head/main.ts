@@ -1,4 +1,4 @@
-import "../pages.css";
+import "../../pages.css";
 import { OrbitCamera, camera_eye } from "../../src/camera";
 import { v3, v3_add, v3_cross, v3_dot, v3_normalize, v3_scale, v3_sub, V3 } from "../../src/math";
 import { attach_orbit_controls, bind_controls } from "../../src/explainer/orbit_controls";

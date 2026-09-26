@@ -139,13 +139,13 @@ function tablet_server_plugin(): Plugin {
   };
 }
 
-// Multi-page build: the drawing view plus every document page under pages/
-// (pages/<name>/index.html = document <name> = URL /pages/<name>/) and the hub.
+// Multi-page build: the main menu at /, the drawing view at /draw/, and every document
+// page under pages/ (pages/<name>/index.html = document <name> = URL /pages/<name>/).
 const tablet_directory = path.dirname(fileURLToPath(import.meta.url));
 const pages_directory = path.join(tablet_directory, "pages");
 const page_inputs: Record<string, string> = {
-  main: path.join(tablet_directory, "index.html"),
-  pages: path.join(pages_directory, "index.html"),
+  menu: path.join(tablet_directory, "index.html"),
+  draw: path.join(tablet_directory, "draw/index.html"),
 };
 for (const entry of fs.readdirSync(pages_directory, { withFileTypes: true })) {
   const page_html = path.join(pages_directory, entry.name, "index.html");

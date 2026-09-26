@@ -1,61 +1,34 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <title>autodraw tablet</title>
-  <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #111;
-                 touch-action: none; overscroll-behavior: none;
-                 -webkit-user-select: none; user-select: none; }
-    canvas { display: block; width: 100vw; height: 100vh; }
-    #toolbar { position: fixed; top: max(12px, env(safe-area-inset-top));
-               right: max(12px, env(safe-area-inset-right)); display: flex; gap: 8px; }
-    #toolbar button { padding: 10px 16px; font-size: 15px; color: #ccc;
-                      background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
-    #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
-    #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
-    #docs_panel { position: fixed; top: max(64px, calc(env(safe-area-inset-top) + 52px));
-                  right: max(12px, env(safe-area-inset-right)); display: none;
-                  flex-direction: column; gap: 6px; padding: 10px;
-                  background: #222228; border: 1px solid #444; border-radius: 8px; }
-    #docs_panel.open { display: flex; }
-    #docs_panel button { padding: 8px 14px; font-size: 15px; color: #ccc; text-align: left;
-                         background: #2a2a30; border: 1px solid #444; border-radius: 6px; }
-    #docs_panel button.current { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
-    #stroke_labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-    #stroke_labels div { position: absolute; transform: translate(-50%, -50%);
-                         padding: 2px 6px; font-size: 13px; color: #eee; white-space: nowrap;
-                         background: rgba(20, 20, 26, 0.75); border-radius: 4px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>autodraw documents</title>
+<link rel="stylesheet" href="./pages.css">
 </head>
 <body>
-  <canvas id="canvas"></canvas>
-  <div id="toolbar">
-    <button id="line_button">line</button>
-    <button id="patch_button">patch</button>
-    <button id="join_button">join</button>
-    <button id="split_button">split</button>
-    <button id="smooth_button">smooth</button>
-    <button id="pin_button">pin</button>
-    <button id="tilt_button">tilt</button>
-    <button id="swing_button">swing</button>
-    <button id="name_button">name</button>
-    <button id="undo_button">undo</button>
-    <button id="redo_button">redo</button>
-    <button id="delete_button">del</button>
-    <button id="view_button">view</button>
-    <button id="clear_button">clear</button>
-    <button id="reference_button">ref</button>
-    <button id="surface_button">surf</button>
-    <button id="docs_button">docs</button>
-    <button id="pages_button" title="the document pages (pages/)">pages</button>
-  </div>
-  <div id="stroke_labels"></div>
-  <div id="docs_panel"></div>
-  <script type="module" src="/src/main.ts"></script>
+<main>
+  <h1>autodraw</h1>
+  <p class="sub">One page per idea. The name of a document is its directory under <code>tablet/pages/</code> and its URL.</p>
+
+  <section>
+    <h2>Construction</h2>
+    <ul>
+      <li><a href="./pages/loomis-head/"><strong>loomis-head</strong></a> — the Loomis ball-and-plane head built step by step, a slider per ratio, the book's numbers as presets.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Older explainers (plain HTML in <code>tablet/docs/</code>, dev server only)</h2>
+    <ul>
+      <li><a href="/docs/interactive-bezier-chain.html">interactive-bezier-chain</a></li>
+      <li><a href="/docs/interactive-bezier-patch.html">interactive-bezier-patch</a></li>
+      <li><a href="/docs/interactive-contour-extraction.html">interactive-contour-extraction</a></li>
+      <li><a href="/docs/plan-tablet-planar-handle-drags.html">plan-tablet-planar-handle-drags</a></li>
+    </ul>
+  </section>
+
+  <p><a href="./draw/"><strong>draw</strong></a> — the drawing view (the tablet app itself).</p>
+</main>
 </body>
 </html>
