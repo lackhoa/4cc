@@ -56,6 +56,7 @@ type Pane = {
 
 const camera: OrbitCamera = { pivot: v3(0, 0.45, 0), yaw: 0.6, pitch: 0.15, distance: 3.2 };
 let skull: Skull | null = null;
+let profile: Profile | null = null;
 let glabella: V3 = v3(0, 30, 90); // frame mm; replaced by the file's landmark or the guess
 let candidates: Candidate[] = [];
 const panes: Pane[] = [];
@@ -75,13 +76,88 @@ function compute_vertex_normals(positions: V3[], triangle_indices: number[]): V3
   return sums.map((sum) => (v3_length(sum) > 1e-12 ? v3_normalize(sum) : v3(0, 1, 0)));
 }
 
-// The most forward midline vertex in the brow band, used until the glabella is picked.
-function guess_glabella(positions: V3[]): V3 {
-  let best = positions[0];
-  for (const p of positions) {
-    if (Math.abs(p.x) < 4 && p.y > 25 && p.y < 55 && p.z > best.z) best = p;
+// ---- midline profile ----------------------------------------------------------------
+// The skull cut by the midsagittal plane (side = 0), as 2D segments in the profile
+// plane, plus the front silhouette: the most forward cut point at each height. The
+// glabella is picked on that silhouette, so it is a 1D choice (its height).
+
+type ProfilePoint = { front: number; up: number }; // mm
+type ProfileSegment = { a: ProfilePoint; b: ProfilePoint };
+type SilhouetteSample = { up: number; front: number | null }; // null = no bone at that height
+type Profile = {
+  segments: ProfileSegment[];
+  silhouette: SilhouetteSample[]; // every SILHOUETTE_STEP_MM from SILHOUETTE_UP_MIN
+  bumps: ProfilePoint[]; // local maxima of front along the silhouette
+  dips: ProfilePoint[]; // local minima
+};
+
+const SILHOUETTE_UP_MIN = -40, SILHOUETTE_UP_MAX = 130, SILHOUETTE_STEP_MM = 0.5; // the mesh spans up -34..122
+
+function midline_cut_segments(skull: Skull): ProfileSegment[] {
+  const segments: ProfileSegment[] = [];
+  const crossing = (p: V3, q: V3): ProfilePoint | null => {
+    if ((p.x >= 0) === (q.x >= 0)) return null;
+    const t = p.x / (p.x - q.x);
+    return { front: p.z + (q.z - p.z) * t, up: p.y + (q.y - p.y) * t };
+  };
+  for (let i = 0; i < skull.triangle_indices.length; i += 3) {
+    const a = skull.positions[skull.triangle_indices[i]], b = skull.positions[skull.triangle_indices[i + 1]], c = skull.positions[skull.triangle_indices[i + 2]];
+    const points = [crossing(a, b), crossing(b, c), crossing(c, a)].filter((p): p is ProfilePoint => p !== null);
+    if (points.length === 2) segments.push({ a: points[0], b: points[1] });
+  }
+  return segments;
+}
+
+function silhouette_front_at(segments: ProfileSegment[], up: number): number | null {
+  let best: number | null = null;
+  for (const { a, b } of segments) {
+    if (up < Math.min(a.up, b.up) || up > Math.max(a.up, b.up) || a.up === b.up) continue;
+    const front = a.front + (b.front - a.front) * ((up - a.up) / (b.up - a.up));
+    if (best === null || front > best) best = front;
   }
   return best;
+}
+
+// Local extrema of the silhouette that stand out by at least 1 mm over a ±4 mm window.
+function silhouette_extrema(silhouette: SilhouetteSample[], sign: 1 | -1): ProfilePoint[] {
+  const window = Math.round(4 / SILHOUETTE_STEP_MM);
+  const result: ProfilePoint[] = [];
+  for (let i = window; i < silhouette.length - window; i++) {
+    const center = silhouette[i].front;
+    if (center === null) continue;
+    let is_extreme = true, edge_gap = Infinity;
+    for (let j = i - window; j <= i + window; j++) {
+      const other = silhouette[j].front;
+      if (other === null) { is_extreme = false; break; }
+      if (j !== i && sign * (other - center) > 0) { is_extreme = false; break; }
+      if (j === i - window || j === i + window) edge_gap = Math.min(edge_gap, sign * (center - other));
+    }
+    if (is_extreme && edge_gap >= 1) result.push({ up: silhouette[i].up, front: center });
+  }
+  return result;
+}
+
+function compute_profile(skull: Skull): Profile {
+  const segments = midline_cut_segments(skull);
+  const silhouette: SilhouetteSample[] = [];
+  for (let up = SILHOUETTE_UP_MIN; up <= SILHOUETTE_UP_MAX; up += SILHOUETTE_STEP_MM) silhouette.push({ up, front: silhouette_front_at(segments, up) });
+  return { segments, silhouette, bumps: silhouette_extrema(silhouette, 1), dips: silhouette_extrema(silhouette, -1) };
+}
+
+// Coming down the forehead from the top, the first bump of the silhouette is the brow:
+// the glabella. (The nasion dip and the nasal bones come below it, and on this mesh the
+// nasal bones are the most forward point of all, so "most forward" would be wrong.)
+// Falls back to the most forward point of the brow band when no bump stands out.
+function guess_glabella(profile: Profile): V3 {
+  const bumps_below_forehead = profile.bumps.filter((bump) => bump.up > 5 && bump.up < 60);
+  let best: ProfilePoint | null = null;
+  if (bumps_below_forehead.length > 0) best = bumps_below_forehead.reduce((highest, bump) => (bump.up > highest.up ? bump : highest));
+  if (best === null) {
+    for (const sample of profile.silhouette) {
+      if (sample.front !== null && sample.up > 20 && sample.up < 55 && (best === null || sample.front > best.front)) best = { up: sample.up, front: sample.front };
+    }
+  }
+  return best === null ? v3(0, 30, 90) : v3(0, best.up, best.front);
 }
 
 async function load_skull(): Promise<Skull | null> {
@@ -287,6 +363,92 @@ function draw_pane(pane: Pane): void {
 
 function redraw(): void {
   for (const pane of panes) draw_pane(pane);
+  draw_profile();
+}
+
+// ---- profile panel ------------------------------------------------------------------
+
+const profile_canvas = document.getElementById("profile_canvas") as HTMLCanvasElement;
+const PROFILE_FRONT_MIN = -100, PROFILE_FRONT_MAX = 120; // mm shown, up range = the silhouette's
+
+type ProfileMapping = { scale: number; origin_x: number; origin_y: number }; // device px per mm, px of (front 0, up 0)
+
+function profile_mapping(width: number, height: number, dpr: number): ProfileMapping {
+  const pad = 10 * dpr;
+  const scale = Math.min((width - 2 * pad) / (PROFILE_FRONT_MAX - PROFILE_FRONT_MIN), (height - 2 * pad) / (SILHOUETTE_UP_MAX - SILHOUETTE_UP_MIN));
+  return { scale, origin_x: pad - PROFILE_FRONT_MIN * scale, origin_y: height - pad + SILHOUETTE_UP_MIN * scale };
+}
+
+function profile_to_px(mapping: ProfileMapping, p: ProfilePoint): { x: number; y: number } {
+  return { x: mapping.origin_x + p.front * mapping.scale, y: mapping.origin_y - p.up * mapping.scale };
+}
+
+function draw_profile(): void {
+  const { width: css_width, height: css_height } = size_gl_canvas(profile_canvas);
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = profile_canvas.getContext("2d")!;
+  const width = css_width * dpr, height = css_height * dpr;
+  ctx.fillStyle = "#14161c";
+  ctx.fillRect(0, 0, width, height);
+  if (profile === null) return;
+  const mapping = profile_mapping(width, height, dpr);
+  const px = (p: ProfilePoint) => profile_to_px(mapping, p);
+  // Frankfurt plane and the cranium cut, as lines through the porion middle.
+  const line = (direction: ProfilePoint, color: string) => {
+    const a = px({ front: -direction.front * 300, up: -direction.up * 300 }), b = px({ front: direction.front * 300, up: direction.up * 300 });
+    ctx.strokeStyle = color; ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  };
+  line({ front: 1, up: 0 }, "rgba(77, 212, 191, 0.7)");
+  line({ front: glabella.z, up: glabella.y }, "rgba(255, 168, 77, 0.7)");
+  // The whole cut in grey, the front silhouette on top in bone color.
+  ctx.strokeStyle = "#5a5f6b"; ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  for (const { a, b } of profile.segments) { const pa = px(a), pb = px(b); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); }
+  ctx.stroke();
+  ctx.strokeStyle = "#d9cfb3"; ctx.lineWidth = 2 * dpr;
+  ctx.beginPath();
+  let pen_down = false;
+  for (const sample of profile.silhouette) {
+    if (sample.front === null) { pen_down = false; continue; }
+    const p = px({ front: sample.front, up: sample.up });
+    if (pen_down) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y);
+    pen_down = true;
+  }
+  ctx.stroke();
+  // Ticks at the bumps (pointing forward) and dips (pointing back).
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  for (const bump of profile.bumps) { const p = px(bump); ctx.moveTo(p.x + 3 * dpr, p.y); ctx.lineTo(p.x + 10 * dpr, p.y); }
+  for (const dip of profile.dips) { const p = px(dip); ctx.moveTo(p.x - 3 * dpr, p.y); ctx.lineTo(p.x - 10 * dpr, p.y); }
+  ctx.stroke();
+  // The marker.
+  const marker = px({ front: glabella.z, up: glabella.y });
+  ctx.strokeStyle = "#ffb14d"; ctx.lineWidth = 1.5 * dpr;
+  ctx.beginPath(); ctx.arc(marker.x, marker.y, 6 * dpr, 0, 2 * Math.PI); ctx.stroke();
+  ctx.font = `${12 * dpr}px system-ui, sans-serif`;
+  ctx.fillStyle = "#ffb14d";
+  ctx.fillText(`glabella up ${glabella.y.toFixed(1)} front ${glabella.z.toFixed(1)}`, marker.x + 12 * dpr, marker.y + 4 * dpr);
+  ctx.fillStyle = "#8a8f9a";
+  ctx.fillText("porion middle", mapping.origin_x + 4 * dpr, mapping.origin_y - 4 * dpr);
+}
+
+// Dragging anywhere in the panel moves the marker to the pointer's height, on the silhouette.
+function attach_profile_drag(): void {
+  let dragging = false;
+  const move_marker_to = (event: PointerEvent) => {
+    if (profile === null) return;
+    const rect = profile_canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const mapping = profile_mapping(rect.width * dpr, rect.height * dpr, dpr);
+    const up = (mapping.origin_y - (event.clientY - rect.top) * dpr) / mapping.scale;
+    const front = silhouette_front_at(profile.segments, up);
+    if (front !== null) set_glabella(v3(0, up, front));
+  };
+  profile_canvas.addEventListener("pointerdown", (event) => { dragging = true; profile_canvas.setPointerCapture(event.pointerId); move_marker_to(event); });
+  profile_canvas.addEventListener("pointermove", (event) => { if (dragging) move_marker_to(event); });
+  profile_canvas.addEventListener("pointerup", () => { dragging = false; });
+  profile_canvas.addEventListener("pointercancel", () => { dragging = false; });
 }
 
 // ---- numbers table ------------------------------------------------------------------
@@ -439,12 +601,15 @@ for (const canvas of Array.from(document.querySelectorAll<HTMLCanvasElement>("ca
 }
 attach_orbit_controls(panes.map((pane) => pane.canvas), camera, redraw);
 for (const pane of panes) attach_pick(pane);
+attach_profile_drag();
+window.addEventListener("resize", draw_profile);
 
 void load_skull().then((loaded) => {
   if (loaded === null) return;
   skull = loaded;
+  profile = compute_profile(skull);
   const glabella_in_file = find_landmark(skull.landmarks, "glabella");
-  glabella = glabella_in_file !== null ? frankfurt_coordinates(skull.frame, glabella_in_file) : guess_glabella(skull.positions);
+  glabella = glabella_in_file !== null ? frankfurt_coordinates(skull.frame, glabella_in_file) : guess_glabella(profile);
   write_glabella_to_inputs();
   refit();
 });
