@@ -19,7 +19,7 @@ export const LOOMIS_PLATE_1: LoomisParams = {
   slice_depth: 0.2,
   thirds_unit: 0.5,
   jaw_width: 0.8,
-  ear_back: 0.5,
+  ear_back: 0.15,
   chin_forward: 0.8,
 };
 // Plate 18: the head is 3.5 units tall with nose-to-brow one unit, so with the ball top
@@ -93,10 +93,10 @@ function jaw(params: LoomisParams, side: number): LoomisPolyline {
 function ear(params: LoomisParams, side: number): LoomisPolyline {
   const unit = params.thirds_unit;
   const plane_x = side * (1 - params.slice_depth);
-  // Top on the brow line, bottom on the nose line (one unit tall), a little behind the
-  // side plane's vertical center line.
+  // Top on the brow line, bottom on the nose line (one unit tall), about half as wide,
+  // hanging just behind the side plane's vertical center line.
   const center = v3(plane_x, -unit / 2, -params.ear_back);
-  const ellipse = arc(center, Z, Y, 1, 0, FULL_TURN, 32).map((p) => v3(p.x, center.y + (p.y - center.y) * (unit / 2), center.z + (p.z - center.z) * 0.14));
+  const ellipse = arc(center, Z, Y, 1, 0, FULL_TURN, 32).map((p) => v3(p.x, center.y + (p.y - center.y) * (unit / 2), center.z + (p.z - center.z) * (unit / 4)));
   return on_plane(ellipse, true, v3(side, 0, 0));
 }
 
