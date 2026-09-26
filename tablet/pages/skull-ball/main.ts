@@ -160,6 +160,15 @@ function guess_glabella(profile: Profile): V3 {
   return best === null ? v3(0, 30, 90) : v3(0, best.up, best.front);
 }
 
+// The nasion is the dip right below the glabella bump: the highest dip under it. Null
+// when the silhouette has no dip there. Only drawn, never saved: it is the page's
+// reading of the tracing, put on screen so it can be argued with.
+function guess_nasion(profile: Profile, glabella_guess: V3): ProfilePoint | null {
+  const dips_below = profile.dips.filter((dip) => dip.up < glabella_guess.y);
+  if (dips_below.length === 0) return null;
+  return dips_below.reduce((highest, dip) => (dip.up > highest.up ? dip : highest));
+}
+
 async function load_skull(): Promise<Skull | null> {
   const [obj_text, landmarks_text] = await Promise.all([
     fetch_reference_text(`/reference/${SKULL_NAME}.obj`),
@@ -422,6 +431,22 @@ function draw_profile(): void {
   for (const bump of profile.bumps) { const p = px(bump); ctx.moveTo(p.x + 3 * dpr, p.y); ctx.lineTo(p.x + 10 * dpr, p.y); }
   for (const dip of profile.dips) { const p = px(dip); ctx.moveTo(p.x - 3 * dpr, p.y); ctx.lineTo(p.x - 10 * dpr, p.y); }
   ctx.stroke();
+  // The page's own reading of the tracing (glabella bump and nasion dip), as small labeled
+  // diamonds, so a disagreement with the marker is visible.
+  const glabella_guess = guess_glabella(profile);
+  const nasion_guess = guess_nasion(profile, glabella_guess);
+  // Labels staggered up / down: the two points are only a few mm apart.
+  const guesses: { label: string; point: ProfilePoint; label_offset_y: number }[] = [{ label: "glabella guess", point: { up: glabella_guess.y, front: glabella_guess.z }, label_offset_y: -6 }];
+  if (nasion_guess !== null) guesses.push({ label: "nasion guess", point: nasion_guess, label_offset_y: 14 });
+  ctx.strokeStyle = "#7fb3ff"; ctx.fillStyle = "#7fb3ff"; ctx.lineWidth = 1 * dpr;
+  ctx.font = `${11 * dpr}px system-ui, sans-serif`;
+  for (const guess of guesses) {
+    const p = px(guess.point);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 6 * dpr); ctx.lineTo(p.x + 6 * dpr, p.y); ctx.lineTo(p.x, p.y + 6 * dpr); ctx.lineTo(p.x - 6 * dpr, p.y); ctx.closePath();
+    ctx.stroke();
+    ctx.fillText(`${guess.label} up ${guess.point.up.toFixed(1)} front ${guess.point.front.toFixed(1)}`, p.x + 24 * dpr, p.y + guess.label_offset_y * dpr);
+  }
   // The marker.
   const marker = px({ front: glabella.z, up: glabella.y });
   ctx.strokeStyle = "#ffb14d"; ctx.lineWidth = 1.5 * dpr;
