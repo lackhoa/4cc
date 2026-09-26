@@ -1,9 +1,10 @@
-// Document `skull-cheekbones` (plan-skull-construction-docs.md Q24): the first width rule.
+// Document `skull-cheekbones` (plan-skull-construction-docs.md Q24, Q25): the first width rule.
 // The zygion (the widest point of the zygomatic arch, hand-picked on the skull, one side
-// mirrored) measured against the nose line (Finch: the cheekbones sit "just above" it) and
-// against Loomis's side plane from skull-side-cuts (is the cheekbone inside, on, or outside
-// the ball's flat). Same ball, brow line and nasal spine as skull-face-thirds; the section
-// here is horizontal, at the zygion's height, since the zygion is off the midline.
+// mirrored) measured against Loomis's side plane from skull-side-cuts (is the cheekbone
+// inside, on, or outside the ball's flat), and the arch's lowest underside point (Q25, also
+// picked) against the nose line (Finch: the cheekbones sit "just above" it). Same ball, brow
+// line and nasal spine as skull-face-thirds; the section here is horizontal, at the zygion's
+// height, since the zygion is off the midline.
 import "../../pages.css";
 import { OrbitCamera, camera_eye, camera_pen_ray, camera_view_projection } from "../../src/camera";
 import { V3, v3, v3_scale } from "../../src/math";
@@ -18,6 +19,7 @@ const MIDLINE_BAND_MM = 10; // same length ball as skull-side-cuts and skull-bro
 const plane_color = v3(0.5, 0.75, 1.0);
 const landmark_color = v3(0.55, 1.0, 0.6);
 const zygion_color = v3(1.0, 0.69, 0.44);
+const arch_bottom_color = v3(1.0, 0.45, 0.6);
 
 type Construction = {
   cut_normal: V3;
@@ -35,6 +37,7 @@ let construction: Construction | null = null;
 // the zygion is picked here, and starts from a guess on the mesh when the file has none.
 let nasal_spine: V3 | null = null;
 let zygion: V3 | null = null;
+let arch_bottom: V3 | null = null; // `zygomatic_arch_bottom` in the file
 
 // ---- construction -------------------------------------------------------------------
 
@@ -62,8 +65,22 @@ function guess_zygion(skull: Skull, nose_up: number, brow_up: number): V3 | null
   return best;
 }
 
-// The zygion is picked on one side; the skull is treated as symmetric, so its mirror stands
-// in for the other side.
+// First guess for the arch's underside: the lowest vertex of the arch within a few mm of the
+// zygion, front to back. The arch is the band of vertices well out to the side; without the
+// side floor the guess slides down the cheek body to the teeth.
+const ARCH_MIN_SIDE_MM = 45;
+const ARCH_BOTTOM_FRONT_BAND_MM = 5;
+function guess_arch_bottom(skull: Skull, zygion: V3, nose_up: number): V3 | null {
+  let best: V3 | null = null;
+  for (const p of skull.positions) {
+    if (Math.abs(p.z - zygion.z) > ARCH_BOTTOM_FRONT_BAND_MM || p.x < ARCH_MIN_SIDE_MM || p.y < nose_up || p.y > zygion.y) continue;
+    if (best === null || p.y < best.y) best = p;
+  }
+  return best;
+}
+
+// The landmarks are picked on one side; the skull is treated as symmetric, so the mirror
+// stands in for the other side.
 function mirrored(p: V3): V3 { return v3(-p.x, p.y, p.z); }
 
 // ---- 3D pane ------------------------------------------------------------------------
@@ -84,6 +101,7 @@ function build_pane_mesh(eye_mm: V3): Float32Array {
   push_landmark_marker(builder, construction.glabella, colors.landmark);
   if (nasal_spine !== null) push_landmark_marker(builder, nasal_spine, landmark_color);
   if (zygion !== null) { push_landmark_marker(builder, zygion, zygion_color); push_landmark_marker(builder, mirrored(zygion), zygion_color); }
+  if (arch_bottom !== null) { push_landmark_marker(builder, arch_bottom, arch_bottom_color); push_landmark_marker(builder, mirrored(arch_bottom), arch_bottom_color); }
   push_skull(builder, skull, null, eye_mm, Number(controls.skull_alpha.value), 20);
   return new Float32Array(builder.data);
 }
@@ -110,6 +128,8 @@ function draw_overlay(view: CanvasView, eye_mm: V3): void {
   stroke_polyline(view, ring.map(mm_to_world), true, "#ffd166", 2.2);
   if (nasal_spine !== null) stroke_polyline(view, [v3(-30, nasal_spine.y, nasal_spine.z), v3(30, nasal_spine.y, nasal_spine.z)].map(mm_to_world), false, landmark_style, 2);
   if (zygion !== null) stroke_polyline(view, [zygion, mirrored(zygion)].map(mm_to_world), false, zygion_style, 2);
+  // Finch's cheekbone line: the arch's underside, mirrored.
+  if (arch_bottom !== null) stroke_polyline(view, [arch_bottom, mirrored(arch_bottom)].map(mm_to_world), false, arch_bottom_style, 2);
 }
 
 function draw_pane(): void {
@@ -208,7 +228,7 @@ function label(view: SectionView, p: SectionPoint, text: string, style: string, 
 }
 
 const section_canvas = document.getElementById("section_canvas") as HTMLCanvasElement;
-const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070";
+const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070", arch_bottom_style = "#ff7399";
 const ACROSS_MIN = -110, ACROSS_MAX = 110, FRONT_MIN = -110, FRONT_MAX = 120;
 
 function draw_section(): void {
@@ -228,6 +248,11 @@ function draw_section(): void {
   for (const z of [zygion, mirrored(zygion)]) fill_dot(view, { across: z.x, up: z.z }, zygion_style);
   stroke_line(view, { across: zygion.x, up: zygion.z }, { across: -zygion.x, up: zygion.z }, zygion_style, 1.2, [6, 4]);
   label(view, { across: zygion.x, up: zygion.z }, `zygion side ${zygion.x.toFixed(1)}, up ${format_signed(zygion.y - construction.brow_up, 1)}`, zygion_style, 6, -6);
+  // The arch bottom sits below this cut; its dots show where along the arch it was picked.
+  if (arch_bottom !== null) {
+    for (const a of [arch_bottom, mirrored(arch_bottom)]) fill_dot(view, { across: a.x, up: a.z }, arch_bottom_style);
+    label(view, { across: -arch_bottom.x, up: arch_bottom.z }, `arch bottom, ${(zygion.y - arch_bottom.y).toFixed(1)} below the cut`, arch_bottom_style, -6, 14);
+  }
 }
 
 // ---- numbers table ------------------------------------------------------------------
@@ -244,12 +269,17 @@ function update_numbers_table(): void {
   const radius = construction.length.sphere.radius;
   fill_row("row-half-width", [`${half_width.toFixed(1)} mm`, `${(half_width / radius).toFixed(2)} r`, "Loomis: the ball's flat"]);
   if (nasal_spine === null || zygion === null) {
-    for (const id of ["row-brow-nose", "row-zygion-nose", "row-zygion-width", "row-zygion-front"]) fill_row(id, ["missing", "", ""]);
+    for (const id of ["row-brow-nose", "row-zygion-nose", "row-arch-bottom-nose", "row-zygion-width", "row-zygion-front"]) fill_row(id, ["missing", "", ""]);
   } else {
     const brow_to_nose = construction.brow_up - nasal_spine.y;
     const above_nose = zygion.y - nasal_spine.y;
     fill_row("row-brow-nose", [`${brow_to_nose.toFixed(1)} mm`, "1.00 of brow → nose", ""]);
-    fill_row("row-zygion-nose", [`${format_signed(above_nose, 1)} mm`, `${format_signed(above_nose / brow_to_nose, 2)} of brow → nose`, `Finch: "just above" the nose line`]);
+    fill_row("row-zygion-nose", [`${format_signed(above_nose, 1)} mm`, `${format_signed(above_nose / brow_to_nose, 2)} of brow → nose`, "no number (the widest point, not Finch's line)"]);
+    if (arch_bottom === null) fill_row("row-arch-bottom-nose", ["missing", "", ""]);
+    else {
+      const arch_above_nose = arch_bottom.y - nasal_spine.y;
+      fill_row("row-arch-bottom-nose", [`${format_signed(arch_above_nose, 1)} mm`, `${format_signed(arch_above_nose / brow_to_nose, 2)} of brow → nose`, `Finch: "just above" the nose line`]);
+    }
     fill_row("row-zygion-width", [`${zygion.x.toFixed(1)} mm`, `${(zygion.x / half_width).toFixed(2)} of the side plane`, "Loomis: on the side plane (1.00)"]);
     // The frame's origin is the ear hole (the porion middle), so front = mm in front of it.
     fill_row("row-zygion-front", [`${format_signed(zygion.z, 1)} mm`, `${format_signed(zygion.z / radius, 2)} r`, "no number"]);
@@ -257,11 +287,17 @@ function update_numbers_table(): void {
   const center = construction.length.sphere.center;
   document.getElementById("ball_text")!.textContent = `center up ${center.y.toFixed(1)} / front ${center.z.toFixed(1)}, r ${radius.toFixed(1)}`;
   document.getElementById("zygion_text")!.textContent = zygion === null ? "missing" : `side ${format_signed(zygion.x, 1)}, up ${format_signed(zygion.y, 1)}, front ${format_signed(zygion.z, 1)}`;
+  document.getElementById("arch_bottom_text")!.textContent = arch_bottom === null ? "missing" : `side ${format_signed(arch_bottom.x, 1)}, up ${format_signed(arch_bottom.y, 1)}, front ${format_signed(arch_bottom.z, 1)}`;
 }
 
 // ---- picking + saving ---------------------------------------------------------------
 
 const pick_mode = document.getElementById("pick_mode") as HTMLInputElement;
+// Which landmark a click sets: the radio buttons `pick_target` (value "zygion" or "arch_bottom").
+function pick_target(): "zygion" | "arch_bottom" {
+  const checked = document.querySelector<HTMLInputElement>("input[name=pick_target]:checked");
+  return checked !== null && checked.value === "arch_bottom" ? "arch_bottom" : "zygion";
+}
 
 function attach_pick(): void {
   let down: { x: number; y: number } | null = null;
@@ -276,15 +312,20 @@ function attach_pick(): void {
     const picked = pick_skull_vertex(skull, v3_scale(ray.origin, 1 / WORLD_PER_MM), ray.direction);
     if (picked === null) return;
     // Stored on the right side (side >= 0) whichever side was clicked.
-    zygion = picked.x >= 0 ? picked : mirrored(picked);
+    const on_right = picked.x >= 0 ? picked : mirrored(picked);
+    if (pick_target() === "zygion") zygion = on_right; else arch_bottom = on_right;
     update_numbers_table();
     redraw();
   });
 }
 
+// Both landmarks go into the file, one after the other (each save rewrites the whole file
+// from the mesh's landmark list, which the previous save already updated).
 async function save_landmarks(): Promise<void> {
-  if (skull === null || zygion === null) return;
-  document.getElementById("save_status")!.textContent = await save_landmark(skull, LANDMARKS_URL, "zygion", zygion);
+  if (skull === null || zygion === null || arch_bottom === null) return;
+  const status = document.getElementById("save_status")!;
+  status.textContent = await save_landmark(skull, LANDMARKS_URL, "zygion", zygion);
+  status.textContent += "; " + await save_landmark(skull, LANDMARKS_URL, "zygomatic_arch_bottom", arch_bottom);
 }
 
 // ---- wiring -------------------------------------------------------------------------
@@ -313,7 +354,10 @@ void load_skull("skull-cheekbones").then((loaded) => {
   if (nasal_spine === null) { document.getElementById("ball_text")!.textContent = "MISSING nasal_spine: pick it on the skull-face-thirds page first"; return; }
   const zygion_in_file = from_file("zygion");
   zygion = zygion_in_file === null ? guess_zygion(skull, nasal_spine.y, construction.brow_up) : zygion_in_file;
-  document.getElementById("save_status")!.textContent = zygion_in_file === null ? "zygion guessed from the mesh, not saved yet" : "zygion from the landmarks file";
+  const arch_bottom_in_file = from_file("zygomatic_arch_bottom");
+  arch_bottom = arch_bottom_in_file !== null ? arch_bottom_in_file : zygion === null ? null : guess_arch_bottom(skull, zygion, nasal_spine.y);
+  const source = (in_file: V3 | null): string => (in_file === null ? "guessed from the mesh, not saved yet" : "from the landmarks file");
+  document.getElementById("save_status")!.textContent = `zygion ${source(zygion_in_file)}; arch bottom ${source(arch_bottom_in_file)}`;
   update_numbers_table();
   redraw();
 });
