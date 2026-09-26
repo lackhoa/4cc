@@ -160,6 +160,41 @@ function tablet_server_plugin(): Plugin {
   };
 }
 
+// Preview has no live reload, so a rebuild would sit unseen until a manual refresh.
+// Build only: every page gets a script that polls dist/build-id.txt and reloads when
+// the id changes (i.e. after the next build); the reload waits for a held pointer
+// button so a drawing stroke is never cut. Dev already hot-reloads and is left alone.
+function reload_on_rebuild_plugin(): Plugin {
+  const build_id = Date.now().toString();
+  return {
+    name: "reload-on-rebuild",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName: "build-id.txt", source: build_id });
+    },
+    transformIndexHtml() {
+      return [{
+        tag: "script",
+        injectTo: "body",
+        children: `
+          (() => {
+            let pointer_is_down = false;
+            window.addEventListener("pointerdown", () => { pointer_is_down = true; }, true);
+            window.addEventListener("pointerup", () => { pointer_is_down = false; }, true);
+            let reload_is_pending = false;
+            setInterval(async () => {
+              try {
+                const response = await fetch("/build-id.txt", { cache: "no-store" });
+                if (response.ok && (await response.text()) !== "${build_id}") reload_is_pending = true;
+              } catch {}
+              if (reload_is_pending && !pointer_is_down) location.reload();
+            }, 2000);
+          })();`,
+      }];
+    },
+  };
+}
+
 // Multi-page build: the main menu at /, the drawing view at /draw/, and every document
 // page under pages/ (pages/<name>/index.html = document <name> = URL /pages/<name>/).
 const tablet_directory = path.dirname(fileURLToPath(import.meta.url));
@@ -176,6 +211,6 @@ for (const entry of fs.readdirSync(pages_directory, { withFileTypes: true })) {
 export default defineConfig({
   // Type errors surface in dev (tsc --watch in the dev server: terminal +
   // browser overlay); the build itself doesn't type-check, so it stays fast.
-  plugins: [tablet_server_plugin(), checker({ typescript: true, enableBuild: false })],
+  plugins: [tablet_server_plugin(), reload_on_rebuild_plugin(), checker({ typescript: true, enableBuild: false })],
   build: { rollupOptions: { input: page_inputs } },
 });
