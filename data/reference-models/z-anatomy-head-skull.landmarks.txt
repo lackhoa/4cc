@@ -7,4 +7,7 @@ landmarks = [
   {name = "nasal_spine", p = {0.052, -90.198, -48.527}},
   {name = "zygion", p = {62.267, -38.59, -26.576}},
   {name = "zygomatic_bottom", p = {45.85, -62.213, -45.428}},
+  {name = "nasion", p = {0.052, -84.26, 3.095}},
+  {name = "orbit_inner_corner", p = {11.9000001, -76.329, -0.006}},
+  {name = "orbit_outer_corner", p = {47.8730001, -67.384, 4.427}},
 ]

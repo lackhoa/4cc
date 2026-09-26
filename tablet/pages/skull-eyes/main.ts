@@ -7,7 +7,8 @@
 // width is shown without a verdict. Same ball, side planes, brow line, nasal spine and zygion
 // as skull-cheekbones; the section is horizontal at the orbit center's height. The nasion
 // (the top of the nose bridge, where the nasal bones meet the brow bone on the midline) is
-// picked here too: the inner corner is the inner rim at the nasion's height.
+// picked here too: both corners are picked at the nasion's height, the inner corner on the
+// inner rim and the outer corner at the outer rim's furthest-out point.
 import "../../pages.css";
 import { OrbitCamera, camera_eye, camera_pen_ray, camera_view_projection } from "../../src/camera";
 import { V3, v3, v3_scale } from "../../src/math";
@@ -156,7 +157,7 @@ function draw_overlay(view: CanvasView, eye_mm: V3): void {
   stroke_polyline(view, ring.map(mm_to_world), true, "#ffd166", 2.2);
   if (nasal_spine !== null) stroke_polyline(view, [v3(-30, nasal_spine.y, nasal_spine.z), v3(30, nasal_spine.y, nasal_spine.z)].map(mm_to_world), false, landmark_style, 2);
   if (zygion !== null) stroke_polyline(view, [zygion, mirrored(zygion)].map(mm_to_world), false, zygion_style, 1.2);
-  // The nasion's height across both sockets: the inner corners should sit on this bar.
+  // The nasion's height across both sockets: all four corners should sit on this bar.
   if (nasion !== null) stroke_polyline(view, [v3(-60, nasion.y, nasion.z), v3(60, nasion.y, nasion.z)].map(mm_to_world), false, nasion_style, 1.2);
   if (orbit_inner_corner !== null && orbit_outer_corner !== null) {
     stroke_polyline(view, [orbit_inner_corner, orbit_outer_corner].map(mm_to_world), false, orbit_corner_style, 2);
@@ -299,7 +300,7 @@ function fill_row(id: string, cells: string[]): void {
   row.innerHTML = label_cell + cells.map((cell) => `<td>${cell}</td>`).join("");
 }
 
-const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-center-nose", "row-centers-apart", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
+const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-outer-corner-nasion", "row-center-nose", "row-centers-apart", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
 
 function update_numbers_table(): void {
   if (construction === null) return;
@@ -320,6 +321,7 @@ function update_numbers_table(): void {
     const nasion_above_nose = nasion.y - nasal_spine.y;
     fill_row("row-nasion-nose", [`${format_signed(nasion_above_nose, 1)} mm`, `${format_signed(nasion_above_nose / brow_to_nose, 2)} of brow → nose`, "no number (the nose bridge's top)"]);
     fill_row("row-inner-corner-nasion", [`${format_signed(orbit_inner_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
+    fill_row("row-outer-corner-nasion", [`${format_signed(orbit_outer_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
     fill_row("row-center-nose", [`${format_signed(center_above_nose, 1)} mm`, `${format_signed(center_above_nose / brow_to_nose, 2)} of brow → nose`, "Finch: halfway (0.50); Loomis: just under the brow line"]);
     // Five eyes across the face put the centers at 1.5 and 3.5 eye widths: 2/5 of the width apart.
     fill_row("row-centers-apart", [`${centers_apart.toFixed(1)} mm`, `${(centers_apart / face_width).toFixed(2)} of the cheekbone width`, "five eyes wide: 0.40"]);
