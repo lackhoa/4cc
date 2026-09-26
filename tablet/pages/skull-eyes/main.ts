@@ -322,7 +322,7 @@ function update_numbers_table(): void {
     fill_row("row-nasion-nose", [`${format_signed(nasion_above_nose, 1)} mm`, `${format_signed(nasion_above_nose / brow_to_nose, 2)} of brow → nose`, "no number (the nose bridge's top)"]);
     fill_row("row-inner-corner-nasion", [`${format_signed(orbit_inner_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
     fill_row("row-outer-corner-nasion", [`${format_signed(orbit_outer_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
-    fill_row("row-center-nose", [`${format_signed(center_above_nose, 1)} mm`, `${format_signed(center_above_nose / brow_to_nose, 2)} of brow → nose`, "Finch: halfway (0.50); Loomis: just under the brow line"]);
+    fill_row("row-center-nose", [`${format_signed(center_above_nose, 1)} mm`, `${format_signed(center_above_nose / brow_to_nose, 2)} of brow → nose`, "Loomis: just under the brow line"]);
     // Five eyes across the face put the centers at 1.5 and 3.5 eye widths: 2/5 of the width apart.
     fill_row("row-centers-apart", [`${centers_apart.toFixed(1)} mm`, `${(centers_apart / face_width).toFixed(2)} of the cheekbone width`, "five eyes wide: 0.40"]);
     fill_row("row-orbit-width", [`${orbit_width.toFixed(1)} mm`, `${(orbit_width / face_width).toFixed(2)} of the cheekbone width`, "no verdict: the socket, not the eye (five eyes: 0.20)"]);
