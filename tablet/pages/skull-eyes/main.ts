@@ -1,8 +1,8 @@
 // Document `skull-eyes` (plan-skull-construction-docs.md Q26): the eye sockets. Two corners
 // of one orbit are hand-picked on the skull and mirrored: the inner corner (dacryon, where
 // the rim meets the nose bridge) and the outer corner (the frontozygomatic suture, the outer
-// rim). Their midpoint stands in for the eye's center, since the eyeball sits in the middle
-// of the socket. The socket is much bigger than the eye you see, so "five eyes wide" is
+// rim). Their midpoint stands in for the eye's center: the eyeball hangs about 1 mm above
+// and 1 mm outside the socket's middle, less than a pick's precision. The socket is much bigger than the eye you see, so "five eyes wide" is
 // tested on the centers only (two eye widths apart = 2/5 of the face width), and the orbit's
 // width is shown without a verdict. Same ball, side planes, brow line, nasal spine and zygion
 // as skull-cheekbones; the section is horizontal at the orbit center's height.
@@ -77,7 +77,8 @@ function guess_orbit_outer_corner(skull: Skull, zygion: V3, glabella: V3): V3 | 
   return nearest_vertex(skull, v3(zygion.x - OUTER_CORNER_INSIDE_ZYGION_MM, CORNER_UP_MM, glabella.z - 20));
 }
 
-// The eye's center: the socket's middle, halfway between the two corners.
+// The eye's center: the socket's middle, halfway between the two corners (the globe is ~1 mm
+// up and out of it, ignored).
 function orbit_center(): V3 | null {
   if (orbit_inner_corner === null || orbit_outer_corner === null) return null;
   return v3(0.5 * (orbit_inner_corner.x + orbit_outer_corner.x), 0.5 * (orbit_inner_corner.y + orbit_outer_corner.y), 0.5 * (orbit_inner_corner.z + orbit_outer_corner.z));
