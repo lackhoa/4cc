@@ -12,12 +12,13 @@ import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/ca
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
 import { find_landmark, frankfurt_coordinates } from "../../src/reference";
 import { LengthSphereFit, SidePlanesFit, fit_side_planes_mirrored, fit_sphere_through_midline_extremes } from "../../src/construction_fit";
+import { PLATE_1_THIRDS_UNIT } from "../../src/loomis_head";
 import { LANDMARKS_URL, MANDIBLE_LANDMARKS_URL, MeshBuilder, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_mandible, load_skull, mm_to_world, pick_skull_vertex, push_landmark_marker, push_side_plane, push_skull, push_sphere_with_side_cuts, save_landmark, side_cut_rim, size_gl_canvas, skull_view_colors as colors, sphere_outline, vault_vertices } from "../../src/reference_skull_view";
 
 const MIDLINE_BAND_MM = 10; // same length ball as skull-side-cuts and skull-brow-line
 const plane_color = v3(0.5, 0.75, 1.0);
 const landmark_color = v3(0.55, 1.0, 0.6);
-const BOOK_UNITS = [{ id: "plate-1", label: "Plate 1", unit_r: 0.5 }, { id: "plate-18", label: "Plate 18", unit_r: 2 / 3 }];
+const BOOK_UNITS = [{ id: "plate-1", label: "Plate 1", unit_r: PLATE_1_THIRDS_UNIT }, { id: "plate-18", label: "Plate 18", unit_r: 2 / 3 }];
 
 type LandmarkName = "nasal_spine" | "menton";
 

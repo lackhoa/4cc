@@ -19,7 +19,7 @@
 <body>
 <main>
   <h1>The face thirds</h1>
-  <p class="sub">Loomis's next step after the brow line (see <a href="../loomis-head/">loomis-head</a>, step 4): the face hangs below the ball in three equal units, brow to hairline, brow to nose base, nose base to chin. The book gives the unit twice: half a radius on Plate 1, two thirds on Plate 18. This page measures the two lower units on the skull and its mandible, from the brow line of <a href="../skull-brow-line/">skull-brow-line</a> down to the <a href="#g-nasal-spine">nasal spine</a> and the <a href="#g-menton">menton</a>. The hairline is not on bone, so the upper unit is not tested. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+  <p class="sub">Loomis's next step after the brow line (see <a href="../loomis-head/">loomis-head</a>, step 4): the face hangs below the ball in three equal units, brow to hairline, brow to nose base, nose base to chin. The book gives the unit twice: "halfway up" the ball on Plate 1 (0.71 r, read on the surface), two thirds of a radius on Plate 18. This page measures the two lower units on the skull and its mandible, from the brow line of <a href="../skull-brow-line/">skull-brow-line</a> down to the <a href="#g-nasal-spine">nasal spine</a> and the <a href="#g-menton">menton</a>. The hairline is not on bone, so the upper unit is not tested. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
 
   <section>
     <h2>The lines on the skull</h2>
@@ -33,7 +33,7 @@
         <figcaption>midline cut, from the right: front → right, up → up; dashed = the book's lines</figcaption>
       </figure>
     </div>
-    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #8cffa0">green</span> = the skull's own lines through the glabella, the nasal spine and the menton; in the section <span style="color: #ff8fb1">pink</span> dashed = Plate 1 (0.5 r per unit), <span style="color: #c9a0ff">purple</span> dashed = Plate 18 (2/3 r per unit).</p>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #8cffa0">green</span> = the skull's own lines through the glabella, the nasal spine and the menton; in the section <span style="color: #ff8fb1">pink</span> dashed = Plate 1 (0.71 r per unit), <span style="color: #c9a0ff">purple</span> dashed = Plate 18 (2/3 r per unit).</p>
     <div class="controls">
       <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
       <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
@@ -63,7 +63,7 @@
   <section>
     <h2>Which plate does the skull agree with?</h2>
     <ul>
-      <li><strong>Two units, two answers.</strong> Plate 1 hangs the face half a radius per unit off the ball; Plate 18 makes the whole head 3.5 units tall with the ball 1.5 units, i.e. two thirds of a radius per unit. They differ by a third of a radius over the two lower units, about 30 mm on this ball, more than any picking error.</li>
+      <li><strong>Two plates, one answer.</strong> Plate 1 puts the hairline "about halfway up from the brow line to the axis". Read as half the height that is 0.5 r and the face comes out squashed; read on the ball's surface, halfway along the front arc is 45° up, 0.71 r, and Plate 18's 3.5-unit head (ball = 1.5 units, so 2/3 r per unit) says nearly the same thing. The two agree to within 0.04 r, about 4 mm on this ball; the skull comes in a few mm under both.</li>
       <li><strong>Bone is not skin.</strong> The nasal spine is a few mm behind and under the soft nose base, the menton a few mm above the soft chin. Both errors push the measured units short of what the book (drawn on faces) would give; a couple of mm, not 30.</li>
       <li><strong>The teeth.</strong> The mouth is closed in this scan (the condyles sit in the joint), so the chin height is the closed-mouth one, which is what the book draws.</li>
     </ul>
@@ -76,7 +76,7 @@
       <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
       <dt id="g-nasal-spine">nasal spine</dt><dd>The anterior nasal spine, the bony point on the midline under the nose opening, where the nose base (the septum) attaches. Loomis's nose line. Picked by hand on this page, stored in the skull's landmarks file as <code>nasal_spine</code>.</dd>
       <dt id="g-menton">menton</dt><dd>The lowest point of the chin on the midline of the mandible. Loomis's chin line. Picked by hand on this page, stored in the mandible's landmarks file as <code>menton</code>.</dd>
-      <dt id="g-unit">unit</dt><dd>One third of the face in the book: brow to hairline = brow to nose base = nose base to chin. 0.5 r on Plate 1, 2/3 r on Plate 18.</dd>
+      <dt id="g-unit">unit</dt><dd>One third of the face in the book: brow to hairline = brow to nose base = nose base to chin. 0.71 r on Plate 1 (halfway up the ball's surface), 2/3 r on Plate 18.</dd>
     </dl>
   </section>
 </main>

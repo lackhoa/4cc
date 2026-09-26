@@ -13,11 +13,14 @@ export type LoomisParams = {
   chin_forward: number; // z of the chin
 };
 
-// Plate 1: hairline halfway from brow to the top pole, nose and chin "about equal to the
-// space of the forehead". Slice depth, jaw and ear are Loomis's "about" turned into a number.
+// Plate 1: hairline "halfway up from the brow line to the axis" (the top pole), read on the
+// ball's surface: half the front arc = 45 degrees of elevation = sin(45) r above the brow.
+// Nose and chin "about equal to the space of the forehead". Slice depth, jaw and ear are
+// Loomis's "about" turned into a number.
+export const PLATE_1_THIRDS_UNIT = Math.SQRT1_2;
 export const LOOMIS_PLATE_1: LoomisParams = {
   slice_depth: 0.2,
-  thirds_unit: 0.5,
+  thirds_unit: PLATE_1_THIRDS_UNIT,
   jaw_width: 0.8,
   ear_back: 0.15,
   chin_forward: 0.8,
