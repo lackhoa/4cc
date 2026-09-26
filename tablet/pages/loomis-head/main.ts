@@ -16,7 +16,6 @@ const step_name = document.getElementById("step_name")!;
 const styles = {
   current: "#ffd166",
   done: "#9aa0b4",
-  faded: "#3a3f52",
   ball: "#7ab8ff",
 };
 
@@ -26,8 +25,9 @@ function faces_eye(point: V3, surface: LoomisSurface, eye: V3): boolean {
   return v3_dot(normal, v3_sub(eye, point)) > 0;
 }
 
-// Splits a polyline on the ball into runs that face the eye and runs that don't, so the
-// far side can be drawn faded. Off-ball lines (jaw, chin) are drawn whole.
+// Draws only the runs of a polyline whose surface faces the eye: the page has no
+// occlusion (lines on a 2D canvas), so this stands in for the ball hiding its own back.
+// Off-ball lines (jaw, chin) are drawn whole.
 function draw_polyline(view: CanvasView, polyline: LoomisPolyline, style: string, width: number): void {
   if (polyline.surface.kind === "none") {
     stroke_polyline(view, polyline.points, polyline.closed, style, width);
@@ -37,7 +37,7 @@ function draw_polyline(view: CanvasView, polyline: LoomisPolyline, style: string
   let run: V3[] = [];
   let run_visible = faces_eye(points[0], polyline.surface, view.eye);
   const flush = () => {
-    if (run.length > 1) stroke_polyline(view, run, false, run_visible ? style : styles.faded, run_visible ? width : 1);
+    if (run_visible && run.length > 1) stroke_polyline(view, run, false, style, width);
   };
   for (const point of points) {
     const visible = faces_eye(point, polyline.surface, view.eye);

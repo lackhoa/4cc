@@ -27,7 +27,7 @@ export const LOOMIS_PLATE_1: LoomisParams = {
 export const LOOMIS_PLATE_18: LoomisParams = { ...LOOMIS_PLATE_1, thirds_unit: 2 / 3 };
 
 // What a curve lies on decides which part of it faces the eye: the far side of the ball
-// and a side plane turned away are drawn faded, so the head reads as a solid.
+// and a side plane turned away are hidden, as an opaque head would hide them.
 export type LoomisSurface = { kind: "none" } | { kind: "ball" } | { kind: "plane"; normal: V3 };
 
 export type LoomisPolyline = {
