@@ -139,8 +139,22 @@ function tablet_server_plugin(): Plugin {
   };
 }
 
+// Multi-page build: the drawing view plus every document page under pages/
+// (pages/<name>/index.html = document <name> = URL /pages/<name>/) and the hub.
+const tablet_directory = path.dirname(fileURLToPath(import.meta.url));
+const pages_directory = path.join(tablet_directory, "pages");
+const page_inputs: Record<string, string> = {
+  main: path.join(tablet_directory, "index.html"),
+  pages: path.join(pages_directory, "index.html"),
+};
+for (const entry of fs.readdirSync(pages_directory, { withFileTypes: true })) {
+  const page_html = path.join(pages_directory, entry.name, "index.html");
+  if (entry.isDirectory() && fs.existsSync(page_html)) page_inputs[`page-${entry.name}`] = page_html;
+}
+
 export default defineConfig({
   // Type errors surface in dev (tsc --watch in the dev server: terminal +
   // browser overlay); the build itself doesn't type-check, so it stays fast.
   plugins: [tablet_server_plugin(), checker({ typescript: true, enableBuild: false })],
+  build: { rollupOptions: { input: page_inputs } },
 });

@@ -1,0 +1,38 @@
+/* Shared look for the document pages (pages/*), same palette as docs/explainer/explainer.css. */
+:root {
+  --bg: #14161c;
+  --panel: #1d2029;
+  --ink: #e6e6ef;
+  --muted: #9aa0b4;
+  --accent: #7ab8ff;
+  --faded: #3a3f52;
+  --done: #9aa0b4;
+  --yellow: #ffd166;
+  --teal: #4dd4c0;
+  --orange: #ffa94d;
+}
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; margin: 0; }
+main { max-width: 1060px; margin: 0 auto; padding: 24px 16px 80px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 26px; }
+section { background: var(--panel); border-radius: 12px; padding: 18px 20px; margin: 26px 0; }
+h2 { font-size: 17px; margin: 0 0 8px; color: var(--accent); }
+p, li, dd { color: var(--muted); }
+p strong, li strong, dt { color: var(--ink); }
+a { color: var(--accent); }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+canvas { display: block; width: 100%; border-radius: 8px; background: var(--bg); touch-action: none; cursor: grab; margin: 10px 0; }
+.thumbnails { display: flex; gap: 10px; }
+.thumbnails figure { flex: 1; margin: 0; }
+.thumbnails figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; margin: 6px 0; }
+.controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--ink); white-space: nowrap; }
+input[type=range] { width: 160px; accent-color: var(--accent); }
+.controls button { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--muted); border-radius: 6px; padding: 3px 12px; cursor: pointer; }
+.controls button:hover { border-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); }
+ol.steps li { margin: 6px 0; padding: 6px 10px; border-left: 3px solid transparent; border-radius: 4px; }
+ol.steps li.current { border-left-color: var(--yellow); background: var(--bg); }
+ol.steps li.pending { opacity: 0.45; }
+dl.glossary dt { margin-top: 10px; }
+dl.glossary dd { margin: 0; }

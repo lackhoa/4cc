@@ -758,6 +758,10 @@ async function open_docs_panel(): Promise<void> {
   docs_panel.classList.add("open");
 }
 
+document.getElementById("pages_button")!.addEventListener("click", () => {
+  window.location.href = "/pages/";
+});
+
 docs_button.addEventListener("click", () => {
   if (docs_panel.classList.contains("open")) {
     docs_panel.classList.remove("open");
