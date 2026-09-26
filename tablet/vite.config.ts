@@ -1,12 +1,12 @@
-// Dev-server plugin: serves reference models from Google Drive and persists
+// Dev-server plugin: serves the git-tracked reference models (data/reference-models/,
+// copies of the Google Drive originals -- the C++ driver still reads those) and persists
 // tablet documents as git-tracked JSON in tablet/documents/ (plan-skull-reference.md).
-//   GET  /reference/<file>        -> ~/personal-drive/autodraw/reference-models/<file>
+//   GET  /reference/<file>        -> ../data/reference-models/<file>
 //   GET  /api/documents           -> [{ name, mtime_ms }]
 //   GET  /api/documents/<name>    -> stored JSON
 //   POST /api/documents/<name>    -> write body to documents/<name>.json
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { IncomingMessage, ServerResponse } from "node:http";
@@ -14,7 +14,7 @@ import { Plugin, defineConfig } from "vite";
 import checker from "vite-plugin-checker";
 
 const documents_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "documents");
-const reference_models_directory = path.join(os.homedir(), "personal-drive/autodraw/reference-models");
+const reference_models_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "../data/reference-models");
 
 // Document names come from URLs — restrict to a safe charset so they can never
 // escape the documents directory.

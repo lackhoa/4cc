@@ -1,0 +1,6 @@
+# Reference_Landmark_File -- written by autodraw; zero members are omitted, unknown ones are skipped.
+landmarks = [
+  {name = "porion_l", p = {-51.3279991, 4.56500006, -18.9820004}},
+  {name = "porion_r", p = {51.4319992, 4.56500006, -18.9820004}},
+  {name = "orbitale", p = {31.5760002, -71.7109985, -30.1720009}},
+]
