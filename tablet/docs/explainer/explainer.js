@@ -48,18 +48,19 @@ const EX = (() => {
   }
 
   // ---------- camera ----------
-  const orbit_camera = (theta = 0.55, phi = 0.7, distance = 5.2) => ({ theta, phi, distance });
+  // `pivot` is the point the camera looks at and orbits around; middle-drag moves it.
+  const orbit_camera = (theta = 0.55, phi = 0.7, distance = 5.2) => ({ theta, phi, distance, pivot: v3(0, 0, 0) });
   function camera_eye(camera) {
-    return v3(
+    return add(camera.pivot, v3(
       camera.distance * Math.cos(camera.theta) * Math.sin(camera.phi),
       camera.distance * Math.sin(camera.theta),
       camera.distance * Math.cos(camera.theta) * Math.cos(camera.phi),
-    );
+    ));
   }
   // Perspective projection into device pixels of `canvas` (call after fit_canvas).
   function viewer(camera, canvas) {
     const eye = camera_eye(camera);
-    const forward = normalize(scale(eye, -1));
+    const forward = normalize(sub(camera.pivot, eye));
     const right = normalize(cross(forward, v3(0, 1, 0)));
     const up = cross(right, forward);
     const focal = canvas.height * 1.1;
@@ -71,14 +72,33 @@ const EX = (() => {
     return { eye, project };
   }
   // Drag to orbit, wheel to zoom; every canvas in the list drives the same camera.
+  // Left drag = orbit, middle drag = pan (the pivot follows the pointer 1:1 at its own depth).
   function attach_orbit(canvases, camera, on_change) {
     for (const canvas of canvases) {
       let last = null;
-      canvas.addEventListener("pointerdown", (e) => { last = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+      let is_panning = false;
+      canvas.addEventListener("pointerdown", (e) => {
+        last = { x: e.clientX, y: e.clientY };
+        is_panning = e.button === 1;
+        if (is_panning) e.preventDefault(); // no browser autoscroll on middle button
+        canvas.setPointerCapture(e.pointerId);
+      });
       canvas.addEventListener("pointermove", (e) => {
         if (last === null) return;
-        camera.phi -= (e.clientX - last.x) * 0.008;
-        camera.theta = Math.max(-1.4, Math.min(1.4, camera.theta + (e.clientY - last.y) * 0.008));
+        const delta_x = e.clientX - last.x;
+        const delta_y = e.clientY - last.y;
+        if (is_panning) {
+          // world units per CSS pixel at pivot depth; `viewer` uses focal = canvas.height * 1.1 device px
+          const units_per_pixel = camera.distance / (canvas.clientHeight * 1.1);
+          const eye = camera_eye(camera);
+          const forward = normalize(sub(camera.pivot, eye));
+          const right = normalize(cross(forward, v3(0, 1, 0)));
+          const up = cross(right, forward);
+          camera.pivot = add(camera.pivot, add(scale(right, -delta_x * units_per_pixel), scale(up, delta_y * units_per_pixel)));
+        } else {
+          camera.phi -= delta_x * 0.008;
+          camera.theta = Math.max(-1.4, Math.min(1.4, camera.theta + delta_y * 0.008));
+        }
         last = { x: e.clientX, y: e.clientY };
         on_change();
       });
