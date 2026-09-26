@@ -6,7 +6,7 @@ import { frankfurt_coordinates, frankfurt_frame_from_landmarks, parse_landmarks_
 const models = "../data/reference-models/";
 const landmarks = parse_landmarks_file(readFileSync(models + "z-anatomy-head-skull.landmarks.txt", "utf8"));
 const frame = frankfurt_frame_from_landmarks(landmarks)!;
-for (const name of ["glabella", "nasal_spine", "zygion", "zygomatic_arch_bottom"]) {
+for (const name of ["glabella", "nasal_spine", "zygion", "zygomatic_bottom"]) {
   const l = landmarks.find((x) => x.name === name)!;
   const p = frankfurt_coordinates(frame, l.p);
   console.log(`${name}: side ${p.x.toFixed(1)} up ${p.y.toFixed(1)} front ${p.z.toFixed(1)}`);
