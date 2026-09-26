@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-ball</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .panes { display: flex; gap: 10px; }
+  .panes figure { flex: 1; margin: 0; min-width: 0; }
+  .panes figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+  table.numbers tr.reference td { font-style: italic; }
+  .controls input[type=number] { width: 70px; font: inherit; font-size: 13px; background: var(--bg); color: var(--ink); border: 1px solid var(--muted); border-radius: 4px; padding: 2px 4px; }
+  .status { font-size: 12px; color: var(--teal); min-height: 1.2em; }
+  .legend { display: inline-block; width: 120px; height: 10px; vertical-align: middle; border-radius: 3px;
+            background: linear-gradient(90deg, #4d80ff, #d9d9d9, #ff5a4d); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Where is the ball in a real skull?</h1>
+  <p class="sub">The Loomis head starts from a ball (see <a href="../loomis-head/">loomis-head</a>). Three ways to fit that ball to the Z-Anatomy skull, side by side, with the misses shown as a heat map. All lengths in mm, in the <a href="#g-frankfurt-frame">Frankfurt frame</a>. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>The skull and its landmarks</h2>
+    <div class="stack">
+      <canvas id="glossary_canvas" height="380"></canvas>
+      <canvas id="glossary_overlay" class="overlay" height="380"></canvas>
+    </div>
+    <p class="hint">drag any view to orbit, wheel to zoom; all four views share the camera. <span style="color: var(--teal)">teal</span> = Frankfurt plane (through the two porions and the orbitale), <span style="color: var(--orange)">orange</span> = the cranium cut (through the porions and the glabella).</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.35"></label>
+      <label>color <select id="color_mode"><option value="heat">heat map</option><option value="bone">bone</option></select></label>
+      <label>heat range ± <input type="range" id="heat_range" min="5" max="40" step="1" value="20"> <span id="heat_range_value"></span> mm</label>
+      <span class="hint">inside <span class="legend"></span> outside</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three candidates</h2>
+    <div class="panes">
+      <figure id="pane-frankfurt-sphere">
+        <div class="stack"><canvas class="pane" data-candidate="frankfurt-sphere" height="300"></canvas><canvas class="overlay" height="300"></canvas></div>
+        <figcaption><a href="#row-frankfurt-sphere">a. Frankfurt sphere</a></figcaption>
+      </figure>
+      <figure id="pane-cranium-sphere">
+        <div class="stack"><canvas class="pane" data-candidate="cranium-sphere" height="300"></canvas><canvas class="overlay" height="300"></canvas></div>
+        <figcaption><a href="#row-cranium-sphere">b. cranium sphere</a></figcaption>
+      </figure>
+      <figure id="pane-cranium-ellipsoid">
+        <div class="stack"><canvas class="pane" data-candidate="cranium-ellipsoid" height="300"></canvas><canvas class="overlay" height="300"></canvas></div>
+        <figcaption><a href="#row-cranium-ellipsoid">c. cranium ellipsoid</a></figcaption>
+      </figure>
+    </div>
+    <p class="hint">The heat map colors every skull vertex by its distance to the candidate's surface, but each fit and its numbers only use the vertices above that candidate's cut plane (the <a href="#g-vault">vault</a>). The face is colored anyway so you can see how far off the ball is where Loomis hangs the face.</p>
+  </section>
+
+  <section>
+    <h2>The glabella</h2>
+    <p>Candidates b and c cut the skull along the plane through the two porions and the <a href="#g-glabella">glabella</a>, so the fit sees only the brain case. The glabella is not in the landmarks file yet: the page guesses it (the most forward midline vertex above the orbits) until you pick it.</p>
+    <div class="controls">
+      <label><input type="checkbox" id="pick_mode"> pick by clicking a view</label>
+      <label>side <input type="number" id="glabella_side" step="0.1"></label>
+      <label>up <input type="number" id="glabella_up" step="0.1"></label>
+      <label>front <input type="number" id="glabella_front" step="0.1"></label>
+      <button id="save_glabella">save into the landmarks file</button>
+      <span class="status" id="save_status"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>candidate</th><th>vault vertices</th><th>center side</th><th>center up</th><th>center front</th><th>size</th><th>rms</th><th>min</th><th>max</th></tr></thead>
+      <tbody>
+        <tr id="row-frankfurt-sphere"><td><a href="#pane-frankfurt-sphere">a. Frankfurt sphere</a></td><td colspan="8">loading…</td></tr>
+        <tr class="reference"><td>a. as printed by the C++ <code>construction_fit</code></td><td>4677</td><td>0.0</td><td>+47.7</td><td>−11.2</td><td>r 78.0</td><td>12.2</td><td></td><td></td></tr>
+        <tr id="row-cranium-sphere"><td><a href="#pane-cranium-sphere">b. cranium sphere</a></td><td colspan="8">loading…</td></tr>
+        <tr id="row-cranium-ellipsoid"><td><a href="#pane-cranium-ellipsoid">c. cranium ellipsoid</a></td><td colspan="8">loading…</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">center = mm from the porion middle along the Frankfurt side / up / front axes; size = sphere radius or ellipsoid semi-axes (side, up, front); residuals = vertex minus surface, positive outside. Porion width of this skull: <span id="porion_width"></span> mm (real skulls ~120–130).</p>
+  </section>
+
+  <section>
+    <h2>What each one gets right and wrong</h2>
+    <ul>
+      <li><strong>a. Frankfurt sphere.</strong> Everything above the Frankfurt plane, which includes the brow ridge, the orbit rims and the upper face. Those pull the center forward and down, and the sphere ends up too small for the brain case: the forehead and the back of the skull stick out of it (red in profile) while the sides sit close to it. It is the fit the C++ app made first; the table row reproduces it.</li>
+      <li><strong>b. cranium sphere.</strong> Same shape, tighter set: only the brain case above the porion–glabella plane. The center moves up and back and the misses shrink, but a sphere is still too round: the cranium is longer front to back than it is wide, so the skull still sticks out at the forehead and the back while the sides fit. This is Loomis's ball: a sphere with slices cut off the sides.</li>
+      <li><strong>c. cranium ellipsoid.</strong> Axes along side / up / front, same vertex set as b. The three semi-axes say directly how much of an egg the cranium is. Best numbers, hardest to draw: an ellipsoid has no single radius to measure other lengths against, which is the whole point of the ball.</li>
+    </ul>
+    <p>Sources: fits in <code>tablet/src/construction_fit.ts</code> (same algebra as <code>game/game_construction_fit.cpp</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q4, Q5) and <code>plan-simplified-skull.md</code>.</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-porion">porion (left / right)</dt><dd>The top of the ear hole. Two landmarks on the mesh; their midpoint is the origin of the frame.</dd>
+      <dt id="g-orbitale">orbitale</dt><dd>The lowest point of the eye socket rim. One landmark.</dd>
+      <dt id="g-glabella">glabella</dt><dd>The most forward point of the forehead between the brows, on the midline. Picked on this page.</dd>
+      <dt id="g-frankfurt-frame">Frankfurt frame</dt><dd>The plane through the two porions and the orbitale is anatomy's "head held level" reference. Frame axes: side = left porion to right porion, up = the plane's normal, front = side × up; origin = porion middle.</dd>
+      <dt id="g-vault">vault</dt><dd>The skull vertices a fit is allowed to see: above the Frankfurt plane for candidate a, above the porion–glabella plane for b and c.</dd>
+      <dt id="g-rms">rms</dt><dd>Root mean square of the residuals over the vault: the typical miss in mm.</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 // copies of the Google Drive originals -- the C++ driver still reads those) and persists
 // tablet documents as git-tracked JSON in tablet/documents/ (plan-skull-reference.md).
 //   GET  /reference/<file>        -> ../data/reference-models/<file>
+//   POST /reference/<mesh>.landmarks.txt -> overwrite that sidecar with the body
 //   GET  /api/documents           -> [{ name, mtime_ms }]
 //   GET  /api/documents/<name>    -> stored JSON
 //   POST /api/documents/<name>    -> write body to documents/<name>.json
@@ -41,6 +42,22 @@ function handle_reference_request(request: IncomingMessage, response: ServerResp
   }
   response.setHeader("Content-Type", "application/octet-stream");
   response.end(fs.readFileSync(file_path));
+}
+
+// Pages write landmarks back (skull-ball picks the glabella); only `.landmarks.txt`
+// sidecars are writable, the meshes never are.
+function handle_reference_landmarks_save(request: IncomingMessage, response: ServerResponse): void {
+  const file_name = decodeURIComponent(request.url!.slice("/reference/".length));
+  if (file_name !== path.basename(file_name) || !file_name.endsWith(".landmarks.txt")) {
+    send_json(response, 400, { error: "only <mesh>.landmarks.txt files can be written" });
+    return;
+  }
+  const chunks: Buffer[] = [];
+  request.on("data", (chunk: Buffer) => chunks.push(chunk));
+  request.on("end", () => {
+    fs.writeFileSync(path.join(reference_models_directory, file_name), Buffer.concat(chunks));
+    send_json(response, 200, { ok: true });
+  });
 }
 
 function handle_document_list(response: ServerResponse): void {
@@ -96,6 +113,10 @@ function tablet_api_middleware(request: IncomingMessage, response: ServerRespons
   const url = request.url ?? "";
   if (url.startsWith("/reference/") && request.method === "GET") {
     handle_reference_request(request, response);
+    return;
+  }
+  if (url.startsWith("/reference/") && request.method === "POST") {
+    handle_reference_landmarks_save(request, response);
     return;
   }
   if (url === "/api/documents" && request.method === "GET") {

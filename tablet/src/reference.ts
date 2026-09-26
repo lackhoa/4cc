@@ -4,7 +4,7 @@
 // normals/uvs/materials are ignored.
 
 import { OrbitCamera, camera_basis } from "./camera";
-import { V3, v3, v3_cross, v3_dot, v3_length, v3_normalize, v3_sub } from "./math";
+import { V3, v3, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
 const REFERENCE_AMBIENT = 0.2; // dimmer than surfaces (LOFT_AMBIENT 0.35)
@@ -14,11 +14,16 @@ const REFERENCE_HEIGHT_WORLD_UNITS = 2;
 // Flat per-triangle storage: positions has 3 entries per triangle, normals 1.
 export type ReferenceMesh = { triangle_positions: V3[]; triangle_normals: V3[] };
 
+// The OBJ as stored: unique vertices in the file's own units (mm for the Z-Anatomy
+// set), triangle corners as 0-based vertex indices, 3 per triangle. This is what the
+// construction pages fit shapes to (plan-skull-construction-docs.md).
+export type RawObjMesh = { positions: V3[]; triangle_indices: number[] };
+
 // Returns null when the text yields no triangles (e.g. an error page served
 // instead of an OBJ).
-export function parse_obj_mesh(obj_text: string): ReferenceMesh | null {
+export function parse_obj_mesh_raw(obj_text: string): RawObjMesh | null {
   const positions: V3[] = [];
-  const triangle_positions: V3[] = [];
+  const triangle_indices: number[] = [];
   for (const line of obj_text.split("\n")) {
     const parts = line.trim().split(/\s+/);
     if (parts[0] === "v") {
@@ -27,18 +32,21 @@ export function parse_obj_mesh(obj_text: string): ReferenceMesh | null {
       // "f 5/1/2 6/2/2 ..." — vertex index is the part before the first slash, 1-based.
       const corner_indices = parts.slice(1).map((part) => parseInt(part.split("/")[0], 10) - 1);
       for (let i = 2; i < corner_indices.length; i++) { // fan-triangulate quads/ngons
-        triangle_positions.push(
-          positions[corner_indices[0]],
-          positions[corner_indices[i - 1]],
-          positions[corner_indices[i]],
-        );
+        triangle_indices.push(corner_indices[0], corner_indices[i - 1], corner_indices[i]);
       }
     }
   }
-  if (triangle_positions.length === 0) {
+  if (triangle_indices.length === 0) {
     console.error("OBJ parse produced no triangles");
     return null;
   }
+  return { positions, triangle_indices };
+}
+
+export function parse_obj_mesh(obj_text: string): ReferenceMesh | null {
+  const raw = parse_obj_mesh_raw(obj_text);
+  if (raw === null) return null;
+  const triangle_positions = raw.triangle_indices.map((index) => raw.positions[index]);
   const mesh: ReferenceMesh = { triangle_positions, triangle_normals: [] };
   normalize_reference_mesh(mesh);
   compute_triangle_normals(mesh);
@@ -77,18 +85,78 @@ function compute_triangle_normals(mesh: ReferenceMesh): void {
   }
 }
 
-export async function fetch_reference_mesh(url: string): Promise<ReferenceMesh | null> {
+// Text of one file under /reference/ (an .obj or a .landmarks.txt); null on any failure.
+export async function fetch_reference_text(url: string): Promise<string | null> {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      console.error(`reference model fetch failed: ${url} -> ${response.status}`);
+      console.error(`reference fetch failed: ${url} -> ${response.status}`);
       return null;
     }
-    return parse_obj_mesh(await response.text());
+    return await response.text();
   } catch (error) {
-    console.error(`reference model fetch failed: ${url}`, error);
+    console.error(`reference fetch failed: ${url}`, error);
     return null;
   }
+}
+
+export async function fetch_reference_mesh(url: string): Promise<ReferenceMesh | null> {
+  const text = await fetch_reference_text(url);
+  return text === null ? null : parse_obj_mesh(text);
+}
+
+// Landmarks (game_reference_landmarks.cpp): labeled points in the mesh's own coordinates,
+// stored beside the .obj as `<mesh>.landmarks.txt`, written by the desktop app as
+//   landmarks = [ {name = "porion_l", p = {-51.3, 4.6, -19.0}}, ... ]
+export type Landmark = { name: string; p: V3 };
+
+export function parse_landmarks_file(text: string): Landmark[] {
+  const landmarks: Landmark[] = [];
+  const entry = /\{\s*name\s*=\s*"([^"]*)"\s*,\s*p\s*=\s*\{\s*([^,}]+),\s*([^,}]+),\s*([^,}]+)\}\s*\}/g;
+  for (const match of text.matchAll(entry)) {
+    landmarks.push({ name: match[1], p: v3(parseFloat(match[2]), parseFloat(match[3]), parseFloat(match[4])) });
+  }
+  return landmarks;
+}
+
+export function find_landmark(landmarks: Landmark[], name: string): V3 | null {
+  const landmark = landmarks.find((candidate) => candidate.name === name);
+  return landmark === undefined ? null : landmark.p;
+}
+
+// The Frankfurt frame (reference_frankfurt_frame in C++): origin at the porion middle,
+// side = porion_l -> porion_r, up = normal of the plane through the porions and the
+// orbitale, front = side x up. Unit axes in mesh coordinates.
+export type FrankfurtFrame = { porion_middle: V3; side: V3; up: V3; front: V3 };
+
+// null when a landmark is missing or the three are (nearly) collinear.
+export function frankfurt_frame_from_landmarks(landmarks: Landmark[]): FrankfurtFrame | null {
+  const porion_l = find_landmark(landmarks, "porion_l");
+  const porion_r = find_landmark(landmarks, "porion_r");
+  const orbitale = find_landmark(landmarks, "orbitale");
+  if (porion_l === null || porion_r === null || orbitale === null) return null;
+  const porion_middle = v3_lerp(porion_l, porion_r, 0.5);
+  const side_unnormalized = v3_sub(porion_r, porion_l);
+  const up_unnormalized = v3_cross(v3_sub(orbitale, porion_middle), side_unnormalized);
+  if (v3_length(side_unnormalized) < 0.5 || v3_length(up_unnormalized) < 0.5) return null;
+  const side = v3_normalize(side_unnormalized);
+  const up = v3_normalize(up_unnormalized);
+  return { porion_middle, side, up, front: v3_cross(side, up) };
+}
+
+// Mesh point -> (side, up, front) coordinates in mm from the porion middle.
+export function frankfurt_coordinates(frame: FrankfurtFrame, point: V3): V3 {
+  const q = v3_sub(point, frame.porion_middle);
+  return v3(v3_dot(q, frame.side), v3_dot(q, frame.up), v3_dot(q, frame.front));
+}
+
+// Inverse of frankfurt_coordinates.
+export function frankfurt_to_mesh(frame: FrankfurtFrame, coordinates: V3): V3 {
+  return v3(
+    frame.porion_middle.x + coordinates.x * frame.side.x + coordinates.y * frame.up.x + coordinates.z * frame.front.x,
+    frame.porion_middle.y + coordinates.x * frame.side.y + coordinates.y * frame.up.y + coordinates.z * frame.front.y,
+    frame.porion_middle.z + coordinates.x * frame.side.z + coordinates.y * frame.up.z + coordinates.z * frame.front.z,
+  );
 }
 
 // Flat-shaded headlight, same scheme as surfaces but dimmer (two-sided).
