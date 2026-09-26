@@ -63,11 +63,11 @@
 
   <section>
     <h2>The glabella</h2>
-    <p>Candidates b and c cut the skull along the plane through the two porions and the <a href="#g-glabella">glabella</a>, so the fit sees only the brain case. The glabella is a point on the midline profile, so pick it there: the tracing below is the skull cut by the midsagittal plane (grey), with the front silhouette highlighted. Drag the marker up or down; it stays on the silhouette. Small ticks mark the bumps and dips of the silhouette: coming down the forehead, the first bump is the brow (the glabella), then the nasion dip, then the nasal bones, which on this mesh stick out further than the brow. The page guesses the first bump until you pick it, or until the landmarks file has it.</p>
+    <p>Candidates b and c cut the skull along the plane through the two porions and the <a href="#g-glabella">glabella</a>, so the fit sees only the brain case. The glabella is a point on the midline profile, so pick it there: the tracing below is the skull cut by the midsagittal plane (grey), with the front silhouette highlighted. Drag the marker up or down; it stays on the silhouette. Small ticks mark the bumps and dips of the silhouette. The glabella sits level with the eyebrows, so the page draws the orbit rim (the top of the eye socket, dotted line) as a ruler; the nasion is the dip just under it, and everything bumping out below that is the nasal bones, which on this mesh kink outward well under the brows. The page does not guess the point: the marker comes from the landmarks file, or starts at eyebrow height until you pick.</p>
     <div class="stack">
       <canvas id="profile_canvas" height="440"></canvas>
     </div>
-    <p class="hint">front → right, up → up, mm from the porion middle. <span style="color: var(--teal)">teal</span> = Frankfurt plane, <span style="color: var(--orange)">orange</span> = the cranium cut through the marker. <span style="color: #7fb3ff">blue diamonds</span> = where the page itself reads the glabella bump and the nasion dip (never saved; the marker is what counts).</p>
+    <p class="hint">front → right, up → up, mm from the porion middle. <span style="color: var(--teal)">teal</span> = Frankfurt plane, <span style="color: var(--orange)">orange</span> = the cranium cut through the marker. <span style="color: #7fb3ff">blue dotted</span> = the orbit rim, i.e. eyebrow height.</p>
     <div class="controls">
       <label><input type="checkbox" id="pick_mode"> or pick by clicking a 3D view</label>
       <label>side <input type="number" id="glabella_side" step="0.1"></label>

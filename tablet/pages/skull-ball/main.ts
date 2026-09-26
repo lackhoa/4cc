@@ -57,7 +57,7 @@ type Pane = {
 const camera: OrbitCamera = { pivot: v3(0, 0.45, 0), yaw: 0.6, pitch: 0.15, distance: 3.2 };
 let skull: Skull | null = null;
 let profile: Profile | null = null;
-let glabella: V3 = v3(0, 30, 90); // frame mm; replaced by the file's landmark or the guess
+let glabella: V3 = v3(0, 30, 90); // frame mm; replaced by the file's landmark or the initial marker
 let candidates: Candidate[] = [];
 const panes: Pane[] = [];
 
@@ -89,6 +89,7 @@ type Profile = {
   silhouette: SilhouetteSample[]; // every SILHOUETTE_STEP_MM from SILHOUETTE_UP_MIN
   bumps: ProfilePoint[]; // local maxima of front along the silhouette
   dips: ProfilePoint[]; // local minima
+  orbit_rim_up: number | null; // height of the supraorbital margin (the eyebrow line), null if not found
 };
 
 const SILHOUETTE_UP_MIN = -40, SILHOUETTE_UP_MAX = 130, SILHOUETTE_STEP_MM = 0.5; // the mesh spans up -34..122
@@ -137,36 +138,38 @@ function silhouette_extrema(silhouette: SilhouetteSample[], sign: 1 | -1): Profi
   return result;
 }
 
+// The supraorbital margin: through the right orbit (side 25..37), coming down from the
+// forehead in 2 mm bands, the most forward vertex sits on the brow bone until the band
+// falls into the orbit cavity, where it jumps back by tens of mm. The rim is the last brow
+// band before that jump.
+function supraorbital_rim_up(skull: Skull): number | null {
+  let previous: { up: number; front: number } | null = null;
+  for (let up = 60; up >= 20; up -= 2) {
+    let front: number | null = null;
+    for (const p of skull.positions) {
+      if (p.x >= 25 && p.x <= 37 && p.y >= up && p.y < up + 2 && (front === null || p.z > front)) front = p.z;
+    }
+    if (front === null) continue;
+    if (previous !== null && previous.front - front > 15) return previous.up;
+    previous = { up, front };
+  }
+  return null;
+}
+
 function compute_profile(skull: Skull): Profile {
   const segments = midline_cut_segments(skull);
   const silhouette: SilhouetteSample[] = [];
   for (let up = SILHOUETTE_UP_MIN; up <= SILHOUETTE_UP_MAX; up += SILHOUETTE_STEP_MM) silhouette.push({ up, front: silhouette_front_at(segments, up) });
-  return { segments, silhouette, bumps: silhouette_extrema(silhouette, 1), dips: silhouette_extrema(silhouette, -1) };
+  return { segments, silhouette, bumps: silhouette_extrema(silhouette, 1), dips: silhouette_extrema(silhouette, -1), orbit_rim_up: supraorbital_rim_up(skull) };
 }
 
-// Coming down the forehead from the top, the first bump of the silhouette is the brow:
-// the glabella. (The nasion dip and the nasal bones come below it, and on this mesh the
-// nasal bones are the most forward point of all, so "most forward" would be wrong.)
-// Falls back to the most forward point of the brow band when no bump stands out.
-function guess_glabella(profile: Profile): V3 {
-  const bumps_below_forehead = profile.bumps.filter((bump) => bump.up > 5 && bump.up < 60);
-  let best: ProfilePoint | null = null;
-  if (bumps_below_forehead.length > 0) best = bumps_below_forehead.reduce((highest, bump) => (bump.up > highest.up ? bump : highest));
-  if (best === null) {
-    for (const sample of profile.silhouette) {
-      if (sample.front !== null && sample.up > 20 && sample.up < 55 && (best === null || sample.front > best.front)) best = { up: sample.up, front: sample.front };
-    }
-  }
-  return best === null ? v3(0, 30, 90) : v3(0, best.up, best.front);
-}
-
-// The nasion is the dip right below the glabella bump: the highest dip under it. Null
-// when the silhouette has no dip there. Only drawn, never saved: it is the page's
-// reading of the tracing, put on screen so it can be argued with.
-function guess_nasion(profile: Profile, glabella_guess: V3): ProfilePoint | null {
-  const dips_below = profile.dips.filter((dip) => dip.up < glabella_guess.y);
-  if (dips_below.length === 0) return null;
-  return dips_below.reduce((highest, dip) => (dip.up > highest.up ? dip : highest));
+// Where the marker starts when the landmarks file has no glabella: on the silhouette at
+// eyebrow height (the glabella sits level with the brows). Not a guess of the landmark,
+// just a starting point for the drag; the person picks.
+function initial_glabella_marker(profile: Profile): V3 {
+  const up = profile.orbit_rim_up ?? 45;
+  const front = silhouette_front_at(profile.segments, up);
+  return v3(0, up, front ?? 85);
 }
 
 async function load_skull(): Promise<Skull | null> {
@@ -431,21 +434,14 @@ function draw_profile(): void {
   for (const bump of profile.bumps) { const p = px(bump); ctx.moveTo(p.x + 3 * dpr, p.y); ctx.lineTo(p.x + 10 * dpr, p.y); }
   for (const dip of profile.dips) { const p = px(dip); ctx.moveTo(p.x - 3 * dpr, p.y); ctx.lineTo(p.x - 10 * dpr, p.y); }
   ctx.stroke();
-  // The page's own reading of the tracing (glabella bump and nasion dip), as small labeled
-  // diamonds, so a disagreement with the marker is visible.
-  const glabella_guess = guess_glabella(profile);
-  const nasion_guess = guess_nasion(profile, glabella_guess);
-  // Labels staggered up / down: the two points are only a few mm apart.
-  const guesses: { label: string; point: ProfilePoint; label_offset_y: number }[] = [{ label: "glabella guess", point: { up: glabella_guess.y, front: glabella_guess.z }, label_offset_y: -6 }];
-  if (nasion_guess !== null) guesses.push({ label: "nasion guess", point: nasion_guess, label_offset_y: 14 });
-  ctx.strokeStyle = "#7fb3ff"; ctx.fillStyle = "#7fb3ff"; ctx.lineWidth = 1 * dpr;
-  ctx.font = `${11 * dpr}px system-ui, sans-serif`;
-  for (const guess of guesses) {
-    const p = px(guess.point);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y - 6 * dpr); ctx.lineTo(p.x + 6 * dpr, p.y); ctx.lineTo(p.x, p.y + 6 * dpr); ctx.lineTo(p.x - 6 * dpr, p.y); ctx.closePath();
-    ctx.stroke();
-    ctx.fillText(`${guess.label} up ${guess.point.up.toFixed(1)} front ${guess.point.front.toFixed(1)}`, p.x + 24 * dpr, p.y + guess.label_offset_y * dpr);
+  // The eyebrow line, dotted: the glabella sits level with it.
+  if (profile.orbit_rim_up !== null) {
+    const a = px({ front: PROFILE_FRONT_MIN, up: profile.orbit_rim_up }), b = px({ front: PROFILE_FRONT_MAX, up: profile.orbit_rim_up });
+    ctx.strokeStyle = "rgba(127, 179, 255, 0.5)"; ctx.lineWidth = 1 * dpr; ctx.setLineDash([4 * dpr, 4 * dpr]);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#7fb3ff"; ctx.font = `${11 * dpr}px system-ui, sans-serif`;
+    ctx.fillText(`orbit rim (eyebrows) up ${profile.orbit_rim_up.toFixed(0)}`, a.x + 8 * dpr, a.y - 4 * dpr);
   }
   // The marker.
   const marker = px({ front: glabella.z, up: glabella.y });
@@ -503,7 +499,7 @@ function update_numbers_table(): void {
   }
 }
 
-// ---- glabella: guess, type, pick, save --------------------------------------------------
+// ---- glabella: type, pick, save --------------------------------------------------------
 
 function write_glabella_to_inputs(): void {
   controls.glabella_side.value = glabella.x.toFixed(1);
@@ -634,7 +630,7 @@ void load_skull().then((loaded) => {
   skull = loaded;
   profile = compute_profile(skull);
   const glabella_in_file = find_landmark(skull.landmarks, "glabella");
-  glabella = glabella_in_file !== null ? frankfurt_coordinates(skull.frame, glabella_in_file) : guess_glabella(profile);
+  glabella = glabella_in_file !== null ? frankfurt_coordinates(skull.frame, glabella_in_file) : initial_glabella_marker(profile);
   write_glabella_to_inputs();
   refit();
 });
