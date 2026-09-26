@@ -4,13 +4,13 @@
 // World units = Frankfurt-frame mm * WORLD_PER_MM, x = side, y = up, z = front.
 import "../../pages.css";
 import { OrbitCamera, camera_eye, camera_pen_ray, camera_view_projection } from "../../src/camera";
-import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_scale, v3_sub } from "../../src/math";
+import { V3, v3, v3_length, v3_scale, v3_sub } from "../../src/math";
 import { attach_orbit_controls, bind_controls } from "../../src/explainer/orbit_controls";
 import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/canvas_view";
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
-import { Landmark, find_landmark, frankfurt_coordinates, frankfurt_to_mesh } from "../../src/reference";
+import { Landmark, find_landmark, frankfurt_coordinates } from "../../src/reference";
 import { EllipsoidFit, ResidualStats, SphereFit, ellipsoid_residual, fit_ellipsoid_algebraic, fit_sphere_algebraic, residual_stats, sphere_residual } from "../../src/construction_fit";
-import { LANDMARKS_URL, MeshBuilder, SKULL_NAME, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, push_ellipsoid, push_landmark_marker, push_plane, push_skull, size_gl_canvas, skull_view_colors as colors, sphere_outline, supraorbital_rim_point, vault_vertices } from "../../src/reference_skull_view";
+import { LANDMARKS_URL, MeshBuilder, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, pick_skull_vertex, push_ellipsoid, push_landmark_marker, push_plane, push_skull, save_landmark, size_gl_canvas, skull_view_colors as colors, sphere_outline, supraorbital_rim_point, vault_vertices } from "../../src/reference_skull_view";
 
 type CandidateId = "frankfurt-sphere" | "cranium-sphere" | "cranium-ellipsoid";
 type CandidateShape = { kind: "sphere"; fit: SphereFit } | { kind: "ellipsoid"; fit: EllipsoidFit };
@@ -348,41 +348,6 @@ function refit(): void {
   redraw();
 }
 
-// Möller–Trumbore; t along the ray, null when the ray misses.
-function ray_triangle_distance(origin: V3, direction: V3, a: V3, b: V3, c: V3): number | null {
-  const edge_ab = v3_sub(b, a), edge_ac = v3_sub(c, a);
-  const p = v3_cross(direction, edge_ac);
-  const determinant = v3_dot(edge_ab, p);
-  if (Math.abs(determinant) < 1e-12) return null;
-  const inverse = 1 / determinant;
-  const to_origin = v3_sub(origin, a);
-  const u = v3_dot(to_origin, p) * inverse;
-  if (u < 0 || u > 1) return null;
-  const q = v3_cross(to_origin, edge_ab);
-  const v = v3_dot(direction, q) * inverse;
-  if (v < 0 || u + v > 1) return null;
-  const t = v3_dot(edge_ac, q) * inverse;
-  return t > 0 ? t : null;
-}
-
-// The skull vertex nearest to where the ray first enters the mesh; null on a miss.
-function pick_skull_vertex(skull: Skull, origin_mm: V3, direction: V3): V3 | null {
-  let best_t = Infinity;
-  let best_triangle = -1;
-  for (let i = 0; i < skull.triangle_indices.length; i += 3) {
-    const t = ray_triangle_distance(origin_mm, direction, skull.positions[skull.triangle_indices[i]], skull.positions[skull.triangle_indices[i + 1]], skull.positions[skull.triangle_indices[i + 2]]);
-    if (t !== null && t < best_t) { best_t = t; best_triangle = i; }
-  }
-  if (best_triangle < 0) return null;
-  const hit = v3_add(origin_mm, v3_scale(direction, best_t));
-  let best = skull.positions[skull.triangle_indices[best_triangle]];
-  for (let corner = 1; corner < 3; corner++) {
-    const candidate = skull.positions[skull.triangle_indices[best_triangle + corner]];
-    if (v3_length(v3_sub(candidate, hit)) < v3_length(v3_sub(best, hit))) best = candidate;
-  }
-  return best;
-}
-
 function attach_pick(pane: Pane): void {
   let down: { x: number; y: number } | null = null;
   pane.canvas.addEventListener("pointerdown", (event) => { down = { x: event.clientX, y: event.clientY }; });
@@ -398,27 +363,9 @@ function attach_pick(pane: Pane): void {
   });
 }
 
-// The landmarks file as the desktop app writes it (game_reference_landmarks.cpp), so it
-// can read the glabella back. Existing landmarks keep their mesh-space values.
-function landmarks_file_text(landmarks: Landmark[]): string {
-  const number = (value: number) => String(Number(value.toPrecision(9)));
-  const lines = landmarks.map((landmark) => `  {name = "${landmark.name}", p = {${number(landmark.p.x)}, ${number(landmark.p.y)}, ${number(landmark.p.z)}}},`);
-  return `# Reference_Landmark_File -- written by autodraw; zero members are omitted, unknown ones are skipped.\nlandmarks = [\n${lines.join("\n")}\n]\n`;
-}
-
 async function save_glabella(): Promise<void> {
   if (skull === null) return;
-  const status = document.getElementById("save_status")!;
-  const others = skull.landmarks.filter((landmark) => landmark.name !== "glabella");
-  const landmarks = [...others, { name: "glabella", p: frankfurt_to_mesh(skull.frame, glabella) }];
-  try {
-    const response = await fetch(LANDMARKS_URL, { method: "POST", body: landmarks_file_text(landmarks) });
-    if (!response.ok) { status.textContent = `save failed: ${response.status}`; return; }
-    skull.landmarks = landmarks;
-    status.textContent = `saved glabella into ${SKULL_NAME}.landmarks.txt`;
-  } catch (error) {
-    status.textContent = `save failed: ${error}`;
-  }
+  document.getElementById("save_status")!.textContent = await save_landmark(skull, LANDMARKS_URL, "glabella", glabella);
 }
 
 // ---- wiring -------------------------------------------------------------------------

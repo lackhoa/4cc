@@ -4,11 +4,13 @@
 // markers) and the small drawing helpers the pages share.
 // World units = Frankfurt-frame mm * WORLD_PER_MM, x = side, y = up, z = front.
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
-import { FrankfurtFrame, Landmark, fetch_reference_text, frankfurt_coordinates, frankfurt_frame_from_landmarks, parse_landmarks_file, parse_obj_mesh_raw } from "./reference";
+import { FrankfurtFrame, Landmark, fetch_reference_text, frankfurt_coordinates, frankfurt_frame_from_landmarks, frankfurt_to_mesh, parse_landmarks_file, parse_obj_mesh_raw } from "./reference";
 
 export const WORLD_PER_MM = 0.01;
 export const SKULL_NAME = "z-anatomy-head-skull";
 export const LANDMARKS_URL = `/reference/${SKULL_NAME}.landmarks.txt`;
+export const MANDIBLE_NAME = "z-anatomy-head-mandible";
+export const MANDIBLE_LANDMARKS_URL = `/reference/${MANDIBLE_NAME}.landmarks.txt`;
 
 export const skull_view_colors = {
   bone: v3(0.85, 0.8, 0.7),
@@ -58,6 +60,84 @@ export async function load_skull(page_name: string): Promise<Skull | null> {
   }
   const positions = raw.positions.map((p) => frankfurt_coordinates(frame, p));
   return { frame, landmarks, positions, triangle_indices: raw.triangle_indices, vertex_normals: compute_vertex_normals(positions, raw.triangle_indices) };
+}
+
+// The mandible (a second mesh in the same scan, articulated in the jaw joint, mouth
+// closed) in the skull's Frankfurt frame; it has no Frankfurt landmarks of its own, so the
+// skull's frame is passed in. Same shape as a Skull so the builders and the picker apply.
+export async function load_mandible(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+  const [obj_text, landmarks_text] = await Promise.all([
+    fetch_reference_text(`/reference/${MANDIBLE_NAME}.obj`),
+    fetch_reference_text(MANDIBLE_LANDMARKS_URL),
+  ]);
+  if (obj_text === null || landmarks_text === null) return null;
+  const raw = parse_obj_mesh_raw(obj_text);
+  if (raw === null) {
+    console.error(`${page_name}: mandible mesh unreadable`);
+    return null;
+  }
+  const positions = raw.positions.map((p) => frankfurt_coordinates(frame, p));
+  return { frame, landmarks: parse_landmarks_file(landmarks_text), positions, triangle_indices: raw.triangle_indices, vertex_normals: compute_vertex_normals(positions, raw.triangle_indices) };
+}
+
+// ---- picking and saving landmarks ---------------------------------------------------
+
+// Möller–Trumbore; t along the ray, null when the ray misses.
+export function ray_triangle_distance(origin: V3, direction: V3, a: V3, b: V3, c: V3): number | null {
+  const edge_ab = v3_sub(b, a), edge_ac = v3_sub(c, a);
+  const p = v3_cross(direction, edge_ac);
+  const determinant = v3_dot(edge_ab, p);
+  if (Math.abs(determinant) < 1e-12) return null;
+  const inverse = 1 / determinant;
+  const to_origin = v3_sub(origin, a);
+  const u = v3_dot(to_origin, p) * inverse;
+  if (u < 0 || u > 1) return null;
+  const q = v3_cross(to_origin, edge_ab);
+  const v = v3_dot(direction, q) * inverse;
+  if (v < 0 || u + v > 1) return null;
+  const t = v3_dot(edge_ac, q) * inverse;
+  return t > 0 ? t : null;
+}
+
+// The skull vertex nearest to where the ray first enters the mesh; null on a miss.
+export function pick_skull_vertex(skull: Skull, origin_mm: V3, direction: V3): V3 | null {
+  let best_t = Infinity;
+  let best_triangle = -1;
+  for (let i = 0; i < skull.triangle_indices.length; i += 3) {
+    const t = ray_triangle_distance(origin_mm, direction, skull.positions[skull.triangle_indices[i]], skull.positions[skull.triangle_indices[i + 1]], skull.positions[skull.triangle_indices[i + 2]]);
+    if (t !== null && t < best_t) { best_t = t; best_triangle = i; }
+  }
+  if (best_triangle < 0) return null;
+  const hit = v3_add(origin_mm, v3_scale(direction, best_t));
+  let best = skull.positions[skull.triangle_indices[best_triangle]];
+  for (let corner = 1; corner < 3; corner++) {
+    const candidate = skull.positions[skull.triangle_indices[best_triangle + corner]];
+    if (v3_length(v3_sub(candidate, hit)) < v3_length(v3_sub(best, hit))) best = candidate;
+  }
+  return best;
+}
+
+// The landmarks file as the desktop app writes it (game_reference_landmarks.cpp), so it
+// can read the glabella back. Existing landmarks keep their mesh-space values.
+export function landmarks_file_text(landmarks: Landmark[]): string {
+  const number = (value: number) => String(Number(value.toPrecision(9)));
+  const lines = landmarks.map((landmark) => `  {name = "${landmark.name}", p = {${number(landmark.p.x)}, ${number(landmark.p.y)}, ${number(landmark.p.z)}}},`);
+  return `# Reference_Landmark_File -- written by autodraw; zero members are omitted, unknown ones are skipped.\nlandmarks = [\n${lines.join("\n")}\n]\n`;
+}
+
+// Replaces (or adds) one landmark in a mesh's sidecar file; `p` in frame mm. Returns the
+// status text for the page. On success the in-memory list is updated too.
+export async function save_landmark(mesh: Skull, landmarks_url: string, name: string, p: V3): Promise<string> {
+  const others = mesh.landmarks.filter((landmark) => landmark.name !== name);
+  const landmarks = [...others, { name, p: frankfurt_to_mesh(mesh.frame, p) }];
+  try {
+    const response = await fetch(landmarks_url, { method: "POST", body: landmarks_file_text(landmarks) });
+    if (!response.ok) return `save failed: ${response.status}`;
+    mesh.landmarks = landmarks;
+    return `saved ${name} into ${landmarks_url.slice("/reference/".length)}`;
+  } catch (error) {
+    return `save failed: ${error}`;
+  }
 }
 
 // Plane through the side axis and the glabella (the cranium cut of plan-simplified-skull

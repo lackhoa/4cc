@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-face-thirds</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .views { display: flex; gap: 10px; }
+  .views figure { flex: 1; margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The face thirds</h1>
+  <p class="sub">Loomis's next step after the brow line (see <a href="../loomis-head/">loomis-head</a>, step 4): the face hangs below the ball in three equal units, brow to hairline, brow to nose base, nose base to chin. The book gives the unit twice: half a radius on Plate 1, two thirds on Plate 18. This page measures the two lower units on the skull and its mandible, from the brow line of <a href="../skull-brow-line/">skull-brow-line</a> down to the <a href="#g-nasal-spine">nasal spine</a> and the <a href="#g-menton">menton</a>. The hairline is not on bone, so the upper unit is not tested. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>The lines on the skull</h2>
+    <div class="views">
+      <figure>
+        <div class="stack"><canvas class="pane" height="460"></canvas><canvas class="overlay" height="460"></canvas></div>
+        <figcaption>the length ball with side cuts, the brow line as a ring, the nose and chin lines as bars, markers at the landmarks</figcaption>
+      </figure>
+      <figure>
+        <div class="stack"><canvas id="profile_canvas" height="460"></canvas></div>
+        <figcaption>midline cut, from the right: front → right, up → up; dashed = the book's lines</figcaption>
+      </figure>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #8cffa0">green</span> = the skull's own lines through the glabella, the nasal spine and the menton; in the section <span style="color: #ff8fb1">pink</span> dashed = Plate 1 (0.5 r per unit), <span style="color: #c9a0ff">purple</span> dashed = Plate 18 (2/3 r per unit).</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
+    </div>
+    <div class="controls">
+      <label><input type="checkbox" id="pick_mode"> pick by clicking the 3D view:</label>
+      <select id="pick_target"><option value="nasal_spine">nasal spine (on the skull)</option><option value="menton">menton (on the mandible)</option></select>
+      <button id="save_landmarks">save into the landmarks files</button>
+      <span class="status" id="save_status"></span>
+    </div>
+    <p class="hint">nasal spine: <span id="nasal_spine_text"></span>; menton: <span id="menton_text"></span>.</p>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>distance</th><th>measured</th><th>in radii</th><th>Plate 1 says</th><th>Plate 18 says</th></tr></thead>
+      <tbody>
+        <tr id="row-brow-nose"><td>brow line → nose base (one unit)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-nose-chin"><td>nose base → chin (one unit)</td><td colspan="4">loading…</td></tr>
+        <tr id="row-brow-chin"><td>brow line → chin (two units)</td><td colspan="4">loading…</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">in radii = mm divided by the ball's radius. The ball: <span id="ball_text"></span>. The brow line is the ball's equator (skull-brow-line); the glabella sits 3 mm above it.</p>
+  </section>
+
+  <section>
+    <h2>Which plate does the skull agree with?</h2>
+    <ul>
+      <li><strong>Two units, two answers.</strong> Plate 1 hangs the face half a radius per unit off the ball; Plate 18 makes the whole head 3.5 units tall with the ball 1.5 units, i.e. two thirds of a radius per unit. They differ by a third of a radius over the two lower units, about 30 mm on this ball, more than any picking error.</li>
+      <li><strong>Bone is not skin.</strong> The nasal spine is a few mm behind and under the soft nose base, the menton a few mm above the soft chin. Both errors push the measured units short of what the book (drawn on faces) would give; a couple of mm, not 30.</li>
+      <li><strong>The teeth.</strong> The mouth is closed in this scan (the condyles sit in the joint), so the chin height is the closed-mouth one, which is what the book draws.</li>
+    </ul>
+    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the meshes and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_mandible</code>, <code>pick_skull_vertex</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q21).</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
+      <dt id="g-nasal-spine">nasal spine</dt><dd>The anterior nasal spine, the bony point on the midline under the nose opening, where the nose base (the septum) attaches. Loomis's nose line. Picked by hand on this page, stored in the skull's landmarks file as <code>nasal_spine</code>.</dd>
+      <dt id="g-menton">menton</dt><dd>The lowest point of the chin on the midline of the mandible. Loomis's chin line. Picked by hand on this page, stored in the mandible's landmarks file as <code>menton</code>.</dd>
+      <dt id="g-unit">unit</dt><dd>One third of the face in the book: brow to hairline = brow to nose base = nose base to chin. 0.5 r on Plate 1, 2/3 r on Plate 18.</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
