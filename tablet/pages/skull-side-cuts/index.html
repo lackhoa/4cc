@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-side-cuts</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .panes { display: flex; gap: 10px; }
+  .panes figure { flex: 1; margin: 0; min-width: 0; }
+  .panes figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+  table.numbers tr.reference td { font-style: italic; }
+  .controls input[type=number] { width: 70px; font: inherit; font-size: 13px; background: var(--bg); color: var(--ink); border: 1px solid var(--muted); border-radius: 4px; padding: 2px 4px; }
+  .legend { display: inline-block; width: 120px; height: 10px; vertical-align: middle; border-radius: 3px;
+            background: linear-gradient(90deg, #4d80ff, #d9d9d9, #ff5a4d); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Slicing the sides off the ball</h1>
+  <p class="sub">Loomis cuts "a fairly thin slice" off each side of the ball (see <a href="../loomis-head/">loomis-head</a>, step 2). This page measures that slice on the Z-Anatomy skull: the <a href="../skull-ball/">cranium sphere</a> from skull-ball, then two mirrored planes fitted to the flat sides. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>Sphere alone, sphere with the cuts</h2>
+    <div class="panes">
+      <figure id="pane-sphere">
+        <div class="stack"><canvas class="pane" data-candidate="sphere" height="380"></canvas><canvas class="overlay" height="380"></canvas></div>
+        <figcaption><a href="#row-sphere">a. cranium sphere</a></figcaption>
+      </figure>
+      <figure id="pane-side-cuts">
+        <div class="stack"><canvas class="pane" data-candidate="side-cuts" height="380"></canvas><canvas class="overlay" height="380"></canvas></div>
+        <figcaption><a href="#row-side-cuts">b. sphere with side cuts</a></figcaption>
+      </figure>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom; both views share the camera. The heat map colors every skull vertex by its distance to the shape; the numbers only use the <a href="#g-vault">vault</a>. <span style="color: #7fb3ff">blue-ish outline</span> = the rim where a cut plane meets the sphere (Loomis's side plane).</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.35"></label>
+      <label>color <select id="color_mode"><option value="heat">heat map</option><option value="flats">the flats (vertices the planes were fitted to)</option><option value="bone">bone</option></select></label>
+      <label>heat range ± <input type="range" id="heat_range" min="5" max="40" step="1" value="20"> <span id="heat_range_value"></span> mm</label>
+      <span class="hint">inside <span class="legend"></span> outside</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>The fit rule</h2>
+    <p>A <a href="#g-flat">flat</a> is where the skull sits well inside the sphere. Take every vault vertex whose sphere residual is below −<em>threshold</em>, and let <a href="#g-half-width">half_width</a> be their mean distance from the midline (the least-squares plane parallel to the midline through them). Both sides get the same number. The threshold defaults to the sphere's own rms, i.e. "inside by more than a typical miss"; move it to see how stable the answer is.</p>
+    <div class="controls">
+      <label>flat threshold <input type="number" id="flat_threshold" step="0.5"> mm <button id="reset_threshold">= sphere rms</button></label>
+    </div>
+    <p>Below: the skull cut by the plane through the sphere's center, seen from the front (<span style="color: var(--yellow)">yellow</span> = the sphere, <span style="color: #7fb3ff">blue</span> = the two planes, dots = the flats). This is the view where a slice is a straight line.</p>
+    <div class="stack">
+      <canvas id="section_canvas" height="420"></canvas>
+    </div>
+    <p class="hint">side → right, up → up, mm from the porion middle. <span style="color: var(--orange)">orange</span> = the cranium cut through the glabella (only its trace at this depth).</p>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>candidate</th><th>vertices</th><th>center up</th><th>center front</th><th>size</th><th>rms</th><th>min</th><th>max</th></tr></thead>
+      <tbody>
+        <tr id="row-sphere"><td><a href="#pane-sphere">a. cranium sphere</a></td><td colspan="7">loading…</td></tr>
+        <tr id="row-side-cuts"><td><a href="#pane-side-cuts">b. sphere with side cuts</a></td><td colspan="7">loading…</td></tr>
+        <tr class="reference"><td>Loomis Plate 1 as the loomis-head page draws it (slice depth 0.2 r)</td><td></td><td></td><td></td><td>half_width 0.80 r</td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <p class="hint">vertices = the vault for a, the flats for b (the sphere under b is a's, unchanged); size = radius, or half_width in mm and in radii; residuals = vertex minus surface, positive outside, over the vault. Glabella from the landmarks file: <span id="glabella_text"></span>.</p>
+  </section>
+
+  <section>
+    <h2>What the cuts buy</h2>
+    <ul>
+      <li><strong>a. cranium sphere.</strong> The ball from skull-ball, candidate b there: the sides of the skull sit inside it (blue), the forehead and the back stick out (red). A sphere is too wide for a cranium.</li>
+      <li><strong>b. sphere with side cuts.</strong> Same sphere, the two flats clipped off. The blue on the sides should go pale; the red at the front and back stays, since the cuts do nothing there. The rms over the vault says how much of the sphere's miss was the sides. What is left is the egg (longer than wide), which no side cut fixes.</li>
+    </ul>
+    <p>Sources: fits in <code>tablet/src/construction_fit.ts</code> (<code>fit_side_planes_mirrored</code>, <code>residuals_sphere_with_side_cuts</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q15) and <code>plan-simplified-skull.md</code> (Q2, Q8, Q10).</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-vault">vault</dt><dd>The skull vertices the fits see: above the plane through the two porions and the glabella (the cranium cut), same as skull-ball's candidates b and c.</dd>
+      <dt id="g-flat">flat</dt><dd>A vault vertex sitting inside the sphere by more than the threshold. The flats are the temporal sides of the cranium, the part Loomis slices off.</dd>
+      <dt id="g-half-width">half_width</dt><dd>Distance from the midline to each cut plane, mm. In Loomis's terms the slice depth is radius − half_width.</dd>
+      <dt id="g-rim">rim</dt><dd>The circle where a cut plane meets the sphere: the edge of Loomis's side plane, whose vertical center line carries the ear.</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

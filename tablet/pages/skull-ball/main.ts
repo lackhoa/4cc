@@ -4,36 +4,13 @@
 // World units = Frankfurt-frame mm * WORLD_PER_MM, x = side, y = up, z = front.
 import "../../pages.css";
 import { OrbitCamera, camera_eye, camera_pen_ray, camera_view_projection } from "../../src/camera";
-import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "../../src/math";
+import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_scale, v3_sub } from "../../src/math";
 import { attach_orbit_controls, bind_controls } from "../../src/explainer/orbit_controls";
 import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/canvas_view";
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
-import { FrankfurtFrame, Landmark, fetch_reference_text, find_landmark, frankfurt_coordinates, frankfurt_frame_from_landmarks, frankfurt_to_mesh, parse_landmarks_file, parse_obj_mesh_raw } from "../../src/reference";
+import { Landmark, find_landmark, frankfurt_coordinates, frankfurt_to_mesh } from "../../src/reference";
 import { EllipsoidFit, ResidualStats, SphereFit, ellipsoid_residual, fit_ellipsoid_algebraic, fit_sphere_algebraic, residual_stats, sphere_residual } from "../../src/construction_fit";
-
-const WORLD_PER_MM = 0.01;
-const SKULL_NAME = "z-anatomy-head-skull";
-const LANDMARKS_URL = `/reference/${SKULL_NAME}.landmarks.txt`;
-
-const colors = {
-  bone: v3(0.85, 0.8, 0.7),
-  shape: v3(1.0, 0.82, 0.4),
-  inside: v3(0.3, 0.5, 1.0),
-  zero: v3(0.85, 0.85, 0.85),
-  outside: v3(1.0, 0.35, 0.3),
-  frankfurt_plane: v3(0.3, 0.83, 0.75),
-  cranium_plane: v3(1.0, 0.66, 0.3),
-  landmark: v3(1.0, 0.82, 0.4),
-};
-
-// The skull in Frankfurt-frame mm: what every fit and every drawing on this page uses.
-type Skull = {
-  frame: FrankfurtFrame;
-  landmarks: Landmark[];
-  positions: V3[]; // frame mm
-  triangle_indices: number[];
-  vertex_normals: V3[]; // area-weighted, unit, frame space
-};
+import { LANDMARKS_URL, MeshBuilder, SKULL_NAME, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, push_ellipsoid, push_landmark_marker, push_plane, push_skull, size_gl_canvas, skull_view_colors as colors, sphere_outline, vault_vertices } from "../../src/reference_skull_view";
 
 type CandidateId = "frankfurt-sphere" | "cranium-sphere" | "cranium-ellipsoid";
 type CandidateShape = { kind: "sphere"; fit: SphereFit } | { kind: "ellipsoid"; fit: EllipsoidFit };
@@ -60,21 +37,6 @@ let profile: Profile | null = null;
 let glabella: V3 = v3(0, 30, 90); // frame mm; replaced by the file's landmark or the initial marker
 let candidates: Candidate[] = [];
 const panes: Pane[] = [];
-
-// ---- loading ------------------------------------------------------------------------
-
-function compute_vertex_normals(positions: V3[], triangle_indices: number[]): V3[] {
-  const sums = positions.map(() => v3(0, 0, 0));
-  for (let i = 0; i < triangle_indices.length; i += 3) {
-    const a = positions[triangle_indices[i]], b = positions[triangle_indices[i + 1]], c = positions[triangle_indices[i + 2]];
-    const cross = v3_cross(v3_sub(b, a), v3_sub(c, a)); // length = 2 * area, so this is area-weighted
-    for (let corner = 0; corner < 3; corner++) {
-      const sum = sums[triangle_indices[i + corner]];
-      sum.x += cross.x; sum.y += cross.y; sum.z += cross.z;
-    }
-  }
-  return sums.map((sum) => (v3_length(sum) > 1e-12 ? v3_normalize(sum) : v3(0, 1, 0)));
-}
 
 // ---- midline profile ----------------------------------------------------------------
 // The skull cut by the midsagittal plane (side = 0), as 2D segments in the profile
@@ -172,30 +134,12 @@ function initial_glabella_marker(profile: Profile): V3 {
   return v3(0, up, front ?? 85);
 }
 
-async function load_skull(): Promise<Skull | null> {
-  const [obj_text, landmarks_text] = await Promise.all([
-    fetch_reference_text(`/reference/${SKULL_NAME}.obj`),
-    fetch_reference_text(LANDMARKS_URL),
-  ]);
-  if (obj_text === null || landmarks_text === null) return null;
-  const raw = parse_obj_mesh_raw(obj_text);
-  const landmarks = parse_landmarks_file(landmarks_text);
-  const frame = frankfurt_frame_from_landmarks(landmarks);
-  if (raw === null || frame === null) {
-    console.error("skull-ball: mesh or Frankfurt landmarks missing", { raw, landmarks });
-    return null;
-  }
-  const positions = raw.positions.map((p) => frankfurt_coordinates(frame, p));
-  return { frame, landmarks, positions, triangle_indices: raw.triangle_indices, vertex_normals: compute_vertex_normals(positions, raw.triangle_indices) };
-}
-
 // ---- fits ---------------------------------------------------------------------------
 
 function fit_candidates(skull: Skull, glabella: V3): Candidate[] {
   const frankfurt_up = v3(0, 1, 0);
-  // Plane through the side axis and the glabella; normal chosen to point up.
-  const cranium_normal = v3_normalize(v3(0, glabella.z, -glabella.y));
-  const vault_of = (normal: V3) => skull.positions.filter((p) => v3_dot(p, normal) > 0);
+  const cranium_normal = cranium_cut_normal(glabella);
+  const vault_of = (normal: V3) => vault_vertices(skull, normal);
   const make = (id: CandidateId, cut_normal: V3, shape: CandidateShape): Candidate => {
     const residual = shape.kind === "sphere"
       ? (p: V3) => sphere_residual(shape.fit, p)
@@ -216,68 +160,6 @@ function fit_candidates(skull: Skull, glabella: V3): Candidate[] {
 }
 
 // ---- mesh building ------------------------------------------------------------------
-
-type MeshBuilder = { data: number[] };
-
-function push_triangle_vertex(builder: MeshBuilder, p_mm: V3, color: V3, alpha: number): void {
-  builder.data.push(p_mm.x * WORLD_PER_MM, p_mm.y * WORLD_PER_MM, p_mm.z * WORLD_PER_MM, color.x, color.y, color.z, alpha);
-}
-
-function heat_color(residual_mm: number, heat_range_mm: number): V3 {
-  const t = Math.max(-1, Math.min(1, residual_mm / heat_range_mm));
-  const target = t < 0 ? colors.inside : colors.outside;
-  const amount = Math.abs(t);
-  return v3(colors.zero.x + (target.x - colors.zero.x) * amount, colors.zero.y + (target.y - colors.zero.y) * amount, colors.zero.z + (target.z - colors.zero.z) * amount);
-}
-
-function push_skull(builder: MeshBuilder, skull: Skull, candidate: Candidate | null, eye_mm: V3, alpha: number, color_mode: string, heat_range_mm: number): void {
-  const ambient = 0.35;
-  const vertex_colors = skull.positions.map((p, index) => {
-    const base = candidate !== null && color_mode === "heat" ? heat_color(candidate.residuals[index], heat_range_mm) : colors.bone;
-    const brightness = ambient + (1 - ambient) * Math.abs(v3_dot(skull.vertex_normals[index], v3_normalize(v3_sub(eye_mm, p))));
-    return v3_scale(base, brightness);
-  });
-  for (const index of skull.triangle_indices) push_triangle_vertex(builder, skull.positions[index], vertex_colors[index], alpha);
-}
-
-// Lat-long ellipsoid (a sphere when the semi-axes are equal), flat-lit by the eye.
-function push_ellipsoid(builder: MeshBuilder, center: V3, semi_axes: V3, color: V3, alpha: number, eye_mm: V3): void {
-  const rings = 18, segments = 36;
-  const point = (ring: number, segment: number): V3 => {
-    const phi = (ring / rings) * Math.PI, theta = (segment / segments) * 2 * Math.PI;
-    return v3(center.x + semi_axes.x * Math.sin(phi) * Math.cos(theta), center.y + semi_axes.y * Math.cos(phi), center.z + semi_axes.z * Math.sin(phi) * Math.sin(theta));
-  };
-  const push_face = (a: V3, b: V3, c: V3) => {
-    const normal = v3_normalize(v3_cross(v3_sub(b, a), v3_sub(c, a)));
-    const brightness = 0.4 + 0.6 * Math.abs(v3_dot(normal, v3_normalize(v3_sub(eye_mm, a))));
-    const lit = v3_scale(color, brightness);
-    push_triangle_vertex(builder, a, lit, alpha); push_triangle_vertex(builder, b, lit, alpha); push_triangle_vertex(builder, c, lit, alpha);
-  };
-  for (let ring = 0; ring < rings; ring++) {
-    for (let segment = 0; segment < segments; segment++) {
-      const a = point(ring, segment), b = point(ring + 1, segment), c = point(ring + 1, segment + 1), d = point(ring, segment + 1);
-      if (ring > 0) push_face(a, b, d);
-      if (ring < rings - 1) push_face(b, c, d);
-    }
-  }
-}
-
-// A plane through the origin with the given unit normal, as a quad spanning the skull.
-function push_plane(builder: MeshBuilder, normal: V3, color: V3, alpha: number): void {
-  const side = v3(1, 0, 0);
-  const along = v3_normalize(v3_cross(normal, side)); // in the plane, pointing front-ish
-  const forward = v3_dot(along, v3(0, 0, 1)) < 0 ? v3_scale(along, -1) : along;
-  const corner = (s: number, f: number) => v3_add(v3_scale(side, s), v3_scale(forward, f));
-  const a = corner(-95, -95), b = corner(95, -95), c = corner(95, 120), d = corner(-95, 120);
-  for (const p of [a, b, c, a, c, d]) push_triangle_vertex(builder, p, color, alpha);
-}
-
-function push_landmark_marker(builder: MeshBuilder, p: V3, color: V3): void {
-  const r = 2.5;
-  const tips = [v3(r, 0, 0), v3(-r, 0, 0), v3(0, r, 0), v3(0, -r, 0), v3(0, 0, r), v3(0, 0, -r)].map((t) => v3_add(p, t));
-  const faces = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
-  for (const face of faces) for (const index of face) push_triangle_vertex(builder, tips[index], color, 1);
-}
 
 function glossary_landmarks(skull: Skull): Landmark[] {
   const in_frame = skull.landmarks
@@ -303,43 +185,11 @@ function build_pane_mesh(pane: Pane, eye_mm: V3): Float32Array {
     if (cranium !== undefined) push_plane(builder, cranium.cut_normal, colors.cranium_plane, 0.3);
     for (const landmark of glossary_landmarks(skull)) push_landmark_marker(builder, landmark.p, colors.landmark);
   }
-  push_skull(builder, skull, candidate, eye_mm, skull_alpha, color_mode.value, heat_range);
+  push_skull(builder, skull, candidate !== null && color_mode.value === "heat" ? candidate.residuals : null, eye_mm, skull_alpha, heat_range);
   return new Float32Array(builder.data);
 }
 
 // ---- drawing ------------------------------------------------------------------------
-
-function size_gl_canvas(canvas: HTMLCanvasElement): { width: number; height: number } {
-  const dpr = window.devicePixelRatio || 1;
-  if (!canvas.dataset.cssHeight) canvas.dataset.cssHeight = canvas.getAttribute("height") ?? "300";
-  const css_height = Number(canvas.dataset.cssHeight);
-  const css_width = canvas.clientWidth;
-  canvas.width = Math.round(css_width * dpr);
-  canvas.height = Math.round(css_height * dpr);
-  canvas.style.height = `${css_height}px`;
-  return { width: css_width, height: css_height };
-}
-
-// Silhouette of a sphere under perspective: the ring where the eye's tangent cone touches it.
-function sphere_outline(center_mm: V3, radius_mm: number, eye_mm: V3): V3[] | null {
-  const to_eye = v3_sub(eye_mm, center_mm);
-  const distance = v3_length(to_eye);
-  if (distance <= radius_mm) return null;
-  const toward_eye = v3_scale(to_eye, 1 / distance);
-  const ring_center = v3_add(center_mm, v3_scale(toward_eye, radius_mm * radius_mm / distance));
-  const ring_radius = radius_mm * Math.sqrt(1 - (radius_mm / distance) ** 2);
-  const helper = Math.abs(toward_eye.y) < 0.9 ? v3(0, 1, 0) : v3(1, 0, 0);
-  const u = v3_normalize(v3_sub(helper, v3_scale(toward_eye, v3_dot(helper, toward_eye))));
-  const w = v3_cross(toward_eye, u);
-  const points: V3[] = [];
-  for (let i = 0; i < 72; i++) {
-    const angle = (i / 72) * 2 * Math.PI;
-    points.push(v3_add(ring_center, v3_add(v3_scale(u, ring_radius * Math.cos(angle)), v3_scale(w, ring_radius * Math.sin(angle)))));
-  }
-  return points;
-}
-
-function mm_to_world(p: V3): V3 { return v3_scale(p, WORLD_PER_MM); }
 
 function draw_overlay(pane: Pane, view: CanvasView, eye_mm: V3): void {
   if (skull === null) return;
@@ -473,11 +323,6 @@ function attach_profile_drag(): void {
 }
 
 // ---- numbers table ------------------------------------------------------------------
-
-function format_signed(value: number, digits: number): string {
-  const text = value.toFixed(digits);
-  return value >= 0 ? `+${text}` : text.replace("-", "−");
-}
 
 function update_numbers_table(): void {
   for (const candidate of candidates) {
@@ -625,7 +470,7 @@ for (const pane of panes) attach_pick(pane);
 attach_profile_drag();
 window.addEventListener("resize", draw_profile);
 
-void load_skull().then((loaded) => {
+void load_skull("skull-ball").then((loaded) => {
   if (loaded === null) return;
   skull = loaded;
   profile = compute_profile(skull);

@@ -146,6 +146,48 @@ export function ellipsoid_residual(fit: EllipsoidFit, point: V3): number {
   return s > 0 ? distance - distance / s : -Math.min(fit.semi_axes.x, fit.semi_axes.y, fit.semi_axes.z);
 }
 
+// Loomis's side slices (plan-skull-construction-docs.md Q15): two planes parallel to the
+// midline, mirrored, side = ±half_width. `flat_count` = how many vertices defined it.
+export type SidePlanesFit = { half_width: number; flat_count: number };
+
+// The flats are the vertices sitting inside the sphere by more than `flat_threshold_mm`
+// (residual below -threshold); half_width = least squares of |side| over them, i.e. their
+// mean distance from the midline, one number for both sides.
+export function fit_side_planes_mirrored(points: V3[], sphere: SphereFit, flat_threshold_mm: number): SidePlanesFit | null {
+  let sum = 0, count = 0;
+  for (const p of points) {
+    if (sphere_residual(sphere, p) < -flat_threshold_mm) { sum += Math.abs(p.x); count++; }
+  }
+  if (count === 0) return null;
+  return { half_width: sum / count, flat_count: count };
+}
+
+// Signed distance to the sphere clipped by the two side planes (the sphere ∩ the slab
+// |side| <= half_width), mm, positive outside. Inside: minus the distance to the nearest of
+// the three surfaces. Outside: the distance to the nearest of the spherical part (radial
+// foot point, valid when it lies within the slab), the flat disc (foot point on the plane,
+// valid when it lies within the sphere) and the rim circle where they meet.
+export function residuals_sphere_with_side_cuts(sphere: SphereFit, half_width: number, p: V3): number {
+  const q = v3_sub(p, sphere.center);
+  const radial = v3_length(q);
+  const plane_x = p.x >= 0 ? half_width : -half_width; // the nearer of the two planes
+  const to_plane = Math.abs(p.x) - half_width; // + = beyond the plane
+  if (radial <= sphere.radius && to_plane <= 0) return -Math.min(sphere.radius - radial, -to_plane);
+  let best = Infinity;
+  if (radial > 0) {
+    const foot_x = sphere.center.x + q.x * (sphere.radius / radial);
+    if (Math.abs(foot_x) <= half_width) best = Math.min(best, radial - sphere.radius);
+  }
+  const plane_offset = plane_x - sphere.center.x; // sphere center -> plane, signed
+  const in_plane = Math.hypot(q.y, q.z); // distance from the sphere's axis through the plane's center
+  if (Math.abs(plane_offset) < sphere.radius) {
+    const rim_radius = Math.sqrt(sphere.radius * sphere.radius - plane_offset * plane_offset);
+    if (in_plane <= rim_radius && to_plane > 0) best = Math.min(best, to_plane);
+    best = Math.min(best, Math.hypot(Math.abs(p.x) - half_width, in_plane - rim_radius));
+  }
+  return best;
+}
+
 export type ResidualStats = { min: number; max: number; rms: number; count: number };
 
 export function residual_stats(residuals: number[]): ResidualStats {
