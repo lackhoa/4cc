@@ -5,7 +5,9 @@
 // and 1 mm outside the socket's middle, less than a pick's precision. The socket is much bigger than the eye you see, so "five eyes wide" is
 // tested on the centers only (two eye widths apart = 2/5 of the face width), and the orbit's
 // width is shown without a verdict. Same ball, side planes, brow line, nasal spine and zygion
-// as skull-cheekbones; the section is horizontal at the orbit center's height.
+// as skull-cheekbones; the section is horizontal at the orbit center's height. The nasion
+// (the top of the nose bridge, where the nasal bones meet the brow bone on the midline) is
+// picked here too: the inner corner is the inner rim at the nasion's height.
 import "../../pages.css";
 import { OrbitCamera, camera_eye, camera_pen_ray, camera_view_projection } from "../../src/camera";
 import { V3, v3, v3_scale } from "../../src/math";
@@ -22,6 +24,7 @@ const landmark_color = v3(0.55, 1.0, 0.6);
 const zygion_color = v3(1.0, 0.69, 0.44);
 const orbit_corner_color = v3(0.75, 0.6, 1.0);
 const orbit_center_color = v3(1.0, 1.0, 1.0);
+const nasion_color = v3(0.55, 1.0, 0.6);
 
 type Construction = {
   cut_normal: V3;
@@ -42,6 +45,7 @@ let nasal_spine: V3 | null = null;
 let zygion: V3 | null = null;
 let orbit_inner_corner: V3 | null = null; // `orbit_inner_corner` in the file
 let orbit_outer_corner: V3 | null = null; // `orbit_outer_corner` in the file
+let nasion: V3 | null = null; // `nasion` in the file
 
 // ---- construction -------------------------------------------------------------------
 
@@ -75,6 +79,20 @@ function guess_orbit_inner_corner(skull: Skull, glabella: V3): V3 | null {
 }
 function guess_orbit_outer_corner(skull: Skull, zygion: V3, glabella: V3): V3 | null {
   return nearest_vertex(skull, v3(zygion.x - OUTER_CORNER_INSIDE_ZYGION_MM, CORNER_UP_MM, glabella.z - 20));
+}
+
+// First guess for the nasion: the deepest midline vertex of the nose bridge just below the
+// glabella (the bridge dips between the brow and the nasal bones).
+const NASION_MIDLINE_BAND_MM = 2;
+const NASION_BELOW_GLABELLA_MAX_MM = 25;
+const NASION_BEHIND_GLABELLA_MAX_MM = 15; // the bridge only: further back the midline band runs into the nasal cavity, and then the back of the skull
+function guess_nasion(skull: Skull, glabella: V3): V3 | null {
+  let best: V3 | null = null;
+  for (const p of skull.positions) {
+    if (Math.abs(p.x) > NASION_MIDLINE_BAND_MM || p.z < glabella.z - NASION_BEHIND_GLABELLA_MAX_MM || p.y > glabella.y || p.y < glabella.y - NASION_BELOW_GLABELLA_MAX_MM) continue;
+    if (best === null || p.z < best.z) best = p;
+  }
+  return best;
 }
 
 // The eye's center: the socket's middle, halfway between the two corners (the globe is ~1 mm
@@ -111,6 +129,7 @@ function build_pane_mesh(eye_mm: V3): Float32Array {
   }
   const center_point = orbit_center();
   if (center_point !== null) { push_landmark_marker(builder, center_point, orbit_center_color); push_landmark_marker(builder, mirrored(center_point), orbit_center_color); }
+  if (nasion !== null) push_landmark_marker(builder, nasion, nasion_color);
   push_skull(builder, skull, null, eye_mm, Number(controls.skull_alpha.value), 20);
   return new Float32Array(builder.data);
 }
@@ -137,6 +156,8 @@ function draw_overlay(view: CanvasView, eye_mm: V3): void {
   stroke_polyline(view, ring.map(mm_to_world), true, "#ffd166", 2.2);
   if (nasal_spine !== null) stroke_polyline(view, [v3(-30, nasal_spine.y, nasal_spine.z), v3(30, nasal_spine.y, nasal_spine.z)].map(mm_to_world), false, landmark_style, 2);
   if (zygion !== null) stroke_polyline(view, [zygion, mirrored(zygion)].map(mm_to_world), false, zygion_style, 1.2);
+  // The nasion's height across both sockets: the inner corners should sit on this bar.
+  if (nasion !== null) stroke_polyline(view, [v3(-60, nasion.y, nasion.z), v3(60, nasion.y, nasion.z)].map(mm_to_world), false, nasion_style, 1.2);
   if (orbit_inner_corner !== null && orbit_outer_corner !== null) {
     stroke_polyline(view, [orbit_inner_corner, orbit_outer_corner].map(mm_to_world), false, orbit_corner_style, 2);
     stroke_polyline(view, [mirrored(orbit_inner_corner), mirrored(orbit_outer_corner)].map(mm_to_world), false, orbit_corner_style, 2);
@@ -240,7 +261,7 @@ function label(view: SectionView, p: SectionPoint, text: string, style: string, 
 }
 
 const section_canvas = document.getElementById("section_canvas") as HTMLCanvasElement;
-const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070", orbit_corner_style = "#bf99ff", orbit_center_style = "#ffffff";
+const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070", nasion_style = "#8cffa0", orbit_corner_style = "#bf99ff", orbit_center_style = "#ffffff";
 const ACROSS_MIN = -110, ACROSS_MAX = 110, FRONT_MIN = -110, FRONT_MAX = 120;
 
 function draw_section(): void {
@@ -278,7 +299,7 @@ function fill_row(id: string, cells: string[]): void {
   row.innerHTML = label_cell + cells.map((cell) => `<td>${cell}</td>`).join("");
 }
 
-const ROW_IDS = ["row-brow-nose", "row-center-nose", "row-centers-apart", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
+const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-center-nose", "row-centers-apart", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
 
 function update_numbers_table(): void {
   if (construction === null) return;
@@ -286,7 +307,7 @@ function update_numbers_table(): void {
   const radius = construction.length.sphere.radius;
   const center_point = orbit_center();
   fill_row("row-half-width", [`${half_width.toFixed(1)} mm`, `${(half_width / radius).toFixed(2)} r`, "Loomis: the ball's flat"]);
-  if (nasal_spine === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null) {
+  if (nasal_spine === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null || nasion === null) {
     for (const id of ROW_IDS) fill_row(id, ["missing", "", ""]);
   } else {
     const brow_to_nose = construction.brow_up - nasal_spine.y;
@@ -296,6 +317,9 @@ function update_numbers_table(): void {
     const orbit_width = orbit_outer_corner.x - orbit_inner_corner.x;
     const inner_gap = 2 * orbit_inner_corner.x;
     fill_row("row-brow-nose", [`${brow_to_nose.toFixed(1)} mm`, "1.00 of brow → nose", ""]);
+    const nasion_above_nose = nasion.y - nasal_spine.y;
+    fill_row("row-nasion-nose", [`${format_signed(nasion_above_nose, 1)} mm`, `${format_signed(nasion_above_nose / brow_to_nose, 2)} of brow → nose`, "no number (the nose bridge's top)"]);
+    fill_row("row-inner-corner-nasion", [`${format_signed(orbit_inner_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
     fill_row("row-center-nose", [`${format_signed(center_above_nose, 1)} mm`, `${format_signed(center_above_nose / brow_to_nose, 2)} of brow → nose`, "Finch: halfway (0.50); Loomis: just under the brow line"]);
     // Five eyes across the face put the centers at 1.5 and 3.5 eye widths: 2/5 of the width apart.
     fill_row("row-centers-apart", [`${centers_apart.toFixed(1)} mm`, `${(centers_apart / face_width).toFixed(2)} of the cheekbone width`, "five eyes wide: 0.40"]);
@@ -309,15 +333,18 @@ function update_numbers_table(): void {
   document.getElementById("orbit_inner_corner_text")!.textContent = point_text(orbit_inner_corner);
   document.getElementById("orbit_outer_corner_text")!.textContent = point_text(orbit_outer_corner);
   document.getElementById("orbit_center_text")!.textContent = point_text(center_point);
+  document.getElementById("nasion_text")!.textContent = point_text(nasion);
 }
 
 // ---- picking + saving ---------------------------------------------------------------
 
 const pick_mode = document.getElementById("pick_mode") as HTMLInputElement;
-// Which corner a click sets: the radio buttons `pick_target` (value "inner" or "outer").
-function pick_target(): "inner" | "outer" {
+// Which point a click sets: the radio buttons `pick_target` (value "inner", "outer" or "nasion").
+type PickTarget = "inner" | "outer" | "nasion";
+function pick_target(): PickTarget {
   const checked = document.querySelector<HTMLInputElement>("input[name=pick_target]:checked");
-  return checked !== null && checked.value === "outer" ? "outer" : "inner";
+  if (checked === null) return "inner";
+  return checked.value === "outer" || checked.value === "nasion" ? checked.value : "inner";
 }
 
 function attach_pick(): void {
@@ -332,20 +359,25 @@ function attach_pick(): void {
     const ray = camera_pen_ray(camera, { x: event.clientX - rect.left, y: event.clientY - rect.top }, rect.width, rect.height);
     const picked = pick_skull_vertex(skull, v3_scale(ray.origin, 1 / WORLD_PER_MM), ray.direction);
     if (picked === null) return;
-    // Stored on the right side (side >= 0) whichever side was clicked.
+    const target = pick_target();
+    // The corners are stored on the right side (side >= 0) whichever side was clicked; the
+    // nasion is a midline point and is stored as picked.
     const on_right = picked.x >= 0 ? picked : mirrored(picked);
-    if (pick_target() === "inner") orbit_inner_corner = on_right; else orbit_outer_corner = on_right;
+    if (target === "nasion") nasion = picked;
+    else if (target === "inner") orbit_inner_corner = on_right;
+    else orbit_outer_corner = on_right;
     update_numbers_table();
     redraw();
   });
 }
 
-// Both corners go into the file, one after the other (each save rewrites the whole file
+// All three points go into the file, one after the other (each save rewrites the whole file
 // from the mesh's landmark list, which the previous save already updated).
 async function save_landmarks(): Promise<void> {
-  if (skull === null || orbit_inner_corner === null || orbit_outer_corner === null) return;
+  if (skull === null || orbit_inner_corner === null || orbit_outer_corner === null || nasion === null) return;
   const status = document.getElementById("save_status")!;
-  status.textContent = await save_landmark(skull, LANDMARKS_URL, "orbit_inner_corner", orbit_inner_corner);
+  status.textContent = await save_landmark(skull, LANDMARKS_URL, "nasion", nasion);
+  status.textContent += "; " + await save_landmark(skull, LANDMARKS_URL, "orbit_inner_corner", orbit_inner_corner);
   status.textContent += "; " + await save_landmark(skull, LANDMARKS_URL, "orbit_outer_corner", orbit_outer_corner);
 }
 
@@ -375,12 +407,14 @@ void load_skull("skull-eyes").then((loaded) => {
   if (nasal_spine === null) { document.getElementById("ball_text")!.textContent = "MISSING nasal_spine: pick it on the skull-face-thirds page first"; return; }
   zygion = from_file("zygion");
   if (zygion === null) { document.getElementById("ball_text")!.textContent = "MISSING zygion: pick it on the skull-cheekbones page first"; return; }
+  const nasion_in_file = from_file("nasion");
+  nasion = nasion_in_file !== null ? nasion_in_file : guess_nasion(skull, glabella);
   const inner_in_file = from_file("orbit_inner_corner");
   const outer_in_file = from_file("orbit_outer_corner");
   orbit_inner_corner = inner_in_file !== null ? inner_in_file : guess_orbit_inner_corner(skull, glabella);
   orbit_outer_corner = outer_in_file !== null ? outer_in_file : guess_orbit_outer_corner(skull, zygion, glabella);
   const source = (in_file: V3 | null): string => (in_file === null ? "guessed from the mesh, not saved yet" : "from the landmarks file");
-  document.getElementById("save_status")!.textContent = `inner corner ${source(inner_in_file)}; outer corner ${source(outer_in_file)}`;
+  document.getElementById("save_status")!.textContent = `nasion ${source(nasion_in_file)}; inner corner ${source(inner_in_file)}; outer corner ${source(outer_in_file)}`;
   update_numbers_table();
   redraw();
 });

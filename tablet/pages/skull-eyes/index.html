@@ -33,7 +33,7 @@
         <figcaption>horizontal cut at the eye centers' height, seen from above: side → right, front → up</figcaption>
       </figure>
     </div>
-    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #7fb3ff">blue</span> = the side planes; <span style="color: #8cffa0">green</span> = the nose line (nasal spine); <span style="color: #ffb070">orange</span> = the zygions and the cheekbone width; <span style="color: #bf99ff">violet</span> = the orbit's inner and outer corners, mirrored; white = the eye centers and the line through them.</p>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #7fb3ff">blue</span> = the side planes; <span style="color: #8cffa0">green</span> = the nose line (nasal spine) and the nasion with the bar at its height; <span style="color: #ffb070">orange</span> = the zygions and the cheekbone width; <span style="color: #bf99ff">violet</span> = the orbit's inner and outer corners, mirrored; white = the eye centers and the line through them.</p>
     <div class="controls">
       <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
       <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
@@ -42,10 +42,11 @@
       <label><input type="checkbox" id="pick_mode"> pick by clicking the skull in the 3D view (either side, stored on the right):</label>
       <label><input type="radio" name="pick_target" value="inner" checked> the inner corner</label>
       <label><input type="radio" name="pick_target" value="outer"> the outer corner</label>
-      <button id="save_landmarks">save both into the skull's landmarks file</button>
+      <label><input type="radio" name="pick_target" value="nasion"> the nasion</label>
+      <button id="save_landmarks">save all three into the skull's landmarks file</button>
       <span class="status" id="save_status"></span>
     </div>
-    <p class="hint">inner corner: <span id="orbit_inner_corner_text"></span>. outer corner: <span id="orbit_outer_corner_text"></span>. eye center (their midpoint): <span id="orbit_center_text"></span>.</p>
+    <p class="hint">nasion: <span id="nasion_text"></span>. inner corner: <span id="orbit_inner_corner_text"></span>. outer corner: <span id="orbit_outer_corner_text"></span>. eye center (their midpoint): <span id="orbit_center_text"></span>.</p>
   </section>
 
   <section>
@@ -54,6 +55,8 @@
       <thead><tr><th>distance</th><th>measured</th><th>as a fraction of</th><th>the book says</th></tr></thead>
       <tbody>
         <tr id="row-brow-nose"><td>brow line → nose line (the whole)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-nasion-nose"><td>nasion above the nose line (+ = above)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-inner-corner-nasion"><td>inner corner above the nasion (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-center-nose"><td>eye center above the nose line (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-centers-apart"><td>eye center to eye center</td><td colspan="3">loading…</td></tr>
         <tr id="row-orbit-width"><td>orbit width, inner corner to outer corner</td><td colspan="3">loading…</td></tr>
@@ -80,7 +83,8 @@
     <h2>Glossary</h2>
     <dl class="glossary">
       <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
-      <dt id="g-orbit">orbit</dt><dd>The eye socket. Its inner corner is the dacryon, where the rim meets the nose bridge; its outer corner is the frontozygomatic suture, where the brow bone meets the cheekbone on the outer rim. Both picked by hand on this page on one side, mirrored, stored in the skull's landmarks file as <code>orbit_inner_corner</code> and <code>orbit_outer_corner</code>.</dd>
+      <dt id="g-nasion">nasion</dt><dd>The top of the nose bridge on the midline, where the nasal bones meet the brow bone; the dip under the glabella. Picked on this page, stored as <code>nasion</code>.</dd>
+      <dt id="g-orbit">orbit</dt><dd>The eye socket. Its inner corner is the dacryon, where the rim meets the nose bridge, picked as the inner rim at the <a href="#g-nasion">nasion</a>'s height (the rim's innermost point); its outer corner is the frontozygomatic suture, where the brow bone meets the cheekbone on the outer rim. Both picked by hand on this page on one side, mirrored, stored in the skull's landmarks file as <code>orbit_inner_corner</code> and <code>orbit_outer_corner</code>.</dd>
       <dt id="g-orbit-center">eye center</dt><dd>The midpoint of the two corners (<code>orbit_center</code> on the page, not stored). Stands in for the eyeball's center, which sits about 1 mm above and 1 mm outside it.</dd>
       <dt id="g-nose-line">nose line</dt><dd>The nasal spine's height, as on skull-face-thirds, from the landmarks file.</dd>
       <dt id="g-side-plane">side plane</dt><dd>Loomis's flat on the side of the ball: the mirrored planes at the vault's widest point, from skull-side-cuts (<code>fit_side_planes_mirrored</code>).</dd>
