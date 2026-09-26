@@ -11,6 +11,8 @@ export const SKULL_NAME = "z-anatomy-head-skull";
 export const LANDMARKS_URL = `/reference/${SKULL_NAME}.landmarks.txt`;
 export const MANDIBLE_NAME = "z-anatomy-head-mandible";
 export const MANDIBLE_LANDMARKS_URL = `/reference/${MANDIBLE_NAME}.landmarks.txt`;
+export const TEETH_UPPER_NAME = "z-anatomy-head-teeth-upper";
+export const TEETH_UPPER_LANDMARKS_URL = `/reference/${TEETH_UPPER_NAME}.landmarks.txt`;
 
 export const skull_view_colors = {
   bone: v3(0.85, 0.8, 0.7),
@@ -66,14 +68,24 @@ export async function load_skull(page_name: string): Promise<Skull | null> {
 // closed) in the skull's Frankfurt frame; it has no Frankfurt landmarks of its own, so the
 // skull's frame is passed in. Same shape as a Skull so the builders and the picker apply.
 export async function load_mandible(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+  return load_mesh_in_skull_frame(page_name, MANDIBLE_NAME, frame);
+}
+
+// The upper teeth (a third mesh in the same scan, seated in the maxilla; the skull mesh
+// stops at the alveolar edge) in the skull's Frankfurt frame, same shape as a Skull.
+export async function load_teeth_upper(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+  return load_mesh_in_skull_frame(page_name, TEETH_UPPER_NAME, frame);
+}
+
+async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
   const [obj_text, landmarks_text] = await Promise.all([
-    fetch_reference_text(`/reference/${MANDIBLE_NAME}.obj`),
-    fetch_reference_text(MANDIBLE_LANDMARKS_URL),
+    fetch_reference_text(`/reference/${mesh_name}.obj`),
+    fetch_reference_text(`/reference/${mesh_name}.landmarks.txt`),
   ]);
   if (obj_text === null || landmarks_text === null) return null;
   const raw = parse_obj_mesh_raw(obj_text);
   if (raw === null) {
-    console.error(`${page_name}: mandible mesh unreadable`);
+    console.error(`${page_name}: ${mesh_name} mesh unreadable`);
     return null;
   }
   const positions = raw.positions.map((p) => frankfurt_coordinates(frame, p));

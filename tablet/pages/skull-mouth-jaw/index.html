@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-mouth-jaw</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .views { display: flex; gap: 10px; }
+  .views figure { flex: 1; margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The mouth line and the jaw angle</h1>
+  <p class="sub">Two lines below the nose that <a href="../skull-face-thirds/">skull-face-thirds</a> leaves out. Loomis draws them without numbers; David Finch's walk-through of the method says the mouth sits "just about halfway" from the nose base to the chin, "a little higher" on an idealized face, and that the back of the jaw is level with the mouth. On bone the mouth is the <a href="#g-teeth-line">teeth line</a> (the upper incisor tip; the upper teeth are a third mesh, the skull mesh stops at the alveolar edge) and the back of the jaw is the <a href="#g-gonion">gonion</a>, the mandible's angle. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>The lines on the skull</h2>
+    <div class="views">
+      <figure>
+        <div class="stack"><canvas class="pane" height="460"></canvas><canvas class="overlay" height="460"></canvas></div>
+        <figcaption>side view by default: the ball, the brow line, the nose and chin lines, the teeth line, a line forward from each jaw angle</figcaption>
+      </figure>
+      <figure>
+        <div class="stack"><canvas id="profile_canvas" height="460"></canvas></div>
+        <figcaption>midline cut, from the right, with the right half of the mandible as a faint silhouette: front → right, up → up</figcaption>
+      </figure>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #8cffa0">green</span> = the nose and chin lines (nasal spine, menton); <span style="color: #ff8fd9">pink</span> = the teeth line; <span style="color: #99ccff">blue</span> = the gonion, mirrored to both sides; in the section <span style="color: #ffb070">orange</span> dashed = Finch's mouth line, halfway from nose to chin.</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
+    </div>
+    <div class="controls">
+      <label><input type="checkbox" id="pick_mode"> pick the gonion by clicking the mandible in the 3D view (either side, stored on the right)</label>
+      <button id="save_landmarks">save into the mandible's landmarks file</button>
+      <span class="status" id="save_status"></span>
+    </div>
+    <p class="hint">upper incisor tip: <span id="incisor_upper_text"></span>; lower incisor tip: <span id="incisor_lower_text"></span>; gonion: <span id="gonion_text"></span>.</p>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>distance</th><th>measured</th><th>as a fraction of nose base → chin</th><th>Finch says</th></tr></thead>
+      <tbody>
+        <tr id="row-nose-chin"><td>nose base → chin (the whole)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-nose-teeth"><td>nose base → teeth line</td><td colspan="3">loading…</td></tr>
+        <tr id="row-teeth-chin"><td>teeth line → chin</td><td colspan="3">loading…</td></tr>
+        <tr id="row-gonion-teeth"><td>gonion above the teeth line (+ = above)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-gonion-front"><td>gonion in front of the ear hole</td><td colspan="3">loading…</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">The ball: <span id="ball_text"></span>. The last row is for the record (its fraction is in ball radii): the frame's origin is the ear hole, so "front" is measured from there; no book number for it.</p>
+  </section>
+
+  <section>
+    <h2>What the skull says</h2>
+    <ul>
+      <li><strong>The teeth line vs the lip line.</strong> The mouth line an artist draws is where the lips meet, which on a closed mouth is at the upper incisor edge or a little below it; the teeth line is the closest thing on bone. The lower incisor tip is printed as a check that the mouth is closed in this scan (it should sit a few mm behind and above the upper tip, an overbite).</li>
+      <li><strong>The gonion is off the midline.</strong> It is the corner of the mandible on the side of the face, so it lives in the side view, not the section; in the section it is drawn at its height and depth as if projected onto the midline plane.</li>
+      <li><strong>One skull.</strong> A jaw angle's height varies a lot between people (long-faced vs square-jawed); this is one data point against a rule of thumb.</li>
+    </ul>
+    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the meshes and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_mandible</code>, <code>load_teeth_upper</code>, <code>pick_skull_vertex</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q23).</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
+      <dt id="g-teeth-line">teeth line</dt><dd>The height of the upper incisor tip: where the upper and lower teeth meet with the mouth closed, the bony stand-in for the mouth line. From <code>incisor_upper</code> in the upper teeth's landmarks file.</dd>
+      <dt id="g-gonion">gonion</dt><dd>The angle of the mandible: the corner at the back of the jaw where the horizontal body turns up into the ramus. Picked by hand on this page on one side, mirrored to the other, stored in the mandible's landmarks file as <code>gonion</code>.</dd>
+      <dt id="g-nose-base">nose base, chin</dt><dd>The nasal spine and the menton, as on skull-face-thirds, from the landmarks files.</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
