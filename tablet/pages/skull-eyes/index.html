@@ -62,6 +62,8 @@
         <tr id="row-center-nose"><td>eye center above the nose line (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-center-brow"><td>eye center below the brow line</td><td colspan="3">loading…</td></tr>
         <tr id="row-eyeball-radius"><td>eyeball radius (fitted sphere)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-center-nasion-ct"><td>eye center below the nasion (the orbit's top)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-center-outer-corner-ct"><td>eye center inward of the outer corner</td><td colspan="3">loading…</td></tr>
         <tr id="row-midpoint-above-center"><td>corner midpoint above the eye center (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-centers-apart"><td>eye center to eye center</td><td colspan="3">loading…</td></tr>
         <tr id="row-centers-apart-side-plane"><td>eye center to eye center, of the side-plane width</td><td colspan="3">loading…</td></tr>
@@ -80,6 +82,7 @@
       <li><strong>The socket is not the eye.</strong> The lid opening is narrower than the rim by a lid's worth on each side, and that is soft tissue this skull does not have. So the orbit's width and the gap between the orbits get no verdict here; the rule's "one eye" cannot be checked on bone. TODO quote the adult orbit width vs lid-opening width from the literature, with a source.</li>
       <li><strong>The center is the globe, measured.</strong> The eyeball mesh gives the center directly, and it is not the corners' midpoint: the rim's widest points (picked at the nasion's height) sit well above the globe, so a midpoint of rim points overshoots. Five eyes across the face is a statement about the centers: two fifths of the face width apart. Against the cheekbone width the centers miss; against the side-plane width they hit the two fifths, which is the width Loomis's ball actually has at the eyes.</li>
       <li><strong>The eye line.</strong> Loomis hangs the eyes just under the brow line; the globe's height gives that a number, and it is a good way under, not just under. (Finch gives no eye height in the video; an earlier version of this page claimed "halfway", which was a mix-up with his mouth rule.)</li>
+      <li><strong>The globe checks out against CT.</strong> The two "CT" rows are normals from 58 adults (pupil center against the bony rims, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC13275775/">Ridel et al. 2026</a>); this skull's globe sits where they say it should, a hair more inward. So the Z-Anatomy eyeball placement is trusted.</li>
       <li><strong>One skull.</strong> One data point (male, see the models' README); eye spacing varies a lot between people.</li>
     </ul>
     <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the meshes and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_skull</code>, <code>load_eyeball</code>, <code>pick_skull_vertex</code>), the eyeball fit <code>fit_sphere_algebraic</code>; decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q26, Q28).</p>

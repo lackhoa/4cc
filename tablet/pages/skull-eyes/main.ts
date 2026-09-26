@@ -322,7 +322,7 @@ function fill_row(id: string, cells: string[]): void {
   row.innerHTML = label_cell + cells.map((cell) => `<td>${cell}</td>`).join("");
 }
 
-const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-outer-corner-nasion", "row-center-nose", "row-center-brow", "row-eyeball-radius", "row-midpoint-above-center", "row-centers-apart", "row-centers-apart-side-plane", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
+const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-outer-corner-nasion", "row-center-nose", "row-center-brow", "row-eyeball-radius", "row-center-nasion-ct", "row-center-outer-corner-ct", "row-midpoint-above-center", "row-centers-apart", "row-centers-apart-side-plane", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
 
 function update_numbers_table(): void {
   if (construction === null) return;
@@ -349,6 +349,14 @@ function update_numbers_table(): void {
     const center_below_brow = construction.brow_up - center_point.y;
     fill_row("row-center-brow", [`${center_below_brow.toFixed(1)} mm`, `${(center_below_brow / brow_to_nose).toFixed(2)} of brow → nose, ${(center_below_brow / radius).toFixed(2)} r`, "Loomis: just under the brow line"]);
     fill_row("row-eyeball-radius", [`${eyeball_fit.radius.toFixed(1)} mm`, `${(eyeball_fit.radius / radius).toFixed(2)} r`, "no rule"]);
+    // CT normals (n=58, pupil center vs bony rims): 16.9 mm / 44% of the orbit height under the
+    // superior margin, 15.5 mm / 42% of the orbit width medial of the lateral margin. The nasion
+    // stands in for the superior margin here; the orbitale is at up = 0 by the frame's definition.
+    const orbit_height = nasion.y;
+    const center_below_nasion = nasion.y - center_point.y;
+    fill_row("row-center-nasion-ct", [`${center_below_nasion.toFixed(1)} mm`, `${(center_below_nasion / orbit_height).toFixed(2)} of the orbit height (nasion → orbitale)`, "CT: 16.9 mm, 0.44"]);
+    const center_medial_of_outer_corner = orbit_outer_corner.x - center_point.x;
+    fill_row("row-center-outer-corner-ct", [`${center_medial_of_outer_corner.toFixed(1)} mm`, `${(center_medial_of_outer_corner / orbit_width).toFixed(2)} of the orbit width`, "CT: 15.5 mm, 0.42"]);
     // The corners are picked at the rim's widest, at the nasion's height; the globe hangs lower.
     fill_row("row-midpoint-above-center", [`${format_signed(midpoint.y - center_point.y, 1)} mm`, `${format_signed((midpoint.y - center_point.y) / brow_to_nose, 2)} of brow → nose`, "no rule: why the corners are not the center"]);
     // Five eyes across the face put the centers at 1.5 and 3.5 eye widths: 2/5 of the width apart.
