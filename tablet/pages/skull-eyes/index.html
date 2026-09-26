@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skull-eyes</title>
+<style>
+  .stack { position: relative; }
+  .stack canvas.overlay { position: absolute; inset: 0; margin: 0; pointer-events: none; background: transparent; }
+  .views { display: flex; gap: 10px; }
+  .views figure { flex: 1; margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The eyes</h1>
+  <p class="sub">"The face is five eyes wide, one eye between the eyes" (Loomis, Finch) is about the eye you see: the lid opening. The bone only has the <a href="#g-orbit">orbit</a>, the socket, which is far bigger than that. What the bone does fix is the eye's <em>center</em>: the eyeball sits in the middle of the socket, so the midpoint of the socket's two corners is where the eye is. Five eyes across the face put the two centers at 1.5 and 3.5 eye widths, two fifths of the face width apart; that, and the height of the centers against the brow and nose lines, is what this page measures. The socket's own width is shown, without a verdict. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>The sockets on the skull</h2>
+    <div class="views">
+      <figure>
+        <div class="stack"><canvas class="pane" height="460"></canvas><canvas class="overlay" height="460"></canvas></div>
+        <figcaption>front view by default: the ball with its side cuts, the brow line, the nose line, the cheekbone width, each socket's corner-to-corner bar, and the line through both eye centers</figcaption>
+      </figure>
+      <figure>
+        <div class="stack"><canvas id="section_canvas" height="460"></canvas></div>
+        <figcaption>horizontal cut at the eye centers' height, seen from above: side → right, front → up</figcaption>
+      </figure>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #7fb3ff">blue</span> = the side planes; <span style="color: #8cffa0">green</span> = the nose line (nasal spine); <span style="color: #ffb070">orange</span> = the zygions and the cheekbone width; <span style="color: #bf99ff">violet</span> = the orbit's inner and outer corners, mirrored; white = the eye centers and the line through them.</p>
+    <div class="controls">
+      <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
+      <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
+    </div>
+    <div class="controls">
+      <label><input type="checkbox" id="pick_mode"> pick by clicking the skull in the 3D view (either side, stored on the right):</label>
+      <label><input type="radio" name="pick_target" value="inner" checked> the inner corner</label>
+      <label><input type="radio" name="pick_target" value="outer"> the outer corner</label>
+      <button id="save_landmarks">save both into the skull's landmarks file</button>
+      <span class="status" id="save_status"></span>
+    </div>
+    <p class="hint">inner corner: <span id="orbit_inner_corner_text"></span>. outer corner: <span id="orbit_outer_corner_text"></span>. eye center (their midpoint): <span id="orbit_center_text"></span>.</p>
+  </section>
+
+  <section>
+    <h2>Numbers</h2>
+    <table class="numbers" id="numbers">
+      <thead><tr><th>distance</th><th>measured</th><th>as a fraction of</th><th>the book says</th></tr></thead>
+      <tbody>
+        <tr id="row-brow-nose"><td>brow line → nose line (the whole)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-center-nose"><td>eye center above the nose line (+ = above)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-centers-apart"><td>eye center to eye center</td><td colspan="3">loading…</td></tr>
+        <tr id="row-orbit-width"><td>orbit width, inner corner to outer corner</td><td colspan="3">loading…</td></tr>
+        <tr id="row-inner-gap"><td>between the orbits, inner corner to inner corner</td><td colspan="3">loading…</td></tr>
+        <tr id="row-outer-corner-width"><td>outer corner from the midline</td><td colspan="3">loading…</td></tr>
+        <tr id="row-half-width"><td>side plane from the midline (the vault's widest point)</td><td colspan="3">loading…</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">The ball: <span id="ball_text"></span>. "Cheekbone width" = zygion to zygion, the face's width in the five-eyes rule. Widths are measured sideways only (the corners' side coordinates); the corners also differ in height and depth, which the 3D view shows.</p>
+  </section>
+
+  <section>
+    <h2>What the skull says</h2>
+    <ul>
+      <li><strong>The socket is not the eye.</strong> The lid opening is narrower than the rim by a lid's worth on each side, and that is soft tissue this skull does not have. So the orbit's width and the gap between the orbits get no verdict here; the rule's "one eye" cannot be checked on bone. TODO quote the adult orbit width vs lid-opening width from the literature, with a source.</li>
+      <li><strong>The center is bone.</strong> The eyeball sits in the middle of the socket, so the socket's midpoint is the eye's center whatever the lids do. Five eyes across the face is a statement about the centers: two fifths of the face width apart. That is the one width number the rule and the skull can be compared on.</li>
+      <li><strong>The eye line.</strong> Loomis hangs the eyes just under the brow line; Finch puts them halfway between the brow and nose lines. The centers' height gives both a number.</li>
+      <li><strong>One skull.</strong> One data point (male, see the models' README); eye spacing varies a lot between people.</li>
+    </ul>
+    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the mesh and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_skull</code>, <code>pick_skull_vertex</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q26).</p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <dl class="glossary">
+      <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
+      <dt id="g-orbit">orbit</dt><dd>The eye socket. Its inner corner is the dacryon, where the rim meets the nose bridge; its outer corner is the frontozygomatic suture, where the brow bone meets the cheekbone on the outer rim. Both picked by hand on this page on one side, mirrored, stored in the skull's landmarks file as <code>orbit_inner_corner</code> and <code>orbit_outer_corner</code>.</dd>
+      <dt id="g-orbit-center">eye center</dt><dd>The midpoint of the two corners (<code>orbit_center</code> on the page, not stored). Stands in for the eyeball's center.</dd>
+      <dt id="g-nose-line">nose line</dt><dd>The nasal spine's height, as on skull-face-thirds, from the landmarks file.</dd>
+      <dt id="g-side-plane">side plane</dt><dd>Loomis's flat on the side of the ball: the mirrored planes at the vault's widest point, from skull-side-cuts (<code>fit_side_planes_mirrored</code>).</dd>
+    </dl>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
