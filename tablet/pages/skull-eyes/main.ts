@@ -1,11 +1,13 @@
 // Document `skull-eyes` (plan-skull-construction-docs.md Q26): the eye sockets. Two corners
 // of one orbit are hand-picked on the skull and mirrored: the inner corner (dacryon, where
 // the rim meets the nose bridge) and the outer corner (the frontozygomatic suture, the outer
-// rim). Their midpoint stands in for the eye's center: the eyeball hangs about 1 mm above
-// and 1 mm outside the socket's middle, less than a pick's precision. The socket is much bigger than the eye you see, so "five eyes wide" is
+// rim). The eye's center is the eyeball itself (Q28): a sphere fitted to the right globe of
+// the Z-Anatomy eyeball mesh, mirrored for the left; the corners' midpoint is kept as a
+// comparison (it sits well above the globe, since the rim's widest point is at the nasion's
+// height). The socket is much bigger than the eye you see, so "five eyes wide" is
 // tested on the centers only (two eye widths apart = 2/5 of the face width), and the orbit's
 // width is shown without a verdict. Same ball, side planes, brow line, nasal spine and zygion
-// as skull-cheekbones; the section is horizontal at the orbit center's height. The nasion
+// as skull-cheekbones; the section is horizontal at the eyeball center's height. The nasion
 // (the top of the nose bridge, where the nasal bones meet the brow bone on the midline) is
 // picked here too: both corners are picked at the nasion's height, the inner corner on the
 // inner rim and the outer corner at the outer rim's furthest-out point.
@@ -16,15 +18,16 @@ import { attach_orbit_controls, bind_controls } from "../../src/explainer/orbit_
 import { CanvasView, canvas_view, stroke_polyline } from "../../src/explainer/canvas_view";
 import { TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
 import { find_landmark, frankfurt_coordinates } from "../../src/reference";
-import { LengthSphereFit, SidePlanesFit, fit_side_planes_mirrored, fit_sphere_through_midline_extremes } from "../../src/construction_fit";
-import { LANDMARKS_URL, MeshBuilder, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_skull, mm_to_world, pick_skull_vertex, push_landmark_marker, push_side_plane, push_skull, push_sphere_with_side_cuts, save_landmark, side_cut_rim, size_gl_canvas, skull_view_colors as colors, sphere_outline, vault_vertices } from "../../src/reference_skull_view";
+import { LengthSphereFit, SidePlanesFit, SphereFit, fit_side_planes_mirrored, fit_sphere_algebraic, fit_sphere_through_midline_extremes } from "../../src/construction_fit";
+import { LANDMARKS_URL, MeshBuilder, Skull, WORLD_PER_MM, cranium_cut_normal, format_signed, load_eyeball, load_skull, mm_to_world, pick_skull_vertex, push_landmark_marker, push_side_plane, push_skull, push_sphere_with_side_cuts, save_landmark, side_cut_rim, size_gl_canvas, skull_view_colors as colors, sphere_outline, vault_vertices } from "../../src/reference_skull_view";
 
 const MIDLINE_BAND_MM = 10; // same length ball as skull-side-cuts and skull-brow-line
 const plane_color = v3(0.5, 0.75, 1.0);
 const landmark_color = v3(0.55, 1.0, 0.6);
 const zygion_color = v3(1.0, 0.69, 0.44);
 const orbit_corner_color = v3(0.75, 0.6, 1.0);
-const orbit_center_color = v3(1.0, 1.0, 1.0);
+const orbit_center_color = v3(0.75, 0.6, 1.0); // the corner midpoint, same family as the corners
+const eyeball_color = v3(1.0, 1.0, 1.0); // the globes and their fitted centers
 const nasion_color = v3(0.55, 1.0, 0.6);
 
 type Construction = {
@@ -47,6 +50,8 @@ let zygion: V3 | null = null;
 let orbit_inner_corner: V3 | null = null; // `orbit_inner_corner` in the file
 let orbit_outer_corner: V3 | null = null; // `orbit_outer_corner` in the file
 let nasion: V3 | null = null; // `nasion` in the file
+let eyeball: Skull | null = null; // both globes, frame mm (no landmarks)
+let eyeball_fit: SphereFit | null = null; // the right globe; `eyeball_center` = its center
 
 // ---- construction -------------------------------------------------------------------
 
@@ -96,12 +101,19 @@ function guess_nasion(skull: Skull, glabella: V3): V3 | null {
   return best;
 }
 
-// The eye's center: the socket's middle, halfway between the two corners (the globe is ~1 mm
-// up and out of it, ignored).
+// The corners' midpoint: the socket's middle at the rim, kept as a comparison against the
+// eyeball's center (it is not the eye's center: the rim's widest point sits above the globe).
 function orbit_center(): V3 | null {
   if (orbit_inner_corner === null || orbit_outer_corner === null) return null;
   return v3(0.5 * (orbit_inner_corner.x + orbit_outer_corner.x), 0.5 * (orbit_inner_corner.y + orbit_outer_corner.y), 0.5 * (orbit_inner_corner.z + orbit_outer_corner.z));
 }
+
+// The eye's center: the center of the sphere fitted to the right globe's vertices (side > 0)
+// of the eyeball mesh. The left globe is the mirror.
+function fit_eyeball(mesh: Skull): SphereFit | null {
+  return fit_sphere_algebraic(mesh.positions.filter((p) => p.x > 0));
+}
+function eyeball_center(): V3 | null { return eyeball_fit === null ? null : eyeball_fit.center; }
 
 // The landmarks are picked on one side; the skull is treated as symmetric, so the mirror
 // stands in for the other side.
@@ -128,16 +140,19 @@ function build_pane_mesh(eye_mm: V3): Float32Array {
   for (const corner of [orbit_inner_corner, orbit_outer_corner]) {
     if (corner !== null) { push_landmark_marker(builder, corner, orbit_corner_color); push_landmark_marker(builder, mirrored(corner), orbit_corner_color); }
   }
-  const center_point = orbit_center();
-  if (center_point !== null) { push_landmark_marker(builder, center_point, orbit_center_color); push_landmark_marker(builder, mirrored(center_point), orbit_center_color); }
+  const midpoint = orbit_center();
+  if (midpoint !== null) { push_landmark_marker(builder, midpoint, orbit_center_color); push_landmark_marker(builder, mirrored(midpoint), orbit_center_color); }
+  const center_point = eyeball_center();
+  if (center_point !== null) { push_landmark_marker(builder, center_point, eyeball_color); push_landmark_marker(builder, mirrored(center_point), eyeball_color); }
   if (nasion !== null) push_landmark_marker(builder, nasion, nasion_color);
+  if (eyeball !== null) push_skull(builder, eyeball, null, eye_mm, Number(controls.eyeball_alpha.value), 20, eyeball_color);
   push_skull(builder, skull, null, eye_mm, Number(controls.skull_alpha.value), 20);
   return new Float32Array(builder.data);
 }
 
 // The brow line as a ring (skull-brow-line), the nose line and the cheekbone width as bars,
-// and the eyes: the corner-to-corner bar of each orbit and the line through both centers,
-// which is where the eye line sits on this skull.
+// and the eyes: the corner-to-corner bar of each orbit and the line through both eyeball
+// centers, which is where the eye line sits on this skull.
 function draw_overlay(view: CanvasView, eye_mm: V3): void {
   if (construction === null) return;
   const { center, radius } = construction.length.sphere;
@@ -163,8 +178,8 @@ function draw_overlay(view: CanvasView, eye_mm: V3): void {
     stroke_polyline(view, [orbit_inner_corner, orbit_outer_corner].map(mm_to_world), false, orbit_corner_style, 2);
     stroke_polyline(view, [mirrored(orbit_inner_corner), mirrored(orbit_outer_corner)].map(mm_to_world), false, orbit_corner_style, 2);
   }
-  const center_point = orbit_center();
-  if (center_point !== null) stroke_polyline(view, [center_point, mirrored(center_point)].map(mm_to_world), false, orbit_center_style, 2);
+  const center_point = eyeball_center();
+  if (center_point !== null) stroke_polyline(view, [center_point, mirrored(center_point)].map(mm_to_world), false, eyeball_style, 2);
 }
 
 function draw_pane(): void {
@@ -182,9 +197,9 @@ function draw_pane(): void {
 function redraw(): void { draw_pane(); draw_section(); }
 
 // ---- horizontal section -------------------------------------------------------------
-// The skull cut by the horizontal plane at the orbit center's height, seen from above:
+// The skull cut by the horizontal plane at the eyeball center's height, seen from above:
 // across = side (right of the skull to the right), up on the canvas = front. Both sockets
-// are cut open at their middle, with the ball's circle and the side planes on top.
+// are cut open through the globes, with the ball's circle and the side planes on top.
 
 type SectionPoint = { across: number; up: number }; // mm
 type SectionSegment = { a: SectionPoint; b: SectionPoint };
@@ -262,12 +277,13 @@ function label(view: SectionView, p: SectionPoint, text: string, style: string, 
 }
 
 const section_canvas = document.getElementById("section_canvas") as HTMLCanvasElement;
-const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070", nasion_style = "#8cffa0", orbit_corner_style = "#bf99ff", orbit_center_style = "#ffffff";
+const ball_style = "#ffd166", plane_style = "#7fb3ff", landmark_style = "#8cffa0", zygion_style = "#ffb070", nasion_style = "#8cffa0", orbit_corner_style = "#bf99ff", orbit_center_style = "#bf99ff", eyeball_style = "#ffffff";
 const ACROSS_MIN = -110, ACROSS_MAX = 110, FRONT_MIN = -110, FRONT_MAX = 120;
 
 function draw_section(): void {
-  const center_point = orbit_center();
-  if (skull === null || construction === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null) return;
+  const center_point = eyeball_center();
+  const midpoint = orbit_center();
+  if (skull === null || construction === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null || midpoint === null || eyeball_fit === null) return;
   const ball = construction.length.sphere;
   const half_width = construction.side_planes.half_width;
   const view = section_view(section_canvas, ACROSS_MIN, ACROSS_MAX, FRONT_MIN, FRONT_MAX);
@@ -283,13 +299,19 @@ function draw_section(): void {
   // The zygion sits below this cut; its dots show the cheekbone width for scale.
   for (const z of [zygion, mirrored(zygion)]) fill_dot(view, { across: z.x, up: z.z }, zygion_style);
   label(view, { across: zygion.x, up: zygion.z }, `zygion, ${(center_point.y - zygion.y).toFixed(1)} below the cut`, zygion_style, -6, 14);
-  // The corners, projected onto the cut (they sit a few mm above or below it), and the centers.
+  // The corners and their midpoint, projected onto the cut (they sit above it), and the
+  // globes: the fitted sphere's circle at this height (= its equator) with its center.
   for (const corner of [orbit_inner_corner, orbit_outer_corner, mirrored(orbit_inner_corner), mirrored(orbit_outer_corner)]) fill_dot(view, { across: corner.x, up: corner.z }, orbit_corner_style);
-  for (const c of [center_point, mirrored(center_point)]) fill_dot(view, { across: c.x, up: c.z }, orbit_center_style);
-  stroke_line(view, { across: center_point.x, up: center_point.z }, { across: -center_point.x, up: center_point.z }, orbit_center_style, 1.2, [6, 4]);
+  for (const m of [midpoint, mirrored(midpoint)]) fill_dot(view, { across: m.x, up: m.z }, orbit_center_style);
+  for (const c of [center_point, mirrored(center_point)]) {
+    stroke_circle(view, { across: c.x, up: c.z }, eyeball_fit.radius, eyeball_style, 1.2);
+    fill_dot(view, { across: c.x, up: c.z }, eyeball_style);
+  }
+  stroke_line(view, { across: center_point.x, up: center_point.z }, { across: -center_point.x, up: center_point.z }, eyeball_style, 1.2, [6, 4]);
   label(view, { across: orbit_outer_corner.x, up: orbit_outer_corner.z }, `outer corner side ${orbit_outer_corner.x.toFixed(1)}`, orbit_corner_style, 6, -6);
   label(view, { across: -orbit_inner_corner.x, up: orbit_inner_corner.z }, `inner corner side ${orbit_inner_corner.x.toFixed(1)}`, orbit_corner_style, -6, -6);
-  label(view, { across: -center_point.x, up: center_point.z }, `eye center side ${center_point.x.toFixed(1)}, up ${format_signed(center_point.y - construction.brow_up, 1)}`, orbit_center_style, -6, 28);
+  label(view, { across: -midpoint.x, up: midpoint.z }, `corner midpoint, ${(midpoint.y - center_point.y).toFixed(1)} above the cut`, orbit_center_style, -6, 14);
+  label(view, { across: -center_point.x, up: center_point.z }, `eye center side ${center_point.x.toFixed(1)}, up ${format_signed(center_point.y - construction.brow_up, 1)}, r ${eyeball_fit.radius.toFixed(1)}`, eyeball_style, -6, 28);
 }
 
 // ---- numbers table ------------------------------------------------------------------
@@ -300,15 +322,16 @@ function fill_row(id: string, cells: string[]): void {
   row.innerHTML = label_cell + cells.map((cell) => `<td>${cell}</td>`).join("");
 }
 
-const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-outer-corner-nasion", "row-center-nose", "row-centers-apart", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
+const ROW_IDS = ["row-brow-nose", "row-nasion-nose", "row-inner-corner-nasion", "row-outer-corner-nasion", "row-center-nose", "row-center-brow", "row-eyeball-radius", "row-midpoint-above-center", "row-centers-apart", "row-centers-apart-side-plane", "row-orbit-width", "row-inner-gap", "row-outer-corner-width"];
 
 function update_numbers_table(): void {
   if (construction === null) return;
   const half_width = construction.side_planes.half_width;
   const radius = construction.length.sphere.radius;
-  const center_point = orbit_center();
+  const center_point = eyeball_center();
+  const midpoint = orbit_center();
   fill_row("row-half-width", [`${half_width.toFixed(1)} mm`, `${(half_width / radius).toFixed(2)} r`, "Loomis: the ball's flat"]);
-  if (nasal_spine === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null || nasion === null) {
+  if (nasal_spine === null || zygion === null || orbit_inner_corner === null || orbit_outer_corner === null || center_point === null || midpoint === null || eyeball_fit === null || nasion === null) {
     for (const id of ROW_IDS) fill_row(id, ["missing", "", ""]);
   } else {
     const brow_to_nose = construction.brow_up - nasal_spine.y;
@@ -323,8 +346,14 @@ function update_numbers_table(): void {
     fill_row("row-inner-corner-nasion", [`${format_signed(orbit_inner_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
     fill_row("row-outer-corner-nasion", [`${format_signed(orbit_outer_corner.y - nasion.y, 1)} mm`, "", "the rule used here: level (0)"]);
     fill_row("row-center-nose", [`${format_signed(center_above_nose, 1)} mm`, `${format_signed(center_above_nose / brow_to_nose, 2)} of brow → nose`, "Loomis: just under the brow line"]);
+    const center_below_brow = construction.brow_up - center_point.y;
+    fill_row("row-center-brow", [`${center_below_brow.toFixed(1)} mm`, `${(center_below_brow / brow_to_nose).toFixed(2)} of brow → nose, ${(center_below_brow / radius).toFixed(2)} r`, "Loomis: just under the brow line"]);
+    fill_row("row-eyeball-radius", [`${eyeball_fit.radius.toFixed(1)} mm`, `${(eyeball_fit.radius / radius).toFixed(2)} r`, "no rule"]);
+    // The corners are picked at the rim's widest, at the nasion's height; the globe hangs lower.
+    fill_row("row-midpoint-above-center", [`${format_signed(midpoint.y - center_point.y, 1)} mm`, `${format_signed((midpoint.y - center_point.y) / brow_to_nose, 2)} of brow → nose`, "no rule: why the corners are not the center"]);
     // Five eyes across the face put the centers at 1.5 and 3.5 eye widths: 2/5 of the width apart.
     fill_row("row-centers-apart", [`${centers_apart.toFixed(1)} mm`, `${(centers_apart / face_width).toFixed(2)} of the cheekbone width`, "five eyes wide: 0.40"]);
+    fill_row("row-centers-apart-side-plane", [`${centers_apart.toFixed(1)} mm`, `${(centers_apart / (2 * half_width)).toFixed(2)} of the side-plane width`, "five eyes wide: 0.40"]);
     fill_row("row-orbit-width", [`${orbit_width.toFixed(1)} mm`, `${(orbit_width / face_width).toFixed(2)} of the cheekbone width`, "no verdict: the socket, not the eye (five eyes: 0.20)"]);
     fill_row("row-inner-gap", [`${inner_gap.toFixed(1)} mm`, `${(inner_gap / orbit_width).toFixed(2)} of the orbit width`, "no verdict: \"one eye between the eyes\" is the eye, not the socket"]);
     fill_row("row-outer-corner-width", [`${orbit_outer_corner.x.toFixed(1)} mm`, `${(orbit_outer_corner.x / half_width).toFixed(2)} of the side plane, ${(orbit_outer_corner.x / zygion.x).toFixed(2)} of the zygion`, "no number"]);
@@ -334,7 +363,8 @@ function update_numbers_table(): void {
   const point_text = (p: V3 | null): string => (p === null ? "missing" : `side ${format_signed(p.x, 1)}, up ${format_signed(p.y, 1)}, front ${format_signed(p.z, 1)}`);
   document.getElementById("orbit_inner_corner_text")!.textContent = point_text(orbit_inner_corner);
   document.getElementById("orbit_outer_corner_text")!.textContent = point_text(orbit_outer_corner);
-  document.getElementById("orbit_center_text")!.textContent = point_text(center_point);
+  document.getElementById("orbit_center_text")!.textContent = point_text(midpoint);
+  document.getElementById("eyeball_center_text")!.textContent = point_text(center_point);
   document.getElementById("nasion_text")!.textContent = point_text(nasion);
 }
 
@@ -385,15 +415,19 @@ async function save_landmarks(): Promise<void> {
 
 // ---- wiring -------------------------------------------------------------------------
 
-const controls = bind_controls(["skull_alpha", "shape_alpha"], redraw);
+const controls = bind_controls(["skull_alpha", "shape_alpha", "eyeball_alpha"], redraw);
 attach_orbit_controls([pane_canvas], camera, redraw);
 attach_pick();
 document.getElementById("save_landmarks")!.addEventListener("click", () => { void save_landmarks(); });
 window.addEventListener("resize", draw_section);
 
-void load_skull("skull-eyes").then((loaded) => {
+void load_skull("skull-eyes").then(async (loaded) => {
   if (loaded === null) return;
   skull = loaded;
+  eyeball = await load_eyeball("skull-eyes", skull.frame);
+  if (eyeball === null) { document.getElementById("ball_text")!.textContent = "MISSING eyeball mesh"; return; }
+  eyeball_fit = fit_eyeball(eyeball);
+  if (eyeball_fit === null) { console.error("skull-eyes: the eyeball sphere fit failed"); return; }
   const from_file = (name: string): V3 | null => {
     const landmark = find_landmark(skull!.landmarks, name);
     return landmark === null ? null : frankfurt_coordinates(skull!.frame, landmark);

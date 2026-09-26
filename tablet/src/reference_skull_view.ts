@@ -13,6 +13,7 @@ export const MANDIBLE_NAME = "z-anatomy-head-mandible";
 export const MANDIBLE_LANDMARKS_URL = `/reference/${MANDIBLE_NAME}.landmarks.txt`;
 export const TEETH_UPPER_NAME = "z-anatomy-head-teeth-upper";
 export const TEETH_UPPER_LANDMARKS_URL = `/reference/${TEETH_UPPER_NAME}.landmarks.txt`;
+export const EYEBALL_NAME = "z-anatomy-head-eyeball"; // no landmarks file
 
 export const skull_view_colors = {
   bone: v3(0.85, 0.8, 0.7),
@@ -77,10 +78,16 @@ export async function load_teeth_upper(page_name: string, frame: FrankfurtFrame)
   return load_mesh_in_skull_frame(page_name, TEETH_UPPER_NAME, frame);
 }
 
-async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+// Both eyeballs (one mesh in the same scan, the globes seated in the sockets) in the
+// skull's Frankfurt frame. The eyeball has no landmarks file, so `landmarks` is empty.
+export async function load_eyeball(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+  return load_mesh_in_skull_frame(page_name, EYEBALL_NAME, frame, false);
+}
+
+async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, frame: FrankfurtFrame, has_landmarks_file = true): Promise<Skull | null> {
   const [obj_text, landmarks_text] = await Promise.all([
     fetch_reference_text(`/reference/${mesh_name}.obj`),
-    fetch_reference_text(`/reference/${mesh_name}.landmarks.txt`),
+    has_landmarks_file ? fetch_reference_text(`/reference/${mesh_name}.landmarks.txt`) : Promise.resolve(""),
   ]);
   if (obj_text === null || landmarks_text === null) return null;
   const raw = parse_obj_mesh_raw(obj_text);
@@ -89,7 +96,7 @@ async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, fr
     return null;
   }
   const positions = raw.positions.map((p) => frankfurt_coordinates(frame, p));
-  return { frame, landmarks: parse_landmarks_file(landmarks_text), positions, triangle_indices: raw.triangle_indices, vertex_normals: compute_vertex_normals(positions, raw.triangle_indices) };
+  return { frame, landmarks: has_landmarks_file ? parse_landmarks_file(landmarks_text) : [], positions, triangle_indices: raw.triangle_indices, vertex_normals: compute_vertex_normals(positions, raw.triangle_indices) };
 }
 
 // ---- picking and saving landmarks ---------------------------------------------------
@@ -205,11 +212,12 @@ export function heat_color(residual_mm: number, heat_range_mm: number): V3 {
   return v3(colors.zero.x + (target.x - colors.zero.x) * amount, colors.zero.y + (target.y - colors.zero.y) * amount, colors.zero.z + (target.z - colors.zero.z) * amount);
 }
 
-// The skull, heat-mapped by `residuals` (one per vertex, mm) or bone-colored when null.
-export function push_skull(builder: MeshBuilder, skull: Skull, residuals: number[] | null, eye_mm: V3, alpha: number, heat_range_mm: number): void {
+// The skull, heat-mapped by `residuals` (one per vertex, mm) or `plain_color` (bone by
+// default; a page passes its own color for a second mesh such as the eyeball) when null.
+export function push_skull(builder: MeshBuilder, skull: Skull, residuals: number[] | null, eye_mm: V3, alpha: number, heat_range_mm: number, plain_color: V3 = skull_view_colors.bone): void {
   const ambient = 0.35;
   const vertex_colors = skull.positions.map((p, index) => {
-    const base = residuals !== null ? heat_color(residuals[index], heat_range_mm) : skull_view_colors.bone;
+    const base = residuals !== null ? heat_color(residuals[index], heat_range_mm) : plain_color;
     const brightness = ambient + (1 - ambient) * Math.abs(v3_dot(skull.vertex_normals[index], v3_normalize(v3_sub(eye_mm, p))));
     return v3_scale(base, brightness);
   });

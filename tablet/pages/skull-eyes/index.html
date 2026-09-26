@@ -19,24 +19,25 @@
 <body>
 <main>
   <h1>The eyes</h1>
-  <p class="sub">"The face is five eyes wide, one eye between the eyes" (Loomis, Finch) is about the eye you see: the lid opening. The bone only has the <a href="#g-orbit">orbit</a>, the socket, which is far bigger than that. What the bone does fix is the eye's <em>center</em>: the eyeball sits nearly in the middle of the socket (a little up and out: its closest gaps to the bone are 4 mm to the roof, 4.5 to the outer wall, 6.5 to the inner wall, 6.8 to the floor, so its center is about 1 mm above and 1 mm outside the socket's midpoint), so the midpoint of the socket's two corners is where the eye is, to a millimeter. Five eyes across the face put the two centers at 1.5 and 3.5 eye widths, two fifths of the face width apart; that, and the height of the centers against the brow and nose lines, is what this page measures. The socket's own width is shown, without a verdict. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
+  <p class="sub">"The face is five eyes wide, one eye between the eyes" (Loomis, Finch) is about the eye you see: the lid opening. The bone only has the <a href="#g-orbit">orbit</a>, the socket, which is far bigger than that. What the rules are about is the eye's <em>center</em>, and the scan has the eyeball itself: this page fits a sphere to the right globe of the eyeball mesh and calls its center the <a href="#g-eye-center">eye center</a> (the left is the mirror). The midpoint of the socket's two corners is kept as a comparison: it sits well above the globe. Five eyes across the face put the two centers at 1.5 and 3.5 eye widths, two fifths of the face width apart; that, and the height of the centers against the brow and nose lines, is what this page measures. The socket's own width is shown, without a verdict. All lengths in mm, in the Frankfurt frame. <a href="/">main menu</a></p>
 
   <section>
     <h2>The sockets on the skull</h2>
     <div class="views">
       <figure>
         <div class="stack"><canvas class="pane" height="460"></canvas><canvas class="overlay" height="460"></canvas></div>
-        <figcaption>front view by default: the ball with its side cuts, the brow line, the nose line, the cheekbone width, each socket's corner-to-corner bar, and the line through both eye centers</figcaption>
+        <figcaption>front view by default: the ball with its side cuts, the brow line, the nose line, the cheekbone width, each socket's corner-to-corner bar, both eyeballs, and the line through both eye centers</figcaption>
       </figure>
       <figure>
         <div class="stack"><canvas id="section_canvas" height="460"></canvas></div>
         <figcaption>horizontal cut at the eye centers' height, seen from above: side → right, front → up</figcaption>
       </figure>
     </div>
-    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #7fb3ff">blue</span> = the side planes; <span style="color: #8cffa0">green</span> = the nose line (nasal spine) and the nasion with the bar at its height; <span style="color: #ffb070">orange</span> = the zygions and the cheekbone width; <span style="color: #bf99ff">violet</span> = the orbit's inner and outer corners, mirrored; white = the eye centers and the line through them.</p>
+    <p class="hint">drag to orbit, wheel to zoom. <span style="color: var(--yellow)">yellow</span> = the ball and the <a href="#g-brow-line">brow line</a>; <span style="color: #7fb3ff">blue</span> = the side planes; <span style="color: #8cffa0">green</span> = the nose line (nasal spine) and the nasion with the bar at its height; <span style="color: #ffb070">orange</span> = the zygions and the cheekbone width; <span style="color: #bf99ff">violet</span> = the orbit's inner and outer corners and their midpoint, mirrored; white = the eyeballs, their fitted centers and the line through them.</p>
     <div class="controls">
       <label>skull opacity <input type="range" id="skull_alpha" min="0" max="1" step="0.05" value="0.45"></label>
       <label>shape opacity <input type="range" id="shape_alpha" min="0" max="1" step="0.05" value="0.2"></label>
+      <label>eyeball opacity <input type="range" id="eyeball_alpha" min="0" max="1" step="0.05" value="0.6"></label>
     </div>
     <div class="controls">
       <label><input type="checkbox" id="pick_mode"> pick by clicking the skull in the 3D view (either side, stored on the right):</label>
@@ -46,7 +47,7 @@
       <button id="save_landmarks">save all three into the skull's landmarks file</button>
       <span class="status" id="save_status"></span>
     </div>
-    <p class="hint">nasion: <span id="nasion_text"></span>. inner corner: <span id="orbit_inner_corner_text"></span>. outer corner: <span id="orbit_outer_corner_text"></span>. eye center (their midpoint): <span id="orbit_center_text"></span>.</p>
+    <p class="hint">nasion: <span id="nasion_text"></span>. inner corner: <span id="orbit_inner_corner_text"></span>. outer corner: <span id="orbit_outer_corner_text"></span>. corner midpoint: <span id="orbit_center_text"></span>. eye center (the fitted eyeball): <span id="eyeball_center_text"></span>.</p>
   </section>
 
   <section>
@@ -59,7 +60,11 @@
         <tr id="row-inner-corner-nasion"><td>inner corner above the nasion (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-outer-corner-nasion"><td>outer corner above the nasion (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-center-nose"><td>eye center above the nose line (+ = above)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-center-brow"><td>eye center below the brow line</td><td colspan="3">loading…</td></tr>
+        <tr id="row-eyeball-radius"><td>eyeball radius (fitted sphere)</td><td colspan="3">loading…</td></tr>
+        <tr id="row-midpoint-above-center"><td>corner midpoint above the eye center (+ = above)</td><td colspan="3">loading…</td></tr>
         <tr id="row-centers-apart"><td>eye center to eye center</td><td colspan="3">loading…</td></tr>
+        <tr id="row-centers-apart-side-plane"><td>eye center to eye center, of the side-plane width</td><td colspan="3">loading…</td></tr>
         <tr id="row-orbit-width"><td>orbit width, inner corner to outer corner</td><td colspan="3">loading…</td></tr>
         <tr id="row-inner-gap"><td>between the orbits, inner corner to inner corner</td><td colspan="3">loading…</td></tr>
         <tr id="row-outer-corner-width"><td>outer corner from the midline</td><td colspan="3">loading…</td></tr>
@@ -73,11 +78,11 @@
     <h2>What the skull says</h2>
     <ul>
       <li><strong>The socket is not the eye.</strong> The lid opening is narrower than the rim by a lid's worth on each side, and that is soft tissue this skull does not have. So the orbit's width and the gap between the orbits get no verdict here; the rule's "one eye" cannot be checked on bone. TODO quote the adult orbit width vs lid-opening width from the literature, with a source.</li>
-      <li><strong>The center is bone, nearly.</strong> The globe hangs in Lockwood's ligament a little up and out of the socket's middle: about 1 mm above and 1 mm outside the midpoint, below this page's pick precision, so the midpoint stands for the eye's center whatever the lids do. Five eyes across the face is a statement about the centers: two fifths of the face width apart. That is the one width number the rule and the skull can be compared on.</li>
-      <li><strong>The eye line.</strong> Loomis hangs the eyes just under the brow line; the centers' height gives that a number. (Finch gives no eye height in the video; an earlier version of this page claimed "halfway", which was a mix-up with his mouth rule.)</li>
+      <li><strong>The center is the globe, measured.</strong> The eyeball mesh gives the center directly, and it is not the corners' midpoint: the rim's widest points (picked at the nasion's height) sit well above the globe, so a midpoint of rim points overshoots. Five eyes across the face is a statement about the centers: two fifths of the face width apart. Against the cheekbone width the centers miss; against the side-plane width they hit the two fifths, which is the width Loomis's ball actually has at the eyes.</li>
+      <li><strong>The eye line.</strong> Loomis hangs the eyes just under the brow line; the globe's height gives that a number, and it is a good way under, not just under. (Finch gives no eye height in the video; an earlier version of this page claimed "halfway", which was a mix-up with his mouth rule.)</li>
       <li><strong>One skull.</strong> One data point (male, see the models' README); eye spacing varies a lot between people.</li>
     </ul>
-    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the mesh and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_skull</code>, <code>pick_skull_vertex</code>); decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q26).</p>
+    <p>Sources: the ball and cuts from <code>tablet/src/construction_fit.ts</code>, the meshes and the picker from <code>tablet/src/reference_skull_view.ts</code> (<code>load_skull</code>, <code>load_eyeball</code>, <code>pick_skull_vertex</code>), the eyeball fit <code>fit_sphere_algebraic</code>; decisions in <code>notes/tasks/autodraw_draw_as_data/plan-skull-construction-docs.md</code> (Q26, Q28).</p>
   </section>
 
   <section>
@@ -86,7 +91,8 @@
       <dt id="g-brow-line">brow line</dt><dd>The ball's horizontal section at the height of its center; Loomis's eyebrow line. Measured on the skull on the skull-brow-line page.</dd>
       <dt id="g-nasion">nasion</dt><dd>The top of the nose bridge on the midline, where the nasal bones meet the brow bone; the dip under the glabella. Picked on this page, stored as <code>nasion</code>.</dd>
       <dt id="g-orbit">orbit</dt><dd>The eye socket. Its inner corner is the dacryon, where the rim meets the nose bridge, picked as the inner rim at the <a href="#g-nasion">nasion</a>'s height (the rim's innermost point); its outer corner is the frontozygomatic suture, where the brow bone meets the cheekbone on the outer rim, picked as the outer rim's furthest-out point, also at the nasion's height (Khoa's pick, 2026-09-26: both corners level with the nasion). Both picked by hand on this page on one side, mirrored, stored in the skull's landmarks file as <code>orbit_inner_corner</code> and <code>orbit_outer_corner</code>.</dd>
-      <dt id="g-orbit-center">eye center</dt><dd>The midpoint of the two corners (<code>orbit_center</code> on the page, not stored). Stands in for the eyeball's center, which sits about 1 mm above and 1 mm outside it.</dd>
+      <dt id="g-eye-center">eye center</dt><dd>The center of the sphere fitted (<code>fit_sphere_algebraic</code>) to the right globe of the Z-Anatomy eyeball mesh, <code>eyeball_center</code> on the page; the left eye is its mirror. Not stored: it is computed from the mesh every load.</dd>
+      <dt id="g-orbit-center">corner midpoint</dt><dd>The midpoint of the two corners (<code>orbit_center</code> on the page, not stored). Kept as a comparison against the eye center; it sits above the globe because the rim's widest points do.</dd>
       <dt id="g-nose-line">nose line</dt><dd>The nasal spine's height, as on skull-face-thirds, from the landmarks file.</dd>
       <dt id="g-side-plane">side plane</dt><dd>Loomis's flat on the side of the ball: the mirrored planes at the vault's widest point, from skull-side-cuts (<code>fit_side_planes_mirrored</code>).</dd>
     </dl>
