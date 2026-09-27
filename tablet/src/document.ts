@@ -227,18 +227,36 @@ function set_handle_point_at_vertex(stroke: Stroke, tablet_document: TabletDocum
 // two ends never count) or are already smooth at it.
 export function smooth_strokes(tablet_document: TabletDocument, stroke_a: StrokeId, stroke_b: StrokeId): VertexId | null {
   if (stroke_a === stroke_b) return null;
-  const a = stroke_by_id(tablet_document, stroke_a);
-  const b = stroke_by_id(tablet_document, stroke_b);
-  const shared = [a.p0_vertex, a.p3_vertex].find((vertex) => vertex === b.p0_vertex || vertex === b.p3_vertex);
-  if (shared === undefined) return null;
-  const already_smooth = smooth_knots_at_vertex(tablet_document, shared).some(
-    (knot) => (knot.stroke_a === stroke_a && knot.stroke_b === stroke_b) || (knot.stroke_a === stroke_b && knot.stroke_b === stroke_a),
-  );
-  if (already_smooth) return null;
+  const shared = shared_vertex_of_strokes(tablet_document, stroke_a, stroke_b);
+  if (shared === null) return null;
+  if (smooth_knot_between_strokes(tablet_document, stroke_a, stroke_b) !== null) return null;
   const knot: SmoothKnot = { vertex: shared, stroke_a, stroke_b };
   tablet_document.smooth_knots.push(knot);
   enforce_smooth_knot(tablet_document, knot, stroke_a);
   return shared;
+}
+
+// Drop the smooth knot joining two strokes; their handles stay where they are
+// (the tangents just stop being locked). Returns whether there was one.
+export function unsmooth_strokes(tablet_document: TabletDocument, stroke_a: StrokeId, stroke_b: StrokeId): boolean {
+  const knot = smooth_knot_between_strokes(tablet_document, stroke_a, stroke_b);
+  if (knot === null) return false;
+  tablet_document.smooth_knots = tablet_document.smooth_knots.filter((other) => other !== knot);
+  return true;
+}
+
+// The knot locking these two strokes' tangents, or null.
+export function smooth_knot_between_strokes(tablet_document: TabletDocument, stroke_a: StrokeId, stroke_b: StrokeId): SmoothKnot | null {
+  return tablet_document.smooth_knots.find(
+    (knot) => (knot.stroke_a === stroke_a && knot.stroke_b === stroke_b) || (knot.stroke_a === stroke_b && knot.stroke_b === stroke_a),
+  ) ?? null;
+}
+
+// The endpoint two strokes have in common, or null (a stroke's own two ends never count).
+function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: StrokeId, stroke_b: StrokeId): VertexId | null {
+  const a = stroke_by_id(tablet_document, stroke_a);
+  const b = stroke_by_id(tablet_document, stroke_b);
+  return [a.p0_vertex, a.p3_vertex].find((vertex) => vertex === b.p0_vertex || vertex === b.p3_vertex) ?? null;
 }
 
 export function enforce_smooth_knot(

@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -145,6 +145,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     update_pinned_vertex_positions(tablet_document);
     refresh_pin_button_armed();
     refresh_midline_button_armed();
+    refresh_smooth_button_armed();
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
@@ -545,12 +546,22 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   });
 
   // Smooth: the one extra becomes smooth with the primary at their shared
-  // endpoint (the primary keeps its tangent, the extra is re-aimed).
+  // endpoint (the primary keeps its tangent, the extra is re-aimed). A toggle:
+  // if the two are already smooth, the knot is dropped instead (handles stay).
+  // Lit while the selected pair is smooth, re-checked every frame.
+  function refresh_smooth_button_armed(): void {
+    const other = single_extra_stroke();
+    smooth_button.classList.toggle(
+      "armed", edit_state !== null && other !== null && smooth_knot_between_strokes(tablet_document, edit_state.stroke_id, other) !== null,
+    );
+  }
   smooth_button.addEventListener("click", () => {
     const other = single_extra_stroke();
     if (edit_state === null || other === null) return;
     begin_history_step(history, tablet_document);
-    smooth_strokes(tablet_document, edit_state.stroke_id, other); // no shared vertex: nothing
+    if (!unsmooth_strokes(tablet_document, edit_state.stroke_id, other)) {
+      smooth_strokes(tablet_document, edit_state.stroke_id, other); // no shared vertex: nothing
+    }
     end_history_step(history, tablet_document);
     request_render();
   });
