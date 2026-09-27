@@ -74,7 +74,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let reference_mesh: ReferenceMesh | null = null;
   let reference_visible = true;
   let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
-  let vertex_names_visible = true; // "names" button: landmark dots + labels
   let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
   // Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
   // Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
@@ -166,8 +165,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
-  // stroke's name shows, placed at the curve's midpoint each frame; every named
-  // vertex (landmark) shows its name beside its dot, unless names are hidden.
+  // stroke's name shows, placed at the curve's midpoint each frame; a named vertex
+  // (landmark) shows its name beside its dot only while hot or selected.
   const stroke_labels = document.getElementById("stroke_labels") as HTMLDivElement;
   function rebuild_stroke_labels(): void {
     const labels: HTMLDivElement[] = [];
@@ -184,10 +183,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (stroke !== null && stroke.name !== undefined) {
       push_label(stroke.name, bezier_point(stroke_control_points(stroke, tablet_document), 0.5), 0);
     }
-    if (vertex_names_visible) {
-      for (const vertex of tablet_document.vertices) {
-        if (vertex.name !== undefined) push_label(vertex.name, vertex.position, ANCHOR_SIZE_PIXELS * 2);
-      }
+    // A vertex's name shows only while it is hot (hovered) or selected — the
+    // landmarks would otherwise paper the skull with text.
+    const hot_vertex = hot_item !== null && hot_item.kind === "vertex" ? hot_item.vertex : null;
+    for (const vertex_id of new Set([selected_vertex, hot_vertex])) {
+      if (vertex_id === null) continue;
+      const vertex = vertex_by_id(tablet_document, vertex_id);
+      if (vertex.name !== undefined) push_label(vertex.name, vertex.position, ANCHOR_SIZE_PIXELS * 2);
     }
     stroke_labels.replaceChildren(...labels);
   }
@@ -295,7 +297,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         append_billboard_square(vertex.position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
       } else if (hot) {
         append_billboard_square(vertex.position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
-      } else if (vertex.name !== undefined && vertex_names_visible) {
+      } else if (vertex.name !== undefined) {
         append_billboard_square(vertex.position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
       }
     }
@@ -766,13 +768,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
   });
 
+  // Reference mesh on/off: the "ref" button, or the q key (same key as the desktop app).
   const reference_button = document.getElementById("reference_button") as HTMLButtonElement;
-  reference_button.addEventListener("click", () => {
+  function toggle_reference_visible(): void {
     reference_visible = !reference_visible;
     reference_button.classList.toggle("armed", reference_visible);
     request_render();
-  });
+  }
+  reference_button.addEventListener("click", toggle_reference_visible);
   reference_button.classList.toggle("armed", reference_visible);
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "q" && !event.repeat && !event.ctrlKey && !event.metaKey) toggle_reference_visible();
+  });
 
   const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
   surface_button.addEventListener("click", () => {
@@ -781,14 +788,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   });
   surface_button.classList.toggle("armed", surface_colored);
-
-  const names_button = document.getElementById("names_button") as HTMLButtonElement;
-  names_button.addEventListener("click", () => {
-    vertex_names_visible = !vertex_names_visible;
-    names_button.classList.toggle("armed", vertex_names_visible);
-    request_render();
-  });
-  names_button.classList.toggle("armed", vertex_names_visible);
 
   // Docs panel: lists server documents to switch between, plus "new…" (prompt
   // for a name; unknown names start empty) and "rename…" for the current one.
