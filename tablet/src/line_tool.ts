@@ -47,18 +47,33 @@ function resolve_endpoint(
   return { world, snap_vertex: null };
 }
 
+// With `start_vertex`, the stroke starts at that vertex wherever the pen lands
+// (the line button pressed with one vertex selected); the path then begins
+// with the vertex so the fit spans the whole stroke.
 export function line_pen_down(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  start_vertex: VertexId | null = null,
 ): LineToolState | null {
   const endpoint = resolve_endpoint(tablet_document, camera, screen, canvas);
   if (endpoint === null) return null;
   const plane_point = pen_point_on_camera_plane(camera, screen, canvas);
+  const pen_world = plane_point === null ? endpoint.world : plane_point;
+  if (start_vertex !== null) {
+    const start_world = vertex_position(tablet_document, start_vertex);
+    return {
+      start_world,
+      start_snap_vertex: start_vertex,
+      end_world: endpoint.world,
+      end_snap_vertex: endpoint.snap_vertex,
+      path_world: [start_world, pen_world],
+    };
+  }
   return {
     start_world: endpoint.world,
     start_snap_vertex: endpoint.snap_vertex,
     end_world: endpoint.world,
     end_snap_vertex: endpoint.snap_vertex,
-    path_world: [plane_point === null ? endpoint.world : plane_point],
+    path_world: [pen_world],
   };
 }
 

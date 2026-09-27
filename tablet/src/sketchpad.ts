@@ -101,6 +101,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // swinging the other handle (edit_pen_move).
   let handle_mode: HandleMode = "plane";
   let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
+  let line_start_vertex: VertexId | null = null; // line tool armed from a selected vertex: the stroke starts there
   let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
   let frame_requested = false;
   // Pen tap detection (tap = select/deselect instead of moving anything).
@@ -149,7 +150,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     update_pinned_vertex_positions(tablet_document);
     refresh_pin_button_armed();
     refresh_midline_button_armed();
-    refresh_add_line_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
@@ -519,13 +519,37 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   function set_armed_tool(tool: ArmedTool | null): void {
     armed_tool = tool;
-    if (tool !== "line") line_state = null;
+    if (tool !== "line") {
+      line_state = null;
+      line_start_vertex = null;
+    }
     line_button.classList.toggle("armed", tool === "line");
     split_button.classList.toggle("armed", tool === "split");
     refresh_pin_button_armed();
   }
+  // The line button depends on the vertex selection (Khoa 2026-09-27, replaces
+  // the separate add-line button of plan-sketchpad-vertex-nudge-link.md Q80):
+  // two vertices (tap one, ctrl-tap the other) = a straight stroke between them
+  // at once; one vertex = arm the tool with the stroke starting at that vertex
+  // wherever the pen lands; none = arm the free-hand tool. The new stroke becomes
+  // the selection with its handles up, ready to bend.
   line_button.addEventListener("click", () => {
-    set_armed_tool(armed_tool === "line" ? null : "line");
+    if (armed_tool === "line") {
+      set_armed_tool(null);
+      return;
+    }
+    if (selected_vertex !== null && extra_vertex !== null) {
+      begin_history_step(history, tablet_document);
+      const stroke_id = add_straight_stroke(tablet_document, selected_vertex, extra_vertex);
+      end_history_step(history, tablet_document, `add line ${stroke_id}`);
+      selected_vertex = null;
+      extra_vertex = null;
+      edit_state = begin_edit_state(stroke_id);
+      request_render();
+      return;
+    }
+    set_armed_tool("line");
+    line_start_vertex = selected_vertex;
   });
   // Patch: fill the selected strokes (primary + extras, 2 or more). Which fill
   // they get is derived per frame from their corners (patch.ts).
@@ -770,24 +794,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_width_panel();
   });
 
-  // Add line (plan-sketchpad-vertex-nudge-link.md Q80): a straight stroke between
-  // the selected vertex and the ctrl-tapped extra; the new stroke becomes the
-  // selection with its handles up, ready to bend. Lit while two vertices are selected.
-  const add_line_button = document.getElementById("add_line_button") as HTMLButtonElement;
-  function refresh_add_line_button_armed(): void {
-    add_line_button.classList.toggle("armed", selected_vertex !== null && extra_vertex !== null);
-  }
-  add_line_button.addEventListener("click", () => {
-    if (selected_vertex === null || extra_vertex === null) return;
-    begin_history_step(history, tablet_document);
-    const stroke_id = add_straight_stroke(tablet_document, selected_vertex, extra_vertex);
-    end_history_step(history, tablet_document, `add line ${stroke_id}`);
-    selected_vertex = null;
-    extra_vertex = null;
-    edit_state = begin_edit_state(stroke_id);
-    request_render();
-  });
-
   // Keyboard nudge of the selected vertex (plan-sketchpad-vertex-nudge-link.md
   // Q76-Q78): h/l along the camera's right, j/k along its up, i/o along forward
   // (i = in, away from the viewer). Step is screen pixels at the pivot depth,
@@ -867,7 +873,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_orbit_last_screen = null;
       hover_screen = null; // nothing is hot while the pen is down
       if (armed_tool === "line") {
-        line_state = line_pen_down(tablet_document, camera, position, canvas);
+        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on the selection; otherwise orbit.
