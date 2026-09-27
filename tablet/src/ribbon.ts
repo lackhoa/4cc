@@ -1,19 +1,20 @@
 // Stroke tessellation, matching the desktop renderer (draw_bezier_inner in
 // game/framework_draw.cpp): each sample is offset perpendicular to the curve
 // tangent IN CAMERA SPACE (billboard), so a stroke never vanishes edge-on.
-// Radius is world-space (thins with distance) and tapered toward the ends like
-// the desktop's default radii (.25, 1, 1, .25). Mesh depends on the camera —
-// rebuild it whenever the camera moves.
+// Radius is world-space (thins with distance). The taper machinery is kept but
+// set flat (1, 1, 1, 1): Khoa wants plain constant-width lines (2026-09-27).
+// Mesh depends on the camera — rebuild it whenever the camera moves.
 
 import { OrbitCamera, camera_basis } from "./camera";
 import { Stroke, StrokeControlPoints, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
 import { v3_add, v3_dot, v3_length, v3_scale, v3_sub, V3 } from "./math";
 import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
-const RIBBON_RADIUS = 0.02; // world units; grid cell = 1
+const RIBBON_RADIUS = 0.01; // world units; grid cell = 1
 const RIBBON_SAMPLES = 24;
-// Desktop taper: cubic-bezier-interpolated radii multipliers along the stroke.
-const TAPER = [0.25, 1, 1, 0.25];
+// Cubic-bezier-interpolated radii multipliers along the stroke. Flat = no taper;
+// the desktop default was (.25, 1, 1, .25).
+const TAPER = [1, 1, 1, 1];
 
 export type { Rgb };
 
