@@ -5,7 +5,7 @@
 // interior handles are free 3D offsets from the straight line's 1/3 and 2/3
 // points. Invariant: d0, d3 and the chord are coplanar — kept by
 // swing_offset_into_plane (imported control points get d3 swung into d0's
-// plane), in-plane handle drags and the tilt dial (edit_mode.ts), and
+// plane), in-plane and swing handle drags (edit_mode.ts), and
 // move_vertex (a chord change rotates both offsets with it).
 //
 // Stable ids (plan-tablet-stable-ids.md): every stroke and vertex carries an

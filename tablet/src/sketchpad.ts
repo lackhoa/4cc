@@ -92,10 +92,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // knot.
   type ArmedTool = "line" | "pin" | "split";
   let armed_tool: ArmedTool | null = null;
-  // Tilt is a sticky mode, not a tap tool. Two variants to compare, mutually
-  // exclusive: "dial" — any drag rolls the selected stroke about its chord;
-  // "swing" — a handle drag tilts the plane by swinging the other handle
-  // (edit_pen_down/move).
+  // Swing is a sticky mode, not a tap tool: a handle drag tilts the plane by
+  // swinging the other handle (edit_pen_move).
   let handle_mode: HandleMode = "plane";
   let line_state: LineToolState | null = null; // non-null while the line tool's pen is down
   let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
@@ -118,7 +116,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   function resolve_hot_item(): HotItem | null {
     if (hover_screen === null || armed_tool === "line") return null;
-    if (edit_state !== null && armed_tool === null && handle_mode !== "dial") {
+    if (edit_state !== null && armed_tool === null) {
       const pin = pick_pin_on_stroke(edit_state.stroke_id, hover_screen);
       if (pin !== null) return { kind: "pin", vertex: pin.vertex };
       const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
@@ -429,8 +427,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function edit_mode_pen_up(position: V2, multi: boolean): void {
     if (edit_state === null) return;
     const was_control_drag =
-      edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke ||
-      edit_state.tilting;
+      edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke;
     edit_pen_up(edit_state, tablet_document);
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap || was_control_drag) return;
@@ -478,14 +475,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const split_button = document.getElementById("split_button") as HTMLButtonElement;
   const smooth_button = document.getElementById("smooth_button") as HTMLButtonElement;
   const pin_button = document.getElementById("pin_button") as HTMLButtonElement;
-  const tilt_button = document.getElementById("tilt_button") as HTMLButtonElement;
   const swing_button = document.getElementById("swing_button") as HTMLButtonElement;
   function set_handle_mode(mode: HandleMode): void {
     handle_mode = handle_mode === mode ? "plane" : mode;
-    tilt_button.classList.toggle("armed", handle_mode === "dial");
     swing_button.classList.toggle("armed", handle_mode === "swing");
   }
-  tilt_button.addEventListener("click", () => set_handle_mode("dial"));
   swing_button.addEventListener("click", () => set_handle_mode("swing"));
   // The pin button also lights up while a pinned vertex is selected — in that
   // state tapping it unpins (Q11). Re-checked every frame since pin selection
@@ -613,7 +607,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on the selection; otherwise orbit.
-        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas, handle_mode)) {
+        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
           pen_orbit_last_screen = position;
         }
       } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas) === selected_vertex) {
