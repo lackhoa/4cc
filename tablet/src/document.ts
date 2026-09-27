@@ -120,6 +120,14 @@ export function add_stroke(
   return id;
 }
 
+// A straight cubic between two existing vertices: handles a third of the chord
+// from each end, so the curve is the segment until the user bends it.
+export function add_straight_stroke(tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId): StrokeId {
+  const chord = v3_sub(vertex_by_id(tablet_document, p3_vertex).position, vertex_by_id(tablet_document, p0_vertex).position);
+  const third = v3_scale(chord, 1 / 3);
+  return add_stroke(tablet_document, p0_vertex, p3_vertex, third, v3_scale(third, -1));
+}
+
 // Delete one stroke. Surfaces built on it are deleted with it; vertices no
 // longer referenced by any stroke or pin are garbage-collected (so they stop
 // acting as invisible snap targets). Ids of everything else are untouched.
