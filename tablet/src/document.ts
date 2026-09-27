@@ -37,14 +37,15 @@ export type Stroke = {
   d3: V3; // p2 = (p0 + 2*p3)/3 + d3
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
   midline?: boolean; // the whole curve lies in x = 0: both endpoints and both handles (Q69)
-  radii?: StrokeRadii; // width profile; absent = DEFAULT_STROKE_RADII (flat, unit width)
+  radii?: StrokeRadii; // width profile; absent = DEFAULT_STROKE_RADII (flat, width 0.25)
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
 // control values, multipliers of the base ribbon radius, sampled along t.
-// (1,1,1,1) = constant width; (.25,1,1,.25) = the classic taper.
+// Flat = constant width; (.25,1,1,.25)-shaped = the classic taper. A stroke
+// without a stored profile is flat at width 0.25 (Khoa's pick, 2026-09-27).
 export type StrokeRadii = [number, number, number, number];
-export const DEFAULT_STROKE_RADII: StrokeRadii = [1, 1, 1, 1];
+export const DEFAULT_STROKE_RADII: StrokeRadii = [0.25, 0.25, 0.25, 0.25];
 
 export function stroke_radii(stroke: Stroke): StrokeRadii {
   return stroke.radii ?? DEFAULT_STROKE_RADII;

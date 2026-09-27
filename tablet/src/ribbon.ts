@@ -3,8 +3,8 @@
 // tangent IN CAMERA SPACE (billboard), so a stroke never vanishes edge-on.
 // Radius is world-space (thins with distance): RIBBON_RADIUS times the stroke's
 // own width profile (`Stroke.radii`, edited in the sketchpad's width panel;
-// absent = flat unit width, Khoa wants plain constant-width lines by default,
-// 2026-09-27). Mesh depends on the camera — rebuild it whenever the camera moves.
+// absent = DEFAULT_STROKE_RADII, a plain constant-width line). Mesh depends on
+// the camera — rebuild it whenever the camera moves.
 
 import { OrbitCamera, camera_basis } from "./camera";
 import {
