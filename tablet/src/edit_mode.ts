@@ -14,7 +14,7 @@
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_position } from "./document";
+import { Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -357,6 +357,10 @@ function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_v
   }
   // A knot at the dragged vertex rides along (a crossing = two knots, Q4).
   for (const knot of tablet_document.smooth_knots) knot.vertex = remap(knot.vertex);
+  // The survivor is on the midline if either was (plan-sketchpad-midline.md Q75).
+  if (vertex_by_id(tablet_document, dragged_vertex).midline === true) {
+    vertex_by_id(tablet_document, target_vertex).midline = true;
+  }
   // The dragged vertex is never pinned (pin drags slide t and skip merging),
   // so no pin references it.
   tablet_document.vertices = tablet_document.vertices.filter((vertex) => vertex.id !== dragged_vertex);
@@ -366,9 +370,16 @@ function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_v
 // Pin the dragged vertex to the curve it was released next to (vertex weld
 // has priority — call after merge_vertex_if_near_another misses). The vertex
 // snaps onto the curve through move_vertex so its strokes' offsets follow.
+// A pin and the midline both claim the vertex's position (plan-sketchpad-midline.md
+// Q71): the pin, being newer, drops the vertex's own midline flag. A vertex held
+// on the midline by a midline stroke is not pinned — that flag belongs to the
+// stroke and is not dropped behind the user's back.
 function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_vertex: VertexId): void {
   const target = find_snap_target_stroke(tablet_document, dragged_vertex);
   if (target === null) return;
+  const vertex = vertex_by_id(tablet_document, dragged_vertex);
+  delete vertex.midline;
+  if (vertex_is_on_midline(tablet_document, dragged_vertex)) return;
   const points = stroke_control_points(stroke_by_id(tablet_document, target.stroke_id), tablet_document);
   move_vertex(tablet_document, dragged_vertex, bezier_point(points, target.t));
   tablet_document.vertex_pins.push({ vertex: dragged_vertex, host_stroke: target.stroke_id, t: target.t });

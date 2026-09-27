@@ -58,6 +58,8 @@ export function merge_adjacent_strokes(
   stroke_a.p3_vertex = b_far_vertex;
   stroke_a.d0 = handles.d0;
   stroke_a.d3 = handles.d3;
+  // The merged stroke is on the midline only if both parts were (plan-sketchpad-midline.md Q75).
+  if (stroke_a.midline === true && stroke_b.midline !== true) delete stroke_a.midline;
   delete_stroke(tablet_document, stroke_b_id);
   return stroke_a_id;
 }

@@ -26,6 +26,7 @@ export type Vertex = {
   id: VertexId;
   position: V3;
   name?: string; // a named vertex is a landmark: it survives garbage collection with no stroke using it
+  midline?: boolean; // held on the sagittal plane x = 0 by enforce_midline (plan-sketchpad-midline.md Q69)
 };
 
 export type Stroke = {
@@ -35,6 +36,7 @@ export type Stroke = {
   d0: V3; // p1 = (2*p0 + p3)/3 + d0 (world units)
   d3: V3; // p2 = (p0 + 2*p3)/3 + d3
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
+  midline?: boolean; // the whole curve lies in x = 0: both endpoints and both handles (Q69)
 };
 
 // A patch is the set of strokes selected when it was made — unordered,
@@ -180,6 +182,9 @@ export function split_stroke(
       pin.t = (pin.t - t) / (1 - t);
     }
   }
+  // Both halves of a midline stroke stay in the plane (Q75); the knot is on it
+  // through them, so the vertex needs no flag of its own.
+  if (stroke.midline === true) stroke_by_id(tablet_document, second_stroke).midline = true;
   tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
   // A patch bounded by the split stroke is now bounded by both halves.
   for (const patch of tablet_document.patches) {
@@ -279,6 +284,34 @@ export function update_pinned_vertex_positions(tablet_document: TabletDocument):
     const host = stroke_by_id(tablet_document, pin.host_stroke);
     const points = stroke_control_points(host, tablet_document);
     move_vertex(tablet_document, pin.vertex, bezier_point(points, pin.t));
+  }
+}
+
+// A vertex is on the midline if flagged itself or if a midline stroke ends on
+// it (Q75: the stroke flag never writes the vertex flag, so deleting a stroke
+// needs no cleanup).
+export function vertex_is_on_midline(tablet_document: TabletDocument, vertex_id: VertexId): boolean {
+  if (vertex_by_id(tablet_document, vertex_id).midline === true) return true;
+  return tablet_document.strokes.some(
+    (stroke) => stroke.midline === true && (stroke.p0_vertex === vertex_id || stroke.p3_vertex === vertex_id),
+  );
+}
+
+// Midline constraint (plan-sketchpad-midline.md Q70): one pass, run at the edit
+// choke point after every pen event and button edit, rather than at each site
+// that moves geometry. Every midline vertex is moved to x = 0 (through
+// move_vertex, so the strokes ending on it rotate along), then the handles of
+// every midline stroke get x = 0 — with the chord already in the plane that
+// keeps d0, d3, chord coplanar.
+export function enforce_midline(tablet_document: TabletDocument): void {
+  for (const vertex of tablet_document.vertices) {
+    if (vertex.position.x === 0 || !vertex_is_on_midline(tablet_document, vertex.id)) continue;
+    move_vertex(tablet_document, vertex.id, v3(0, vertex.position.y, vertex.position.z));
+  }
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.midline !== true) continue;
+    stroke.d0 = v3(0, stroke.d0.y, stroke.d0.z);
+    stroke.d3 = v3(0, stroke.d3.y, stroke.d3.z);
   }
 }
 

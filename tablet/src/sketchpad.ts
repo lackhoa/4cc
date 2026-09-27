@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_by_id, vertex_position } from "./document";
+import { StrokeId, VertexId, VertexPin, add_vertex, bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -50,6 +50,7 @@ const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
 const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const NAMED_VERTEX_COLOR = { r: 0.55, g: 1.0, b: 0.6 }; // landmarks (vertices with a name), always drawn
+const MIDLINE_VERTEX_COLOR = { r: 0.5, g: 0.6, b: 1.0 }; // vertices held on x = 0 (plan-sketchpad-midline.md Q74), always drawn
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 // "surf" off: same opaque fill, painted in the clear color (render.ts) so the
 // patch still occludes what's behind it but reads as background.
@@ -138,9 +139,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // frame must not swallow the save (rAF pauses entirely in hidden tabs).
     // Pinned vertices are derived data — re-derive synchronously (NOT in the
     // rAF, which pauses in hidden tabs) so any host reshape carries its riders
-    // before history snapshots and autosave see the document.
+    // before history snapshots and autosave see the document. The midline pass
+    // goes first: a pin may ride a midline stroke, never the other way round (Q71).
+    enforce_midline(tablet_document);
     update_pinned_vertex_positions(tablet_document);
     refresh_pin_button_armed();
+    refresh_midline_button_armed();
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
@@ -297,6 +301,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         append_billboard_square(vertex.position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
       } else if (vertex.name !== undefined) {
         append_billboard_square(vertex.position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
+      } else if (vertex_is_on_midline(tablet_document, vertex.id)) {
+        append_billboard_square(vertex.position, handle_half, basis.right, basis.up, MIDLINE_VERTEX_COLOR, triangle_vertices);
       }
     }
     if (edit_state === null) {
@@ -564,6 +570,44 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return;
     }
     set_armed_tool(armed_tool === "pin" ? null : "pin");
+  });
+
+  // Midline (plan-sketchpad-midline.md Q72): toggles the midline flag on the
+  // selected vertex or stroke; enforce_midline in request_render snaps it to
+  // x = 0 at once. Setting the flag drops any pin competing for the same
+  // position (Q71): the vertex's own, or the endpoints' of a stroke.
+  const midline_button = document.getElementById("midline_button") as HTMLButtonElement;
+  function refresh_midline_button_armed(): void {
+    const flagged = selected_vertex !== null
+      ? vertex_by_id(tablet_document, selected_vertex).midline === true
+      : edit_state !== null && stroke_by_id(tablet_document, edit_state.stroke_id).midline === true;
+    midline_button.classList.toggle("armed", flagged);
+  }
+  midline_button.addEventListener("click", () => {
+    let flagged: { midline?: boolean };
+    let claimed_vertices: VertexId[];
+    if (selected_vertex !== null) {
+      flagged = vertex_by_id(tablet_document, selected_vertex);
+      claimed_vertices = [selected_vertex];
+    } else if (edit_state !== null) {
+      const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+      flagged = stroke;
+      claimed_vertices = [stroke.p0_vertex, stroke.p3_vertex];
+    } else {
+      return;
+    }
+    begin_history_step(history, tablet_document);
+    if (flagged.midline === true) {
+      delete flagged.midline;
+    } else {
+      flagged.midline = true;
+      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => !claimed_vertices.includes(pin.vertex));
+      if (edit_state !== null && edit_state.selected_pin !== null && claimed_vertices.includes(edit_state.selected_pin)) {
+        edit_state.selected_pin = null;
+      }
+    }
+    end_history_step(history, tablet_document);
+    request_render();
   });
 
   function pen_orbit(position: V2): void {
