@@ -147,11 +147,11 @@ export function add_stroke(
 }
 
 // A straight cubic between two existing vertices: handles a third of the chord
-// from each end, so the curve is the segment until the user bends it.
+// from each end, so the curve is the segment until the user bends it. d0/d3
+// are OFFSETS from those 1/3 and 2/3 points, so straight = zero offsets (a
+// chord-sized offset would put p1 at 2/3 and p2 at 1/3: crossed handles).
 export function add_straight_stroke(tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId): StrokeId {
-  const chord = v3_sub(vertex_by_id(tablet_document, p3_vertex).position, vertex_by_id(tablet_document, p0_vertex).position);
-  const third = v3_scale(chord, 1 / 3);
-  return add_stroke(tablet_document, p0_vertex, p3_vertex, third, v3_scale(third, -1));
+  return add_stroke(tablet_document, p0_vertex, p3_vertex, v3(0, 0, 0), v3(0, 0, 0));
 }
 
 // Delete one stroke. Surfaces built on it are deleted with it; vertices no
