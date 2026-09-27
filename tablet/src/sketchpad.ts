@@ -14,7 +14,7 @@
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { StrokeId, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
-import { begin_history_step, clear_history, create_history_state, end_history_step, redo, undo } from "./history";
+import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { merge_adjacent_strokes } from "./stroke_merge";
@@ -151,6 +151,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_midline_button_armed();
     refresh_add_line_button_armed();
     refresh_smooth_button_armed();
+    refresh_history_panel();
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
@@ -388,7 +389,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap && line_state !== null) {
       const stroke_id = line_pen_up(line_state, tablet_document);
-      if (stroke_id !== null) select_stroke_by_tap(stroke_id, false);
+      if (stroke_id !== null) {
+        select_stroke_by_tap(stroke_id, false);
+        pen_history_label = `add line ${stroke_id}`;
+      }
     }
     set_armed_tool(null); // also clears line_state
     update_preview_line();
@@ -441,6 +445,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (edit_state === null) return;
     const was_control_drag =
       edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke;
+    if (edit_state.moving_whole_stroke) pen_history_label = `move stroke ${edit_state.stroke_id}`;
+    else if (edit_state.dragging_pin !== null) pen_history_label = `move pin ${edit_state.dragging_pin}`;
+    else if (edit_state.dragging !== null) pen_history_label = `move handle of stroke ${edit_state.stroke_id}`;
     edit_pen_up(edit_state, tablet_document);
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap || was_control_drag) return;
@@ -453,6 +460,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t));
         tablet_document.vertex_pins.push({ vertex, host_stroke: edit_state.stroke_id, t: nearest.t });
         edit_state.selected_pin = vertex;
+        pen_history_label = `pin vertex ${vertex}`;
       }
       set_armed_tool(null); // tap off the curve = cancel, selection kept
       return;
@@ -463,6 +471,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // the selection is a candidate so a tap at a junction is unambiguous. A
       // tap on a vertex pinned to the selection cuts exactly there, reusing it.
       const selected_id = edit_state.stroke_id;
+      pen_history_label = `split stroke ${selected_id}`;
       const pinned = pick_pin_on_stroke(selected_id, position);
       if (pinned !== null) {
         split_stroke(tablet_document, selected_id, pinned.t, pinned.vertex);
@@ -518,7 +527,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (edit_state === null || extra_selection.length === 0) return;
     begin_history_step(history, tablet_document);
     tablet_document.patches.push({ strokes: [edit_state.stroke_id, ...extra_selection] });
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, `make patch [${[edit_state.stroke_id, ...extra_selection].join(" ")}]`);
     edit_state = null;
     extra_selection = [];
     request_render();
@@ -537,7 +546,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (edit_state === null || other === null) return;
     begin_history_step(history, tablet_document);
     const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, other);
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, `join strokes ${edit_state.stroke_id} ${other}`);
     if (merged_id === null) return; // not adjacent (or a closed loop): selection kept
     edit_state = begin_edit_state(merged_id);
     extra_selection = [];
@@ -565,10 +574,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const other = single_extra_stroke();
     if (edit_state === null || other === null) return;
     begin_history_step(history, tablet_document);
+    let label = `unsmooth strokes ${edit_state.stroke_id} ${other}`;
     if (!unsmooth_strokes(tablet_document, edit_state.stroke_id, other)) {
       smooth_strokes(tablet_document, edit_state.stroke_id, other); // no shared vertex: nothing
+      label = `smooth strokes ${edit_state.stroke_id} ${other}`;
     }
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, label);
     request_render();
   });
 
@@ -581,7 +592,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       begin_history_step(history, tablet_document);
       const unpinned_vertex = edit_state.selected_pin;
       tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== unpinned_vertex);
-      end_history_step(history, tablet_document);
+      end_history_step(history, tablet_document, `unpin vertex ${unpinned_vertex}`);
       edit_state.selected_pin = null;
       request_render();
       return;
@@ -614,8 +625,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return;
     }
     begin_history_step(history, tablet_document);
+    const midline_target = selected_vertex !== null ? `vertex ${selected_vertex}` : `stroke ${edit_state!.stroke_id}`;
+    let label = `set midline ${midline_target}`;
     if (flagged.midline === true) {
       delete flagged.midline;
+      label = `clear midline ${midline_target}`;
     } else {
       flagged.midline = true;
       tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => !claimed_vertices.includes(pin.vertex));
@@ -623,7 +637,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         edit_state.selected_pin = null;
       }
     }
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, label);
     request_render();
   });
 
@@ -638,7 +652,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (selected_vertex === null || extra_vertex === null) return;
     begin_history_step(history, tablet_document);
     const stroke_id = add_straight_stroke(tablet_document, selected_vertex, extra_vertex);
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, `add line ${stroke_id}`);
     selected_vertex = null;
     extra_vertex = null;
     edit_state = begin_edit_state(stroke_id);
@@ -663,7 +677,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     begin_history_step(history, tablet_document);
     const vertex = vertex_by_id(tablet_document, selected_vertex);
     vertex.position = v3_add(vertex.position, delta);
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, `nudge vertex ${selected_vertex}`);
     request_render();
   }
   window.addEventListener("keydown", (event) => {
@@ -690,28 +704,32 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   // Undo/redo (plan-tablet-undo-redo.md): restore drops the selection — the
   // selected stroke may not survive the snapshot.
-  function perform_undo(): void {
-    if (!undo(history, tablet_document)) return;
+  function clear_selection_after_history_jump(): void {
     edit_state = null;
     extra_selection = [];
     selected_vertex = null;
     extra_vertex = null;
     set_armed_tool(null);
     request_render();
+  }
+  function perform_undo(): void {
+    if (undo(history, tablet_document)) clear_selection_after_history_jump();
   }
   function perform_redo(): void {
-    if (!redo(history, tablet_document)) return;
-    edit_state = null;
-    extra_selection = [];
-    selected_vertex = null;
-    extra_vertex = null;
-    set_armed_tool(null);
-    request_render();
+    if (redo(history, tablet_document)) clear_selection_after_history_jump();
   }
+  function perform_history_jump(position: number): void {
+    if (jump_history(history, tablet_document, position)) clear_selection_after_history_jump();
+  }
+
+  // What the current pen gesture did, for the history panel; branches of pen-up
+  // overwrite it, the fallback covers anything unlabelled.
+  let pen_history_label = "edit";
 
   attach_gestures(canvas, camera, {
     on_pen_down: (position) => {
       begin_history_step(history, tablet_document);
+      pen_history_label = "edit";
       pen_down_screen = position;
       pen_max_displacement_pixels = 0;
       pen_orbit_last_screen = null;
@@ -764,6 +782,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         edit_mode_pen_up(position, multi);
       } else if (selected_vertex_drag_last_screen !== null) {
         // A vertex drag just ends (no weld/pin on release — landmarks are free points).
+        pen_history_label = `move vertex ${selected_vertex}`;
       } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
         // Tap with nothing (or a vertex) selected: vertex first, then stroke, else clear.
         // Ctrl-tap on a second vertex sets / clears the extra (Q79).
@@ -785,7 +804,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_orbit_last_screen = null;
       selected_vertex_drag_last_screen = null;
       hover_screen = position;
-      end_history_step(history, tablet_document);
+      end_history_step(history, tablet_document, pen_history_label);
       request_render();
     },
     on_pen_hover: (position) => {
@@ -812,7 +831,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     begin_history_step(history, tablet_document);
     if (name.trim() === "") delete named.name;
     else named.name = name.trim();
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, `name ${what.toLowerCase()} ${named.id} "${name.trim()}"`);
     request_render();
   });
 
@@ -825,7 +844,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       begin_history_step(history, tablet_document);
       delete vertex_by_id(tablet_document, selected_vertex).name;
       garbage_collect_vertices(tablet_document);
-      end_history_step(history, tablet_document);
+      end_history_step(history, tablet_document, `delete vertex ${selected_vertex}`);
       selected_vertex = null;
       extra_vertex = null;
       request_render();
@@ -833,8 +852,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     if (edit_state === null) return;
     begin_history_step(history, tablet_document);
-    for (const stroke_id of [edit_state.stroke_id, ...extra_selection]) delete_stroke(tablet_document, stroke_id);
-    end_history_step(history, tablet_document);
+    const deleted_strokes = [edit_state.stroke_id, ...extra_selection];
+    for (const stroke_id of deleted_strokes) delete_stroke(tablet_document, stroke_id);
+    end_history_step(history, tablet_document, `delete strokes [${deleted_strokes.join(" ")}]`);
     edit_state = null;
     extra_selection = [];
     selected_vertex = null;
@@ -849,7 +869,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (!window.confirm("Erase all strokes?")) return;
     begin_history_step(history, tablet_document);
     clear_document_in_place(tablet_document);
-    end_history_step(history, tablet_document);
+    end_history_step(history, tablet_document, "clear");
     edit_state = null;
     extra_selection = [];
     selected_vertex = null;
@@ -880,6 +900,40 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const redo_button = document.getElementById("redo_button") as HTMLButtonElement;
   undo_button.addEventListener("click", perform_undo);
   redo_button.addEventListener("click", perform_redo);
+
+  // History panel, a port of the C++ app's "History" ImGui panel: one row per
+  // entry, `>` marks the entry the document equals, rows past it (undone) are
+  // dimmed, tapping a row jumps there. Rebuilt on every request_render while open.
+  const history_button = document.getElementById("history_button") as HTMLButtonElement;
+  const history_panel = document.getElementById("history_panel") as HTMLDivElement;
+  history_button.addEventListener("click", () => {
+    history_panel.classList.toggle("open");
+    history_button.classList.toggle("armed", history_panel.classList.contains("open"));
+    refresh_history_panel();
+  });
+  function refresh_history_panel(): void {
+    undo_button.disabled = history.position <= 0;
+    redo_button.disabled = history.position >= history.entries.length - 1;
+    if (!history_panel.classList.contains("open")) return;
+    history_panel.replaceChildren();
+    if (history.entries.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "(no edits yet)";
+      history_panel.appendChild(empty);
+      return;
+    }
+    let current_row: HTMLButtonElement | null = null;
+    history.entries.forEach((entry, position) => {
+      const row = document.createElement("button");
+      row.textContent = `${position === history.position ? ">" : " "} ${entry.label}`;
+      if (position === history.position) { row.classList.add("current"); current_row = row; }
+      if (position > history.position) row.classList.add("undone");
+      row.addEventListener("click", () => perform_history_jump(position));
+      history_panel.appendChild(row);
+    });
+    current_row!.scrollIntoView({ block: "nearest" });
+  }
   window.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();

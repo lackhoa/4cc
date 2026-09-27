@@ -1,28 +1,38 @@
 // Undo/redo (Q1 in notes plan-tablet-undo-redo.md): whole-document JSON snapshots, one
 // per gesture. A step opens when a mutating gesture begins (pen-down, or just
-// before a button action) and closes when it ends — the opening snapshot is
+// before a button action) and closes when it ends — the closing snapshot is
 // pushed only if the document actually changed, so orbit drags and no-op taps
 // never pollute the history. Camera state is not part of a snapshot.
 // In-memory only, per document (cleared on switch), capped.
+//
+// Same shape as the C++ app's Document_History (game/game_document_history.cpp):
+// entry 0 is the state before the first edit ("loaded"), every later entry is the
+// document after one labelled edit, `position` is the entry the document equals.
+// Undo/redo/panel click = jump to an entry.
 
 import { TabletDocument } from "./document";
 import { clear_document_in_place } from "./persistence";
 
-const MAX_UNDO_SNAPSHOTS = 100;
+const MAX_HISTORY_ENTRIES = 100;
+
+export type HistoryEntry = {
+  label: string; // one row of the history panel, e.g. "move vertex 3"
+  snapshot: string; // serialized document after the edit
+};
 
 export type HistoryState = {
-  undo_stack: string[]; // serialized documents, oldest first
-  redo_stack: string[];
+  entries: HistoryEntry[];
+  position: number; // index into entries the document currently equals; -1 while empty
   pending: string | null; // snapshot taken when the current gesture began
 };
 
 export function create_history_state(): HistoryState {
-  return { undo_stack: [], redo_stack: [], pending: null };
+  return { entries: [], position: -1, pending: null };
 }
 
 export function clear_history(history: HistoryState): void {
-  history.undo_stack.length = 0;
-  history.redo_stack.length = 0;
+  history.entries.length = 0;
+  history.position = -1;
   history.pending = null;
 }
 
@@ -46,29 +56,36 @@ export function begin_history_step(history: HistoryState, tablet_document: Table
   history.pending = serialize_document(tablet_document);
 }
 
-export function end_history_step(history: HistoryState, tablet_document: TabletDocument): void {
+// `label` names the edit in the panel; ignored when the gesture changed nothing.
+export function end_history_step(history: HistoryState, tablet_document: TabletDocument, label: string): void {
   if (history.pending === null) return;
   const before = history.pending;
   history.pending = null;
-  if (before === serialize_document(tablet_document)) return; // gesture changed nothing
-  history.undo_stack.push(before);
-  if (history.undo_stack.length > MAX_UNDO_SNAPSHOTS) history.undo_stack.shift();
-  history.redo_stack.length = 0;
+  const after = serialize_document(tablet_document);
+  if (before === after) return; // gesture changed nothing
+  if (history.entries.length === 0) {
+    history.entries.push({ label: "loaded", snapshot: before });
+    history.position = 0;
+  }
+  history.entries.length = history.position + 1; // drop the redo tail
+  if (history.entries.length === MAX_HISTORY_ENTRIES) history.entries.shift();
+  history.entries.push({ label, snapshot: after });
+  history.position = history.entries.length - 1;
 }
 
-// Both return false when their stack is empty (nothing happens).
-export function undo(history: HistoryState, tablet_document: TabletDocument): boolean {
-  const snapshot = history.undo_stack.pop();
-  if (snapshot === undefined) return false;
-  history.redo_stack.push(serialize_document(tablet_document));
-  restore_document_in_place(tablet_document, snapshot);
+// Make the document equal entry `position`; false when out of range or already there.
+export function jump_history(history: HistoryState, tablet_document: TabletDocument, position: number): boolean {
+  if (position < 0 || position >= history.entries.length || position === history.position) return false;
+  history.pending = null;
+  history.position = position;
+  restore_document_in_place(tablet_document, history.entries[position].snapshot);
   return true;
+}
+
+export function undo(history: HistoryState, tablet_document: TabletDocument): boolean {
+  return jump_history(history, tablet_document, history.position - 1);
 }
 
 export function redo(history: HistoryState, tablet_document: TabletDocument): boolean {
-  const snapshot = history.redo_stack.pop();
-  if (snapshot === undefined) return false;
-  history.undo_stack.push(serialize_document(tablet_document));
-  restore_document_in_place(tablet_document, snapshot);
-  return true;
+  return jump_history(history, tablet_document, history.position + 1);
 }
