@@ -662,7 +662,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Keyboard nudge of the selected vertex (plan-sketchpad-vertex-nudge-link.md
   // Q76-Q78): h/l along the camera's right, j/k along its up, i/o along forward
   // (i = in, away from the viewer). Step is screen pixels at the pivot depth,
-  // Shift multiplies by 5; one history step per key press. A midline or pinned
+  // Shift multiplies by 5; a run of nudges on one vertex is one history entry
+  // (Khoa 2026-09-27, supersedes plan Q78's one-per-key). A midline or pinned
   // vertex is snapped back by the pass in request_render, so those just don't move.
   const NUDGE_STEP_PIXELS = 4;
   const NUDGE_SHIFT_MULTIPLIER = 5;
@@ -677,7 +678,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     begin_history_step(history, tablet_document);
     const vertex = vertex_by_id(tablet_document, selected_vertex);
     vertex.position = v3_add(vertex.position, delta);
-    end_history_step(history, tablet_document, `nudge vertex ${selected_vertex}`);
+    end_history_step(history, tablet_document, `nudge vertex ${selected_vertex}`, true); // a run of nudges = one entry
     request_render();
   }
   window.addEventListener("keydown", (event) => {

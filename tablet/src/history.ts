@@ -57,7 +57,13 @@ export function begin_history_step(history: HistoryState, tablet_document: Table
 }
 
 // `label` names the edit in the panel; ignored when the gesture changed nothing.
-export function end_history_step(history: HistoryState, tablet_document: TabletDocument, label: string): void {
+// With `merge_into_same_label`, a run of edits with the same label (keyboard
+// nudges of one vertex) collapses into the entry it extends: the snapshot is
+// replaced instead of a new entry pushed. Any other edit in between (or an
+// undo) ends the run.
+export function end_history_step(
+  history: HistoryState, tablet_document: TabletDocument, label: string, merge_into_same_label: boolean = false,
+): void {
   if (history.pending === null) return;
   const before = history.pending;
   history.pending = null;
@@ -68,6 +74,11 @@ export function end_history_step(history: HistoryState, tablet_document: TabletD
     history.position = 0;
   }
   history.entries.length = history.position + 1; // drop the redo tail
+  const current = history.entries[history.position];
+  if (merge_into_same_label && history.position > 0 && current.label === label) {
+    current.snapshot = after;
+    return;
+  }
   if (history.entries.length === MAX_HISTORY_ENTRIES) history.entries.shift();
   history.entries.push({ label, snapshot: after });
   history.position = history.entries.length - 1;
