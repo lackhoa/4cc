@@ -37,7 +37,33 @@ export type Stroke = {
   d3: V3; // p2 = (p0 + 2*p3)/3 + d3
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
   midline?: boolean; // the whole curve lies in x = 0: both endpoints and both handles (Q69)
+  radii?: StrokeRadii; // width profile; absent = DEFAULT_STROKE_RADII (flat, unit width)
 };
+
+// Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
+// control values, multipliers of the base ribbon radius, sampled along t.
+// (1,1,1,1) = constant width; (.25,1,1,.25) = the classic taper.
+export type StrokeRadii = [number, number, number, number];
+export const DEFAULT_STROKE_RADII: StrokeRadii = [1, 1, 1, 1];
+
+export function stroke_radii(stroke: Stroke): StrokeRadii {
+  return stroke.radii ?? DEFAULT_STROKE_RADII;
+}
+
+export function stroke_radii_at(radii: StrokeRadii, t: number): number {
+  const s = 1 - t;
+  return s * s * s * radii[0] + 3 * s * s * t * radii[1] + 3 * s * t * t * radii[2] + t * t * t * radii[3];
+}
+
+// De Casteljau of the scalar profile at t: the two halves keep the width the
+// whole stroke had, so a split is invisible.
+function split_stroke_radii(radii: StrokeRadii, t: number): { left: StrokeRadii; right: StrokeRadii } {
+  const lerp = (a: number, b: number) => a + (b - a) * t;
+  const r01 = lerp(radii[0], radii[1]), r12 = lerp(radii[1], radii[2]), r23 = lerp(radii[2], radii[3]);
+  const r012 = lerp(r01, r12), r123 = lerp(r12, r23);
+  const knot = lerp(r012, r123);
+  return { left: [radii[0], r01, r012, knot], right: [knot, r123, r23, radii[3]] };
+}
 
 // A patch is the set of strokes selected when it was made — unordered,
 // undirected, two or more. How it's filled (loft, Coons, N-sided) is derived
@@ -193,6 +219,11 @@ export function split_stroke(
   // Both halves of a midline stroke stay in the plane (Q75); the knot is on it
   // through them, so the vertex needs no flag of its own.
   if (stroke.midline === true) stroke_by_id(tablet_document, second_stroke).midline = true;
+  if (stroke.radii !== undefined) {
+    const halves = split_stroke_radii(stroke.radii, t);
+    stroke.radii = halves.left;
+    stroke_by_id(tablet_document, second_stroke).radii = halves.right;
+  }
   tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
   // A patch bounded by the split stroke is now bounded by both halves.
   for (const patch of tablet_document.patches) {

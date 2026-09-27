@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { StrokeId, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -152,6 +152,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_add_line_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
+    refresh_width_panel();
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
@@ -644,6 +645,129 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     end_history_step(history, tablet_document, label);
     request_render();
+  });
+
+  // Width panel: the C++ Selection panel's radii controls (game_main.cpp, search
+  // "raw radii") for the selected stroke. `width` scales the stroke's own profile
+  // (keeps its taper), `taper` picks a preset end shape at that width, `raw`
+  // edits the four multipliers directly. One history entry per slider drag or
+  // per picked value; consecutive edits of one stroke merge into one entry.
+  const width_button = document.getElementById("width_button") as HTMLButtonElement;
+  const width_panel = document.getElementById("width_panel") as HTMLDivElement;
+  const WIDTH_SLIDER_MIN = 0.1, WIDTH_SLIDER_MAX = 4; // log scale, as the C++ slider
+  const TAPER_PRESETS: { name: string; radii: StrokeRadii }[] = [
+    { name: "flat", radii: [1, 1, 1, 1] },
+    { name: "default (.25 1 1 .25)", radii: [0.25, 1, 1, 0.25] },
+    { name: "tip in (.25 1 1 1)", radii: [0.25, 1, 1, 1] },
+    { name: "tip out (1 1 1 .25)", radii: [1, 1, 1, 0.25] },
+  ];
+  const width_panel_empty = document.createElement("div");
+  width_panel_empty.className = "empty";
+  width_panel_empty.textContent = "(no line selected)";
+  const width_panel_controls = document.createElement("div");
+  width_panel_controls.className = "controls";
+  const width_slider = document.createElement("input");
+  width_slider.type = "range";
+  width_slider.min = "0";
+  width_slider.max = "1";
+  width_slider.step = "0.001";
+  const width_readout = document.createElement("span");
+  const taper_select = document.createElement("select");
+  for (const preset of TAPER_PRESETS) taper_select.appendChild(new Option(preset.name));
+  taper_select.appendChild(new Option("custom"));
+  const raw_inputs: HTMLInputElement[] = [0, 1, 2, 3].map(() => {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = "8";
+    input.step = "0.05";
+    return input;
+  });
+  function labelled_row(label: string, ...controls: HTMLElement[]): HTMLLabelElement {
+    const row = document.createElement("label");
+    row.append(label, ...controls);
+    return row;
+  }
+  width_panel_controls.append(
+    labelled_row("width", width_slider, width_readout),
+    labelled_row("taper", taper_select),
+    labelled_row("raw", ...raw_inputs),
+  );
+  width_panel.append(width_panel_empty, width_panel_controls);
+
+  function width_of_radii(radii: StrokeRadii): number {
+    return Math.max(radii[0], radii[1], radii[2], radii[3]);
+  }
+  function radii_equal(a: StrokeRadii, b: StrokeRadii): boolean {
+    return a.every((value, index) => Math.abs(value - b[index]) < 1e-6);
+  }
+  function refresh_width_panel(): void {
+    const has_stroke = edit_state !== null;
+    width_panel_empty.style.display = has_stroke ? "none" : "";
+    width_panel_controls.style.display = has_stroke ? "" : "none";
+    if (!has_stroke) return;
+    const radii = stroke_radii(stroke_by_id(tablet_document, edit_state!.stroke_id));
+    const width = width_of_radii(radii);
+    // Don't fight the control being dragged/typed into.
+    const active = document.activeElement;
+    if (active !== width_slider) {
+      const clamped = Math.min(Math.max(width, WIDTH_SLIDER_MIN), WIDTH_SLIDER_MAX);
+      width_slider.value = String(Math.log(clamped / WIDTH_SLIDER_MIN) / Math.log(WIDTH_SLIDER_MAX / WIDTH_SLIDER_MIN));
+    }
+    width_readout.textContent = width.toFixed(2);
+    const preset_index = TAPER_PRESETS.findIndex((preset) => width > 0 && radii_equal(radii, preset.radii.map((r) => r * width) as StrokeRadii));
+    taper_select.selectedIndex = preset_index >= 0 ? preset_index : TAPER_PRESETS.length;
+    raw_inputs.forEach((input, index) => {
+      if (active !== input) input.value = radii[index].toFixed(2);
+    });
+  }
+  // A slider drag is many `input` events and one `change`; the step opens on
+  // the first input and closes on the change.
+  let width_edit_pending = false;
+  function apply_radii_to_selected_stroke(radii: StrokeRadii): void {
+    if (edit_state === null) return;
+    if (!width_edit_pending) {
+      begin_history_step(history, tablet_document);
+      width_edit_pending = true;
+    }
+    const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    if (radii_equal(radii, DEFAULT_STROKE_RADII)) delete stroke.radii;
+    else stroke.radii = radii;
+    request_render();
+  }
+  function commit_radii_edit(): void {
+    if (!width_edit_pending || edit_state === null) return;
+    width_edit_pending = false;
+    end_history_step(history, tablet_document, `set radii stroke ${edit_state.stroke_id}`, true);
+    request_render();
+  }
+  width_slider.addEventListener("input", () => {
+    if (edit_state === null) return;
+    const new_width = WIDTH_SLIDER_MIN * Math.pow(WIDTH_SLIDER_MAX / WIDTH_SLIDER_MIN, Number(width_slider.value));
+    const radii = stroke_radii(stroke_by_id(tablet_document, edit_state.stroke_id));
+    const width = width_of_radii(radii);
+    const scaled = width > 0 ? radii.map((r) => r * new_width / width) : [1, 1, 1, 1].map((r) => r * new_width);
+    apply_radii_to_selected_stroke(scaled as StrokeRadii);
+  });
+  width_slider.addEventListener("change", commit_radii_edit);
+  taper_select.addEventListener("change", () => {
+    if (edit_state === null || taper_select.selectedIndex >= TAPER_PRESETS.length) return;
+    const width = width_of_radii(stroke_radii(stroke_by_id(tablet_document, edit_state.stroke_id)));
+    apply_radii_to_selected_stroke(TAPER_PRESETS[taper_select.selectedIndex].radii.map((r) => r * width) as StrokeRadii);
+    commit_radii_edit();
+  });
+  raw_inputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      const raw = raw_inputs.map((each) => Number(each.value));
+      if (raw.some((value) => !Number.isFinite(value) || value < 0)) return;
+      apply_radii_to_selected_stroke(raw as StrokeRadii);
+    });
+    input.addEventListener("change", commit_radii_edit);
+  });
+  width_button.addEventListener("click", () => {
+    width_panel.classList.toggle("open");
+    width_button.classList.toggle("armed", width_panel.classList.contains("open"));
+    refresh_width_panel();
   });
 
   // Add line (plan-sketchpad-vertex-nudge-link.md Q80): a straight stroke between

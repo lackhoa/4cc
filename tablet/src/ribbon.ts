@@ -1,33 +1,31 @@
 // Stroke tessellation, matching the desktop renderer (draw_bezier_inner in
 // game/framework_draw.cpp): each sample is offset perpendicular to the curve
 // tangent IN CAMERA SPACE (billboard), so a stroke never vanishes edge-on.
-// Radius is world-space (thins with distance). The taper machinery is kept but
-// set flat (1, 1, 1, 1): Khoa wants plain constant-width lines (2026-09-27).
-// Mesh depends on the camera — rebuild it whenever the camera moves.
+// Radius is world-space (thins with distance): RIBBON_RADIUS times the stroke's
+// own width profile (`Stroke.radii`, edited in the sketchpad's width panel;
+// absent = flat unit width, Khoa wants plain constant-width lines by default,
+// 2026-09-27). Mesh depends on the camera — rebuild it whenever the camera moves.
 
 import { OrbitCamera, camera_basis } from "./camera";
-import { Stroke, StrokeControlPoints, TabletDocument, bezier_point, bezier_tangent, stroke_control_points } from "./document";
+import {
+  DEFAULT_STROKE_RADII, Stroke, StrokeControlPoints, StrokeRadii, TabletDocument,
+  bezier_point, bezier_tangent, stroke_control_points, stroke_radii, stroke_radii_at,
+} from "./document";
 import { v3_add, v3_dot, v3_length, v3_scale, v3_sub, V3 } from "./math";
 import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
 const RIBBON_RADIUS = 0.01; // world units; grid cell = 1
 const RIBBON_SAMPLES = 24;
-// Cubic-bezier-interpolated radii multipliers along the stroke. Flat = no taper;
-// the desktop default was (.25, 1, 1, .25).
-const TAPER = [1, 1, 1, 1];
 
 export type { Rgb };
-
-function taper_at(t: number): number {
-  const s = 1 - t;
-  return s * s * s * TAPER[0] + 3 * s * s * t * TAPER[1] + 3 * s * t * t * TAPER[2] + t * t * t * TAPER[3];
-}
 
 // Appends interleaved [x,y,z, r,g,b] triangle vertices to out.
 export function append_stroke_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
-  append_bezier_ribbon(stroke_control_points(stroke, tablet_document), { start: 0, end: 1 }, camera, color, out);
+  append_bezier_ribbon(
+    stroke_control_points(stroke, tablet_document), stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out,
+  );
 }
 
 // Where this cubic sits in the taper of the whole curve it belongs to, as a
@@ -36,7 +34,7 @@ export function append_stroke_ribbon(
 export type TaperWindow = { start: number; end: number };
 
 export function append_bezier_ribbon(
-  points: StrokeControlPoints, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
+  points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
   const basis = camera_basis(camera);
   const centers: V3[] = [];
@@ -49,7 +47,7 @@ export function append_bezier_ribbon(
     const screen_x = v3_dot(tangent, basis.right);
     const screen_y = v3_dot(tangent, basis.up);
     const len = Math.hypot(screen_x, screen_y);
-    const radius = RIBBON_RADIUS * taper_at(taper_window.start + (taper_window.end - taper_window.start) * t);
+    const radius = RIBBON_RADIUS * stroke_radii_at(radii, taper_window.start + (taper_window.end - taper_window.start) * t);
     if (len < 1e-9) {
       // Tangent points straight at the camera; fall back to screen-right.
       offsets.push(v3_scale(basis.right, radius));
@@ -73,8 +71,9 @@ export function append_bezier_ribbon(
   }
 }
 
-// A chain of cubics rendered as one stroke: a single taper spread over the
-// chain by chord length (cubics here are short cell segments, chord ≈ arc).
+// A chain of cubics rendered as one stroke: a single (default, flat) profile
+// spread over the chain by chord length (cubics here are short cell segments,
+// chord ≈ arc).
 export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: VertexSink): void {
   const chords = chain.map((points) => v3_length(v3_sub(points.p3, points.p0)));
   const total = chords.reduce((sum, chord) => sum + chord, 0);
@@ -83,6 +82,6 @@ export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitC
   chain.forEach((points, index) => {
     const start = covered / total;
     covered += chords[index];
-    append_bezier_ribbon(points, { start, end: covered / total }, camera, color, out);
+    append_bezier_ribbon(points, DEFAULT_STROKE_RADII, { start, end: covered / total }, camera, color, out);
   });
 }
