@@ -447,7 +447,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       edit_state.dragging !== null || edit_state.dragging_pin !== null || edit_state.moving_whole_stroke;
     if (edit_state.moving_whole_stroke) pen_history_label = `move stroke ${edit_state.stroke_id}`;
     else if (edit_state.dragging_pin !== null) pen_history_label = `move pin ${edit_state.dragging_pin}`;
-    else if (edit_state.dragging !== null) pen_history_label = `move handle of stroke ${edit_state.stroke_id}`;
+    else if (edit_state.dragging !== null) {
+      // Same label for every drag of one control point, so a run of them merges
+      // into a single history entry (see end_history_step).
+      pen_history_label = `move ${edit_state.dragging} of stroke ${edit_state.stroke_id}`;
+      pen_history_merge = true;
+    }
     edit_pen_up(edit_state, tablet_document);
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap || was_control_drag) return;
@@ -726,11 +731,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // What the current pen gesture did, for the history panel; branches of pen-up
   // overwrite it, the fallback covers anything unlabelled.
   let pen_history_label = "edit";
+  let pen_history_merge = false; // true = a repeat of the previous gesture extends its entry
 
   attach_gestures(canvas, camera, {
     on_pen_down: (position) => {
       begin_history_step(history, tablet_document);
       pen_history_label = "edit";
+      pen_history_merge = false;
       pen_down_screen = position;
       pen_max_displacement_pixels = 0;
       pen_orbit_last_screen = null;
@@ -752,7 +759,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       request_render();
     },
-    on_pen_move: (position) => {
+    on_pen_move: (position, event) => {
       if (pen_down_screen !== null) {
         pen_max_displacement_pixels = Math.max(
           pen_max_displacement_pixels,
@@ -771,7 +778,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         vertex.position = v3_add(vertex.position, camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas));
         selected_vertex_drag_last_screen = position;
       } else if (edit_state !== null) {
-        edit_pen_move(edit_state, tablet_document, camera, position, canvas, handle_mode);
+        // Ctrl/cmd held during a handle drag = swing for that drag, without
+        // reaching for the swing button; the button stays the sticky mode.
+        const drag_handle_mode: HandleMode = event.ctrlKey || event.metaKey ? "swing" : handle_mode;
+        edit_pen_move(edit_state, tablet_document, camera, position, canvas, drag_handle_mode);
       }
       request_render();
     },
@@ -805,7 +815,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_orbit_last_screen = null;
       selected_vertex_drag_last_screen = null;
       hover_screen = position;
-      end_history_step(history, tablet_document, pen_history_label);
+      end_history_step(history, tablet_document, pen_history_label, pen_history_merge);
       request_render();
     },
     on_pen_hover: (position) => {
