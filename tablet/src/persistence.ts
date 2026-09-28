@@ -272,7 +272,7 @@ export async function load_current_document_on_startup(
   // page stays read-only for this session and says so.
   const known = await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
   state.ready = known;
-  if (!known) window.alert(`Document '${name}' could not be loaded. Autosave is OFF for this tab; reload to try again.`);
+  if (!known) window.alert(`Document '${name}' could not be loaded (missing on the server, or the server is down). Autosave is OFF for this tab; reload to try again.`);
 }
 
 type ServerLoadResult = "loaded" | "missing" | "failed";
@@ -320,9 +320,13 @@ async function load_current_document_inner(
     console.warn(`ignoring unsaved crash buffer for '${name}': older than the server copy`);
   }
   if (server_entry === undefined) console.warn(`document '${name}' is not in the server list; asking for the file directly`);
+  // NOTE(kv): a missing file is an error at startup, not a new document (Khoa,
+  // 2026-09-28): the tab stays empty with autosave OFF, so it can never create (or
+  // later clobber) a file by accident. New documents come only from "new…" in the docs
+  // panel (switch_document).
   const result = await load_document_from_server(state, tablet_document, camera, name);
-  if (result === "missing") console.warn(`document '${name}' does not exist on the server: starting empty`);
-  return result !== "failed";
+  if (result === "missing") console.error(`document '${name}' does not exist on the server`);
+  return result === "loaded";
 }
 
 // Rename the current document: save it under the new name, then delete the
