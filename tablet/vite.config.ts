@@ -81,19 +81,34 @@ function handle_document_load(name: string, response: ServerResponse): void {
   response.end(fs.readFileSync(file_path));
 }
 
+// A stored document with no strokes and no vertices (any format version).
+function document_is_empty(stored: any): boolean {
+  const inner = stored?.document;
+  return !inner || ((inner.strokes?.length ?? 0) === 0 && (inner.vertices?.length ?? 0) === 0);
+}
+
 function handle_document_save(name: string, request: IncomingMessage, response: ServerResponse): void {
   const chunks: Buffer[] = [];
   request.on("data", (chunk: Buffer) => chunks.push(chunk));
   request.on("end", () => {
     const body = Buffer.concat(chunks).toString("utf8");
+    let parsed;
     try {
-      JSON.parse(body); // refuse to persist a corrupt payload
+      parsed = JSON.parse(body); // refuse to persist a corrupt payload
     } catch {
       send_json(response, 400, { error: "body is not valid JSON" });
       return;
     }
     if (!fs.existsSync(documents_directory)) fs.mkdirSync(documents_directory);
     const file_path = path.join(documents_directory, `${name}.json`);
+    // NOTE(kv): 2026-09-28 a tab that came up with an empty document (silent startup
+    // path) autosaved it over the 13 KB skull-zanatomy file. An empty document never
+    // replaces a file that has strokes; clearing on purpose means deleting the file.
+    if (document_is_empty(parsed) && fs.existsSync(file_path) && !document_is_empty(JSON.parse(fs.readFileSync(file_path, "utf8")))) {
+      console.error(`refused to overwrite non-empty document ${name} with an empty one`);
+      send_json(response, 409, { error: `document ${name} has strokes; refusing to overwrite it with an empty document` });
+      return;
+    }
     fs.writeFileSync(file_path, body);
     send_json(response, 200, { ok: true, mtime_ms: fs.statSync(file_path).mtimeMs });
   });

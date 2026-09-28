@@ -24,7 +24,7 @@ import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
-import { clear_document_in_place, create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
+import { create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
 
 // What differs between the pages that run the sketchpad.
@@ -1004,20 +1004,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   });
 
-  const clear_button = document.getElementById("clear_button") as HTMLButtonElement;
-  clear_button.addEventListener("click", () => {
-    if (tablet_document.strokes.length === 0) return;
-    if (!window.confirm("Erase all strokes?")) return;
-    begin_history_step(history, tablet_document);
-    clear_document_in_place(tablet_document);
-    end_history_step(history, tablet_document, "clear");
-    edit_state = null;
-    extra_selection = [];
-    selected_vertex = null;
-    extra_vertex = null;
-    set_armed_tool(null);
-    request_render();
-  });
+  // NOTE(kv): the toolbar "clear" button was removed on 2026-09-28 (Khoa: one tap next to
+  // ref/surf must not be able to erase a document); delete strokes one by one, or undo.
 
   // Snap the camera to the nearest frontal/profile/back view (desktop key A);
   // snapping again toggles back to the previous view. previous starts at

@@ -210,6 +210,9 @@ async function save_to_server(name: string, json: string): Promise<boolean> {
       body: json,
     });
     if (!response.ok) console.error(`document save failed: ${response.status}`);
+    // 409 = the server refused to replace a document that has strokes with an empty one
+    // (vite.config.ts handle_document_save): this tab's state is wrong, not the file.
+    if (response.status === 409) window.alert(`Save refused: '${name}' on the server has strokes and this tab is empty. Reload this tab.`);
     return response.ok;
   } catch (error) {
     console.error("document save failed (server unreachable)", error);
@@ -262,21 +265,47 @@ export async function load_current_document_on_startup(
   const name = state.current_document_name;
   const buffer = read_crash_buffer(state);
   const server_list = await list_documents_from_server();
+  // NOTE(kv): 2026-09-28 a tab came up empty through a silent branch here, was marked
+  // ready anyway, and its first autosave replaced the 13 KB skull-zanatomy file with an
+  // empty document. `ready` (= autosave allowed) is now only set when the document's
+  // state is actually known: loaded, or confirmed absent on the server. Otherwise the
+  // page stays read-only for this session and says so.
+  const known = await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
+  state.ready = known;
+  if (!known) window.alert(`Document '${name}' could not be loaded. Autosave is OFF for this tab; reload to try again.`);
+}
+
+type ServerLoadResult = "loaded" | "missing" | "failed";
+
+// GET the document itself (never trust the list alone: a name absent from it may still
+// be a file on disk). "missing" only on a 404.
+async function load_document_from_server(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, name: string): Promise<ServerLoadResult> {
   try {
-    await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
-  } finally {
-    state.ready = true;
+    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);
+    if (response.status === 404) return "missing";
+    if (!response.ok) {
+      console.error(`loading document '${name}' failed: ${response.status}`);
+      return "failed";
+    }
+    const json = await response.text();
+    if (!apply_document_state(json, tablet_document, camera)) return "failed";
+    state.last_saved_json = json;
+    return "loaded";
+  } catch (error) {
+    console.error(`loading document '${name}' failed`, error);
+    return "failed";
   }
 }
 
+// Returns whether the document's state is known (loaded, or confirmed new).
 async function load_current_document_inner(
   state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera,
   name: string, buffer: CrashBuffer | null, server_list: DocumentListEntry[] | null,
-): Promise<void> {
+): Promise<boolean> {
   if (server_list === null) {
     console.error("document server unreachable at startup — using localStorage buffer");
-    if (buffer !== null && buffer.name === name) apply_document_state(buffer.json, tablet_document, camera);
-    return;
+    if (buffer !== null && buffer.name === name) return apply_document_state(buffer.json, tablet_document, camera);
+    return false;
   }
   const server_entry = server_list.find((entry) => entry.name === name);
   if (buffer !== null && buffer.name === name && !buffer.server_saved) {
@@ -284,23 +313,16 @@ async function load_current_document_inner(
     const buffer_is_newer = server_entry === undefined || (buffer.saved_at_ms ?? 0) > server_entry.mtime_ms;
     if (buffer_is_newer) {
       console.log(`restoring unsaved crash buffer for '${name}' and pushing to server`);
-      if (apply_document_state(buffer.json, tablet_document, camera)) {
-        await save_now(state, tablet_document, camera);
-      }
-      return;
+      if (!apply_document_state(buffer.json, tablet_document, camera)) return false;
+      await save_now(state, tablet_document, camera);
+      return true;
     }
     console.warn(`ignoring unsaved crash buffer for '${name}': older than the server copy`);
   }
-  if (server_entry !== undefined) {
-    try {
-      const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);
-      const json = await response.text();
-      if (apply_document_state(json, tablet_document, camera)) state.last_saved_json = json;
-    } catch (error) {
-      console.error(`loading document '${name}' failed`, error);
-    }
-  }
-  // Name unknown to the server and no buffer: fresh empty document.
+  if (server_entry === undefined) console.warn(`document '${name}' is not in the server list; asking for the file directly`);
+  const result = await load_document_from_server(state, tablet_document, camera, name);
+  if (result === "missing") console.warn(`document '${name}' does not exist on the server: starting empty`);
+  return result !== "failed";
 }
 
 // Rename the current document: save it under the new name, then delete the
