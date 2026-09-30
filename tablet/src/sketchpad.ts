@@ -149,6 +149,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     enforce_midline(tablet_document);
     update_pinned_vertex_positions(tablet_document);
     refresh_pin_button_armed();
+    refresh_split_here_button();
     refresh_midline_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
@@ -610,6 +611,28 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       label = `smooth strokes ${edit_state.stroke_id} ${other}`;
     }
     end_history_step(history, tablet_document, label);
+    request_render();
+  });
+
+  // Split here (plan-sketchpad-split-at-vertex.md): a pinned vertex is selected by
+  // tapping it while its host stroke is selected; this button then cuts the stroke
+  // exactly there, the vertex becoming the smooth knot. Shown only while such a
+  // vertex is selected -- the same state the pin button reads for "unpin".
+  const split_here_button = document.getElementById("split_here_button") as HTMLButtonElement;
+  function refresh_split_here_button(): void {
+    split_here_button.hidden = edit_state === null || edit_state.selected_pin === null;
+  }
+  split_here_button.addEventListener("click", () => {
+    if (edit_state === null || edit_state.selected_pin === null) return;
+    const stroke_id = edit_state.stroke_id;
+    const vertex = edit_state.selected_pin;
+    const pin = pin_by_vertex(tablet_document, vertex);
+    if (pin === null || pin.host_stroke !== stroke_id) return;
+    begin_history_step(history, tablet_document);
+    const new_stroke = split_stroke(tablet_document, stroke_id, pin.t, vertex);
+    if (new_stroke === null) return; // pin within the end guard: nothing to record
+    edit_state.selected_pin = null; // the pin is gone; [0, t] half stays selected (Q5)
+    end_history_step(history, tablet_document, `split stroke ${stroke_id} at vertex ${vertex}`);
     request_render();
   });
 
