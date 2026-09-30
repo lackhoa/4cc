@@ -12,9 +12,9 @@
 // surface normal vs the camera forward, two-sided), which fits the existing
 // position+color pipeline.
 
-import { OrbitCamera, camera_basis } from "./camera";
-import { Patch, Stroke, TabletDocument, VertexId, bezier_point, bezier_tangent, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
-import { V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
+import { OrbitCamera, camera_basis, camera_eye, camera_world_to_screen } from "./camera";
+import { Patch, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
+import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
@@ -22,34 +22,80 @@ const LOFT_ROWS_ACROSS = 4;
 const COONS_GRID = 16; // grid cells per side
 const SURFACE_AMBIENT = 0.35;
 
-type OrientedStroke = { stroke: Stroke; reversed: boolean };
+// A vertex where the loop may switch from one stroke to another: one of the
+// stroke's endpoints (t = 0 / 1) or a vertex pinned to it
+// (plan-patch-subcurve-boundary.md Q1).
+type Junction = { vertex: VertexId; t: number };
+// The piece of a stroke the loop runs along, from the `start` junction to the
+// `end` junction — the whole cubic when both are endpoints, a sub-curve when
+// either is a pin. `reversed` = the piece runs against the stroke's own
+// direction (end.t < start.t).
+type OrientedStroke = { stroke: Stroke; start: Junction; end: Junction; reversed: boolean };
 // One logical side of the loop: a run of strokes between two corners, in
 // loop order, each oriented to run forward along the loop.
 type Side = OrientedStroke[];
 type Color = { r: number; g: number; b: number };
 
+function oriented_between(stroke: Stroke, start: Junction, end: Junction): OrientedStroke {
+  return { stroke, start, end, reversed: end.t < start.t };
+}
+
+function whole_stroke(stroke: Stroke, reversed: boolean): OrientedStroke {
+  const p0: Junction = { vertex: stroke.p0_vertex, t: 0 };
+  const p3: Junction = { vertex: stroke.p3_vertex, t: 1 };
+  return reversed ? oriented_between(stroke, p3, p0) : oriented_between(stroke, p0, p3);
+}
+
+// Endpoints first so whole strokes are preferred by the search below.
+function stroke_junctions(stroke: Stroke, tablet_document: TabletDocument): Junction[] {
+  const junctions: Junction[] = [{ vertex: stroke.p0_vertex, t: 0 }, { vertex: stroke.p3_vertex, t: 1 }];
+  for (const pin of pins_on_stroke(tablet_document, stroke.id)) junctions.push({ vertex: pin.vertex, t: pin.t });
+  return junctions;
+}
+
 function start_vertex(oriented: OrientedStroke): VertexId {
-  return oriented.reversed ? oriented.stroke.p3_vertex : oriented.stroke.p0_vertex;
+  return oriented.start.vertex;
 }
 
 function end_vertex(oriented: OrientedStroke): VertexId {
-  return oriented.reversed ? oriented.stroke.p0_vertex : oriented.stroke.p3_vertex;
+  return oriented.end.vertex;
 }
 
 // Chain the strokes head-to-tail by shared vertex ids into a closed loop,
-// starting from the first stroke as drawn. Null if some stroke doesn't
-// connect or the chain doesn't close.
-function chain_into_loop(strokes: Stroke[]): OrientedStroke[] | null {
-  const loop: OrientedStroke[] = [{ stroke: strokes[0], reversed: false }];
-  const remaining = strokes.slice(1);
-  while (remaining.length > 0) {
+// starting from the first stroke as drawn. A stroke may be entered or left at
+// any of its junctions, so a loop can use just the piece of a stroke between two
+// of them (Q1); each stroke is used once. Depth-first over (stroke, entry,
+// exit) — a patch has a handful of strokes — returning the first closed
+// chain, whole strokes tried before sub-curves (Q2). Null if some stroke
+// doesn't connect or no chain closes.
+function chain_into_loop(strokes: Stroke[], tablet_document: TabletDocument): OrientedStroke[] | null {
+  const search = (loop: OrientedStroke[], remaining: Stroke[]): OrientedStroke[] | null => {
     const loop_end = end_vertex(loop[loop.length - 1]);
-    const index = remaining.findIndex((stroke) => stroke.p0_vertex === loop_end || stroke.p3_vertex === loop_end);
-    if (index === -1) return null;
-    const stroke = remaining.splice(index, 1)[0];
-    loop.push({ stroke, reversed: stroke.p3_vertex === loop_end });
+    if (remaining.length === 0) return loop_end === start_vertex(loop[0]) ? loop : null;
+    for (let i = 0; i < remaining.length; i++) {
+      const stroke = remaining[i];
+      const junctions = stroke_junctions(stroke, tablet_document);
+      const entry = junctions.find((junction) => junction.vertex === loop_end);
+      if (entry === undefined) continue;
+      const rest = remaining.filter((_, j) => j !== i);
+      for (const exit of junctions) {
+        if (exit === entry) continue;
+        const found = search([...loop, oriented_between(stroke, entry, exit)], rest);
+        if (found !== null) return found;
+      }
+    }
+    return null;
+  };
+  const first = strokes[0];
+  const first_junctions = stroke_junctions(first, tablet_document);
+  for (const start of first_junctions) {
+    for (const end of first_junctions) {
+      if (start === end) continue;
+      const found = search([oriented_between(first, start, end)], strokes.slice(1));
+      if (found !== null) return found;
+    }
   }
-  return end_vertex(loop[loop.length - 1]) === start_vertex(loop[0]) ? loop : null;
+  return null;
 }
 
 function strokes_are_smooth_at(tablet_document: TabletDocument, vertex: VertexId, a: Stroke, b: Stroke): boolean {
@@ -89,12 +135,12 @@ function cut_loop_into_sides(loop: OrientedStroke[], tablet_document: TabletDocu
 }
 
 // Position and forward tangent at parameter u in [0, 1] along a whole side,
-// each stroke taking an equal share of the parameter range.
+// each stroke piece taking an equal share of the parameter range (Q4).
 function side_point(side: Side, tablet_document: TabletDocument, u: number): { position: V3; tangent: V3 } {
   const scaled = Math.min(u * side.length, side.length - 1e-9);
   const oriented = side[Math.floor(scaled)];
   const local = scaled - Math.floor(scaled);
-  const t = oriented.reversed ? 1 - local : local;
+  const t = oriented.start.t + (oriented.end.t - oriented.start.t) * local;
   const points = stroke_control_points(oriented.stroke, tablet_document);
   const tangent = bezier_tangent(points, t);
   return { position: bezier_point(points, t), tangent: oriented.reversed ? v3_scale(tangent, -1) : tangent };
@@ -107,7 +153,7 @@ function sample_side(side: Side, tablet_document: TabletDocument, sample_count: 
 }
 
 function reversed_side(side: Side): Side {
-  return side.map((oriented) => ({ stroke: oriented.stroke, reversed: !oriented.reversed })).reverse();
+  return side.map((oriented) => oriented_between(oriented.stroke, oriented.end, oriented.start)).reverse();
 }
 
 // Two detached rails drawn in opposite directions would twist the loft;
@@ -242,11 +288,13 @@ export type PatchFill = { kind: "loft"; side_a: Side; side_b: Side } | { kind: "
 
 export function resolve_patch_fill(patch: Patch, tablet_document: TabletDocument): PatchFill | null {
   const strokes = patch.strokes.map((id) => stroke_by_id(tablet_document, id));
-  const loop = chain_into_loop(strokes);
+  const loop = chain_into_loop(strokes, tablet_document);
   if (loop === null) {
+    // Detached rails: whole strokes only, there is no shared vertex to say
+    // where a sub-curve would start (Q5).
     if (strokes.length !== 2) return null;
     const crossed = rails_are_crossed(strokes[0], strokes[1], tablet_document);
-    return { kind: "loft", side_a: [{ stroke: strokes[0], reversed: false }], side_b: [{ stroke: strokes[1], reversed: crossed }] };
+    return { kind: "loft", side_a: [whole_stroke(strokes[0], false)], side_b: [whole_stroke(strokes[1], crossed)] };
   }
   const sides = cut_loop_into_sides(loop, tablet_document);
   if (sides === null) return null;
@@ -270,4 +318,65 @@ export function append_patch_mesh(patch: Patch, tablet_document: TabletDocument,
   // The loft keeps its analytic-partial shading; Coons shades per triangle.
   if (fill.kind === "loft") append_loft_mesh(fill.side_a, fill.side_b, tablet_document, camera, color, out);
   else append_grid_mesh(coons_surface_grid(fill.sides, tablet_document), camera, color, out);
+}
+
+// Locks (plan-patch-subcurve-boundary.md Q3/Q7): a patch owns its boundary.
+// While a patch lists a stroke, the stroke can't be deleted or joined; while
+// the resolved loop passes through a pinned vertex, that vertex can't be
+// unpinned (the sub-curve would lose its end). Both derived per query, never
+// stored: delete the patch and the lock is gone.
+
+// The vertices at the ends of every stroke piece the fill uses (the loop's
+// junctions; a detached loft's rail endpoints); empty when the patch has no fill.
+export function patch_junction_vertices(patch: Patch, tablet_document: TabletDocument): VertexId[] {
+  const fill = resolve_patch_fill(patch, tablet_document);
+  if (fill === null) return [];
+  const sides = fill.kind === "loft" ? [fill.side_a, fill.side_b] : fill.sides;
+  const vertices: VertexId[] = [];
+  for (const side of sides) for (const oriented of side) vertices.push(oriented.start.vertex, oriented.end.vertex);
+  return vertices;
+}
+
+export function stroke_bounds_a_patch(tablet_document: TabletDocument, stroke_id: StrokeId): boolean {
+  return tablet_document.patches.some((patch) => patch.strokes.includes(stroke_id));
+}
+
+export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId): boolean {
+  return tablet_document.patches.some((patch) => patch_junction_vertices(patch, tablet_document).includes(vertex));
+}
+
+// Fill hit test (Q10): the index of the patch whose surface is under the tap,
+// nearest to the eye when several overlap, or null. Every triangle of the
+// per-frame surface grid is projected and tested in 2D, so what you see is
+// what you pick. Callers try vertices and strokes first.
+export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement): number | null {
+  const eye = camera_eye(camera);
+  const project = (world: V3): V2 | null => camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
+  const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
+  const contains = (a: V2, b: V2, c: V2): boolean => {
+    const ab = side(a, b), bc = side(b, c), ca = side(c, a);
+    return (ab >= 0 && bc >= 0 && ca >= 0) || (ab <= 0 && bc <= 0 && ca <= 0);
+  };
+  let best_index: number | null = null;
+  let best_distance = Infinity;
+  tablet_document.patches.forEach((patch, index) => {
+    const grid = patch_surface_grid(patch, tablet_document);
+    if (grid === null) return;
+    const test = (p: V3, q: V3, r: V3): void => {
+      const a = project(p), b = project(q), c = project(r);
+      if (a === null || b === null || c === null || !contains(a, b, c)) return;
+      const distance = v3_length(v3_sub(v3_scale(v3_add(v3_add(p, q), r), 1 / 3), eye));
+      if (distance < best_distance) {
+        best_distance = distance;
+        best_index = index;
+      }
+    };
+    for (let j = 0; j < grid.rows; j++) {
+      for (let i = 0; i < grid.columns; i++) {
+        test(grid.positions[i][j], grid.positions[i + 1][j], grid.positions[i + 1][j + 1]);
+        test(grid.positions[i][j], grid.positions[i + 1][j + 1], grid.positions[i][j + 1]);
+      }
+    }
+  });
+  return best_index;
 }

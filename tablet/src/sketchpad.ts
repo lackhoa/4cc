@@ -12,13 +12,13 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, patch_surface_grid } from "./patch";
+import { append_patch_mesh, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
@@ -42,6 +42,7 @@ export type SketchpadSetup = {
 // linear -> 0.196 sRGB; we write sRGB straight to the framebuffer).
 const STROKE_COLOR = { r: 0.196, g: 0.196, b: 0.196 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
+const PATCH_HIGHLIGHT_COLOR = { r: 0.75, g: 0.5, b: 0.2 }; // the selected patch's fill (plan-patch-subcurve-boundary.md Q11)
 const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
@@ -90,6 +91,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // vertex while one is selected. Only the add-line button reads it; nudge and
   // drag move the primary alone. Cleared wherever selected_vertex is.
   let extra_vertex: VertexId | null = null;
+  // Patch selection (plan-patch-subcurve-boundary.md Q9-Q11): a tap on a fill
+  // that hit no vertex and no stroke. Index into tablet_document.patches
+  // (patches have no ids); exclusive with the stroke and vertex selections.
+  // Only `del` acts on it. Cleared wherever the others are.
+  let selected_patch: number | null = null;
   let selected_vertex_drag_last_screen: V2 | null = null; // non-null while the pen drags the selected vertex
   // Armed tools: "line" creates strokes. "pin" waits for a tap on the selected
   // stroke's curve and creates a vertex pinned there. "split" waits for a tap on
@@ -150,6 +156,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     update_pinned_vertex_positions(tablet_document);
     refresh_pin_button_armed();
     refresh_split_here_button();
+    refresh_lock_buttons();
     refresh_midline_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
@@ -257,9 +264,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function rebuild_surface_mesh(): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
-    for (const patch of tablet_document.patches) {
-      append_patch_mesh(patch, tablet_document, camera, surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR, vertices);
-    }
+    tablet_document.patches.forEach((patch, index) => {
+      const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR : surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR;
+      append_patch_mesh(patch, tablet_document, camera, color, vertices);
+    });
     set_surface_mesh(renderer, vertex_sink_view(vertices));
   }
 
@@ -423,6 +431,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function select_stroke_by_tap(picked: StrokeId, multi: boolean): void {
     selected_vertex = null;
     extra_vertex = null;
+    selected_patch = null;
     if (!multi) {
       extra_selection = [];
       edit_state = begin_edit_state(picked);
@@ -493,6 +502,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (picked === null) {
       edit_state = null;
       extra_selection = [];
+      selected_patch = pick_patch(tablet_document, camera, position, canvas); // fill = last resort (Q10)
       return;
     }
     select_stroke_by_tap(picked, multi);
@@ -574,7 +584,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // a vertex); the merged stroke keeps the primary's id and stays selected.
   join_button.addEventListener("click", () => {
     const other = single_extra_stroke();
-    if (edit_state === null || other === null) return;
+    if (edit_state === null || other === null || join_is_locked()) return;
     begin_history_step(history, tablet_document);
     const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, other);
     end_history_step(history, tablet_document, `join strokes ${edit_state.stroke_id} ${other}`);
@@ -642,6 +652,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   pin_button.addEventListener("click", () => {
     if (edit_state === null) return; // needs a selected host stroke
     if (edit_state.selected_pin !== null) {
+      if (unpin_is_locked()) return; // a patch's sub-curve ends here (Q3)
       begin_history_step(history, tablet_document);
       const unpinned_vertex = edit_state.selected_pin;
       tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== unpinned_vertex);
@@ -848,6 +859,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       case "k": nudge_selected_vertex(0, 1, 0, event.shiftKey); break;
       case "i": nudge_selected_vertex(0, 0, 1, event.shiftKey); break;
       case "o": nudge_selected_vertex(0, 0, -1, event.shiftKey); break;
+      // Delete / Backspace (a Mac keyboard's "delete") = the del button, lock
+      // included (plan-patch-subcurve-boundary.md Q12). Not while typing a name
+      // or a width.
+      case "delete":
+      case "backspace":
+        if (document.activeElement instanceof HTMLInputElement) return;
+        event.preventDefault();
+        delete_button.click();
+        break;
     }
   });
 
@@ -868,6 +888,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     extra_selection = [];
     selected_vertex = null;
     extra_vertex = null;
+    selected_patch = null;
     set_armed_tool(null);
     request_render();
   }
@@ -957,11 +978,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         } else if (picked_vertex !== null) {
           selected_vertex = picked_vertex;
           extra_vertex = null;
+          selected_patch = null;
         } else if (picked_stroke !== null) {
           select_stroke_by_tap(picked_stroke, multi);
         } else {
           selected_vertex = null;
           extra_vertex = null;
+          selected_patch = pick_patch(tablet_document, camera, position, canvas); // fill = last resort (Q10)
         }
       }
       pen_down_screen = null;
@@ -1003,7 +1026,46 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // vertex: clear its name, then garbage-collect — a vertex some stroke still
   // uses stays (unnamed), a landmark goes.
   const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
+  // Locks (plan-patch-subcurve-boundary.md Q3/Q7/Q8): a patch owns its
+  // boundary, so while one exists its strokes can't be deleted or joined and
+  // its junction pins can't be unpinned -- the buttons go disabled with the
+  // reason in their tooltip, and the handlers refuse the same way (the Delete
+  // key goes through the handler). Delete the patch first. Re-checked every
+  // frame from request_render, like the other button states.
+  const DELETE_PATCH_FIRST = "delete the patch first";
+  function selected_strokes(): StrokeId[] {
+    return edit_state === null ? [] : [edit_state.stroke_id, ...extra_selection];
+  }
+  function delete_is_locked(): boolean {
+    return selected_strokes().some((id) => stroke_bounds_a_patch(tablet_document, id));
+  }
+  function join_is_locked(): boolean {
+    if (edit_state === null) return false;
+    // The kept (primary) stroke is reshaped by a join, which would move every
+    // pin riding it -- refused if any of those pins bounds a patch (Q7).
+    return delete_is_locked() || pins_on_stroke(tablet_document, edit_state.stroke_id).some((pin) => pin_is_locked(tablet_document, pin.vertex));
+  }
+  function unpin_is_locked(): boolean {
+    return edit_state !== null && edit_state.selected_pin !== null && pin_is_locked(tablet_document, edit_state.selected_pin);
+  }
+  function refresh_lock_buttons(): void {
+    delete_button.disabled = delete_is_locked();
+    delete_button.title = delete_button.disabled ? `the selected line bounds a patch, ${DELETE_PATCH_FIRST}` : "";
+    join_button.disabled = join_is_locked();
+    join_button.title = join_button.disabled ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : "";
+    pin_button.disabled = unpin_is_locked();
+    pin_button.title = pin_button.disabled ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : "";
+  }
   delete_button.addEventListener("click", () => {
+    if (selected_patch !== null) {
+      begin_history_step(history, tablet_document);
+      const deleted = tablet_document.patches[selected_patch];
+      tablet_document.patches.splice(selected_patch, 1);
+      end_history_step(history, tablet_document, `delete patch [${deleted.strokes.join(" ")}]`);
+      selected_patch = null;
+      request_render();
+      return;
+    }
     if (selected_vertex !== null) {
       begin_history_step(history, tablet_document);
       delete vertex_by_id(tablet_document, selected_vertex).name;
@@ -1014,9 +1076,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       request_render();
       return;
     }
-    if (edit_state === null) return;
+    if (edit_state === null || delete_is_locked()) return;
     begin_history_step(history, tablet_document);
-    const deleted_strokes = [edit_state.stroke_id, ...extra_selection];
+    const deleted_strokes = selected_strokes();
     for (const stroke_id of deleted_strokes) delete_stroke(tablet_document, stroke_id);
     end_history_step(history, tablet_document, `delete strokes [${deleted_strokes.join(" ")}]`);
     edit_state = null;
@@ -1139,6 +1201,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     extra_selection = [];
     selected_vertex = null;
     extra_vertex = null;
+    selected_patch = null;
     set_armed_tool(null);
     clear_history(history); // history is per-document (Q5)
     await switch_document(persistence, tablet_document, camera, name);

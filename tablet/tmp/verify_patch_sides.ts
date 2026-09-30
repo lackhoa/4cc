@@ -5,11 +5,13 @@
 // (degenerate) Coons, and an old-format document
 // with lofts/coons loads as patches.
 // Usage: npx tsx tmp/verify_patch_sides.ts
-import { add_stroke, add_vertex, empty_document, smooth_strokes, split_stroke } from "../src/document";
+import { add_stroke, add_vertex, empty_document, smooth_strokes, split_stroke, update_pinned_vertex_positions, vertex_by_id } from "../src/document";
+import { patch_junction_vertices, patch_surface_grid, pin_is_locked, stroke_bounds_a_patch } from "../src/patch";
 import { append_patch_mesh, resolve_patch_fill } from "../src/patch";
 import { apply_document_state, serialize_document_state } from "../src/persistence";
 import { default_camera } from "../src/camera";
 import { v3 } from "../src/math";
+import { create_vertex_sink, vertex_sink_view } from "../src/vertex_sink";
 import { readFileSync } from "node:fs";
 import { strict as assert } from "node:assert";
 
@@ -70,10 +72,10 @@ const tri_c = add_vertex(doc, v3(31, 2, 0));
 const triangle = { strokes: [add_stroke(doc, tri_a, tri_b, zero, zero), add_stroke(doc, tri_b, tri_c, zero, zero), add_stroke(doc, tri_c, tri_a, zero, zero)] };
 const tri_fill = resolve_patch_fill(triangle, doc);
 assert.ok(tri_fill !== null && tri_fill.kind === "coons" && tri_fill.sides.length === 3);
-const tri_mesh: number[] = [];
+const tri_mesh = create_vertex_sink(16);
 append_patch_mesh(triangle, doc, default_camera(), { r: 1, g: 1, b: 1 }, tri_mesh);
 assert.equal(tri_mesh.length, 16 * 16 * 6 * 6); // COONS_GRID² cells × 6 vertices × 6 floats
-assert.ok(tri_mesh.every(Number.isFinite));
+assert.ok(vertex_sink_view(tri_mesh).every(Number.isFinite));
 console.log("ok: triangle -> 3-sided Coons, finite mesh");
 
 // Three strokes that don't close: nothing.
@@ -111,3 +113,35 @@ assert.equal(resaved.document.lofts, undefined);
 assert.equal(resaved.document.coons, undefined);
 assert.equal(resaved.document.patches.length, old_coons.length + 1);
 console.log("ok: old lofts/coons load as patches, old keys dropped on save");
+
+// Sub-curve boundary (plan-patch-subcurve-boundary.md): stroke A carries a pinned
+// vertex P at t=0.4; B runs P -> X, C runs X -> A.p0. The loop is A[0 -> 0.4], B, C:
+// three sides, Coons, no split needed. Unpinning P breaks the loop.
+const sub_doc = empty_document();
+const sub_a0 = add_vertex(sub_doc, v3(0, 0, 0));
+const sub_a3 = add_vertex(sub_doc, v3(10, 0, 0));
+const sub_a = add_stroke(sub_doc, sub_a0, sub_a3, zero, zero);
+const sub_p = add_vertex(sub_doc, v3(0, 0, 0));
+sub_doc.vertex_pins.push({ vertex: sub_p, host_stroke: sub_a, t: 0.4 });
+update_pinned_vertex_positions(sub_doc);
+assert.ok(Math.abs(vertex_by_id(sub_doc, sub_p).position.x - 4) < 1e-9, "pin sits at t=0.4");
+const sub_x = add_vertex(sub_doc, v3(4, 3, 0));
+const sub_b = add_stroke(sub_doc, sub_p, sub_x, zero, zero);
+const sub_c = add_stroke(sub_doc, sub_x, sub_a0, zero, zero);
+const sub_patch = { strokes: [sub_a, sub_b, sub_c] };
+sub_doc.patches.push(sub_patch);
+const sub_fill = resolve_patch_fill(sub_patch, sub_doc);
+assert.ok(sub_fill !== null && sub_fill.kind === "coons", "sub-curve loop fills as coons");
+assert.ok(patch_junction_vertices(sub_patch, sub_doc).includes(sub_p), "pin is a junction of the patch");
+assert.equal(pin_is_locked(sub_doc, sub_p), true);
+assert.equal(pin_is_locked(sub_doc, sub_a3), false);
+assert.equal(stroke_bounds_a_patch(sub_doc, sub_a), true);
+// The A side must stop at the pin: no grid point lies past x=4 on the y=0 edge.
+const sub_grid = patch_surface_grid(sub_patch, sub_doc);
+assert.ok(sub_grid !== null);
+for (const row of sub_grid.positions) for (const point of row) {
+  assert.ok(point.x <= 4 + 1e-6 && point.x >= -1e-6, `grid stays inside the sub-curve patch: x=${point.x}`);
+}
+sub_doc.vertex_pins.length = 0;
+assert.equal(resolve_patch_fill(sub_patch, sub_doc), null);
+console.log("ok: sub-curve boundary -> 3-side coons, bounded by the pin; unpinned -> no fill");

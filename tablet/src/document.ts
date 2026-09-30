@@ -128,6 +128,12 @@ export function pin_by_vertex(tablet_document: TabletDocument, vertex_id: Vertex
   return tablet_document.vertex_pins.find((pin) => pin.vertex === vertex_id) ?? null;
 }
 
+// Every vertex riding the given stroke (plan-patch-subcurve-boundary.md: a
+// patch loop may enter or leave a stroke at one of these).
+export function pins_on_stroke(tablet_document: TabletDocument, stroke_id: StrokeId): VertexPin[] {
+  return tablet_document.vertex_pins.filter((pin) => pin.host_stroke === stroke_id);
+}
+
 // 0, 1 or (at a welded crossing) 2 knots.
 export function smooth_knots_at_vertex(tablet_document: TabletDocument, vertex_id: VertexId): SmoothKnot[] {
   return tablet_document.smooth_knots.filter((knot) => knot.vertex === vertex_id);
