@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -948,8 +948,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (pen_orbit_last_screen !== null) {
         pen_orbit(position);
       } else if (selected_vertex_drag_last_screen !== null && selected_vertex !== null) {
-        const vertex = vertex_by_id(tablet_document, selected_vertex);
-        vertex.position = v3_add(vertex.position, camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas));
+        const pin = pin_by_vertex(tablet_document, selected_vertex);
+        if (pin !== null) {
+          // A pinned vertex only slides along its host curve, same as a pin drag
+          // in edit mode; a free move would be snapped back by the pin anyway.
+          pin.t = nearest_t_on_stroke_screen(tablet_document, pin.host_stroke, camera, position, canvas).t;
+          const host_points = stroke_control_points(stroke_by_id(tablet_document, pin.host_stroke), tablet_document);
+          move_vertex(tablet_document, selected_vertex, bezier_point(host_points, pin.t));
+        } else {
+          const vertex = vertex_by_id(tablet_document, selected_vertex);
+          vertex.position = v3_add(vertex.position, camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas));
+        }
         selected_vertex_drag_last_screen = position;
       } else if (edit_state !== null) {
         // Ctrl/cmd held during a handle drag = swing for that drag, without
