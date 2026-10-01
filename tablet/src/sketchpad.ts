@@ -1077,6 +1077,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (edit_state === null) delete_reason = "select a line, a vertex or a patch first";
       else if (delete_is_locked()) delete_reason = `the selected line bounds a patch, ${DELETE_PATCH_FIRST}`;
     }
+    if (selected_patch === null && selected_vertex !== null && pin_is_locked(tablet_document, selected_vertex)) {
+      delete_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
+    }
     set_button_unavailable_reason(delete_button, delete_reason);
     set_button_unavailable_reason(
       join_button, not_two_lines ?? (join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null),
@@ -1104,7 +1107,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return;
     }
     if (selected_vertex !== null) {
+      if (pin_is_locked(tablet_document, selected_vertex)) return; // a patch's sub-curve ends here
       begin_history_step(history, tablet_document);
+      // Deleting a pinned vertex takes its pin along; without that the pin
+      // keeps the vertex alive and delete does nothing.
+      const deleted_vertex = selected_vertex;
+      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== deleted_vertex);
       delete vertex_by_id(tablet_document, selected_vertex).name;
       garbage_collect_vertices(tablet_document);
       end_history_step(history, tablet_document, `delete vertex ${selected_vertex}`);
