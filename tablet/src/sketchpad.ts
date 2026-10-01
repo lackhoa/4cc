@@ -868,6 +868,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         event.preventDefault();
         delete_button.click();
         break;
+      // Escape = unselect all (lines, vertices, pin, patch) and disarm any
+      // armed tool. Not while typing a name or a width.
+      case "escape":
+        if (document.activeElement instanceof HTMLInputElement) return;
+        clear_selection_after_history_jump();
+        break;
     }
   });
 
