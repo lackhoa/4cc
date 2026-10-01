@@ -1048,13 +1048,41 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function unpin_is_locked(): boolean {
     return edit_state !== null && edit_state.selected_pin !== null && pin_is_locked(tablet_document, edit_state.selected_pin);
   }
+  // A button whose handler would do nothing is greyed out, with the reason as
+  // its tooltip (plan-sketchpad-pin-replaces-split.md Q7: greyed, not hidden, so
+  // the toolbar never shifts under the pen). The button's own tooltip from the
+  // page comes back once it is usable.
+  const own_button_titles = new Map<HTMLButtonElement, string>();
+  function set_button_unavailable_reason(button: HTMLButtonElement, reason: string | null): void {
+    if (!own_button_titles.has(button)) own_button_titles.set(button, button.title);
+    button.disabled = reason !== null;
+    button.title = reason ?? own_button_titles.get(button)!;
+  }
   function refresh_lock_buttons(): void {
-    delete_button.disabled = delete_is_locked();
-    delete_button.title = delete_button.disabled ? `the selected line bounds a patch, ${DELETE_PATCH_FIRST}` : "";
-    join_button.disabled = join_is_locked();
-    join_button.title = join_button.disabled ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : "";
-    pin_button.disabled = unpin_is_locked();
-    pin_button.title = pin_button.disabled ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : "";
+    const no_line = edit_state === null ? "select a line first" : null;
+    const no_line_or_vertex = edit_state === null && selected_vertex === null ? "select a line or a vertex first" : null;
+    const not_two_lines = single_extra_stroke() === null ? "select two lines first (tap one, ctrl-tap the other)" : null;
+
+    let delete_reason: string | null = null;
+    if (selected_patch === null && selected_vertex === null) {
+      if (edit_state === null) delete_reason = "select a line, a vertex or a patch first";
+      else if (delete_is_locked()) delete_reason = `the selected line bounds a patch, ${DELETE_PATCH_FIRST}`;
+    }
+    set_button_unavailable_reason(delete_button, delete_reason);
+    set_button_unavailable_reason(
+      join_button, not_two_lines ?? (join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null),
+    );
+    set_button_unavailable_reason(
+      pin_button, no_line ?? (unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null),
+    );
+    set_button_unavailable_reason(split_button, no_line);
+    set_button_unavailable_reason(smooth_button, not_two_lines);
+    set_button_unavailable_reason(
+      patch_button,
+      edit_state === null || extra_selection.length === 0 ? "select two or more lines first (ctrl-tap adds a line)" : null,
+    );
+    set_button_unavailable_reason(midline_button, no_line_or_vertex);
+    set_button_unavailable_reason(name_button, no_line_or_vertex);
   }
   delete_button.addEventListener("click", () => {
     if (selected_patch !== null) {
