@@ -6,6 +6,7 @@
 //   GET  /api/documents           -> [{ name, mtime_ms }]
 //   GET  /api/documents/<name>    -> stored JSON
 //   POST /api/documents/<name>    -> write body to documents/<name>.json
+//                                    (after document_backup, see document_backup.ts)
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Plugin, defineConfig } from "vite";
 import checker from "vite-plugin-checker";
+import { default_document_backup_root, document_backup } from "./document_backup";
 
 const documents_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "documents");
 const reference_models_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "../data/reference-models");
@@ -109,6 +111,8 @@ function handle_document_save(name: string, request: IncomingMessage, response: 
       send_json(response, 409, { error: `document ${name} has strokes; refusing to overwrite it with an empty document` });
       return;
     }
+    // Before the write: the backup holds the documents as they were before this edit.
+    document_backup(documents_directory, default_document_backup_root());
     fs.writeFileSync(file_path, body);
     send_json(response, 200, { ok: true, mtime_ms: fs.statSync(file_path).mtimeMs });
   });
