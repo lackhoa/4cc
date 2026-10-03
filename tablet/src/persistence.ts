@@ -37,6 +37,12 @@ export type PersistenceState = {
   ready: boolean;
   // Toolbar `#save_status` (null when the page has none): shows where the autosave is.
   save_status_element: HTMLElement | null;
+  // The history snapshot the document currently equals (sketchpad sets it before each
+  // schedule_autosave) and the one current at the last successful save: "unsaved" means
+  // they differ. Compared by reference, so this costs nothing per render; camera-only
+  // changes are not in the history and save silently.
+  history_snapshot: string | null;
+  last_saved_history_snapshot: string | null;
 };
 
 // `kind` selects the color (CSS class on #save_status).
@@ -71,6 +77,8 @@ export function create_persistence_state(default_document_name: string, storage_
     autosave_timer: null,
     ready: false,
     save_status_element: document.getElementById("save_status"),
+    history_snapshot: null,
+    last_saved_history_snapshot: null,
   };
 }
 
@@ -260,6 +268,7 @@ async function save_now(state: PersistenceState, tablet_document: TabletDocument
   if (json === state.saving_json) return; // already on its way
   const name = state.current_document_name;
   const saved_at_ms = Date.now();
+  const history_snapshot = state.history_snapshot; // what `json` holds, document-wise
   write_crash_buffer(state, { name, json, server_saved: false, saved_at_ms });
   show_save_status(state, "saving", "saving…");
   state.saving_json = json;
@@ -268,6 +277,7 @@ async function save_now(state: PersistenceState, tablet_document: TabletDocument
   if (saved) {
     write_crash_buffer(state, { name, json, server_saved: true, saved_at_ms });
     state.last_saved_json = json;
+    state.last_saved_history_snapshot = history_snapshot;
     show_save_status(state, "saved", `saved ${new Date(saved_at_ms).toLocaleTimeString()}`);
   } else {
     show_save_status(state, "failed", "SAVE FAILED");
@@ -281,7 +291,9 @@ export function schedule_autosave(state: PersistenceState, tablet_document: Tabl
     show_save_status(state, "off", "autosave OFF");
     return;
   }
-  show_save_status(state, "pending", "unsaved…");
+  // Render requests also come from hover/selection/panel refreshes: only a history
+  // change (a real edit, or an undo/redo) means "unsaved".
+  if (state.history_snapshot !== state.last_saved_history_snapshot) show_save_status(state, "pending", "unsaved…");
   if (state.autosave_timer !== null) window.clearTimeout(state.autosave_timer);
   state.autosave_timer = window.setTimeout(() => {
     state.autosave_timer = null;
@@ -437,6 +449,7 @@ export async function switch_document(
 
   state.current_document_name = name;
   state.last_saved_json = null;
+  state.last_saved_history_snapshot = null; // the sketchpad clears its history on switch
   remember_current_name(state, name);
   clear_document_in_place(tablet_document);
   try {

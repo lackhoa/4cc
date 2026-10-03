@@ -194,6 +194,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
+    persistence.history_snapshot = history.position >= 0 ? history.entries[history.position].snapshot : null;
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
