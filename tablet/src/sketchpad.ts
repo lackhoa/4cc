@@ -632,11 +632,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     };
     push_marker(points.p0, anchor_half, anchor_color(selected_stroke.p0_vertex), is_hot_vertex(selected_stroke.p0_vertex));
     push_marker(points.p3, anchor_half, anchor_color(selected_stroke.p3_vertex), is_hot_vertex(selected_stroke.p3_vertex));
-    // Pinned vertices riding the selected stroke.
-    for (const pin of tablet_document.vertex_pins) {
-      if (pin.host_stroke !== edit_state.stroke_id) continue;
-      push_marker(vertex_position(tablet_document, pin.vertex), handle_half, ANCHOR_COLOR, is_hot_vertex(pin.vertex));
-    }
     // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
     // vertex it would weld into on release so the merge is never a surprise.
     // Not during a tap, which never welds.
