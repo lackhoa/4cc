@@ -152,6 +152,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Displacement from the down point, not path length — pencil taps jitter.
   let pen_down_screen: V2 | null = null;
   let pen_max_displacement_pixels = 0;
+  // Below this displacement the pen gesture is a tap. Set at pen-down: smaller
+  // when the pen lands on a control point or vertex, so its drag starts at once.
+  let pen_tap_max_movement_pixels = TAP_MAX_MOVEMENT_PIXELS;
   // Hot item: what a tap at the hovering pen's position would select,
   // resolved every frame (the camera can move under a still pen) with the same
   // picks and priority as the tap (pick_tap_target), and drawn in
@@ -291,7 +294,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // pinned vertex.
   function selected_vertex_weld_target(): VertexId | null {
     if (selected_vertex === null || selected_vertex_drag_last_screen === null) return null;
-    if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) return null;
+    if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) return null;
     if (pin_by_vertex(tablet_document, selected_vertex) !== null) return null;
     return find_merge_target_vertex(tablet_document, selected_vertex, pickable_layers());
   }
@@ -300,7 +303,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // warning, same function as the release so they can never disagree), or null.
   function drag_snap_target_stroke(): StrokeId | null {
     if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
-    if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) return null; // a tap never pins
+    if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) return null; // a tap never pins
     const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
     const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
     if (find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers()) !== null) return null; // weld wins
@@ -480,7 +483,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
     // vertex it would weld into on release so the merge is never a surprise.
     // Not during a tap, which never welds.
-    const pen_really_dragged = pen_max_displacement_pixels >= TAP_MAX_MOVEMENT_PIXELS;
+    const pen_really_dragged = pen_max_displacement_pixels >= pen_tap_max_movement_pixels;
     if (pen_really_dragged && (edit_state.dragging === "p0" || edit_state.dragging === "p3")) {
       const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
       const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers());
@@ -512,7 +515,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // auto-selects it; a tap exits the tool (Q27). Either way the tool disarms, so
   // the very next drag adjusts the fresh stroke instead of creating another.
   function line_mode_pen_up(): void {
-    const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+    const was_tap = pen_max_displacement_pixels < pen_tap_max_movement_pixels;
     if (!was_tap && line_state !== null) {
       // Every layer's vertices live on the skull bone until a mandible exists (Q15).
       const stroke_id = line_pen_up(line_state, tablet_document, active_layer, SKULL_BONE_ID);
@@ -612,7 +615,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // otherwise it selects what it hit (select_tap_target).
   function edit_mode_pen_up(position: V2, multi: boolean): void {
     if (edit_state === null) return;
-    const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
+    const was_tap = pen_max_displacement_pixels < pen_tap_max_movement_pixels;
     if (!was_tap) {
       if (edit_state.moving_whole_stroke) pen_history_label = `move stroke ${edit_state.stroke_id}`;
       else if (edit_state.dragging_pin !== null) pen_history_label = `move pin ${edit_state.dragging_pin}`;
@@ -1135,6 +1138,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         // No selection, or a pick tool armed (pure tap tool): bare drags orbit.
         pen_orbit_last_screen = position;
       }
+      // A point is small, so landing on one already says "this point": a few
+      // pixels of jitter is still a tap, anything more is a drag of it.
+      const pen_landed_on_point = selected_vertex_drag_last_screen !== null
+        || (edit_state !== null && (edit_state.dragging !== null || edit_state.dragging_pin !== null));
+      pen_tap_max_movement_pixels = pen_landed_on_point ? 4 : TAP_MAX_MOVEMENT_PIXELS;
       request_render();
     },
     on_pen_move: (position, event) => {
@@ -1151,7 +1159,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         }
       } else if (pen_orbit_last_screen !== null) {
         pen_orbit(position);
-      } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
+      } else if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) {
         // Still a tap: nothing moves (a tap only selects). The drag's last
         // screen position stays at the pen-down point, so the first real move
         // catches up with the pen.
@@ -1182,7 +1190,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         line_mode_pen_up();
       } else if (edit_state !== null) {
         edit_mode_pen_up(position, multi);
-      } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
+      } else if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) {
         select_tap_target(pick_tap_target(position), multi);
       } else if (selected_vertex_drag_last_screen !== null) {
         // A dragged vertex welds into a vertex it was released on, same as an
