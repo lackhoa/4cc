@@ -25,12 +25,23 @@ const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 export type PersistenceState = {
   current_document_name: string;
-  // localStorage keys, from the sketchpad setup's prefix (each sketchpad page keeps its
-  // own current document and crash buffer, so two pages never autosave into one file).
+  // localStorage keys, from the sketchpad setup's prefix: each sketchpad page keeps its
+  // own current document, crash buffer and camera. Two pages (or two tabs of one page)
+  // can still have the same file open; `base_revision` keeps them from overwriting
+  // each other.
   current_name_storage_key: string;
   crash_buffer_storage_key: string;
-  last_saved_json: string | null; // skip autosaves when nothing changed
-  saving_json: string | null; // the save in flight (a flush during it must not send it twice)
+  camera_storage_key: string;
+  // The revision (server-computed hash of the file's bytes, vite.config.ts) of the file
+  // this tab's document was loaded from or last saved as; sent with every save, which
+  // the server refuses when the file on disk is another revision. Null = the tab
+  // believes the file does not exist yet.
+  base_revision: string | null;
+  // The file changed elsewhere while this tab has unsaved edits: autosave is stopped
+  // until the conflict bar (`load newer` / `fork`) resolves it.
+  is_in_conflict: boolean;
+  conflict_bar_element: HTMLElement | null; // set by the sketchpad; shown while in conflict
+  saving_json: string | null; // the save in flight (no second save starts during it)
   autosave_timer: number | null;
   // False until the startup load (or a document switch) finishes — blocks
   // autosave from overwriting the stored document with the pre-load state.
@@ -40,13 +51,21 @@ export type PersistenceState = {
   // The history snapshot the document currently equals (sketchpad sets it before each
   // schedule_autosave) and the one current at the last successful save: "unsaved" means
   // they differ. Compared by reference, so this costs nothing per render; camera-only
-  // changes are not in the history and save silently.
+  // changes are not in the history and never save.
   history_snapshot: string | null;
   last_saved_history_snapshot: string | null;
 };
 
+// `last_saved_history_snapshot` of a tab that restored a crash buffer the server never
+// got: equal to no history snapshot, so the tab counts as unsaved until a save succeeds.
+const RESTORED_CRASH_BUFFER_NOT_SAVED = "restored crash buffer, not saved";
+
+export function has_unsaved_edits(state: PersistenceState): boolean {
+  return state.history_snapshot !== state.last_saved_history_snapshot;
+}
+
 // `kind` selects the color (CSS class on #save_status).
-type SaveStatusKind = "pending" | "saving" | "saved" | "failed" | "off";
+type SaveStatusKind = "pending" | "saving" | "saved" | "failed" | "off" | "conflict";
 function show_save_status(state: PersistenceState, kind: SaveStatusKind, text: string): void {
   if (state.save_status_element === null) return;
   state.save_status_element.className = kind;
@@ -55,11 +74,13 @@ function show_save_status(state: PersistenceState, kind: SaveStatusKind, text: s
 
 // What sits in localStorage: the last autosaved snapshot plus whether the
 // server confirmed it. server_saved=false after a reload means the server
-// never got it — push it on reconnect, but only if it is newer than the
-// server's file (saved_at_ms vs the server mtime): a stale unconfirmed buffer
-// (e.g. an empty doc from a session with the server down) must never clobber
-// a document edited elsewhere since.
-type CrashBuffer = { name: string; json: string; server_saved: boolean; saved_at_ms: number };
+// never confirmed it — push it on reconnect, but only if the server's file is
+// still the revision the buffer was based on. Otherwise the file was edited
+// elsewhere since: the buffer is restored into the tab as a conflict, never
+// pushed over the file.
+// `base_revision`: of the file `json` was based on while server_saved=false, of
+// `json` itself once server_saved=true.
+type CrashBuffer = { name: string; json: string; server_saved: boolean; base_revision: string | null };
 
 // `default_document_name` is opened when localStorage remembers no current document.
 export function create_persistence_state(default_document_name: string, storage_key_prefix: string): PersistenceState {
@@ -72,7 +93,10 @@ export function create_persistence_state(default_document_name: string, storage_
     current_document_name: name,
     current_name_storage_key,
     crash_buffer_storage_key: `${storage_key_prefix}_crash_buffer`,
-    last_saved_json: null,
+    camera_storage_key: `${storage_key_prefix}_camera`,
+    base_revision: null,
+    is_in_conflict: false,
+    conflict_bar_element: null,
     saving_json: null,
     autosave_timer: null,
     ready: false,
@@ -238,51 +262,91 @@ function remember_current_name(state: PersistenceState, name: string): void {
   } catch { /* storage unavailable */ }
 }
 
+// The view belongs to the page, not to the file: two tabs on one document each keep
+// their own, and moving the camera never writes the file. Called when the tab is hidden
+// or left, and before a document switch.
+export function remember_camera(state: PersistenceState, camera: OrbitCamera): void {
+  if (!state.ready) return; // a tab whose load failed still shows the default camera
+  try {
+    localStorage.setItem(state.camera_storage_key, JSON.stringify(camera));
+  } catch { /* storage unavailable */ }
+}
+
+// The camera stored in a file is only the starting view for a page that has none of
+// its own yet.
+function restore_remembered_camera(state: PersistenceState, camera: OrbitCamera): void {
+  try {
+    const raw = localStorage.getItem(state.camera_storage_key);
+    if (raw !== null) Object.assign(camera, JSON.parse(raw));
+  } catch { /* storage unavailable — keep the file's camera */ }
+}
+
+function enter_conflict_state(state: PersistenceState): void {
+  state.is_in_conflict = true;
+  if (state.autosave_timer !== null) {
+    window.clearTimeout(state.autosave_timer);
+    state.autosave_timer = null;
+  }
+  show_save_status(state, "conflict", "CONFLICT");
+  if (state.conflict_bar_element !== null) state.conflict_bar_element.style.display = "flex";
+}
+
+function leave_conflict_state(state: PersistenceState): void {
+  state.is_in_conflict = false;
+  if (state.conflict_bar_element !== null) state.conflict_bar_element.style.display = "none";
+}
+
+// "conflict" = the server refused (409): the file on disk is not `base_revision`.
+type SaveResult = { outcome: "saved" | "conflict" | "failed"; revision: string | null };
+
+// `base_revision` null = create the file (the server refuses when it already exists).
 // `keepalive` lets the request outlive the page (flush on pagehide); bodies are limited to
 // 64 KB then, so it stays off for ordinary saves.
-async function save_to_server(name: string, json: string, keepalive: boolean = false): Promise<boolean> {
+async function save_to_server(name: string, json: string, base_revision: string | null, keepalive: boolean = false): Promise<SaveResult> {
   try {
-    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: json,
-      keepalive,
-    });
-    if (!response.ok) console.error(`document save failed: ${response.status}`);
-    // 409 = the server refused to replace a document that has strokes with an empty one
-    // (vite.config.ts handle_document_save): this tab's state is wrong, not the file.
-    if (response.status === 409) window.alert(`Save refused: '${name}' on the server has strokes and this tab is empty. Reload this tab.`);
-    return response.ok;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (base_revision !== null) headers["X-Base-Revision"] = base_revision;
+    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`, { method: "POST", headers, body: json, keepalive });
+    if (response.status === 409) {
+      console.error(`document save refused: '${name}' on the server is not revision ${base_revision}`);
+      return { outcome: "conflict", revision: null };
+    }
+    if (!response.ok) {
+      console.error(`document save failed: ${response.status}`);
+      return { outcome: "failed", revision: null };
+    }
+    return { outcome: "saved", revision: response.headers.get("X-Revision") };
   } catch (error) {
     console.error("document save failed (server unreachable)", error);
-    return false;
+    return { outcome: "failed", revision: null };
   }
 }
 
 async function save_now(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, keepalive: boolean = false): Promise<void> {
   const json = serialize_document_state(tablet_document, camera);
-  if (json === state.last_saved_json) {
-    show_save_status(state, "saved", "saved");
-    return;
-  }
-  if (json === state.saving_json) return; // already on its way
   const name = state.current_document_name;
-  const saved_at_ms = Date.now();
   const history_snapshot = state.history_snapshot; // what `json` holds, document-wise
-  write_crash_buffer(state, { name, json, server_saved: false, saved_at_ms });
+  // Before the request: the buffer has the edits even when the page dies during it.
+  write_crash_buffer(state, { name, json, server_saved: false, base_revision: state.base_revision });
+  // One save at a time: a second one would carry the same base revision and be refused
+  // once the first lands. Edits made meanwhile are saved by the re-arm below.
+  if (state.saving_json !== null) return;
   show_save_status(state, "saving", "saving…");
   state.saving_json = json;
-  const saved = await save_to_server(name, json, keepalive);
+  const result = await save_to_server(name, json, state.base_revision, keepalive);
   state.saving_json = null;
-  if (saved) {
-    write_crash_buffer(state, { name, json, server_saved: true, saved_at_ms });
-    state.last_saved_json = json;
+  if (result.outcome === "saved") {
+    state.base_revision = result.revision;
+    write_crash_buffer(state, { name, json, server_saved: true, base_revision: result.revision });
     state.last_saved_history_snapshot = history_snapshot;
     show_save_status(state, "saved", "saved");
+    schedule_autosave(state, tablet_document, camera); // edits made during the save
+  } else if (result.outcome === "conflict") {
+    enter_conflict_state(state);
   } else {
+    // Not saved: the tab stays unsaved, so the next render request retries the server.
     show_save_status(state, "failed", "SAVE FAILED");
   }
-  // Not saved: last_saved_json stays stale so the next autosave retries the server.
 }
 
 // Called on every render request; fires one save ~2 s after the first unsaved mutation.
@@ -291,16 +355,21 @@ export function schedule_autosave(state: PersistenceState, tablet_document: Tabl
     show_save_status(state, "off", "autosave OFF");
     return;
   }
+  if (state.is_in_conflict) return;
   // Render requests also come from hover/selection/camera/panel refreshes: only a
   // history change (a real edit, or an undo/redo) means "unsaved" and arms the timer.
-  // A camera-only change is written by the exit flush or with the next edit.
-  if (state.history_snapshot === state.last_saved_history_snapshot) return;
+  // The camera is written along with an edit, never on its own.
+  if (!has_unsaved_edits(state)) return;
   show_save_status(state, "pending", "unsaved…");
   // Do not push a running timer back: hover and pen movement request renders
   // continuously, and a trailing debounce would wait until the pen holds still.
   if (state.autosave_timer !== null) return;
   state.autosave_timer = window.setTimeout(() => {
     state.autosave_timer = null;
+    if (!has_unsaved_edits(state)) { // undone back to the saved state meanwhile
+      show_save_status(state, "saved", "saved");
+      return;
+    }
     void save_now(state, tablet_document, camera);
   }, AUTOSAVE_DEBOUNCE_MS);
 }
@@ -308,20 +377,29 @@ export function schedule_autosave(state: PersistenceState, tablet_document: Tabl
 // Save a pending autosave right now instead of waiting out the debounce. Used before
 // leaving the page (pages button, pagehide): a stroke drawn in the last ~2 s would
 // otherwise die with the tab. A no-op when nothing changed or the tab is not `ready`.
+// In a conflict nothing is sent: the edits go to the crash buffer, and the next start of
+// this page restores them as the same conflict.
 export async function flush_autosave(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, keepalive: boolean = false): Promise<void> {
-  if (!state.ready) return;
+  if (!state.ready || !has_unsaved_edits(state)) return;
   if (state.autosave_timer !== null) {
     window.clearTimeout(state.autosave_timer);
     state.autosave_timer = null;
   }
+  if (state.is_in_conflict) {
+    write_crash_buffer(state, {
+      name: state.current_document_name, json: serialize_document_state(tablet_document, camera),
+      server_saved: false, base_revision: state.base_revision,
+    });
+    return;
+  }
   await save_now(state, tablet_document, camera, keepalive);
 }
 
-export type DocumentListEntry = { name: string; mtime_ms: number };
+export type DocumentListEntry = { name: string; mtime_ms: number; revision: string };
 
 export async function list_documents_from_server(): Promise<DocumentListEntry[] | null> {
   try {
-    const response = await fetch("/api/documents");
+    const response = await fetch("/api/documents", { cache: "no-store" });
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -329,78 +407,164 @@ export async function list_documents_from_server(): Promise<DocumentListEntry[] 
   }
 }
 
-// Startup: prefer the server copy of the current document; a crash buffer the
-// server never confirmed is newer — restore it and push it up. With the server
-// unreachable, fall back to the buffer alone.
-export async function load_current_document_on_startup(
-  state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera,
-): Promise<void> {
-  const name = state.current_document_name;
-  const buffer = read_crash_buffer(state);
-  const server_list = await list_documents_from_server();
-  // NOTE(kv): 2026-09-28 a tab came up empty through a silent branch here, was marked
-  // ready anyway, and its first autosave replaced the 13 KB skull-zanatomy file with an
-  // empty document. `ready` (= autosave allowed) is now only set when the document's
-  // state is actually known: loaded, or confirmed absent on the server. Otherwise the
-  // page stays read-only for this session and says so.
-  const known = await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
-  state.ready = known;
-  if (known) show_save_status(state, "saved", "saved");
-  if (!known) window.alert(`Document '${name}' could not be loaded (missing on the server, or the server is down). Autosave is OFF for this tab; reload to try again.`);
+// The revision the server lists for the current document. Null when it cannot be told:
+// server unreachable, file gone, or a server started before revisions existed.
+async function current_document_revision_on_server(state: PersistenceState): Promise<string | null> {
+  const entries = await list_documents_from_server();
+  const entry = entries?.find((candidate) => candidate.name === state.current_document_name);
+  return entry?.revision ?? null;
 }
 
-type ServerLoadResult = "loaded" | "missing" | "failed";
+// One file as the server holds it; `revision` is of exactly `json`.
+export type FetchedDocument = { name: string; json: string; revision: string | null };
 
 // GET the document itself (never trust the list alone: a name absent from it may still
-// be a file on disk). "missing" only on a 404.
-async function load_document_from_server(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, name: string): Promise<ServerLoadResult> {
+// be a file on disk). "missing" only on a 404, "unreachable" when no response came.
+async function fetch_document_from_server(name: string): Promise<FetchedDocument | "missing" | "unreachable" | "failed"> {
   try {
-    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);
+    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`, { cache: "no-store" });
     if (response.status === 404) return "missing";
     if (!response.ok) {
       console.error(`loading document '${name}' failed: ${response.status}`);
       return "failed";
     }
-    const json = await response.text();
-    if (!apply_document_state(json, tablet_document, camera)) return "failed";
-    state.last_saved_json = json;
-    return "loaded";
+    return { name, json: await response.text(), revision: response.headers.get("X-Revision") };
   } catch (error) {
-    console.error(`loading document '${name}' failed`, error);
-    return "failed";
+    console.error(`loading document '${name}' failed (server unreachable)`, error);
+    return "unreachable";
   }
+}
+
+// One poll tick (sketchpad.ts pull_document_changes_if_any). When the file on the
+// server is another revision than this tab's base: a tab without unsaved edits gets the
+// file back, to take it over; a tab with unsaved edits goes into the conflict state.
+// Null in every other case.
+export async function fetch_document_if_changed_elsewhere(state: PersistenceState): Promise<FetchedDocument | null> {
+  if (!state.ready || state.is_in_conflict) return null;
+  const name = state.current_document_name;
+  const base_revision = state.base_revision;
+  const listed_revision = await current_document_revision_on_server(state);
+  if (listed_revision === null || listed_revision === state.base_revision) return null;
+  // This tab saved or switched documents while the list was on its way: the listed
+  // revision may be this tab's own save.
+  if (state.saving_json !== null || state.base_revision !== base_revision || state.current_document_name !== name) return null;
+  if (has_unsaved_edits(state)) {
+    enter_conflict_state(state);
+    return null;
+  }
+  const fetched = await fetch_document_from_server(name);
+  if (typeof fetched === "string" || state.current_document_name !== name) return null;
+  if (has_unsaved_edits(state)) { // an edit made during the fetch
+    enter_conflict_state(state);
+    return null;
+  }
+  return fetched;
+}
+
+// For the conflict bar's `load newer`: the current document's file, null when it cannot
+// be fetched.
+export async function fetch_current_document(state: PersistenceState): Promise<FetchedDocument | null> {
+  const fetched = await fetch_document_from_server(state.current_document_name);
+  return typeof fetched === "string" ? null : fetched;
+}
+
+// Make the tab's document equal a fetched file. The camera stays: it belongs to the
+// page. Ends a conflict. The caller (sketchpad.ts) wraps this in a history step and
+// marks that step's snapshot as the saved one. Returns false, with nothing changed,
+// when the file is unreadable.
+export function apply_fetched_document(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, fetched: FetchedDocument): boolean {
+  const camera_before = { ...camera };
+  if (!apply_document_state(fetched.json, tablet_document, camera)) return false;
+  Object.assign(camera, camera_before);
+  state.base_revision = fetched.revision;
+  // Resolving a conflict drops this tab's unsaved buffer. A tab that merely follows
+  // leaves the buffer alone: it may hold the unsaved edits of another tab of this page.
+  if (state.is_in_conflict) write_crash_buffer(state, { name: fetched.name, json: fetched.json, server_saved: true, base_revision: fetched.revision });
+  leave_conflict_state(state);
+  show_save_status(state, "saved", "saved");
+  return true;
+}
+
+// For the conflict bar's `fork`: write this tab's document to a new file
+// `<name>-conflict-NN` (the first free NN). Returns the new name, null when nothing was
+// written.
+export async function fork_document_to_conflict_copy(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera): Promise<string | null> {
+  const existing = await list_documents_from_server();
+  if (existing === null) return null;
+  const conflict_copy_name = (number: number) => `${state.current_document_name}-conflict-${String(number).padStart(2, "0")}`;
+  let number = 1;
+  while (existing.some((entry) => entry.name === conflict_copy_name(number))) number += 1;
+  const result = await save_to_server(conflict_copy_name(number), serialize_document_state(tablet_document, camera), null);
+  return result.outcome === "saved" ? conflict_copy_name(number) : null;
+}
+
+// Startup: prefer the server copy of the current document; a crash buffer the
+// server never confirmed holds newer edits — restore it and push it up (or, when
+// the file changed elsewhere since, restore it as a conflict). With the server
+// unreachable, fall back to the buffer alone.
+export async function load_current_document_on_startup(
+  state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera,
+): Promise<void> {
+  const name = state.current_document_name;
+  // NOTE(kv): 2026-09-28 a tab came up empty through a silent branch here, was marked
+  // ready anyway, and its first autosave replaced the 13 KB skull-zanatomy file with an
+  // empty document. `ready` (= autosave allowed) is now only set when the document's
+  // state is actually known: loaded, or confirmed absent on the server. Otherwise the
+  // page stays read-only for this session and says so.
+  const known = await load_current_document_inner(state, tablet_document, camera, name);
+  state.ready = known;
+  if (known && !has_unsaved_edits(state)) show_save_status(state, "saved", "saved");
+  if (!known) window.alert(`Document '${name}' could not be loaded (missing on the server, or the server is down). Autosave is OFF for this tab; reload to try again.`);
 }
 
 // Returns whether the document's state is known (loaded, or confirmed new).
 async function load_current_document_inner(
-  state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera,
-  name: string, buffer: CrashBuffer | null, server_list: DocumentListEntry[] | null,
+  state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, name: string,
 ): Promise<boolean> {
-  if (server_list === null) {
+  const buffer = read_crash_buffer(state);
+  const fetched = await fetch_document_from_server(name);
+  if (fetched === "failed") return false;
+  if (fetched === "unreachable") {
     console.error("document server unreachable at startup — using localStorage buffer");
-    if (buffer !== null && buffer.name === name) return apply_document_state(buffer.json, tablet_document, camera);
-    return false;
+    if (buffer === null || buffer.name !== name) return false;
+    if (!apply_document_state(buffer.json, tablet_document, camera)) return false;
+    restore_remembered_camera(state, camera);
+    state.base_revision = buffer.base_revision ?? null;
+    if (!buffer.server_saved) state.last_saved_history_snapshot = RESTORED_CRASH_BUFFER_NOT_SAVED;
+    return true;
   }
-  const server_entry = server_list.find((entry) => entry.name === name);
-  if (buffer !== null && buffer.name === name && !buffer.server_saved) {
-    // Buffers written before saved_at_ms existed count as older than any server file.
-    const buffer_is_newer = server_entry === undefined || (buffer.saved_at_ms ?? 0) > server_entry.mtime_ms;
-    if (buffer_is_newer) {
+  const server_json = fetched === "missing" ? null : fetched.json;
+  const server_revision = fetched === "missing" ? null : fetched.revision;
+  // An unconfirmed buffer equal to the file was saved after all (the exit flush's
+  // response is never seen). Buffers written before base_revision existed cannot be
+  // placed and are ignored.
+  if (buffer !== null && buffer.name === name && !buffer.server_saved && buffer.json !== server_json && buffer.base_revision !== undefined) {
+    if (!apply_document_state(buffer.json, tablet_document, camera)) return false;
+    restore_remembered_camera(state, camera);
+    state.base_revision = buffer.base_revision;
+    state.last_saved_history_snapshot = RESTORED_CRASH_BUFFER_NOT_SAVED;
+    if (buffer.base_revision === server_revision) {
       console.log(`restoring unsaved crash buffer for '${name}' and pushing to server`);
-      if (!apply_document_state(buffer.json, tablet_document, camera)) return false;
       await save_now(state, tablet_document, camera);
-      return true;
+    } else {
+      console.warn(`restoring unsaved crash buffer for '${name}' as a conflict: the server file changed since`);
+      enter_conflict_state(state);
     }
-    console.warn(`ignoring unsaved crash buffer for '${name}': older than the server copy`);
+    return true;
   }
-  if (server_entry === undefined) console.warn(`document '${name}' is not in the server list; asking for the file directly`);
   // NOTE(kv): a missing file is an error at startup, not a new document (Khoa,
   // 2026-09-28): the tab stays empty with autosave OFF, so it can never create (or
   // later clobber) a file by accident. New documents come only from "new…" in the docs
   // panel (switch_document).
-  const result = await load_document_from_server(state, tablet_document, camera, name);
-  if (result === "missing") console.error(`document '${name}' does not exist on the server`);
-  return result === "loaded";
+  if (fetched === "missing") {
+    console.error(`document '${name}' does not exist on the server`);
+    return false;
+  }
+  // `base_revision` is set only once the loaded document is really in the tab.
+  if (!apply_document_state(fetched.json, tablet_document, camera)) return false;
+  restore_remembered_camera(state, camera);
+  state.base_revision = fetched.revision;
+  return true;
 }
 
 // Rename the current document: save it under the new name, then delete the
@@ -411,6 +575,10 @@ export async function rename_document(
 ): Promise<boolean> {
   const old_name = state.current_document_name;
   if (new_name === old_name) return false;
+  if (state.is_in_conflict) { // the old file, deleted below, holds someone else's newer work
+    window.alert("This document changed elsewhere. Choose 'load newer' or 'fork' first.");
+    return false;
+  }
   const existing = await list_documents_from_server();
   if (existing === null) return false;
   if (existing.some((entry) => entry.name === new_name)) {
@@ -422,11 +590,14 @@ export async function rename_document(
     state.autosave_timer = null;
   }
   const json = serialize_document_state(tablet_document, camera);
-  if (!(await save_to_server(new_name, json))) return false;
+  const history_snapshot = state.history_snapshot;
+  const result = await save_to_server(new_name, json, null);
+  if (result.outcome !== "saved") return false;
   state.current_document_name = new_name;
-  state.last_saved_json = json;
+  state.base_revision = result.revision;
+  state.last_saved_history_snapshot = history_snapshot;
   remember_current_name(state, new_name);
-  write_crash_buffer(state, { name: new_name, json, server_saved: true, saved_at_ms: Date.now() });
+  write_crash_buffer(state, { name: new_name, json, server_saved: true, base_revision: result.revision });
   // The old file only exists if it was saved at least once.
   if (existing.some((entry) => entry.name === old_name)) {
     try {
@@ -449,24 +620,30 @@ export async function switch_document(
     window.clearTimeout(state.autosave_timer);
     state.autosave_timer = null;
   }
-  await save_now(state, tablet_document, camera);
+  await flush_autosave(state, tablet_document, camera);
+  remember_camera(state, camera); // the page's view carries over to the next document
   state.ready = false; // no autosave of the half-switched state
 
   state.current_document_name = name;
-  state.last_saved_json = null;
-  state.last_saved_history_snapshot = null; // the sketchpad clears its history on switch
+  state.base_revision = null;
+  state.history_snapshot = null; // the sketchpad clears its history on switch
+  state.last_saved_history_snapshot = null;
   remember_current_name(state, name);
   clear_document_in_place(tablet_document);
-  try {
-    const response = await fetch(`/api/documents/${encodeURIComponent(name)}`);
-    if (response.ok) {
-      const json = await response.text();
-      if (apply_document_state(json, tablet_document, camera)) state.last_saved_json = json;
-    }
-  } catch (error) {
-    console.error(`loading document '${name}' failed`, error);
-  } finally {
-    state.ready = true;
+  const fetched = await fetch_document_from_server(name);
+  // Autosave comes back only when the document's state is known: the file is loaded
+  // into the tab, or the server said it does not exist (a new document).
+  let known = fetched === "missing";
+  if (typeof fetched !== "string" && apply_document_state(fetched.json, tablet_document, camera)) {
+    restore_remembered_camera(state, camera);
+    state.base_revision = fetched.revision;
+    known = true;
+  }
+  state.ready = known;
+  if (known) {
     show_save_status(state, "saved", "saved");
+  } else {
+    show_save_status(state, "off", "autosave OFF");
+    window.alert(`Document '${name}' could not be loaded. Autosave is OFF for this tab; reload to try again.`);
   }
 }

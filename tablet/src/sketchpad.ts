@@ -26,7 +26,7 @@ import { WORLD_PER_MM } from "./reference_skull_view";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
-import { create_persistence_state, flush_autosave, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
+import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
@@ -40,7 +40,7 @@ export type SketchpadSetup = {
   // is armed (plan-skin-over-skull-study.md Q9); undefined = the page has none.
   load_eyeball_mesh?: () => Promise<ReferenceMesh | null>;
   default_document_name: string; // opened when localStorage remembers no current document
-  storage_key_prefix: string; // localStorage keys `<prefix>_current_document`, `<prefix>_crash_buffer`
+  storage_key_prefix: string; // localStorage keys `<prefix>_current_document`, `<prefix>_crash_buffer`, `<prefix>_camera`
   // True: the docs panel lists every server document plus "new…"/"rename…". False: the
   // page is tied to its one document, the panel only names it.
   can_switch_documents: boolean;
@@ -181,10 +181,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     return picked === null ? null : { kind: "stroke", stroke_id: picked };
   }
 
+  // The history entry the document equals; null before the first edit.
+  function current_history_snapshot(): string | null {
+    return history.position >= 0 ? history.entries[history.position].snapshot : null;
+  }
+
   function request_render(): void {
     // Anything that changes what's on screen (strokes, surfaces, camera) goes
-    // through here — piggyback the debounced autosave on it; identical
-    // serializations are skipped inside. Before the early return: a pending
+    // through here — piggyback the debounced autosave on it; it saves only when
+    // the history snapshot changed. Before the early return: a pending
     // frame must not swallow the save (rAF pauses entirely in hidden tabs).
     // Pinned vertices are derived data — re-derive synchronously (NOT in the
     // rAF, which pauses in hidden tabs) so any host reshape carries its riders
@@ -199,7 +204,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
-    persistence.history_snapshot = history.position >= 0 ? history.entries[history.position].snapshot : null;
+    persistence.history_snapshot = current_history_snapshot();
     schedule_autosave(persistence, tablet_document, camera);
     if (frame_requested) return;
     frame_requested = true;
@@ -1423,6 +1428,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   async function switch_to_document_and_rerender(name: string): Promise<void> {
     docs_panel.classList.remove("open");
+    if (persistence.is_in_conflict) { // leaving would drop this tab's unsaved edits
+      window.alert("This document changed elsewhere. Choose 'load newer' or 'fork' first.");
+      return;
+    }
     edit_state = null;
     extra_selection = [];
     selected_vertex = null;
@@ -1492,7 +1501,114 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Tab closed / reloaded / navigated by other means: same flush, keepalive so the
   // request outlives the page.
   window.addEventListener("pagehide", () => {
+    remember_camera(persistence, camera);
     void flush_autosave(persistence, tablet_document, camera, true);
+  });
+  // The exit flush is not guaranteed to arrive (a keepalive body is limited to 64 KB),
+  // so leaving with unsaved edits asks first.
+  window.addEventListener("beforeunload", (event) => {
+    if (has_unsaved_edits(persistence)) event.preventDefault();
+  });
+
+  // Changes made elsewhere (another tab or page, a script, the agent): the file on the
+  // server is no longer the revision this tab is based on. A tab without unsaved edits
+  // takes the file over; a tab with unsaved edits stops saving and shows the conflict
+  // bar, whose two buttons are the only ways out.
+  const change_style = document.createElement("style");
+  change_style.textContent = `
+    #save_status.conflict { color: #e05a5a; font-weight: bold; }
+    #conflict_bar, #change_notice {
+      position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30;
+      display: none; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 8px;
+      font: 14px sans-serif; color: #fff;
+    }
+    #conflict_bar { background: #7a2a2a; }
+    #change_notice { background: #33485e; }
+    #conflict_bar button { font: inherit; padding: 6px 12px; }`;
+  document.head.appendChild(change_style);
+  const conflict_bar = document.createElement("div");
+  conflict_bar.id = "conflict_bar";
+  const conflict_text = document.createElement("span");
+  conflict_text.textContent = "This document changed elsewhere. Your edits are not saved.";
+  const load_newer_button = document.createElement("button");
+  load_newer_button.textContent = "load newer";
+  const fork_button = document.createElement("button");
+  fork_button.textContent = "fork";
+  conflict_bar.append(conflict_text, load_newer_button, fork_button);
+  const change_notice = document.createElement("div");
+  change_notice.id = "change_notice";
+  document.body.append(conflict_bar, change_notice);
+  persistence.conflict_bar_element = conflict_bar;
+
+  let change_notice_timer: number | null = null;
+  function show_change_notice(text: string): void {
+    change_notice.textContent = text;
+    change_notice.style.display = "flex";
+    if (change_notice_timer !== null) window.clearTimeout(change_notice_timer);
+    change_notice_timer = window.setTimeout(() => {
+      change_notice.style.display = "none";
+    }, 4000);
+  }
+
+  // The document becomes the fetched file, as one history step, so undo returns to
+  // what this tab had. Returns false when the file is unreadable.
+  function replace_document_with_fetched(fetched: FetchedDocument): boolean {
+    begin_history_step(history, tablet_document);
+    if (!apply_fetched_document(persistence, tablet_document, camera, fetched)) {
+      history.pending = null;
+      return false;
+    }
+    end_history_step(history, tablet_document, "changed elsewhere");
+    // Before the render request: the new entry is what the server has, not an edit to save.
+    persistence.history_snapshot = current_history_snapshot();
+    persistence.last_saved_history_snapshot = persistence.history_snapshot;
+    clear_selection_after_history_jump();
+    return true;
+  }
+
+  // Not while a pen or finger is down: the document must not change under a gesture.
+  let pointer_is_down = false;
+  window.addEventListener("pointerdown", () => { pointer_is_down = true; }, true);
+  for (const type of ["pointerup", "pointercancel"] as const) {
+    window.addEventListener(type, () => { pointer_is_down = false; }, true);
+  }
+
+  let pull_is_running = false;
+  async function pull_document_changes_if_any(): Promise<void> {
+    if (pull_is_running) return;
+    pull_is_running = true;
+    const fetched = await fetch_document_if_changed_elsewhere(persistence);
+    pull_is_running = false;
+    if (fetched === null || pointer_is_down) return; // pointer down: the next poll takes it
+    if (replace_document_with_fetched(fetched)) show_change_notice("changed elsewhere, reloaded");
+  }
+  // Hidden tabs do not poll; they catch up the moment they are shown again.
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") void pull_document_changes_if_any();
+  }, 2000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void pull_document_changes_if_any();
+    else remember_camera(persistence, camera);
+  });
+
+  async function load_newer_document(): Promise<boolean> {
+    const fetched = await fetch_current_document(persistence);
+    if (fetched === null || !replace_document_with_fetched(fetched)) {
+      window.alert(`The newer '${persistence.current_document_name}' could not be loaded. Nothing changed in this tab.`);
+      return false;
+    }
+    return true;
+  }
+  load_newer_button.addEventListener("click", () => void load_newer_document());
+  // Fork: this tab's version goes to its own file first, then the tab takes the newer one.
+  fork_button.addEventListener("click", () => {
+    void fork_document_to_conflict_copy(persistence, tablet_document, camera).then(async (conflict_copy_name) => {
+      if (conflict_copy_name === null) {
+        window.alert("The fork could not be saved. Nothing changed in this tab.");
+        return;
+      }
+      if (await load_newer_document()) show_change_notice(`your version is saved as ${conflict_copy_name}`);
+    });
   });
 
   docs_button.addEventListener("click", () => {
@@ -1551,5 +1667,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
   (window as unknown as { debug_render_now: unknown }).debug_render_now = render_now;
+  (window as unknown as { debug_pull_document_changes_if_any: unknown }).debug_pull_document_changes_if_any = pull_document_changes_if_any;
+  // Read by the page-reload script of the build (vite.config.ts reload_on_rebuild_plugin).
+  (window as unknown as { tablet_has_unsaved_edits: unknown }).tablet_has_unsaved_edits = () => has_unsaved_edits(persistence);
   console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");
 }

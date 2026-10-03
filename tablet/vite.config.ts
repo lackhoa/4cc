@@ -3,11 +3,16 @@
 // tablet documents as git-tracked JSON in tablet/documents/ (plan-skull-reference.md).
 //   GET  /reference/<file>        -> ../data/reference-models/<file>
 //   POST /reference/<mesh>.landmarks.txt -> overwrite that sidecar with the body
-//   GET  /api/documents           -> [{ name, mtime_ms }]
-//   GET  /api/documents/<name>    -> stored JSON
+//   GET  /api/documents           -> [{ name, mtime_ms, revision }]
+//   GET  /api/documents/<name>    -> stored JSON, header X-Revision
 //   POST /api/documents/<name>    -> write body to documents/<name>.json
-//                                    (after document_backup, see document_backup.ts)
+//                                    (after document_backup, see document_backup.ts);
+//                                    header X-Base-Revision in, X-Revision out; 409 when
+//                                    the file on disk is not the revision the save is based on
+// A document's `revision` is the SHA-256 of its file's bytes: computed here only, never
+// written to disk, and compared for equality only.
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,14 +67,30 @@ function handle_reference_landmarks_save(request: IncomingMessage, response: Ser
   });
 }
 
+function compute_document_revision(file_bytes: Buffer): string {
+  return crypto.createHash("sha256").update(file_bytes).digest("hex");
+}
+
+// What the list remembers per document: pages poll the list every 2 s, and a file whose
+// modified time and size are unchanged is not hashed again.
+type ListedDocumentRevision = { mtime_ms: number; size: number; revision: string };
+const listed_revision_by_document_name = new Map<string, ListedDocumentRevision>();
+
 function handle_document_list(response: ServerResponse): void {
   if (!fs.existsSync(documents_directory)) fs.mkdirSync(documents_directory);
   const entries = fs.readdirSync(documents_directory)
     .filter((file_name) => file_name.endsWith(".json"))
-    .map((file_name) => ({
-      name: file_name.slice(0, -".json".length),
-      mtime_ms: fs.statSync(path.join(documents_directory, file_name)).mtimeMs,
-    }));
+    .map((file_name) => {
+      const name = file_name.slice(0, -".json".length);
+      const file_path = path.join(documents_directory, file_name);
+      const stat = fs.statSync(file_path);
+      let listed = listed_revision_by_document_name.get(name);
+      if (listed === undefined || listed.mtime_ms !== stat.mtimeMs || listed.size !== stat.size) {
+        listed = { mtime_ms: stat.mtimeMs, size: stat.size, revision: compute_document_revision(fs.readFileSync(file_path)) };
+        listed_revision_by_document_name.set(name, listed);
+      }
+      return { name, mtime_ms: stat.mtimeMs, revision: listed.revision };
+    });
   send_json(response, 200, entries);
 }
 
@@ -79,41 +100,51 @@ function handle_document_load(name: string, response: ServerResponse): void {
     send_json(response, 404, { error: `no document ${name}` });
     return;
   }
+  // The revision is of the very bytes sent.
+  const file_bytes = fs.readFileSync(file_path);
   response.setHeader("Content-Type", "application/json");
-  response.end(fs.readFileSync(file_path));
-}
-
-// A stored document with no strokes and no vertices (any format version).
-function document_is_empty(stored: any): boolean {
-  const inner = stored?.document;
-  return !inner || ((inner.strokes?.length ?? 0) === 0 && (inner.vertices?.length ?? 0) === 0);
+  response.setHeader("X-Revision", compute_document_revision(file_bytes));
+  response.end(file_bytes);
 }
 
 function handle_document_save(name: string, request: IncomingMessage, response: ServerResponse): void {
   const chunks: Buffer[] = [];
   request.on("data", (chunk: Buffer) => chunks.push(chunk));
   request.on("end", () => {
-    const body = Buffer.concat(chunks).toString("utf8");
-    let parsed;
+    const body_bytes = Buffer.concat(chunks);
     try {
-      parsed = JSON.parse(body); // refuse to persist a corrupt payload
+      JSON.parse(body_bytes.toString("utf8")); // refuse to persist a corrupt payload
     } catch {
       send_json(response, 400, { error: "body is not valid JSON" });
       return;
     }
     if (!fs.existsSync(documents_directory)) fs.mkdirSync(documents_directory);
     const file_path = path.join(documents_directory, `${name}.json`);
-    // NOTE(kv): 2026-09-28 a tab that came up with an empty document (silent startup
-    // path) autosaved it over the 13 KB skull-zanatomy file. An empty document never
-    // replaces a file that has strokes; clearing on purpose means deleting the file.
-    if (document_is_empty(parsed) && fs.existsSync(file_path) && !document_is_empty(JSON.parse(fs.readFileSync(file_path, "utf8")))) {
-      console.error(`refused to overwrite non-empty document ${name} with an empty one`);
-      send_json(response, 409, { error: `document ${name} has strokes; refusing to overwrite it with an empty document` });
-      return;
+    // A save replaces only the file it is based on: the sender names the revision it
+    // loaded (or last saved), and anything else on disk means someone else wrote in
+    // between. No header is right only for a file that does not exist yet. The other
+    // server process (dev / preview) can still write between this check and the rename.
+    if (fs.existsSync(file_path)) {
+      const revision_on_disk = compute_document_revision(fs.readFileSync(file_path));
+      if (request.headers["x-base-revision"] !== revision_on_disk) {
+        console.error(`refused to save document ${name}: based on revision ${request.headers["x-base-revision"]}, the file is ${revision_on_disk}`);
+        send_json(response, 409, { error: `document ${name} changed since this save's base revision`, revision: revision_on_disk });
+        return;
+      }
     }
     // Before the write: the backup holds the documents as they were before this edit.
     document_backup(documents_directory, default_document_backup_root());
-    fs.writeFileSync(file_path, body);
+    // Temp file + rename: a reader never sees a half-written document.
+    const temporary_path = `${file_path}.tmp-${process.pid}`;
+    try {
+      fs.writeFileSync(temporary_path, body_bytes);
+      fs.renameSync(temporary_path, file_path);
+    } catch (error) {
+      console.error(`writing document ${name} failed`, error);
+      send_json(response, 500, { error: `writing document ${name} failed: ${error}` });
+      return;
+    }
+    response.setHeader("X-Revision", compute_document_revision(body_bytes));
     send_json(response, 200, { ok: true, mtime_ms: fs.statSync(file_path).mtimeMs });
   });
 }
@@ -182,7 +213,8 @@ function tablet_server_plugin(): Plugin {
 // Preview has no live reload, so a rebuild would sit unseen until a manual refresh.
 // Build only: every page gets a script that polls dist/build-id.txt and reloads when
 // the id changes (i.e. after the next build); the reload waits for a held pointer
-// button so a drawing stroke is never cut. Dev already hot-reloads and is left alone.
+// button so a drawing stroke is never cut, and for unsaved edits to be saved. Dev
+// already hot-reloads and is left alone.
 function reload_on_rebuild_plugin(): Plugin {
   const build_id = Date.now().toString();
   return {
@@ -206,7 +238,10 @@ function reload_on_rebuild_plugin(): Plugin {
                 const response = await fetch("/build-id.txt", { cache: "no-store" });
                 if (response.ok && (await response.text()) !== "${build_id}") reload_is_pending = true;
               } catch {}
-              if (reload_is_pending && !pointer_is_down) location.reload();
+              // A sketchpad page with unsaved edits (window.tablet_has_unsaved_edits,
+              // src/sketchpad.ts) is not reloaded until they are saved.
+              const has_unsaved_edits = typeof window.tablet_has_unsaved_edits === "function" && window.tablet_has_unsaved_edits();
+              if (reload_is_pending && !pointer_is_down && !has_unsaved_edits) location.reload();
             }, 2000);
           })();`,
       }];

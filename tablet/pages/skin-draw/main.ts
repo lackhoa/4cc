@@ -4,7 +4,9 @@
 // the `skin` layer. The reference is the Z-Anatomy skin mesh in the skull's Frankfurt frame
 // (mm * WORLD_PER_MM, same as the skull-* pages), the eyeballs behind a toggle.
 // Separate localStorage keys so this page never steals another page's camera/tool state.
-// PITFALL: both pages autosave the whole file; keep only one of them open at a time.
+// Both pages save the whole file. They may be open together: a save based on an older
+// revision of the file is refused (`base_revision`, src/persistence.ts), and an idle page
+// takes over what the other one saved.
 import { ReferenceMesh, reference_mesh_from_positions } from "../../src/reference";
 import { Skull, WORLD_PER_MM, load_eyeball, load_skin_mesh, load_skull } from "../../src/reference_skull_view";
 import { start_sketchpad } from "../../src/sketchpad";
