@@ -12,7 +12,7 @@
 // surface normal vs the camera forward, two-sided), which fits the existing
 // position+color pipeline.
 
-import { OrbitCamera, camera_basis, camera_eye, camera_world_to_screen } from "./camera";
+import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
 import { Layer, Patch, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
@@ -352,7 +352,7 @@ export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId)
 // Only patches on `layers` count (the sketchpad passes the layers neither locked nor hidden).
 export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>): number | null {
   const eye = camera_eye(camera);
-  const project = (world: V3): V2 | null => camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
+  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
   const contains = (a: V2, b: V2, c: V2): boolean => {
     const ab = side(a, b), bc = side(b, c), ca = side(c, a);

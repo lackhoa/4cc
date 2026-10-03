@@ -107,16 +107,24 @@ export function camera_pen_ray(camera: OrbitCamera, screen: { x: number; y: numb
 export function camera_world_to_screen(
   camera: OrbitCamera, world: V3, viewport_width: number, viewport_height: number,
 ): { x: number; y: number } | null {
-  const view_projection = camera_view_projection(camera, viewport_width / viewport_height);
-  const clip = [0, 0, 0, 0];
-  const world4 = [world.x, world.y, world.z, 1];
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 4; col++) clip[row] += view_projection[col * 4 + row] * world4[col];
-  }
-  if (clip[3] <= 0) return null;
-  return {
-    x: (clip[0] / clip[3] * 0.5 + 0.5) * viewport_width,
-    y: (0.5 - clip[1] / clip[3] * 0.5) * viewport_height,
+  return camera_screen_projector(camera, viewport_width, viewport_height)(world);
+}
+
+// camera_world_to_screen for many points under one camera: the view-projection
+// matrix is built once, not per point. Picking projects thousands of points per frame.
+export function camera_screen_projector(
+  camera: OrbitCamera, viewport_width: number, viewport_height: number,
+): (world: V3) => { x: number; y: number } | null {
+  const m = camera_view_projection(camera, viewport_width / viewport_height);
+  return (world) => {
+    const clip_w = m[3] * world.x + m[7] * world.y + m[11] * world.z + m[15];
+    if (clip_w <= 0) return null;
+    const clip_x = m[0] * world.x + m[4] * world.y + m[8] * world.z + m[12];
+    const clip_y = m[1] * world.x + m[5] * world.y + m[9] * world.z + m[13];
+    return {
+      x: (clip_x / clip_w * 0.5 + 0.5) * viewport_width,
+      y: (0.5 - clip_y / clip_w * 0.5) * viewport_height,
+    };
   };
 }
 

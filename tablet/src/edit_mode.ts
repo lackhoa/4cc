@@ -13,7 +13,7 @@
 // the whole stroke (both vertices) in the camera plane; a drag starting on
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
-import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
+import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
 import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
@@ -72,13 +72,14 @@ export function pick_stroke(
 ): StrokeId | null {
   let best_id: StrokeId | null = null;
   let best_distance = STROKE_PICK_RADIUS_PIXELS;
+  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   for (const stroke of tablet_document.strokes) {
     if (!layers.has(stroke.layer)) continue;
     const points = stroke_control_points(stroke, tablet_document);
     let previous: V2 | null = null;
     for (let i = 0; i <= PICK_SAMPLES_PER_STROKE; i++) {
       const world = bezier_point(points, i / PICK_SAMPLES_PER_STROKE);
-      const projected = camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
+      const projected = project(world);
       if (projected === null) {
         previous = null;
         continue;
@@ -211,9 +212,10 @@ export function pick_vertex(
 ): VertexId | null {
   let best: VertexId | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
+  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   for (const vertex of tablet_document.vertices) {
     if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
-    const projected = camera_world_to_screen(camera, vertex_world_position(tablet_document, vertex), canvas.clientWidth, canvas.clientHeight);
+    const projected = project(vertex_world_position(tablet_document, vertex));
     if (projected === null) continue;
     const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
     if (distance < best_distance) {
