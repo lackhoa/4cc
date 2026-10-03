@@ -9,9 +9,8 @@
 // merges the two into one shared junction; releasing it near another stroke's
 // curve instead pins it there (plan-tablet-vertex-to-line-snap.md). Pinned vertices (vertex_pins) only
 // ever slide along their host curve, whichever way they're grabbed.
-// A drag starting ON the stroke body translates
-// the whole stroke (both vertices) in the camera plane; a drag starting on
-// empty space is NOT consumed — the caller orbits the camera instead (Q35).
+// A drag starting anywhere else (the stroke body, empty space) is NOT
+// consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
 import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
@@ -44,14 +43,12 @@ export type EditState = {
   dragging: StrokePointKey | null; // pen is down on a control point
   dragging_pin: VertexId | null; // pen is down on a pinned vertex
   selected_handle: "p1" | "p2" | null; // the handle the nudge keys move, set by a tap on it; survives pen-up
-  moving_whole_stroke: boolean; // pen is down on the stroke body
   last_screen: V2 | null; // previous pen position while a drag is active
 };
 
 export function begin_edit_state(stroke_id: StrokeId): EditState {
   return {
-    stroke_id, dragging: null, dragging_pin: null, selected_handle: null,
-    moving_whole_stroke: false, last_screen: null,
+    stroke_id, dragging: null, dragging_pin: null, selected_handle: null, last_screen: null,
   };
 }
 
@@ -167,11 +164,10 @@ function pick_pin_on_stroke(
   return best;
 }
 
-// Returns false when the pen landed on neither a control point nor the stroke
-// body — the caller should treat the drag as a camera orbit.
+// Returns false when the pen landed on no control point or pin of the stroke
+// — the caller should treat the drag as a camera orbit.
 export function edit_pen_down(
   state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
-  layers: ReadonlySet<Layer>,
 ): boolean {
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
   // A handle (p1/p2) is checked first, the same order a tap picks in
@@ -196,11 +192,7 @@ export function edit_pen_down(
       state.dragging_pin = vertex_id;
     }
   }
-  state.moving_whole_stroke =
-    state.dragging === null && state.dragging_pin === null &&
-    pick_stroke(tablet_document, camera, screen, canvas, layers) === state.stroke_id;
-  state.last_screen =
-    state.dragging !== null || state.dragging_pin !== null || state.moving_whole_stroke ? screen : null;
+  state.last_screen = state.dragging !== null || state.dragging_pin !== null ? screen : null;
   return state.last_screen !== null;
 }
 
@@ -247,16 +239,6 @@ export function edit_pen_move(
   const world_delta = camera_plane_drag(camera, state.last_screen, screen, canvas);
   state.last_screen = screen;
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
-  if (state.moving_whole_stroke) {
-    // d0/d3 are translation-invariant; moving both vertices moves the stroke
-    // (and drags any strokes sharing those vertices — vertices connect).
-    // Through move_vertex so those other strokes' offsets rotate with their
-    // chords; this stroke's own chord is unchanged once both ends have moved.
-    for (const vertex_id of [stroke.p0_vertex, stroke.p3_vertex]) {
-      move_vertex(tablet_document, vertex_id, v3_add(vertex_position(tablet_document, vertex_id), world_delta));
-    }
-    return;
-  }
   if (state.dragging_pin !== null) {
     // A pinned vertex only slides along its host curve (Q8): move t to the
     // curve point nearest the pen on screen, and place the vertex there.
@@ -311,7 +293,6 @@ export function edit_nudge_handle(
   if (handle_screen === null) return; // behind the eye: no screen position to step from
   state.dragging = handle;
   state.dragging_pin = null;
-  state.moving_whole_stroke = false;
   if (screen_step.x !== 0 || screen_step.y !== 0) {
     state.last_screen = handle_screen;
     edit_pen_move(
@@ -469,6 +450,5 @@ export function edit_pen_up(
   }
   state.dragging = null;
   state.dragging_pin = null;
-  state.moving_whole_stroke = false;
   state.last_screen = null;
 }

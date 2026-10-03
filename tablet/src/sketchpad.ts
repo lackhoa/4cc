@@ -1,9 +1,9 @@
 // autodraw tablet — iPad drawing companion prototype.
 // Sketchpad rework (plan step 7): strokes are single cubics put down with the
 // armed line tool and shaped afterwards; endpoints live in a shared vertex
-// table so joined strokes can never tear. Bare pen drags orbit (Q27/Q35); a
-// drag starting on the selected stroke translates it; vertex/handle drags
-// reshape. Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
+// table so joined strokes can never tear. Bare pen drags orbit (Q27/Q35), also
+// when they start on the selected stroke; vertex/handle drags reshape.
+// Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 //
 // The whole editor is `start_sketchpad(setup)`: one page calls it with its own
 // reference mesh, document name and localStorage keys (plan-sketchpad-landmarks.md
@@ -656,15 +656,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
   }
 
-  // Selected-stroke pen-up: a drag (control point, whole-stroke move, or orbit)
+  // Selected-stroke pen-up: a drag (control point or orbit)
   // just ends. A tap moved nothing: with a pick tool armed it feeds the tool,
   // otherwise it selects what it hit (select_tap_target).
   function edit_mode_pen_up(position: V2, multi: boolean): void {
     if (edit_state === null) return;
     const was_tap = pen_max_displacement_pixels < pen_tap_max_movement_pixels;
     if (!was_tap) {
-      if (edit_state.moving_whole_stroke) pen_history_label = `move stroke ${edit_state.stroke_id}`;
-      else if (edit_state.dragging_pin !== null) pen_history_label = `move pin ${edit_state.dragging_pin}`;
+      if (edit_state.dragging_pin !== null) pen_history_label = `move pin ${edit_state.dragging_pin}`;
       else if (edit_state.dragging !== null) {
         // Same label for every drag of one control point, so a run of them merges
         // into a single history entry (see end_history_step).
@@ -1175,8 +1174,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         line_state = line_pen_down(tablet_document, camera, position, canvas, pickable_layers(), line_start_vertex);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
-        // Consumed only when the pen lands on the selection; otherwise orbit.
-        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas, pickable_layers())) {
+        // Consumed only when the pen lands on a control point or pin of the selection; otherwise orbit.
+        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
           pen_orbit_last_screen = position;
         }
       } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers()) === selected_vertex) {
