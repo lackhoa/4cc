@@ -565,9 +565,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const triangle_vertices: number[] = [];
 
     // Vertices have no marker of their own: only the hot vertex (grown) and the
-    // selected vertex (anchor-sized, in the highlight colour) draw.
+    // selected vertex (anchor-sized, in the highlight colour) draw. The mirror
+    // draws no vertex highlight at all (hot, selected, weld warning).
+    const vertex_highlights_drawn = mesh_camera === camera;
     const drawn_layers = visible_layers();
     for (const vertex of tablet_document.vertices) {
+      if (!vertex_highlights_drawn) break;
       if (!vertex_is_on_layers(tablet_document, vertex.id, drawn_layers)) continue;
       const hot = hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex.id;
       const world_position = vertex_world_position(tablet_document, vertex);
@@ -580,7 +583,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (edit_state === null) {
       // Drag-time weld warning for a dragged vertex, same marker as an endpoint drag below.
       const weld_target = selected_vertex_weld_target();
-      if (weld_target !== null) {
+      if (weld_target !== null && vertex_highlights_drawn) {
         append_billboard_square(
           vertex_position(tablet_document, weld_target), anchor_half * 2, basis.right, basis.up,
           HIGHLIGHT_COLOR, triangle_vertices,
@@ -602,7 +605,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     push_line(points.p3, points.p2);
     // The hot handle / endpoint / pin draws bigger and in HOT_COLOR.
     const is_hot_handle = (key: "p1" | "p2") => hot_item !== null && hot_item.kind === "handle" && hot_item.key === key;
-    const is_hot_vertex = (vertex: VertexId) => hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex;
+    const is_hot_vertex = (vertex: VertexId) => vertex_highlights_drawn && hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex;
     const push_marker = (center: V3, half_size: number, color: { r: number; g: number; b: number }, hot: boolean) => {
       append_billboard_square(
         center, hot ? half_size * HOT_SIZE_SCALE : half_size, basis.right, basis.up,
@@ -635,7 +638,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (pen_really_dragged && (edit_state.dragging === "p0" || edit_state.dragging === "p3")) {
       const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
       const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers());
-      if (target_vertex !== null) {
+      if (target_vertex !== null && vertex_highlights_drawn) {
         append_billboard_square(
           vertex_position(tablet_document, target_vertex), anchor_half * 2, basis.right, basis.up,
           HIGHLIGHT_COLOR, triangle_vertices,
