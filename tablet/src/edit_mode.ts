@@ -365,6 +365,12 @@ export function merge_vertex_if_near_another(tablet_document: TabletDocument, dr
   if (vertex_by_id(tablet_document, dragged_vertex).midline === true) {
     vertex_by_id(tablet_document, target_vertex).midline = true;
   }
+  // A landmark's name survives the weld: an unnamed survivor takes the dragged
+  // vertex's name (a named survivor keeps its own).
+  const dragged_name = vertex_by_id(tablet_document, dragged_vertex).name;
+  if (dragged_name !== undefined && vertex_by_id(tablet_document, target_vertex).name === undefined) {
+    vertex_by_id(tablet_document, target_vertex).name = dragged_name;
+  }
   // The dragged vertex is never pinned (pin drags slide t and skip merging),
   // so no pin references it.
   tablet_document.vertices = tablet_document.vertices.filter((vertex) => vertex.id !== dragged_vertex);

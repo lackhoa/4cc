@@ -271,11 +271,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   // The vertex the selected vertex would weld into if its drag ended now, or null:
   // only while the pen has really dragged it (a tap never welds), and never for a
-  // landmark or a pinned vertex.
+  // pinned vertex.
   function selected_vertex_weld_target(): VertexId | null {
     if (selected_vertex === null || selected_vertex_drag_last_screen === null) return null;
     if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) return null;
-    if (vertex_by_id(tablet_document, selected_vertex).name !== undefined) return null;
     if (pin_by_vertex(tablet_document, selected_vertex) !== null) return null;
     return find_merge_target_vertex(tablet_document, selected_vertex, pickable_layers());
   }
@@ -1082,7 +1081,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (selected_vertex_drag_last_screen !== null) {
         // A dragged vertex welds into a vertex it was released on, same as an
         // endpoint drag of a selected stroke; the survivor takes the selection.
-        // No pin on release, and a landmark never welds (landmarks are free points).
+        // No pin on release.
         pen_history_label = `move vertex ${selected_vertex}`;
         const weld_target = selected_vertex_weld_target();
         if (weld_target !== null && merge_vertex_if_near_another(tablet_document, selected_vertex!, pickable_layers())) {
