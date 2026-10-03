@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -723,6 +723,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   });
 
+  // Straighten: every selected line becomes the straight segment between its
+  // endpoints (the vertices stay where they are).
+  const straighten_button = document.getElementById("straighten_button") as HTMLButtonElement;
+  straighten_button.addEventListener("click", () => {
+    if (edit_state === null) return;
+    begin_history_step(history, tablet_document);
+    straighten_strokes(tablet_document, selected_strokes());
+    end_history_step(history, tablet_document, `straighten strokes ${selected_strokes().join(" ")}`);
+    request_render();
+  });
+
   // Split here (plan-sketchpad-split-at-vertex.md): a pinned vertex is selected by
   // tapping it while its host stroke is selected; this button then cuts the stroke
   // exactly there, the vertex becoming the smooth knot. Shown only while such a
@@ -1169,44 +1180,41 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function unpin_is_locked(): boolean {
     return edit_state !== null && edit_state.selected_pin !== null && pin_is_locked(tablet_document, edit_state.selected_pin);
   }
-  // A button whose handler would do nothing is greyed out, with the reason as
-  // its tooltip (plan-sketchpad-pin-replaces-split.md Q7: greyed, not hidden, so
-  // the toolbar never shifts under the pen). The button's own tooltip from the
-  // page comes back once it is usable.
+  // A button with nothing to act on in the current selection is hidden. A button
+  // whose action a patch blocks stays, greyed out, with the reason as its tooltip;
+  // the button's own tooltip from the page comes back once it is usable.
   const own_button_titles = new Map<HTMLButtonElement, string>();
-  function set_button_unavailable_reason(button: HTMLButtonElement, reason: string | null): void {
+  function set_button_availability(button: HTMLButtonElement, selection_fits: boolean, lock_reason: string | null): void {
     if (!own_button_titles.has(button)) own_button_titles.set(button, button.title);
-    button.disabled = reason !== null;
-    button.title = reason ?? own_button_titles.get(button)!;
+    button.hidden = !selection_fits;
+    button.disabled = lock_reason !== null;
+    button.title = lock_reason ?? own_button_titles.get(button)!;
   }
   function refresh_lock_buttons(): void {
-    const no_line = edit_state === null ? "select a line first" : null;
-    const no_line_or_vertex = edit_state === null && selected_vertex === null ? "select a line or a vertex first" : null;
-    const not_two_lines = single_extra_stroke() === null ? "select two lines first (tap one, ctrl-tap the other)" : null;
+    const line_selected = edit_state !== null;
+    const line_or_vertex_selected = edit_state !== null || selected_vertex !== null;
+    const two_lines_selected = single_extra_stroke() !== null;
 
-    let delete_reason: string | null = null;
-    if (selected_patch === null && selected_vertex === null) {
-      if (edit_state === null) delete_reason = "select a line, a vertex or a patch first";
-      else if (delete_is_locked()) delete_reason = `the selected line bounds a patch, ${DELETE_PATCH_FIRST}`;
+    let delete_lock_reason: string | null = null;
+    if (selected_patch === null && selected_vertex === null && delete_is_locked()) {
+      delete_lock_reason = `the selected line bounds a patch, ${DELETE_PATCH_FIRST}`;
     }
     if (selected_patch === null && selected_vertex !== null && pin_is_locked(tablet_document, selected_vertex)) {
-      delete_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
+      delete_lock_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
     }
-    set_button_unavailable_reason(delete_button, delete_reason);
-    set_button_unavailable_reason(
-      join_button, not_two_lines ?? (join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null),
+    set_button_availability(delete_button, selected_patch !== null || line_or_vertex_selected, delete_lock_reason);
+    set_button_availability(
+      join_button, two_lines_selected, join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
-    set_button_unavailable_reason(
-      pin_button, no_line ?? (unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null),
+    set_button_availability(
+      pin_button, line_selected, unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
-    set_button_unavailable_reason(split_button, no_line);
-    set_button_unavailable_reason(smooth_button, not_two_lines);
-    set_button_unavailable_reason(
-      patch_button,
-      edit_state === null || extra_selection.length === 0 ? "select two or more lines first (ctrl-tap adds a line)" : null,
-    );
-    set_button_unavailable_reason(midline_button, no_line_or_vertex);
-    set_button_unavailable_reason(name_button, no_line_or_vertex);
+    set_button_availability(split_button, line_selected, null);
+    set_button_availability(smooth_button, two_lines_selected, null);
+    set_button_availability(straighten_button, line_selected, null);
+    set_button_availability(patch_button, edit_state !== null && extra_selection.length > 0, null);
+    set_button_availability(midline_button, line_or_vertex_selected, null);
+    set_button_availability(name_button, line_or_vertex_selected, null);
   }
   delete_button.addEventListener("click", () => {
     if (selected_patch !== null) {

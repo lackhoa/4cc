@@ -410,6 +410,22 @@ export function enforce_smooth_knots_of_stroke(tablet_document: TabletDocument, 
   }
 }
 
+// Make each stroke the straight segment between its endpoints (both handles back on
+// the chord's thirds). A smooth knot between two of the straightened strokes is
+// dropped, since two straight lines cannot both keep it; a knot with any other
+// stroke stays and that stroke is re-aimed to follow.
+export function straighten_strokes(tablet_document: TabletDocument, stroke_ids: StrokeId[]): void {
+  for (const stroke_id of stroke_ids) {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    stroke.d0 = v3(0, 0, 0);
+    stroke.d3 = v3(0, 0, 0);
+  }
+  tablet_document.smooth_knots = tablet_document.smooth_knots.filter(
+    (knot) => !(stroke_ids.includes(knot.stroke_a) && stroke_ids.includes(knot.stroke_b)),
+  );
+  for (const stroke_id of stroke_ids) enforce_smooth_knots_of_stroke(tablet_document, stroke_id);
+}
+
 // Drop vertices that no stroke endpoint and no pin references. Named vertices (landmarks) stay.
 export function garbage_collect_vertices(tablet_document: TabletDocument): void {
   const used_vertices = new Set<VertexId>();
