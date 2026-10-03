@@ -92,12 +92,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const reference_translucent = create_translucent_mesh(gl);
   let reference_translucent_vertices = new Float32Array(0); // reused across frames, grown on demand
   // Clipping plane (Q5): one plane cutting both the reference and the drawing,
-  // sagittal by default. Armed via the page's optional `#clip_button`; while
-  // armed, horizontal pen travel slides the plane along its normal (no orbit,
-  // no editing).
+  // sagittal (x > offset cut away). Driven by the page's optional `#clip_offset`
+  // slider; parked at its max it cuts nothing.
   const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
-  let clip_drag_armed = false;
-  let clip_drag_last_screen: V2 | null = null; // non-null while the pen slides the clip plane
   let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
   // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
   // active_layer; locked layers are ignored by every pick and snap; hidden
@@ -994,9 +991,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_max_displacement_pixels = 0;
       pen_orbit_last_screen = null;
       hover_screen = null; // nothing is hot while the pen is down
-      if (clip_drag_armed) {
-        clip_drag_last_screen = position;
-      } else if (armed_tool === "line") {
+      if (armed_tool === "line") {
         line_state = line_pen_down(tablet_document, camera, position, canvas, pickable_layers(), line_start_vertex);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
@@ -1020,13 +1015,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
           Math.hypot(position.x - pen_down_screen.x, position.y - pen_down_screen.y),
         );
       }
-      if (clip_drag_last_screen !== null) {
-        // Horizontal pen travel slides the plane along its normal, whatever the
-        // view: in profile the sagittal normal points at the camera, so a
-        // camera-plane drag would have no component on it.
-        clip_plane.offset += (position.x - clip_drag_last_screen.x) * camera_world_units_per_pixel(camera, canvas.clientHeight);
-        clip_drag_last_screen = position;
-      } else if (armed_tool === "line") {
+      if (armed_tool === "line") {
         if (line_state !== null) {
           line_pen_move(line_state, tablet_document, camera, position, canvas, pickable_layers());
           update_preview_line();
@@ -1056,9 +1045,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     },
     on_pen_up: (position, event) => {
       const multi = event.ctrlKey || event.metaKey; // ctrl/cmd-tap extends the selection (Q1)
-      if (clip_drag_last_screen !== null) {
-        // A clip drag touches the view only: nothing to select, nothing for history.
-      } else if (armed_tool === "line") {
+      if (armed_tool === "line") {
         line_mode_pen_up();
       } else if (edit_state !== null) {
         edit_mode_pen_up(position, multi);
@@ -1087,7 +1074,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_down_screen = null;
       pen_orbit_last_screen = null;
       selected_vertex_drag_last_screen = null;
-      clip_drag_last_screen = null;
       hover_screen = position;
       end_history_step(history, tablet_document, pen_history_label, pen_history_merge);
       request_render();
@@ -1326,15 +1312,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       request_render();
     });
   }
-  // Clip plane (Q5), optional per page: the "clip" button toggles the plane AND
-  // arms the drag; a bare pen drag then slides it (see on_pen_down). Tap again to
-  // turn the plane off and get the pen back.
-  const clip_button = document.getElementById("clip_button") as HTMLButtonElement | null;
-  if (clip_button !== null) {
-    clip_button.addEventListener("click", () => {
-      clip_plane.enabled = !clip_plane.enabled;
-      clip_drag_armed = clip_plane.enabled;
-      clip_button.classList.toggle("armed", clip_plane.enabled);
+  // Clip plane (Q5), optional per page: the slider value is the plane offset in
+  // world units (WORLD_PER_MM * mm, so +-1 spans the whole head); at its max the
+  // plane is off. A slider rather than a pen drag, so it never competes with the
+  // orbit.
+  const clip_offset_slider = document.getElementById("clip_offset") as HTMLInputElement | null;
+  if (clip_offset_slider !== null) {
+    clip_offset_slider.addEventListener("input", () => {
+      clip_plane.offset = Number(clip_offset_slider.value);
+      clip_plane.enabled = clip_plane.offset < Number(clip_offset_slider.max);
       request_render();
     });
   }
