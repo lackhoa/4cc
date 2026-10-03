@@ -20,6 +20,7 @@ import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line
 import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
+import { describe_selection } from "./selection_readout";
 import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
@@ -250,6 +251,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       draw_mesh_translucent(reference_translucent, view_projection, camera_eye(camera), clip);
     });
     rebuild_stroke_labels();
+    refresh_selection_readout();
   }
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
@@ -281,6 +283,48 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     stroke_labels.replaceChildren(...labels);
   }
+
+  // Selection readout (bottom left): the document ids of what is selected and
+  // hovered, as text, so a bug report can name the items. A click copies it.
+  const selection_readout_style = document.createElement("style");
+  selection_readout_style.textContent = `
+    #selection_readout {
+      position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 20; padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #222228cc;
+      font: 13px monospace; color: #ccc; white-space: pre; cursor: copy;
+    }
+    #selection_readout.copied { border-color: #6c9f5a; }
+    #selection_readout.copy_failed { border-color: #e05a5a; }`;
+  document.head.appendChild(selection_readout_style);
+  const selection_readout = document.createElement("div");
+  selection_readout.id = "selection_readout";
+  selection_readout.title = "click to copy";
+  document.body.append(selection_readout);
+  function selection_readout_text(): string {
+    return describe_selection(tablet_document, {
+      stroke: edit_state === null ? null : edit_state.stroke_id,
+      selected_handle: edit_state === null ? null : edit_state.selected_handle,
+      extra_strokes: extra_selection,
+      vertex: selected_vertex,
+      extra_vertex: extra_vertex,
+      patch: selected_patch,
+      hot: hot_item,
+    });
+  }
+  function refresh_selection_readout(): void {
+    const text = selection_readout_text();
+    if (selection_readout.textContent !== text) selection_readout.textContent = text;
+  }
+  selection_readout.addEventListener("click", async () => {
+    // navigator.clipboard only exists on https and localhost: absent on the tablet over plain http.
+    let copied = false;
+    if (navigator.clipboard !== undefined) {
+      copied = await navigator.clipboard.writeText(selection_readout_text()).then(() => true, () => false);
+    }
+    const flash = copied ? "copied" : "copy_failed";
+    selection_readout.classList.add(flash);
+    window.setTimeout(() => selection_readout.classList.remove(flash), 600);
+  });
 
   function resize_canvas_to_display(): void {
     const dpr = window.devicePixelRatio;
@@ -1791,6 +1835,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
   (window as unknown as { debug_render_now: unknown }).debug_render_now = render_now;
+  (window as unknown as { debug_selection_text: unknown }).debug_selection_text = selection_readout_text;
   (window as unknown as { debug_pull_document_changes_if_any: unknown }).debug_pull_document_changes_if_any = pull_document_changes_if_any;
   // Read by the page-reload script of the build (vite.config.ts reload_on_rebuild_plugin).
   (window as unknown as { tablet_has_unsaved_edits: unknown }).tablet_has_unsaved_edits = () => has_unsaved_edits(persistence);
