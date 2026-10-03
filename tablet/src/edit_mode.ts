@@ -19,7 +19,8 @@ import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } fro
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
-// path sum easily exceeds any threshold.
+// path sum easily exceeds any threshold. A tap only selects: the sketchpad
+// calls edit_pen_move only once the pen has travelled past this.
 export const TAP_MAX_MOVEMENT_PIXELS = 12;
 
 // Pen/mouse-sized, not finger-sized (fingers never pick). CSS pixels.
@@ -42,14 +43,14 @@ export type EditState = {
   stroke_id: StrokeId;
   dragging: StrokePointKey | null; // pen is down on a control point
   dragging_pin: VertexId | null; // pen is down on a pinned vertex
-  selected_pin: VertexId | null; // last pin the pen landed on — the unpin button's target
+  selected_handle: "p1" | "p2" | null; // the handle the nudge keys move, set by a tap on it; survives pen-up
   moving_whole_stroke: boolean; // pen is down on the stroke body
   last_screen: V2 | null; // previous pen position while a drag is active
 };
 
 export function begin_edit_state(stroke_id: StrokeId): EditState {
   return {
-    stroke_id, dragging: null, dragging_pin: null, selected_pin: null,
+    stroke_id, dragging: null, dragging_pin: null, selected_handle: null,
     moving_whole_stroke: false, last_screen: null,
   };
 }
@@ -172,26 +173,28 @@ export function edit_pen_down(
   layers: ReadonlySet<Layer>,
 ): boolean {
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
-  // Pins are checked before control points: a pin can sit right next to a
-  // handle (it rides the curve), and the handle is still grabbable a bit
-  // further out.
-  state.dragging = null;
-  state.dragging_pin = pick_pin_on_stroke(tablet_document, state.stroke_id, camera, screen, canvas);
-  if (state.dragging_pin === null) {
-    state.dragging = pick_stroke_point(stroke, tablet_document, camera, screen, canvas);
-    if (state.dragging === "p0" || state.dragging === "p3") {
-      // A pinned vertex grabbed as another stroke's endpoint still slides on
-      // its host curve — the pin owns the vertex's motion.
-      const vertex_id = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-      if (pin_by_vertex(tablet_document, vertex_id) !== null) {
-        state.dragging = null;
-        state.dragging_pin = vertex_id;
-      }
+  // A handle (p1/p2) is checked first, the same order a tap picks in
+  // (sketchpad.ts pick_tap_target). Then the pins, before the endpoints: a pin
+  // can sit right next to an endpoint (it rides the curve), and the endpoint is
+  // still grabbable a bit further out.
+  state.dragging_pin = null;
+  state.dragging = pick_stroke_point(stroke, tablet_document, camera, screen, canvas);
+  if (state.dragging !== "p1" && state.dragging !== "p2") {
+    const pinned_vertex = pick_pin_on_stroke(tablet_document, state.stroke_id, camera, screen, canvas);
+    if (pinned_vertex !== null) {
+      state.dragging = null;
+      state.dragging_pin = pinned_vertex;
     }
   }
-  // Pin selection follows the pen: landing on a pin selects it for the unpin
-  // button; landing anywhere else clears it.
-  state.selected_pin = state.dragging_pin;
+  if (state.dragging === "p0" || state.dragging === "p3") {
+    // A pinned vertex grabbed as another stroke's endpoint still slides on
+    // its host curve — the pin owns the vertex's motion.
+    const vertex_id = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+    if (pin_by_vertex(tablet_document, vertex_id) !== null) {
+      state.dragging = null;
+      state.dragging_pin = vertex_id;
+    }
+  }
   state.moving_whole_stroke =
     state.dragging === null && state.dragging_pin === null &&
     pick_stroke(tablet_document, camera, screen, canvas, layers) === state.stroke_id;
@@ -267,17 +270,67 @@ export function edit_pen_move(
     return;
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
-    // A handle drag at a smooth knot leads the neighbour: same direction, both
-    // lengths scaled by the same factor (Q2) — so remember the length before.
-    const knot_vertex = state.dragging === "p1" ? stroke.p0_vertex : stroke.p3_vertex;
-    const knots = smooth_knots_at_vertex(tablet_document, knot_vertex)
-      .filter((knot) => knot.stroke_a === stroke.id || knot.stroke_b === stroke.id);
-    const old_length = dragged_handle_length(state, stroke, tablet_document);
-    drag_handle(state, stroke, tablet_document, camera, screen, canvas, handle_mode, world_delta);
-    const new_length = dragged_handle_length(state, stroke, tablet_document);
-    const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
-    for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
+    move_dragged_handle_leading_smooth_knots(state, stroke, tablet_document, () => {
+      drag_handle(state, stroke, tablet_document, camera, screen, canvas, handle_mode, world_delta);
+    });
   }
+}
+
+// Run `move_handle` (which moves the dragged handle, p1 or p2), then make the
+// smooth knots at that end follow.
+function move_dragged_handle_leading_smooth_knots(
+  state: EditState, stroke: Stroke, tablet_document: TabletDocument, move_handle: () => void,
+): void {
+  // A handle drag at a smooth knot leads the neighbour: same direction, both
+  // lengths scaled by the same factor (Q2) — so remember the length before.
+  const knot_vertex = state.dragging === "p1" ? stroke.p0_vertex : stroke.p3_vertex;
+  const knots = smooth_knots_at_vertex(tablet_document, knot_vertex)
+    .filter((knot) => knot.stroke_a === stroke.id || knot.stroke_b === stroke.id);
+  const old_length = dragged_handle_length(state, stroke, tablet_document);
+  move_handle();
+  const new_length = dragged_handle_length(state, stroke, tablet_document);
+  const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
+  for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
+}
+
+// Keyboard move of a handle (p1/p2) of the edited stroke, through the same
+// path as a pen drag of it, so every rule of a drag holds (stroke plane, swing,
+// smooth neighbours). `screen_step` is in pixels from where the handle shows on
+// screen. `forward_distance` is world units along the camera's forward: in
+// plane mode it is projected into the stroke's plane (a plane facing the camera
+// gives no move), in swing mode it applies freely.
+export function edit_nudge_handle(
+  state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, canvas: HTMLCanvasElement,
+  handle: "p1" | "p2", screen_step: V2, forward_distance: number, handle_mode: HandleMode,
+): void {
+  const stroke = stroke_by_id(tablet_document, state.stroke_id);
+  const handle_world = stroke_control_points(stroke, tablet_document)[handle];
+  const handle_screen = camera_world_to_screen(camera, handle_world, canvas.clientWidth, canvas.clientHeight);
+  if (handle_screen === null) return; // behind the eye: no screen position to step from
+  state.dragging = handle;
+  state.dragging_pin = null;
+  state.moving_whole_stroke = false;
+  if (screen_step.x !== 0 || screen_step.y !== 0) {
+    state.last_screen = handle_screen;
+    edit_pen_move(
+      state, tablet_document, camera, { x: handle_screen.x + screen_step.x, y: handle_screen.y + screen_step.y }, canvas, handle_mode,
+    );
+  }
+  if (forward_distance !== 0) {
+    const forward = camera_basis(camera).forward;
+    move_dragged_handle_leading_smooth_knots(state, stroke, tablet_document, () => {
+      const world_delta = v3_scale(forward, forward_distance);
+      if (handle_mode === "swing") {
+        swing_dragged_handle(state, stroke, tablet_document, world_delta);
+        return;
+      }
+      const normal = stroke_plane_normal(stroke, tablet_document, forward);
+      const dragged_key = handle === "p1" ? "d0" : "d3";
+      stroke[dragged_key] = v3_add(stroke[dragged_key], v3_sub(world_delta, v3_scale(normal, v3_dot(world_delta, normal))));
+    });
+  }
+  state.dragging = null;
+  state.last_screen = null;
 }
 
 // Distance from the dragged handle (p1 or p2) to its own vertex.
@@ -295,13 +348,7 @@ function drag_handle(
   {
     const dragged_key = state.dragging === "p1" ? "d0" : "d3";
     if (handle_mode === "swing") {
-      // The dragged handle moves freely with the pen; the other one swings into
-      // the plane the dragged handle now spans with the chord (Q2).
-      const other_key = state.dragging === "p1" ? "d3" : "d0";
-      stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
-      const chord = v3_sub(vertex_position(tablet_document, stroke.p3_vertex), vertex_position(tablet_document, stroke.p0_vertex));
-      if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
-      stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
+      swing_dragged_handle(state, stroke, tablet_document, world_delta);
       return;
     }
     // The handle goes where the pen ray pierces the stroke's plane: glued to
@@ -320,6 +367,17 @@ function drag_handle(
       : v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
     stroke[dragged_key] = v3_sub(hit, third_point);
   }
+}
+
+// Swing mode: the dragged handle moves freely by `world_delta`; the other one
+// swings into the plane the dragged handle now spans with the chord (Q2).
+function swing_dragged_handle(state: EditState, stroke: Stroke, tablet_document: TabletDocument, world_delta: V3): void {
+  const dragged_key = state.dragging === "p1" ? "d0" : "d3";
+  const other_key = state.dragging === "p1" ? "d3" : "d0";
+  stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);
+  const chord = v3_sub(vertex_position(tablet_document, stroke.p3_vertex), vertex_position(tablet_document, stroke.p0_vertex));
+  if (v3_length(chord) < 1e-9) return; // no chord, no plane to keep
+  stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
 }
 
 // The vertex the dragged vertex would weld into on release: nearest other
@@ -396,8 +454,11 @@ function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_verte
 }
 
 // `layers`: a released vertex welds to / pins on strokes of these layers only.
-export function edit_pen_up(state: EditState, tablet_document: TabletDocument, layers: ReadonlySet<Layer>): void {
-  if (state.dragging === "p0" || state.dragging === "p3") {
+// `pen_really_dragged`: false for a tap, which never welds or pins anything.
+export function edit_pen_up(
+  state: EditState, tablet_document: TabletDocument, layers: ReadonlySet<Layer>, pen_really_dragged: boolean,
+): void {
+  if (pen_really_dragged && (state.dragging === "p0" || state.dragging === "p3")) {
     const stroke = stroke_by_id(tablet_document, state.stroke_id);
     const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
     if (!merge_vertex_if_near_another(tablet_document, dragged_vertex, layers)) {
