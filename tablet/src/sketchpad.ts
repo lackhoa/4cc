@@ -12,12 +12,12 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
-import { merge_adjacent_strokes } from "./stroke_merge";
+import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
@@ -914,7 +914,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // a vertex); the merged stroke keeps the primary's id and stays selected.
   join_button.addEventListener("click", () => {
     const other = single_extra_stroke();
-    if (edit_state === null || other === null || join_is_locked()) return;
+    if (edit_state === null || other === null || join_refusal_reason(tablet_document, edit_state.stroke_id, other) !== null) return;
     begin_history_step(history, tablet_document);
     const merged_id = merge_adjacent_strokes(tablet_document, edit_state.stroke_id, other);
     end_history_step(history, tablet_document, `join strokes ${edit_state.stroke_id} ${other}`);
@@ -1465,7 +1465,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // uses stays (unnamed), a landmark goes.
   const delete_button = document.getElementById("delete_button") as HTMLButtonElement;
   // Locks (plan-patch-subcurve-boundary.md Q3/Q7/Q8): a patch owns its
-  // boundary, so while one exists its strokes can't be deleted or joined and
+  // boundary, so while one exists its strokes can't be deleted and
   // its junction pins can't be unpinned -- the buttons go disabled with the
   // reason in their tooltip, and the handlers refuse the same way (the Delete
   // key goes through the handler). Delete the patch first. Re-checked every
@@ -1477,11 +1477,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function delete_is_locked(): boolean {
     return selected_strokes().some((id) => stroke_bounds_a_patch(tablet_document, id));
   }
-  function join_is_locked(): boolean {
-    if (edit_state === null) return false;
-    // The kept (primary) stroke is reshaped by a join, which would move every
-    // pin riding it -- refused if any of those pins bounds a patch (Q7).
-    return delete_is_locked() || pins_on_stroke(tablet_document, edit_state.stroke_id).some((pin) => pin_is_locked(tablet_document, pin.vertex));
+  // A join is not locked by a patch: it carries the patches along, and is
+  // refused only when one of them would lose its fill (stroke_merge.ts).
+  function selected_join_refusal_reason(): string | null {
+    const other = single_extra_stroke();
+    if (edit_state === null || other === null) return null;
+    return join_refusal_reason(tablet_document, edit_state.stroke_id, other);
   }
   function unpin_is_locked(): boolean {
     const pin = selected_vertex_pin();
@@ -1520,7 +1521,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         ? `the selected line bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
     set_button_availability(
-      join_button, two_lines_selected, join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null,
+      join_button, two_lines_selected, selected_join_refusal_reason(),
     );
     set_button_availability(
       pin_button, line_selected || selected_vertex_pin() !== null, unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
