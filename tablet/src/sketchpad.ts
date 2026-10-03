@@ -40,8 +40,8 @@ export type SketchpadSetup = {
   // page is tied to its one document, the panel only names it.
   can_switch_documents: boolean;
   // Layers (plan-skin-over-skull-study.md Q4/Q10): new strokes go to
-  // `active_layer`; `locked_layers` start locked. The page's optional
-  // `#layer_bar` lets the user change both at run time.
+  // `active_layer`; `locked_layers` are locked for good (the page's optional
+  // `#layer_bar` shows them locked but cannot unlock them or draw on them).
   active_layer: Layer;
   locked_layers: Layer[];
 };
@@ -1380,6 +1380,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         else locked_layers.add(layer);
         drop_selection_after_layer_change();
       }));
+      // A layer the page locks for good stays locked: no unlocking, no drawing on it.
+      if (setup.locked_layers.includes(layer)) {
+        name_buttons.get(layer)!.disabled = true;
+        lock_buttons.get(layer)!.disabled = true;
+        lock_buttons.get(layer)!.title = `${layer}: locked for good on this page`;
+      }
       hide_buttons.set(layer, make_layer_button("hide", `${layer}: not drawn`, () => {
         if (hidden_layers.has(layer)) hidden_layers.delete(layer);
         else hidden_layers.add(layer);
