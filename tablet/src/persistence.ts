@@ -4,9 +4,13 @@
 // server is unreachable. Debounced autosave, no save button.
 
 import { OrbitCamera } from "./camera";
-import { Stroke, TabletDocument, Vertex, fallback_perpendicular, stroke_handles_from_control_points } from "./document";
+import { SKULL_BONE_ID, Stroke, TabletDocument, Vertex, fallback_perpendicular, skull_bone, stroke_handles_from_control_points } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
+// Version 5 (2026-10-03): bones and layers — the document carries a `bones`
+// table, every vertex a `bone_id` with its position in that bone's space,
+// every stroke a `layer`. Loading an older file puts everything on the `skull`
+// bone (identity, so positions are unchanged) in the `skull` layer.
 // Version 4 (2026-09-05): stable ids — vertices are {id, position}, strokes
 // carry an id, every cross-reference holds ids, and the document stores the
 // two id counters. Versions 1-3 referenced strokes/vertices by array index
@@ -15,8 +19,8 @@ import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub
 // by invariant. Version 2 (2026-09-01) was explicit-normal {normal: V3, d0:
 // V2, d3: V2}; version 1 bez_v3v2 {d0: V3, d3: V2}. Older files convert on
 // load; saves are always the current version.
-const DOCUMENT_FORMAT_VERSION = 4;
-const LOADABLE_VERSIONS = [1, 2, 3, DOCUMENT_FORMAT_VERSION];
+const DOCUMENT_FORMAT_VERSION = 5;
+const LOADABLE_VERSIONS = [1, 2, 3, 4, DOCUMENT_FORMAT_VERSION];
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 export type PersistenceState = {
@@ -68,6 +72,8 @@ export function serialize_document_state(tablet_document: TabletDocument, camera
 export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.next_vertex_id = 0;
   tablet_document.next_stroke_id = 0;
+  tablet_document.bones.length = 0;
+  tablet_document.bones.push(skull_bone());
   tablet_document.vertices.length = 0;
   tablet_document.vertex_pins.length = 0;
   tablet_document.smooth_knots.length = 0;
@@ -98,7 +104,7 @@ function stroke_from_v2(old: StrokeV2, id: number, vertices: V3[]): Stroke {
   const v_raw = v3_cross(old.normal, u);
   const v = v3_length(v_raw) > 1e-9 ? v3_normalize(v_raw) : fallback_perpendicular(u);
   const in_plane = (offset: V2) => v3_add(v3_scale(u, offset.x), v3_scale(v, offset.y));
-  return { id, p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, d0: in_plane(old.d0), d3: in_plane(old.d3) };
+  return { id, layer: "skull", p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, d0: in_plane(old.d0), d3: in_plane(old.d3) };
 }
 
 function stroke_from_v1(old: StrokeV1, id: number, vertices: V3[]): Stroke {
@@ -117,18 +123,18 @@ function stroke_from_v1(old: StrokeV1, id: number, vertices: V3[]): Stroke {
     v3_add(v3_scale(u2, old.d3.x), v3_scale(v_axis, old.d3.y)),
   );
   const handles = stroke_handles_from_control_points(p0, p1, p2, p3);
-  return { id, p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, ...handles };
+  return { id, layer: "skull", p0_vertex: old.p0_vertex, p3_vertex: old.p3_vertex, ...handles };
 }
 
 function stroke_from_v3(old: StrokeV3, id: number): Stroke {
-  return { id, ...old };
+  return { id, layer: "skull", ...old };
 }
 
 // Index-addressed documents (versions 1-3) become id-addressed: every array
 // position turns into that entry's id, so stored references stay valid as-is.
 function document_from_indexed(parsed_version: number, stored: any, tablet_document: TabletDocument): void {
   const stored_vertices: V3[] = stored.vertices;
-  const vertices: Vertex[] = stored_vertices.map((position, id) => ({ id, position }));
+  const vertices: Vertex[] = stored_vertices.map((position, id) => ({ id, bone_id: SKULL_BONE_ID, position }));
   const strokes: Stroke[] = parsed_version === 1
     ? stored.strokes.map((stroke: StrokeV1, id: number) => stroke_from_v1(stroke, id, stored_vertices))
     : parsed_version === 2
@@ -157,9 +163,18 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   clear_document_in_place(tablet_document);
   if (parsed.version < 4) {
     document_from_indexed(parsed.version, parsed.document, tablet_document);
+  } else if (parsed.version === 4) {
+    // v4 -> v5: the Frankfurt frame the skull was drawn in IS the skull bone's
+    // space (identity), so positions are copied as they are.
+    tablet_document.next_vertex_id = parsed.document.next_vertex_id;
+    tablet_document.next_stroke_id = parsed.document.next_stroke_id;
+    tablet_document.vertices.push(...parsed.document.vertices.map((vertex: Omit<Vertex, "bone_id">): Vertex => ({ ...vertex, bone_id: SKULL_BONE_ID })));
+    tablet_document.strokes.push(...parsed.document.strokes.map((stroke: Omit<Stroke, "layer">): Stroke => ({ ...stroke, layer: "skull" })));
   } else {
     tablet_document.next_vertex_id = parsed.document.next_vertex_id;
     tablet_document.next_stroke_id = parsed.document.next_stroke_id;
+    tablet_document.bones.length = 0;
+    tablet_document.bones.push(...parsed.document.bones);
     tablet_document.vertices.push(...parsed.document.vertices);
     tablet_document.strokes.push(...parsed.document.strokes);
   }

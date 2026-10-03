@@ -20,6 +20,7 @@
                       background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
     #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
     #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+    #toolbar input[type=range] { width: 110px; align-self: center; }
     #docs_panel { position: fixed; top: max(64px, calc(env(safe-area-inset-top) + 52px));
                   right: max(12px, env(safe-area-inset-right)); display: none;
                   flex-direction: column; gap: 6px; padding: 10px;
@@ -52,6 +53,17 @@
     #width_panel input[type=range] { width: 180px; }
     #width_panel input[type=number] { width: 56px; }
     #width_panel .empty { color: #666; }
+    /* Layer bar: one row per layer (name = active, lock, hide); filled by sketchpad.ts. */
+    #layer_bar { position: fixed; bottom: max(12px, env(safe-area-inset-bottom));
+                 left: max(12px, env(safe-area-inset-left)); display: flex;
+                 flex-direction: column; gap: 6px; padding: 8px;
+                 background: #222228; border: 1px solid #444; border-radius: 8px; }
+    #layer_bar .layer_row { display: flex; gap: 6px; }
+    #layer_bar button { padding: 8px 12px; font-size: 14px; color: #ccc;
+                        background: #2a2a30; border: 1px solid #444; border-radius: 6px; }
+    #layer_bar .layer_row button:first-child { min-width: 64px; text-align: left; }
+    #layer_bar button:hover { color: #fff; border-color: #888; background: #3a3a42; }
+    #layer_bar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
     #stroke_labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
     #stroke_labels div { position: absolute; transform: translate(-50%, -50%);
                          padding: 2px 6px; font-size: 13px; color: #eee; white-space: nowrap;
@@ -78,11 +90,15 @@
     <button id="delete_button">del</button>
     <button id="view_button">view</button>
     <button id="reference_button">ref</button>
+    <button id="eyeball_button" title="show the eyeballs with the reference">eyes</button>
+    <input type="range" id="reference_alpha" min="0.05" max="1" step="0.05" value="1" title="reference opacity">
+    <button id="clip_button" title="cut away one side of a sagittal plane; while armed, drag slides the plane">clip</button>
     <button id="surface_button">surf</button>
         <button id="docs_button">docs</button>
     <button id="pages_button" title="back to the main menu">menu</button>
   </div>
   <div id="stroke_labels"></div>
+  <div id="layer_bar"></div>
   <div id="docs_panel"></div>
   <div id="history_panel"></div>
   <div id="width_panel"></div>

@@ -14,7 +14,7 @@
 // empty space is NOT consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -64,13 +64,15 @@ function distance_point_to_segment(point: V2, a: V2, b: V2): number {
 
 // Nearest stroke within pick range of a screen tap, or null. Distance is to
 // the projected polyline's segments, not its sample points, so a long or
-// zoomed-in stroke has no dead zones between samples.
+// zoomed-in stroke has no dead zones between samples. Only strokes on `layers`
+// count (the sketchpad passes the layers neither locked nor hidden).
 export function pick_stroke(
-  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
 ): StrokeId | null {
   let best_id: StrokeId | null = null;
   let best_distance = STROKE_PICK_RADIUS_PIXELS;
   for (const stroke of tablet_document.strokes) {
+    if (!layers.has(stroke.layer)) continue;
     const points = stroke_control_points(stroke, tablet_document);
     let previous: V2 | null = null;
     for (let i = 0; i <= PICK_SAMPLES_PER_STROKE; i++) {
@@ -167,6 +169,7 @@ function pick_pin_on_stroke(
 // body — the caller should treat the drag as a camera orbit.
 export function edit_pen_down(
   state: EditState, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  layers: ReadonlySet<Layer>,
 ): boolean {
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
   // Pins are checked before control points: a pin can sit right next to a
@@ -191,7 +194,7 @@ export function edit_pen_down(
   state.selected_pin = state.dragging_pin;
   state.moving_whole_stroke =
     state.dragging === null && state.dragging_pin === null &&
-    pick_stroke(tablet_document, camera, screen, canvas) === state.stroke_id;
+    pick_stroke(tablet_document, camera, screen, canvas, layers) === state.stroke_id;
   state.last_screen =
     state.dragging !== null || state.dragging_pin !== null || state.moving_whole_stroke ? screen : null;
   return state.last_screen !== null;
@@ -199,14 +202,15 @@ export function edit_pen_down(
 
 // Nearest document vertex within control-point pick range, or null. Any vertex
 // (a stroke endpoint or a landmark) — sketchpad.ts checks it before the strokes so
-// a tap on a vertex selects the vertex.
+// a tap on a vertex selects the vertex. Only vertices on `layers` count.
 export function pick_vertex(
-  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
 ): VertexId | null {
   let best: VertexId | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
   for (const vertex of tablet_document.vertices) {
-    const projected = camera_world_to_screen(camera, vertex.position, canvas.clientWidth, canvas.clientHeight);
+    if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
+    const projected = camera_world_to_screen(camera, vertex_world_position(tablet_document, vertex), canvas.clientWidth, canvas.clientHeight);
     if (projected === null) continue;
     const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
     if (distance < best_distance) {
@@ -322,9 +326,9 @@ function drag_handle(
 // vertex within world-space snap range — null when none is in range, or when
 // the merge would leave any stroke with both endpoints on the same vertex.
 // Also drives the drag-time highlight, so it must match the merge exactly.
-export function find_merge_target_vertex(tablet_document: TabletDocument, dragged_vertex: VertexId): VertexId | null {
+export function find_merge_target_vertex(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): VertexId | null {
   const target_vertex = pick_vertex_near_world_point(
-    tablet_document, vertex_position(tablet_document, dragged_vertex), dragged_vertex,
+    tablet_document, vertex_position(tablet_document, dragged_vertex), dragged_vertex, layers,
   );
   if (target_vertex === null) return null;
   const remap = (vertex: VertexId) => (vertex === dragged_vertex ? target_vertex! : vertex);
@@ -344,8 +348,8 @@ export function find_merge_target_vertex(tablet_document: TabletDocument, dragge
 // Merge the dragged vertex into another vertex within world-space snap range
 // (same feel as draw-time endpoint snapping): every stroke referencing it is
 // rewired to the target, welding the junction, and the vertex is removed.
-function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: VertexId): boolean {
-  const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
+function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): boolean {
+  const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, layers);
   if (target_vertex === null) return false;
   // Snap first so the strokes ending on the dragged vertex rotate their
   // offsets with the chord change (Q4), then rewire them to the target.
@@ -374,8 +378,8 @@ function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_v
 // Q71): the pin, being newer, drops the vertex's own midline flag. A vertex held
 // on the midline by a midline stroke is not pinned — that flag belongs to the
 // stroke and is not dropped behind the user's back.
-function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_vertex: VertexId): void {
-  const target = find_snap_target_stroke(tablet_document, dragged_vertex);
+function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): void {
+  const target = find_snap_target_stroke(tablet_document, dragged_vertex, layers);
   if (target === null) return;
   const vertex = vertex_by_id(tablet_document, dragged_vertex);
   delete vertex.midline;
@@ -385,12 +389,13 @@ function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_verte
   tablet_document.vertex_pins.push({ vertex: dragged_vertex, host_stroke: target.stroke_id, t: target.t });
 }
 
-export function edit_pen_up(state: EditState, tablet_document: TabletDocument): void {
+// `layers`: a released vertex welds to / pins on strokes of these layers only.
+export function edit_pen_up(state: EditState, tablet_document: TabletDocument, layers: ReadonlySet<Layer>): void {
   if (state.dragging === "p0" || state.dragging === "p3") {
     const stroke = stroke_by_id(tablet_document, state.stroke_id);
     const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    if (!merge_vertex_if_near_another(tablet_document, dragged_vertex)) {
-      pin_vertex_if_near_curve(tablet_document, dragged_vertex);
+    if (!merge_vertex_if_near_another(tablet_document, dragged_vertex, layers)) {
+      pin_vertex_if_near_curve(tablet_document, dragged_vertex, layers);
     }
   }
   state.dragging = null;

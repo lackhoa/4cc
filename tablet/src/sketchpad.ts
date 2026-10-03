@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { DEFAULT_STROKE_RADII, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_midline, vertex_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -20,22 +20,30 @@ import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line
 import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
-import { V2, V3, v3_add, v3_scale, v3_sub } from "./math";
+import { V2, V3, v3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
-import { VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
+import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
-import { create_line_renderer, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh } from "./render";
+import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
 
 // What differs between the pages that run the sketchpad.
 export type SketchpadSetup = {
   // The mesh behind the drawing, already in world units; null = none (fetch failed).
   load_reference_mesh: () => Promise<ReferenceMesh | null>;
+  // A second mesh shown with the reference while the page's optional `#eyeball_button`
+  // is armed (plan-skin-over-skull-study.md Q9); undefined = the page has none.
+  load_eyeball_mesh?: () => Promise<ReferenceMesh | null>;
   default_document_name: string; // opened when localStorage remembers no current document
   storage_key_prefix: string; // localStorage keys `<prefix>_current_document`, `<prefix>_crash_buffer`
   // True: the docs panel lists every server document plus "new…"/"rename…". False: the
   // page is tied to its one document, the panel only names it.
   can_switch_documents: boolean;
+  // Layers (plan-skin-over-skull-study.md Q4/Q10): new strokes go to
+  // `active_layer`; `locked_layers` start locked. The page's optional
+  // `#layer_bar` lets the user change both at run time.
+  active_layer: Layer;
+  locked_layers: Layer[];
 };
 
 // Ported from the desktop app (driver.kc default_line_color = gray 0.03
@@ -75,7 +83,35 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const history = create_history_state();
   let reference_mesh: ReferenceMesh | null = null;
   let reference_visible = true;
+  let eyeball_mesh: ReferenceMesh | null = null; // loaded on the first arm of `#eyeball_button`
+  let eyeball_visible = false;
+  // Reference opacity (plan-skin-over-skull-study.md Q6): the page's optional
+  // `#reference_alpha` slider; below 1 the reference (eyeballs included) goes
+  // through the translucent renderer instead of the opaque reference buffer.
+  let reference_alpha = 1;
+  const reference_translucent = create_translucent_mesh(gl);
+  let reference_translucent_vertices = new Float32Array(0); // reused across frames, grown on demand
+  // Clipping plane (Q5): one plane cutting both the reference and the drawing,
+  // sagittal by default. Armed via the page's optional `#clip_button`; while
+  // armed, horizontal pen travel slides the plane along its normal (no orbit,
+  // no editing).
+  const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
+  let clip_drag_armed = false;
+  let clip_drag_last_screen: V2 | null = null; // non-null while the pen slides the clip plane
   let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
+  // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
+  // active_layer; locked layers are ignored by every pick and snap; hidden
+  // layers are not drawn (and not picked either). A vertex is on the layers of
+  // its strokes (vertex_is_on_layers), a patch on its first stroke's.
+  let active_layer: Layer = setup.active_layer;
+  const locked_layers = new Set<Layer>(setup.locked_layers);
+  const hidden_layers = new Set<Layer>();
+  function visible_layers(): Set<Layer> {
+    return new Set(ALL_LAYERS.filter((layer) => !hidden_layers.has(layer)));
+  }
+  function pickable_layers(): Set<Layer> {
+    return new Set(ALL_LAYERS.filter((layer) => !hidden_layers.has(layer) && !locked_layers.has(layer)));
+  }
   let edit_state: EditState | null = null; // non-null = a stroke is selected (the primary)
   // Ctrl-tapped additions to the selection (plan-tablet-multi-select-patch.md
   // Q4): highlighted only, no handles; the patch/join/smooth buttons and delete
@@ -136,10 +172,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (key !== null) return { kind: "point", key };
     }
     if (edit_state === null && armed_tool === null) {
-      const vertex = pick_vertex(tablet_document, camera, hover_screen, canvas);
+      const vertex = pick_vertex(tablet_document, camera, hover_screen, canvas, pickable_layers());
       if (vertex !== null) return { kind: "vertex", vertex };
     }
-    const picked = pick_stroke(tablet_document, camera, hover_screen, canvas);
+    const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers());
     return picked === null ? null : { kind: "stroke", stroke_id: picked };
   }
 
@@ -178,7 +214,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     rebuild_surface_mesh();
     rebuild_reference_mesh();
     rebuild_edit_overlay();
-    render_frame(renderer, camera_view_projection(camera, canvas.width / canvas.height));
+    const view_projection = camera_view_projection(camera, canvas.width / canvas.height);
+    const clip = clip_plane.enabled ? clip_plane : null;
+    render_frame(renderer, view_projection, clip, () => {
+      draw_mesh_translucent(reference_translucent, view_projection, camera_eye(camera), clip);
+    });
     rebuild_stroke_labels();
   }
 
@@ -207,7 +247,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     for (const vertex_id of new Set([selected_vertex, hot_vertex])) {
       if (vertex_id === null) continue;
       const vertex = vertex_by_id(tablet_document, vertex_id);
-      if (vertex.name !== undefined) push_label(vertex.name, vertex.position, ANCHOR_SIZE_PIXELS * 2);
+      if (vertex.name !== undefined) push_label(vertex.name, vertex_world_position(tablet_document, vertex), ANCHOR_SIZE_PIXELS * 2);
     }
     stroke_labels.replaceChildren(...labels);
   }
@@ -227,8 +267,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
     const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
     const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    if (find_merge_target_vertex(tablet_document, dragged_vertex) !== null) return null; // weld wins
-    const target = find_snap_target_stroke(tablet_document, dragged_vertex);
+    if (find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers()) !== null) return null; // weld wins
+    const target = find_snap_target_stroke(tablet_document, dragged_vertex, pickable_layers());
     return target === null ? null : target.stroke_id;
   }
 
@@ -241,6 +281,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
     for (const stroke of tablet_document.strokes) {
+      if (hidden_layers.has(stroke.layer)) continue;
       const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
       const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
@@ -255,6 +296,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function append_contour_ribbons(vertices: VertexSink): void {
     const eye = camera_eye(camera);
     for (const patch of tablet_document.patches) {
+      if (hidden_layers.has(patch_layer(patch, tablet_document))) continue;
       const grid = patch_surface_grid(patch, tablet_document);
       if (grid === null) continue;
       for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, STROKE_COLOR, vertices);
@@ -265,6 +307,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
     tablet_document.patches.forEach((patch, index) => {
+      if (hidden_layers.has(patch_layer(patch, tablet_document))) return;
       const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR : surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR;
       append_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
@@ -291,12 +334,36 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function rebuild_reference_mesh(): void {
     if (reference_mesh === null || !reference_visible) {
       set_reference_mesh(renderer, new Float32Array(0));
+      set_translucent_mesh(reference_translucent, new Float32Array(0));
       return;
     }
     const vertices = reference_sink;
     reset_vertex_sink(vertices);
     append_reference_mesh(reference_mesh, camera, vertices);
-    set_reference_mesh(renderer, vertex_sink_view(vertices));
+    if (eyeball_visible && eyeball_mesh !== null) append_reference_mesh(eyeball_mesh, camera, vertices);
+    if (reference_alpha >= 1) {
+      set_reference_mesh(renderer, vertex_sink_view(vertices));
+      set_translucent_mesh(reference_translucent, new Float32Array(0));
+      return;
+    }
+    set_reference_mesh(renderer, new Float32Array(0));
+    set_translucent_mesh(reference_translucent, translucent_vertices_from_sink(vertices, reference_alpha));
+  }
+
+  // The 6-float headlight-shaded sink, widened to the translucent renderer's
+  // 7-float layout with one alpha for every vertex.
+  function translucent_vertices_from_sink(sink: VertexSink, alpha: number): Float32Array {
+    const vertex_count = sink.length / FLOATS_PER_VERTEX;
+    const float_count = vertex_count * FLOATS_PER_TRANSLUCENT_VERTEX;
+    if (reference_translucent_vertices.length < float_count) reference_translucent_vertices = new Float32Array(float_count);
+    const out = reference_translucent_vertices;
+    for (let vertex = 0; vertex < vertex_count; vertex++) {
+      const source = vertex * FLOATS_PER_VERTEX;
+      const target = vertex * FLOATS_PER_TRANSLUCENT_VERTEX;
+      for (let i = 0; i < FLOATS_PER_VERTEX; i++) out[target + i] = sink.data[source + i];
+      out[target + FLOATS_PER_VERTEX] = alpha;
+    }
+    return out.subarray(0, float_count);
   }
 
   function rebuild_edit_overlay(): void {
@@ -310,16 +377,19 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // Landmarks (named vertices) draw whether or not anything is selected; the hot
     // vertex grows, the selected vertex draws anchor-sized in the highlight colour
     // (a selected unnamed vertex is otherwise invisible).
+    const drawn_layers = visible_layers();
     for (const vertex of tablet_document.vertices) {
+      if (!vertex_is_on_layers(tablet_document, vertex.id, drawn_layers)) continue;
       const hot = hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex.id;
+      const world_position = vertex_world_position(tablet_document, vertex);
       if (vertex.id === selected_vertex || vertex.id === extra_vertex) {
-        append_billboard_square(vertex.position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
+        append_billboard_square(world_position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
       } else if (hot) {
-        append_billboard_square(vertex.position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
+        append_billboard_square(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
       } else if (vertex.name !== undefined) {
-        append_billboard_square(vertex.position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
+        append_billboard_square(world_position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
       } else if (vertex_is_on_midline(tablet_document, vertex.id)) {
-        append_billboard_square(vertex.position, handle_half, basis.right, basis.up, MIDLINE_VERTEX_COLOR, triangle_vertices);
+        append_billboard_square(world_position, handle_half, basis.right, basis.up, MIDLINE_VERTEX_COLOR, triangle_vertices);
       }
     }
     if (edit_state === null) {
@@ -367,7 +437,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // vertex it would weld into on release so the merge is never a surprise.
     if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
       const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
-      const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex);
+      const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers());
       if (target_vertex !== null) {
         append_billboard_square(
           vertex_position(tablet_document, target_vertex), anchor_half * 2, basis.right, basis.up,
@@ -398,7 +468,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function line_mode_pen_up(): void {
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap && line_state !== null) {
-      const stroke_id = line_pen_up(line_state, tablet_document);
+      // Every layer's vertices live on the skull bone until a mandible exists (Q15).
+      const stroke_id = line_pen_up(line_state, tablet_document, active_layer, SKULL_BONE_ID);
       if (stroke_id !== null) {
         select_stroke_by_tap(stroke_id, false);
         pen_history_label = `add line ${stroke_id}`;
@@ -464,7 +535,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_history_label = `move ${edit_state.dragging} of stroke ${edit_state.stroke_id}`;
       pen_history_merge = true;
     }
-    edit_pen_up(edit_state, tablet_document);
+    edit_pen_up(edit_state, tablet_document, pickable_layers());
     const was_tap = pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS;
     if (!was_tap || was_control_drag) return;
     if (armed_tool === "pin") {
@@ -472,8 +543,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // vertex at the nearest curve point, constrained there permanently.
       const nearest = nearest_t_on_stroke_screen(tablet_document, edit_state.stroke_id, camera, position, canvas);
       if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) {
-        const points = stroke_control_points(stroke_by_id(tablet_document, edit_state.stroke_id), tablet_document);
-        const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t));
+        const host_stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+        const points = stroke_control_points(host_stroke, tablet_document);
+        // The pin rides its host stroke, so it lives on the host's bone.
+        const vertex = add_vertex(tablet_document, bezier_point(points, nearest.t), vertex_by_id(tablet_document, host_stroke.p0_vertex).bone_id);
         tablet_document.vertex_pins.push({ vertex, host_stroke: edit_state.stroke_id, t: nearest.t });
         edit_state.selected_pin = vertex;
         pen_history_label = `pin vertex ${vertex}`;
@@ -498,11 +571,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       set_armed_tool(null); // tap off the curve = cancel, selection kept
       return;
     }
-    const picked = pick_stroke(tablet_document, camera, position, canvas);
+    const picked = pick_stroke(tablet_document, camera, position, canvas, pickable_layers());
     if (picked === null) {
       edit_state = null;
       extra_selection = [];
-      selected_patch = pick_patch(tablet_document, camera, position, canvas); // fill = last resort (Q10)
+      selected_patch = pick_patch(tablet_document, camera, position, canvas, pickable_layers()); // fill = last resort (Q10)
       return;
     }
     select_stroke_by_tap(picked, multi);
@@ -551,7 +624,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     if (selected_vertex !== null && extra_vertex !== null) {
       begin_history_step(history, tablet_document);
-      const stroke_id = add_straight_stroke(tablet_document, selected_vertex, extra_vertex);
+      const stroke_id = add_straight_stroke(tablet_document, selected_vertex, extra_vertex, active_layer);
       end_history_step(history, tablet_document, `add line ${stroke_id}`);
       selected_vertex = null;
       extra_vertex = null;
@@ -845,8 +918,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       v3_scale(basis.forward, forward_steps * step),
     );
     begin_history_step(history, tablet_document);
-    const vertex = vertex_by_id(tablet_document, selected_vertex);
-    vertex.position = v3_add(vertex.position, delta);
+    set_vertex_world_position(tablet_document, selected_vertex, v3_add(vertex_position(tablet_document, selected_vertex), delta));
     end_history_step(history, tablet_document, `nudge vertex ${selected_vertex}`, true); // a run of nudges = one entry
     request_render();
   }
@@ -922,15 +994,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_max_displacement_pixels = 0;
       pen_orbit_last_screen = null;
       hover_screen = null; // nothing is hot while the pen is down
-      if (armed_tool === "line") {
-        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
+      if (clip_drag_armed) {
+        clip_drag_last_screen = position;
+      } else if (armed_tool === "line") {
+        line_state = line_pen_down(tablet_document, camera, position, canvas, pickable_layers(), line_start_vertex);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on the selection; otherwise orbit.
-        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
+        if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas, pickable_layers())) {
           pen_orbit_last_screen = position;
         }
-      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas) === selected_vertex) {
+      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers()) === selected_vertex) {
         // Landing on the selected vertex drags it on the camera plane.
         selected_vertex_drag_last_screen = position;
       } else {
@@ -946,9 +1020,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
           Math.hypot(position.x - pen_down_screen.x, position.y - pen_down_screen.y),
         );
       }
-      if (armed_tool === "line") {
+      if (clip_drag_last_screen !== null) {
+        // Horizontal pen travel slides the plane along its normal, whatever the
+        // view: in profile the sagittal normal points at the camera, so a
+        // camera-plane drag would have no component on it.
+        clip_plane.offset += (position.x - clip_drag_last_screen.x) * camera_world_units_per_pixel(camera, canvas.clientHeight);
+        clip_drag_last_screen = position;
+      } else if (armed_tool === "line") {
         if (line_state !== null) {
-          line_pen_move(line_state, tablet_document, camera, position, canvas);
+          line_pen_move(line_state, tablet_document, camera, position, canvas, pickable_layers());
           update_preview_line();
         }
       } else if (pen_orbit_last_screen !== null) {
@@ -962,8 +1042,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
           const host_points = stroke_control_points(stroke_by_id(tablet_document, pin.host_stroke), tablet_document);
           move_vertex(tablet_document, selected_vertex, bezier_point(host_points, pin.t));
         } else {
-          const vertex = vertex_by_id(tablet_document, selected_vertex);
-          vertex.position = v3_add(vertex.position, camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas));
+          const drag_delta = camera_plane_drag(camera, selected_vertex_drag_last_screen, position, canvas);
+          set_vertex_world_position(tablet_document, selected_vertex, v3_add(vertex_position(tablet_document, selected_vertex), drag_delta));
         }
         selected_vertex_drag_last_screen = position;
       } else if (edit_state !== null) {
@@ -976,7 +1056,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     },
     on_pen_up: (position, event) => {
       const multi = event.ctrlKey || event.metaKey; // ctrl/cmd-tap extends the selection (Q1)
-      if (armed_tool === "line") {
+      if (clip_drag_last_screen !== null) {
+        // A clip drag touches the view only: nothing to select, nothing for history.
+      } else if (armed_tool === "line") {
         line_mode_pen_up();
       } else if (edit_state !== null) {
         edit_mode_pen_up(position, multi);
@@ -986,8 +1068,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
         // Tap with nothing (or a vertex) selected: vertex first, then stroke, else clear.
         // Ctrl-tap on a second vertex sets / clears the extra (Q79).
-        const picked_vertex = pick_vertex(tablet_document, camera, position, canvas);
-        const picked_stroke = picked_vertex === null ? pick_stroke(tablet_document, camera, position, canvas) : null;
+        const picked_vertex = pick_vertex(tablet_document, camera, position, canvas, pickable_layers());
+        const picked_stroke = picked_vertex === null ? pick_stroke(tablet_document, camera, position, canvas, pickable_layers()) : null;
         if (picked_vertex !== null && multi && selected_vertex !== null && picked_vertex !== selected_vertex) {
           extra_vertex = extra_vertex === picked_vertex ? null : picked_vertex;
         } else if (picked_vertex !== null) {
@@ -999,12 +1081,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         } else {
           selected_vertex = null;
           extra_vertex = null;
-          selected_patch = pick_patch(tablet_document, camera, position, canvas); // fill = last resort (Q10)
+          selected_patch = pick_patch(tablet_document, camera, position, canvas, pickable_layers()); // fill = last resort (Q10)
         }
       }
       pen_down_screen = null;
       pen_orbit_last_screen = null;
       selected_vertex_drag_last_screen = null;
+      clip_drag_last_screen = null;
       hover_screen = position;
       end_history_step(history, tablet_document, pen_history_label, pen_history_merge);
       request_render();
@@ -1219,6 +1302,42 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   window.addEventListener("keydown", (event) => {
     if (event.key === "q" && !event.repeat && !event.ctrlKey && !event.metaKey) toggle_reference_visible();
   });
+  // Eyeballs with the reference (Q9): the mesh is fetched on the first arm only.
+  const eyeball_button = document.getElementById("eyeball_button") as HTMLButtonElement | null;
+  if (eyeball_button !== null && setup.load_eyeball_mesh !== undefined) {
+    const load_eyeball_mesh = setup.load_eyeball_mesh;
+    eyeball_button.addEventListener("click", () => {
+      eyeball_visible = !eyeball_visible;
+      eyeball_button.classList.toggle("armed", eyeball_visible);
+      if (eyeball_visible && eyeball_mesh === null) {
+        void load_eyeball_mesh().then((mesh) => {
+          eyeball_mesh = mesh;
+          request_render();
+        });
+      }
+      request_render();
+    });
+  }
+  // Reference opacity slider (Q6), optional per page.
+  const reference_alpha_slider = document.getElementById("reference_alpha") as HTMLInputElement | null;
+  if (reference_alpha_slider !== null) {
+    reference_alpha_slider.addEventListener("input", () => {
+      reference_alpha = Number(reference_alpha_slider.value);
+      request_render();
+    });
+  }
+  // Clip plane (Q5), optional per page: the "clip" button toggles the plane AND
+  // arms the drag; a bare pen drag then slides it (see on_pen_down). Tap again to
+  // turn the plane off and get the pen back.
+  const clip_button = document.getElementById("clip_button") as HTMLButtonElement | null;
+  if (clip_button !== null) {
+    clip_button.addEventListener("click", () => {
+      clip_plane.enabled = !clip_plane.enabled;
+      clip_drag_armed = clip_plane.enabled;
+      clip_button.classList.toggle("armed", clip_plane.enabled);
+      request_render();
+    });
+  }
 
   const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
   surface_button.addEventListener("click", () => {
@@ -1227,6 +1346,64 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   });
   surface_button.classList.toggle("armed", surface_colored);
+
+  // Layer bar (plan-skin-over-skull-study.md): per layer a name button (tap =
+  // active layer), a lock toggle and a hide toggle. Pages without a `#layer_bar`
+  // keep the setup's layers for good. Any toggle drops the selection, since the
+  // selected item may just have become unpickable or invisible.
+  const layer_bar = document.getElementById("layer_bar");
+  if (layer_bar !== null) {
+    const name_buttons = new Map<Layer, HTMLButtonElement>();
+    const lock_buttons = new Map<Layer, HTMLButtonElement>();
+    const hide_buttons = new Map<Layer, HTMLButtonElement>();
+    function refresh_layer_bar(): void {
+      for (const layer of ALL_LAYERS) {
+        name_buttons.get(layer)!.classList.toggle("armed", layer === active_layer);
+        lock_buttons.get(layer)!.classList.toggle("armed", locked_layers.has(layer));
+        hide_buttons.get(layer)!.classList.toggle("armed", hidden_layers.has(layer));
+      }
+    }
+    function drop_selection_after_layer_change(): void {
+      edit_state = null;
+      extra_selection = [];
+      selected_vertex = null;
+      extra_vertex = null;
+      selected_patch = null;
+      set_armed_tool(null);
+      refresh_layer_bar();
+      request_render();
+    }
+    function make_layer_button(label: string, title: string, on_click: () => void): HTMLButtonElement {
+      const button = document.createElement("button");
+      button.textContent = label;
+      button.title = title;
+      button.addEventListener("click", on_click);
+      layer_bar!.appendChild(button);
+      return button;
+    }
+    for (const layer of ALL_LAYERS) {
+      const row = document.createElement("div");
+      row.className = "layer_row";
+      layer_bar.appendChild(row);
+      name_buttons.set(layer, make_layer_button(layer, `draw on the ${layer} layer`, () => {
+        active_layer = layer;
+        refresh_layer_bar();
+      }));
+      lock_buttons.set(layer, make_layer_button("lock", `${layer}: pen and taps ignore it`, () => {
+        if (locked_layers.has(layer)) locked_layers.delete(layer);
+        else locked_layers.add(layer);
+        drop_selection_after_layer_change();
+      }));
+      hide_buttons.set(layer, make_layer_button("hide", `${layer}: not drawn`, () => {
+        if (hidden_layers.has(layer)) hidden_layers.delete(layer);
+        else hidden_layers.add(layer);
+        drop_selection_after_layer_change();
+      }));
+      // The three buttons of a layer sit on one row.
+      for (const button of [name_buttons.get(layer)!, lock_buttons.get(layer)!, hide_buttons.get(layer)!]) row.appendChild(button);
+    }
+    refresh_layer_bar();
+  }
 
   // Docs panel: lists server documents to switch between, plus "new…" (prompt
   // for a name; unknown names start empty) and "rename…" for the current one.

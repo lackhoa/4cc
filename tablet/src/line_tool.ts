@@ -7,7 +7,7 @@
 // (no drag) exits the tool.
 
 import { OrbitCamera, camera_basis, camera_pen_ray } from "./camera";
-import { StrokeId, TabletDocument, VertexId, add_stroke, add_vertex, pick_vertex_near_world_point, stroke_handles_from_control_points, vertex_position } from "./document";
+import { BoneId, Layer, StrokeId, TabletDocument, VertexId, add_stroke, add_vertex, pick_vertex_near_world_point, stroke_handles_from_control_points, vertex_position } from "./document";
 import { V2, V3, v3, v3_add, v3_dot, v3_length, v3_scale, v3_sub } from "./math";
 
 // Both endpoints while the pen is down: the world position, plus the existing
@@ -35,12 +35,14 @@ export function pen_point_on_camera_plane(
   return v3_add(ray.origin, v3_scale(ray.direction, t));
 }
 
+// `layers`: endpoints snap to vertices of these layers only (the sketchpad
+// passes the layers neither locked nor hidden).
 function resolve_endpoint(
-  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
 ): { world: V3; snap_vertex: VertexId | null } | null {
   const world = pen_point_on_camera_plane(camera, screen, canvas);
   if (world === null) return null;
-  const snap_vertex = pick_vertex_near_world_point(tablet_document, world, null);
+  const snap_vertex = pick_vertex_near_world_point(tablet_document, world, null, layers);
   if (snap_vertex !== null) {
     return { world: vertex_position(tablet_document, snap_vertex), snap_vertex };
   }
@@ -52,9 +54,9 @@ function resolve_endpoint(
 // with the vertex so the fit spans the whole stroke.
 export function line_pen_down(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
-  start_vertex: VertexId | null = null,
+  layers: ReadonlySet<Layer>, start_vertex: VertexId | null = null,
 ): LineToolState | null {
-  const endpoint = resolve_endpoint(tablet_document, camera, screen, canvas);
+  const endpoint = resolve_endpoint(tablet_document, camera, screen, canvas, layers);
   if (endpoint === null) return null;
   const plane_point = pen_point_on_camera_plane(camera, screen, canvas);
   const pen_world = plane_point === null ? endpoint.world : plane_point;
@@ -79,9 +81,9 @@ export function line_pen_down(
 
 export function line_pen_move(
   state: LineToolState, tablet_document: TabletDocument, camera: OrbitCamera,
-  screen: V2, canvas: HTMLCanvasElement,
+  screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
 ): void {
-  const endpoint = resolve_endpoint(tablet_document, camera, screen, canvas);
+  const endpoint = resolve_endpoint(tablet_document, camera, screen, canvas, layers);
   if (endpoint === null) return;
   state.end_world = endpoint.world;
   state.end_snap_vertex = endpoint.snap_vertex;
@@ -137,12 +139,12 @@ export function fit_stroke_handles(path: V3[], p0: V3, p3: V3): { d0: V3; d3: V3
 // Commit the pen path as a fitted cubic stroke, creating vertices for
 // unsnapped endpoints. Returns the new stroke's id, or null when the two
 // endpoints collapsed to the same vertex.
-export function line_pen_up(state: LineToolState, tablet_document: TabletDocument): StrokeId | null {
+export function line_pen_up(state: LineToolState, tablet_document: TabletDocument, layer: Layer, bone_id: BoneId): StrokeId | null {
   if (state.start_snap_vertex !== null && state.start_snap_vertex === state.end_snap_vertex) return null;
   const claim_vertex = (world: V3, snap_vertex: VertexId | null): VertexId =>
-    snap_vertex !== null ? snap_vertex : add_vertex(tablet_document, world);
+    snap_vertex !== null ? snap_vertex : add_vertex(tablet_document, world, bone_id);
   const p0_vertex = claim_vertex(state.start_world, state.start_snap_vertex);
   const p3_vertex = claim_vertex(state.end_world, state.end_snap_vertex);
   const handles = fit_stroke_handles(state.path_world, state.start_world, state.end_world);
-  return add_stroke(tablet_document, p0_vertex, p3_vertex, handles.d0, handles.d3);
+  return add_stroke(tablet_document, p0_vertex, p3_vertex, handles.d0, handles.d3, layer);
 }

@@ -3,27 +3,54 @@
 
 import { Mat4, V3 } from "./math";
 
+// One clipping plane (plan-skin-over-skull-study.md Q5): fragments with
+// dot(world, normal) > offset are discarded, in every program that draws geometry
+// (not the grid, not the edit overlay). WebGL 1 has no gl_ClipDistance, hence the
+// fragment-shader discard.
+export type ClipPlane = { normal: V3; offset: number; enabled: boolean };
+
+const CLIP_SHADER_UNIFORMS = `
+uniform vec4 u_clip_plane; // xyz = normal, w = offset
+uniform float u_clip_enabled;`;
+const CLIP_SHADER_DISCARD = `
+  if (u_clip_enabled > 0.5 && dot(v_world_position, u_clip_plane.xyz) > u_clip_plane.w) discard;`;
+
 const VERTEX_SHADER = `
 attribute vec3 a_position;
 attribute vec3 a_color;
 uniform mat4 u_view_projection;
 varying vec3 v_color;
+varying vec3 v_world_position;
 void main() {
   gl_Position = u_view_projection * vec4(a_position, 1.0);
   v_color = a_color;
+  v_world_position = a_position;
 }`;
 
 const FRAGMENT_SHADER = `
 precision mediump float;
 varying vec3 v_color;
-void main() {
+varying vec3 v_world_position;
+${CLIP_SHADER_UNIFORMS}
+void main() {${CLIP_SHADER_DISCARD}
   gl_FragColor = vec4(v_color, 1.0);
 }`;
+
+function set_clip_plane_uniforms(gl: WebGLRenderingContext, u_clip_plane: WebGLUniformLocation, u_clip_enabled: WebGLUniformLocation, clip: ClipPlane | null): void {
+  if (clip === null || !clip.enabled) {
+    gl.uniform1f(u_clip_enabled, 0);
+    return;
+  }
+  gl.uniform4f(u_clip_plane, clip.normal.x, clip.normal.y, clip.normal.z, clip.offset);
+  gl.uniform1f(u_clip_enabled, 1);
+}
 
 export type LineRenderer = {
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   u_view_projection: WebGLUniformLocation;
+  u_clip_plane: WebGLUniformLocation;
+  u_clip_enabled: WebGLUniformLocation;
   grid_buffer: WebGLBuffer;
   grid_vertex_count: number;
   reference_buffer: WebGLBuffer; // reference model, triangle list, drawn first (depth writes on)
@@ -84,6 +111,8 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     gl,
     program,
     u_view_projection: gl.getUniformLocation(program, "u_view_projection")!,
+    u_clip_plane: gl.getUniformLocation(program, "u_clip_plane")!,
+    u_clip_enabled: gl.getUniformLocation(program, "u_clip_enabled")!,
     grid_buffer,
     grid_vertex_count: grid_vertices.length / 6,
     reference_buffer: gl.createBuffer()!,
@@ -162,7 +191,10 @@ function bind_interleaved_buffer(renderer: LineRenderer, buffer: WebGLBuffer): v
   gl.vertexAttribPointer(a_color, 3, gl.FLOAT, false, stride, 3 * 4);
 }
 
-export function render_frame(renderer: LineRenderer, view_projection: Mat4): void {
+// `clip`: the clipping plane for the geometry (null = none). `draw_translucent`: the
+// caller's blended pass (the translucent reference), run after the opaque geometry and
+// before the overlay so handles stay on top of it.
+export function render_frame(renderer: LineRenderer, view_projection: Mat4, clip: ClipPlane | null = null, draw_translucent: (() => void) | null = null): void {
   const gl = renderer.gl;
   // Desktop app background: tweaks->background_rgb = gray 0.12 linear -> 0.384 sRGB.
   gl.clearColor(0.384, 0.384, 0.384, 1.0);
@@ -172,8 +204,10 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4): voi
   gl.useProgram(renderer.program);
   gl.uniformMatrix4fv(renderer.u_view_projection, false, view_projection);
 
+  set_clip_plane_uniforms(gl, renderer.u_clip_plane, renderer.u_clip_enabled, null); // the grid is never clipped
   bind_interleaved_buffer(renderer, renderer.grid_buffer);
   gl.drawArrays(gl.LINES, 0, renderer.grid_vertex_count);
+  set_clip_plane_uniforms(gl, renderer.u_clip_plane, renderer.u_clip_enabled, clip);
 
   if (renderer.reference_vertex_count > 0) {
     bind_interleaved_buffer(renderer, renderer.reference_buffer);
@@ -193,8 +227,14 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4): voi
     gl.drawArrays(gl.LINE_STRIP, 0, renderer.preview_vertex_count);
   }
 
-  // Edit-mode overlay: always on top of the geometry.
+  if (draw_translucent !== null) {
+    draw_translucent();
+    gl.useProgram(renderer.program);
+  }
+
+  // Edit-mode overlay: always on top of the geometry, never clipped.
   if (renderer.overlay_line_vertex_count > 0 || renderer.overlay_triangle_vertex_count > 0) {
+    set_clip_plane_uniforms(gl, renderer.u_clip_plane, renderer.u_clip_enabled, null);
     gl.disable(gl.DEPTH_TEST);
     if (renderer.overlay_line_vertex_count > 0) {
       bind_interleaved_buffer(renderer, renderer.overlay_line_buffer);
@@ -217,15 +257,19 @@ attribute vec3 a_position;
 attribute vec4 a_color;
 uniform mat4 u_view_projection;
 varying vec4 v_color;
+varying vec3 v_world_position;
 void main() {
   gl_Position = u_view_projection * vec4(a_position, 1.0);
   v_color = a_color;
+  v_world_position = a_position;
 }`;
 
 const TRANSLUCENT_FRAGMENT_SHADER = `
 precision mediump float;
 varying vec4 v_color;
-void main() {
+varying vec3 v_world_position;
+${CLIP_SHADER_UNIFORMS}
+void main() {${CLIP_SHADER_DISCARD}
   gl_FragColor = vec4(v_color.rgb * v_color.a, v_color.a);
 }`;
 
@@ -235,6 +279,8 @@ export type TranslucentMesh = {
   gl: WebGLRenderingContext;
   program: WebGLProgram;
   u_view_projection: WebGLUniformLocation;
+  u_clip_plane: WebGLUniformLocation;
+  u_clip_enabled: WebGLUniformLocation;
   buffer: WebGLBuffer;
   vertices: Float32Array; // unsorted, FLOATS_PER_TRANSLUCENT_VERTEX per vertex, triangle list
   sorted_vertices: Float32Array; // same triangles, back to front for sorted_eye
@@ -253,6 +299,8 @@ export function create_translucent_mesh(gl: WebGLRenderingContext): TranslucentM
     gl,
     program,
     u_view_projection: gl.getUniformLocation(program, "u_view_projection")!,
+    u_clip_plane: gl.getUniformLocation(program, "u_clip_plane")!,
+    u_clip_enabled: gl.getUniformLocation(program, "u_clip_enabled")!,
     buffer: gl.createBuffer()!,
     vertices: new Float32Array(0),
     sorted_vertices: new Float32Array(0),
@@ -293,7 +341,7 @@ function sort_translucent_mesh(mesh: TranslucentMesh, eye: V3): void {
 
 // Draws over the current framebuffer contents (call after the opaque geometry); depth
 // test on so opaque things in front still hide it, depth writes off.
-export function draw_mesh_translucent(mesh: TranslucentMesh, view_projection: Mat4, eye: V3): void {
+export function draw_mesh_translucent(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, clip: ClipPlane | null = null): void {
   const vertex_count = mesh.vertices.length / FLOATS_PER_TRANSLUCENT_VERTEX;
   if (vertex_count === 0) return;
   const eye_moved = mesh.sorted_eye === null
@@ -302,6 +350,7 @@ export function draw_mesh_translucent(mesh: TranslucentMesh, view_projection: Ma
   const gl = mesh.gl;
   gl.useProgram(mesh.program);
   gl.uniformMatrix4fv(mesh.u_view_projection, false, view_projection);
+  set_clip_plane_uniforms(gl, mesh.u_clip_plane, mesh.u_clip_enabled, clip);
   const stride = FLOATS_PER_TRANSLUCENT_VERTEX * 4;
   gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffer);
   const a_position = gl.getAttribLocation(mesh.program, "a_position");

@@ -14,6 +14,7 @@ export const MANDIBLE_LANDMARKS_URL = `/reference/${MANDIBLE_NAME}.landmarks.txt
 export const TEETH_UPPER_NAME = "z-anatomy-head-teeth-upper";
 export const TEETH_UPPER_LANDMARKS_URL = `/reference/${TEETH_UPPER_NAME}.landmarks.txt`;
 export const EYEBALL_NAME = "z-anatomy-head-eyeball"; // no landmarks file
+export const SKIN_NAME = "z-anatomy-head-skin_head"; // no landmarks file
 
 export const skull_view_colors = {
   bone: v3(0.85, 0.8, 0.7),
@@ -82,6 +83,13 @@ export async function load_teeth_upper(page_name: string, frame: FrankfurtFrame)
 // skull's Frankfurt frame. The eyeball has no landmarks file, so `landmarks` is empty.
 export async function load_eyeball(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
   return load_mesh_in_skull_frame(page_name, EYEBALL_NAME, frame, false);
+}
+
+// The head's skin (the same scan, so it sits on the skull without alignment) in the
+// skull's Frankfurt frame; `landmarks` empty. The reference for drawing skin over the
+// finished skull (plan-skin-over-skull-study.md Q5).
+export async function load_skin_mesh(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
+  return load_mesh_in_skull_frame(page_name, SKIN_NAME, frame, false);
 }
 
 async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, frame: FrankfurtFrame, has_landmarks_file = true): Promise<Skull | null> {

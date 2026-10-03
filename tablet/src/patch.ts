@@ -13,7 +13,7 @@
 // position+color pipeline.
 
 import { OrbitCamera, camera_basis, camera_eye, camera_world_to_screen } from "./camera";
-import { Patch, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
+import { Layer, Patch, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
@@ -349,7 +349,8 @@ export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId)
 // nearest to the eye when several overlap, or null. Every triangle of the
 // per-frame surface grid is projected and tested in 2D, so what you see is
 // what you pick. Callers try vertices and strokes first.
-export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement): number | null {
+// Only patches on `layers` count (the sketchpad passes the layers neither locked nor hidden).
+export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>): number | null {
   const eye = camera_eye(camera);
   const project = (world: V3): V2 | null => camera_world_to_screen(camera, world, canvas.clientWidth, canvas.clientHeight);
   const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
@@ -360,6 +361,7 @@ export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera,
   let best_index: number | null = null;
   let best_distance = Infinity;
   tablet_document.patches.forEach((patch, index) => {
+    if (!layers.has(patch_layer(patch, tablet_document))) return;
     const grid = patch_surface_grid(patch, tablet_document);
     if (grid === null) return;
     const test = (p: V3, q: V3, r: V3): void => {

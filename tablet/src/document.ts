@@ -16,23 +16,52 @@
 // snapshots and autosave; lookups are linear scans, fine at dozens of
 // entries (put a derived Map behind the two lookup helpers if it ever shows
 // in a profile).
+//
+// Bones (plan-skin-over-skull-study.md Q14, ported from the C++ app's `Bone` +
+// `make_bone`): a vertex belongs to a bone and stores its position in that
+// bone's space; `world_from_bone` composes the chain up to the root. Moving a
+// bone moves every vertex on it — that is how a skin vertex stays anchored to
+// the skull it was drawn over. The skull was drawn in the Frankfurt frame,
+// which is the `skull` bone's identity transform, so bone space = world space
+// for everything drawn so far.
 
-import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
+import { Mat4, V3, mat4_identity, mat4_invert, mat4_multiply, mat4_transform_point, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
 
 export type StrokeId = number;
 export type VertexId = number;
+export type BoneId = string;
+
+export type Bone = {
+  id: BoneId;
+  parent_id: BoneId; // "" = root: parent space is world space
+  parent_from_bone: number[]; // 4x4 column-major (Mat4 layout), bone space -> parent space; plain numbers so the document stays JSON
+};
+
+// The one bone every document starts with; the migration from format 4 puts every vertex on it.
+export const SKULL_BONE_ID: BoneId = "skull";
+
+// Which drawing a stroke belongs to. Layers are shown, hidden and locked
+// separately (plan-skin-over-skull-study.md Q10); the active layer decides the
+// bone of new vertices (Q15).
+export type Layer = "skull" | "skin";
+export const ALL_LAYERS: readonly Layer[] = ["skull", "skin"];
 
 export type Vertex = {
   id: VertexId;
-  position: V3;
+  bone_id: BoneId;
+  position: V3; // in the bone's space — read through vertex_world_position / vertex_position
   name?: string; // a named vertex is a landmark: it survives garbage collection with no stroke using it
-  midline?: boolean; // held on the sagittal plane x = 0 by enforce_midline (plan-sketchpad-midline.md Q69)
+  midline?: boolean; // held on the sagittal plane x = 0 (bone space) by enforce_midline (plan-sketchpad-midline.md Q69)
 };
 
 export type Stroke = {
   id: StrokeId;
+  layer: Layer;
   p0_vertex: VertexId;
   p3_vertex: VertexId;
+  // TODO(kv): handle offsets are world-space; with a bone that is not the identity a
+  // stroke between two bones has no single bone to store them in. Revisit with the
+  // mandible bone.
   d0: V3; // p1 = (2*p0 + p3)/3 + d0 (world units)
   d3: V3; // p2 = (p0 + 2*p3)/3 + d3
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
@@ -93,6 +122,7 @@ export type SmoothKnot = { vertex: VertexId; stroke_a: StrokeId; stroke_b: Strok
 export type TabletDocument = {
   next_vertex_id: VertexId; // counters only ever grow — ids are never reused
   next_stroke_id: StrokeId;
+  bones: Bone[]; // never empty: the skull bone is always there
   vertices: Vertex[]; // shared junctions; stroke endpoints reference these by id
   vertex_pins: VertexPin[];
   smooth_knots: SmoothKnot[];
@@ -100,10 +130,42 @@ export type TabletDocument = {
   patches: Patch[];
 };
 
+export function skull_bone(): Bone {
+  return { id: SKULL_BONE_ID, parent_id: "", parent_from_bone: Array.from(mat4_identity()) };
+}
+
 export function empty_document(): TabletDocument {
   return {
-    next_vertex_id: 0, next_stroke_id: 0, vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
+    next_vertex_id: 0, next_stroke_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
   };
+}
+
+export function bone_by_id(tablet_document: TabletDocument, bone_id: BoneId): Bone {
+  const bone = tablet_document.bones.find((candidate) => candidate.id === bone_id);
+  if (bone === undefined) throw new Error(`no bone with id ${bone_id}`);
+  return bone;
+}
+
+// Compose parent_from_bone up the chain to the root (same as the C++
+// make_bone, which composes the parent off the bone stack).
+export function world_from_bone(tablet_document: TabletDocument, bone_id: BoneId): Mat4 {
+  const bone = bone_by_id(tablet_document, bone_id);
+  const parent_from_bone = new Float32Array(bone.parent_from_bone);
+  if (bone.parent_id === "") return parent_from_bone;
+  return mat4_multiply(world_from_bone(tablet_document, bone.parent_id), parent_from_bone);
+}
+
+// World position of a vertex record (the loops over tablet_document.vertices
+// use this; by-id lookups go through vertex_position).
+export function vertex_world_position(tablet_document: TabletDocument, vertex: Vertex): V3 {
+  return mat4_transform_point(world_from_bone(tablet_document, vertex.bone_id), vertex.position);
+}
+
+// Store a world point as the vertex's bone-space position. Writes the position
+// only — move_vertex is the choke point that also carries the attached strokes.
+export function set_vertex_world_position(tablet_document: TabletDocument, vertex_id: VertexId, world_position: V3): void {
+  const vertex = vertex_by_id(tablet_document, vertex_id);
+  vertex.position = mat4_transform_point(mat4_invert(world_from_bone(tablet_document, vertex.bone_id)), world_position);
 }
 
 // A dangling id is a bug in whoever stored it (delete_stroke drops every
@@ -120,12 +182,31 @@ export function vertex_by_id(tablet_document: TabletDocument, vertex_id: VertexI
   return vertex;
 }
 
+// World position of a vertex by id.
 export function vertex_position(tablet_document: TabletDocument, vertex_id: VertexId): V3 {
-  return vertex_by_id(tablet_document, vertex_id).position;
+  return vertex_world_position(tablet_document, vertex_by_id(tablet_document, vertex_id));
 }
 
 export function pin_by_vertex(tablet_document: TabletDocument, vertex_id: VertexId): VertexPin | null {
   return tablet_document.vertex_pins.find((pin) => pin.vertex === vertex_id) ?? null;
+}
+
+// A vertex is on the layers of the strokes ending on it. A vertex no stroke
+// uses (a bare landmark) is on every layer: nothing could hide or lock it.
+export function vertex_is_on_layers(tablet_document: TabletDocument, vertex_id: VertexId, layers: ReadonlySet<Layer>): boolean {
+  let has_stroke = false;
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
+    has_stroke = true;
+    if (layers.has(stroke.layer)) return true;
+  }
+  return !has_stroke;
+}
+
+// A patch is on the layer of its first boundary stroke (a patch across layers
+// is not expected; the layer bar's lock/hide act on whole patches).
+export function patch_layer(patch: Patch, tablet_document: TabletDocument): Layer {
+  return stroke_by_id(tablet_document, patch.strokes[0]).layer;
 }
 
 // Every vertex riding the given stroke (plan-patch-subcurve-boundary.md: a
@@ -139,17 +220,19 @@ export function smooth_knots_at_vertex(tablet_document: TabletDocument, vertex_i
   return tablet_document.smooth_knots.filter((knot) => knot.vertex === vertex_id);
 }
 
-export function add_vertex(tablet_document: TabletDocument, position: V3): VertexId {
+// `world_position` is converted into the bone's space for storage.
+export function add_vertex(tablet_document: TabletDocument, world_position: V3, bone_id: BoneId): VertexId {
   const id = tablet_document.next_vertex_id++;
-  tablet_document.vertices.push({ id, position });
+  tablet_document.vertices.push({ id, bone_id, position: v3(0, 0, 0) });
+  set_vertex_world_position(tablet_document, id, world_position);
   return id;
 }
 
 export function add_stroke(
-  tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId, d0: V3, d3: V3,
+  tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId, d0: V3, d3: V3, layer: Layer,
 ): StrokeId {
   const id = tablet_document.next_stroke_id++;
-  tablet_document.strokes.push({ id, p0_vertex, p3_vertex, d0, d3 });
+  tablet_document.strokes.push({ id, layer, p0_vertex, p3_vertex, d0, d3 });
   return id;
 }
 
@@ -157,8 +240,8 @@ export function add_stroke(
 // from each end, so the curve is the segment until the user bends it. d0/d3
 // are OFFSETS from those 1/3 and 2/3 points, so straight = zero offsets (a
 // chord-sized offset would put p1 at 2/3 and p2 at 1/3: crossed handles).
-export function add_straight_stroke(tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId): StrokeId {
-  return add_stroke(tablet_document, p0_vertex, p3_vertex, v3(0, 0, 0), v3(0, 0, 0));
+export function add_straight_stroke(tablet_document: TabletDocument, p0_vertex: VertexId, p3_vertex: VertexId, layer: Layer): StrokeId {
+  return add_stroke(tablet_document, p0_vertex, p3_vertex, v3(0, 0, 0), v3(0, 0, 0), layer);
 }
 
 // Delete one stroke. Surfaces built on it are deleted with it; vertices no
@@ -199,12 +282,13 @@ export function split_stroke(
   const knot_position = v3_lerp(p012, p123, t);
   let knot_vertex: VertexId;
   if (pinned_vertex === null) {
-    knot_vertex = add_vertex(tablet_document, knot_position);
+    // The knot joins the stroke's starting vertex's bone.
+    knot_vertex = add_vertex(tablet_document, knot_position, vertex_by_id(tablet_document, stroke.p0_vertex).bone_id);
   } else {
     knot_vertex = pinned_vertex;
     // Already on the curve (a pin rides bezier_point(host, t)); the caller
     // passed that pin's t, so this is a no-op up to rounding.
-    vertex_by_id(tablet_document, knot_vertex).position = knot_position;
+    set_vertex_world_position(tablet_document, knot_vertex, knot_position);
     tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== pinned_vertex);
   }
   const far_vertex = stroke.p3_vertex;
@@ -213,7 +297,7 @@ export function split_stroke(
   stroke.d0 = first_half.d0;
   stroke.d3 = first_half.d3;
   const second_half = stroke_handles_from_control_points(knot_position, p123, p23, p3);
-  const second_stroke = add_stroke(tablet_document, knot_vertex, far_vertex, second_half.d0, second_half.d3);
+  const second_stroke = add_stroke(tablet_document, knot_vertex, far_vertex, second_half.d0, second_half.d3, stroke.layer);
   for (const pin of tablet_document.vertex_pins) {
     if (pin.host_stroke !== stroke_id) continue;
     if (pin.t <= t) {
@@ -366,11 +450,13 @@ export function vertex_is_on_midline(tablet_document: TabletDocument, vertex_id:
 // that moves geometry. Every midline vertex is moved to x = 0 (through
 // move_vertex, so the strokes ending on it rotate along), then the handles of
 // every midline stroke get x = 0 — with the chord already in the plane that
-// keeps d0, d3, chord coplanar.
+// keeps d0, d3, chord coplanar. x = 0 is the bone's sagittal plane (same as the
+// C++ app: midline = x = 0 in bone space).
 export function enforce_midline(tablet_document: TabletDocument): void {
   for (const vertex of tablet_document.vertices) {
     if (vertex.position.x === 0 || !vertex_is_on_midline(tablet_document, vertex.id)) continue;
-    move_vertex(tablet_document, vertex.id, v3(0, vertex.position.y, vertex.position.z));
+    const bone_to_world = world_from_bone(tablet_document, vertex.bone_id);
+    move_vertex(tablet_document, vertex.id, mat4_transform_point(bone_to_world, v3(0, vertex.position.y, vertex.position.z)));
   }
   for (const stroke of tablet_document.strokes) {
     if (stroke.midline !== true) continue;
@@ -384,15 +470,17 @@ export function enforce_midline(tablet_document: TabletDocument): void {
 const VERTEX_SNAP_RADIUS_WORLD = 0.05;
 
 // Nearest vertex within world snap range of a point, or null. `exclude_vertex`
-// keeps a dragged vertex from snapping to itself.
+// keeps a dragged vertex from snapping to itself. Only vertices on `layers`
+// count (the sketchpad passes the layers neither locked nor hidden).
 export function pick_vertex_near_world_point(
-  tablet_document: TabletDocument, point: V3, exclude_vertex: VertexId | null,
+  tablet_document: TabletDocument, point: V3, exclude_vertex: VertexId | null, layers: ReadonlySet<Layer>,
 ): VertexId | null {
   let best_id: VertexId | null = null;
   let best_distance = VERTEX_SNAP_RADIUS_WORLD;
   for (const vertex of tablet_document.vertices) {
     if (vertex.id === exclude_vertex) continue;
-    const distance = v3_length(v3_sub(vertex.position, point));
+    if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
+    const distance = v3_length(v3_sub(vertex_world_position(tablet_document, vertex), point));
     if (distance < best_distance) {
       best_distance = distance;
       best_id = vertex.id;
@@ -435,7 +523,7 @@ export function nearest_point_on_stroke_world(
 // (always at distance 0) and vertices that are already pinned (unpin first).
 // Vertex-to-vertex welding takes priority — the caller checks that first.
 export function find_snap_target_stroke(
-  tablet_document: TabletDocument, vertex_id: VertexId,
+  tablet_document: TabletDocument, vertex_id: VertexId, layers: ReadonlySet<Layer>,
 ): { stroke_id: StrokeId; t: number } | null {
   if (pin_by_vertex(tablet_document, vertex_id) !== null) return null;
   const point = vertex_position(tablet_document, vertex_id);
@@ -443,6 +531,7 @@ export function find_snap_target_stroke(
   let best_distance = VERTEX_SNAP_RADIUS_WORLD;
   for (const stroke of tablet_document.strokes) {
     if (stroke.p0_vertex === vertex_id || stroke.p3_vertex === vertex_id) continue;
+    if (!layers.has(stroke.layer)) continue;
     const nearest = nearest_point_on_stroke_world(stroke, tablet_document, point);
     if (nearest.distance < best_distance) {
       best_distance = nearest.distance;
@@ -457,8 +546,7 @@ export function find_snap_target_stroke(
 // (plan Q4): the in-plane shape rides the chord, and d0/d3 stay coplanar with
 // it. The single choke point for vertex moves — drags, merge snaps, pin slides.
 export function move_vertex(tablet_document: TabletDocument, vertex_id: VertexId, new_position: V3): void {
-  const vertex = vertex_by_id(tablet_document, vertex_id);
-  const old_position = vertex.position;
+  const old_position = vertex_position(tablet_document, vertex_id);
   for (const stroke of tablet_document.strokes) {
     if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
     const other_vertex = stroke.p0_vertex === vertex_id ? stroke.p3_vertex : stroke.p0_vertex;
@@ -473,7 +561,7 @@ export function move_vertex(tablet_document: TabletDocument, vertex_id: VertexId
     stroke.d0 = v3_rotate_between_directions(stroke.d0, from, to, flip_axis);
     stroke.d3 = v3_rotate_between_directions(stroke.d3, from, to, flip_axis);
   }
-  vertex.position = new_position;
+  set_vertex_world_position(tablet_document, vertex_id, new_position);
   // The chord rotations above changed the tangents at both ends of every
   // attached stroke: re-aim the knots there, stroke_a leading (Q3).
   const touched_vertices = new Set<VertexId>([vertex_id]);

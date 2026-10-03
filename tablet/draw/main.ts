@@ -8,4 +8,6 @@ start_sketchpad({
   default_document_name: "untitled",
   storage_key_prefix: "autodraw_tablet",
   can_switch_documents: true,
+  active_layer: "skull",
+  locked_layers: [],
 });
