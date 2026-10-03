@@ -66,8 +66,6 @@ const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
 const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
 const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
-const NAMED_VERTEX_COLOR = { r: 0.55, g: 1.0, b: 0.6 }; // landmarks (vertices with a name), always drawn
-const MIDLINE_VERTEX_COLOR = { r: 0.5, g: 0.6, b: 1.0 }; // vertices held on x = 0 (plan-sketchpad-midline.md Q74), always drawn
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 // A locked layer (the skull under the skin on the skin page) draws in its own
 // colours, so it reads as the thing drawn over, not the thing being drawn.
@@ -479,9 +477,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const line_vertices: number[] = [];
     const triangle_vertices: number[] = [];
 
-    // Landmarks (named vertices) draw whether or not anything is selected; the hot
-    // vertex grows, the selected vertex draws anchor-sized in the highlight colour
-    // (a selected unnamed vertex is otherwise invisible).
+    // Vertices have no marker of their own: only the hot vertex (grown) and the
+    // selected vertex (anchor-sized, in the highlight colour) draw.
     const drawn_layers = visible_layers();
     for (const vertex of tablet_document.vertices) {
       if (!vertex_is_on_layers(tablet_document, vertex.id, drawn_layers)) continue;
@@ -491,10 +488,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         append_billboard_square(world_position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
       } else if (hot) {
         append_billboard_square(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
-      } else if (vertex.name !== undefined) {
-        append_billboard_square(world_position, handle_half, basis.right, basis.up, NAMED_VERTEX_COLOR, triangle_vertices);
-      } else if (vertex_is_on_midline(tablet_document, vertex.id)) {
-        append_billboard_square(world_position, handle_half, basis.right, basis.up, MIDLINE_VERTEX_COLOR, triangle_vertices);
       }
     }
     if (edit_state === null) {
