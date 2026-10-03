@@ -291,9 +291,11 @@ export function schedule_autosave(state: PersistenceState, tablet_document: Tabl
     show_save_status(state, "off", "autosave OFF");
     return;
   }
-  // Render requests also come from hover/selection/panel refreshes: only a history
-  // change (a real edit, or an undo/redo) means "unsaved".
-  if (state.history_snapshot !== state.last_saved_history_snapshot) show_save_status(state, "pending", "unsaved…");
+  // Render requests also come from hover/selection/camera/panel refreshes: only a
+  // history change (a real edit, or an undo/redo) means "unsaved" and arms the timer.
+  // A camera-only change is written by the exit flush or with the next edit.
+  if (state.history_snapshot === state.last_saved_history_snapshot) return;
+  show_save_status(state, "pending", "unsaved…");
   // Do not push a running timer back: hover and pen movement request renders
   // continuously, and a trailing debounce would wait until the pen holds still.
   if (state.autosave_timer !== null) return;
@@ -343,6 +345,7 @@ export async function load_current_document_on_startup(
   // page stays read-only for this session and says so.
   const known = await load_current_document_inner(state, tablet_document, camera, name, buffer, server_list);
   state.ready = known;
+  if (known) show_save_status(state, "saved", "saved");
   if (!known) window.alert(`Document '${name}' could not be loaded (missing on the server, or the server is down). Autosave is OFF for this tab; reload to try again.`);
 }
 
@@ -464,5 +467,6 @@ export async function switch_document(
     console.error(`loading document '${name}' failed`, error);
   } finally {
     state.ready = true;
+    show_save_status(state, "saved", "saved");
   }
 }
