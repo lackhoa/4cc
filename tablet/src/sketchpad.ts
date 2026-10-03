@@ -66,7 +66,6 @@ const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
 const HANDLE_LINE_COLOR = { r: 0.5, g: 0.5, b: 0.55 };
-const PIN_COLOR = { r: 1.0, g: 0.5, b: 0.85 }; // pinned vertices (vertex_pins)
 const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 // A locked layer (the skull under the skin on the skin page) draws in its own
@@ -625,11 +624,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const selected_handle = edit_state.selected_handle;
     push_marker(points.p1, selected_handle === "p1" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p1"));
     push_marker(points.p2, selected_handle === "p2" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p2"));
-    // Endpoints that are pinned vertices (riding some other stroke) show in the
-    // pin color so it's clear they'll slide, not translate, when grabbed; smooth
-    // knots in the knot color so it's clear the neighbour's handle will follow.
+    // Endpoints that are smooth knots show in the knot color so it is clear the
+    // neighbour handle will follow. Pinned vertices get no color of their own.
     const anchor_color = (vertex: VertexId) => {
-      if (pin_by_vertex(tablet_document, vertex) !== null) return PIN_COLOR;
       if (smooth_knots_at_vertex(tablet_document, vertex).length > 0) return KNOT_COLOR;
       return ANCHOR_COLOR;
     };
@@ -638,7 +635,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // Pinned vertices riding the selected stroke.
     for (const pin of tablet_document.vertex_pins) {
       if (pin.host_stroke !== edit_state.stroke_id) continue;
-      push_marker(vertex_position(tablet_document, pin.vertex), handle_half, PIN_COLOR, is_hot_vertex(pin.vertex));
+      push_marker(vertex_position(tablet_document, pin.vertex), handle_half, ANCHOR_COLOR, is_hot_vertex(pin.vertex));
     }
     // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
     // vertex it would weld into on release so the merge is never a surprise.
