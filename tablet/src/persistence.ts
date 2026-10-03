@@ -278,14 +278,14 @@ async function save_now(state: PersistenceState, tablet_document: TabletDocument
     write_crash_buffer(state, { name, json, server_saved: true, saved_at_ms });
     state.last_saved_json = json;
     state.last_saved_history_snapshot = history_snapshot;
-    show_save_status(state, "saved", `saved ${new Date(saved_at_ms).toLocaleTimeString()}`);
+    show_save_status(state, "saved", "saved");
   } else {
     show_save_status(state, "failed", "SAVE FAILED");
   }
   // Not saved: last_saved_json stays stale so the next autosave retries the server.
 }
 
-// Called on every render request; fires one save ~2 s after the last mutation.
+// Called on every render request; fires one save ~2 s after the first unsaved mutation.
 export function schedule_autosave(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera): void {
   if (!state.ready) {
     show_save_status(state, "off", "autosave OFF");
@@ -294,7 +294,9 @@ export function schedule_autosave(state: PersistenceState, tablet_document: Tabl
   // Render requests also come from hover/selection/panel refreshes: only a history
   // change (a real edit, or an undo/redo) means "unsaved".
   if (state.history_snapshot !== state.last_saved_history_snapshot) show_save_status(state, "pending", "unsaved…");
-  if (state.autosave_timer !== null) window.clearTimeout(state.autosave_timer);
+  // Do not push a running timer back: hover and pen movement request renders
+  // continuously, and a trailing debounce would wait until the pen holds still.
+  if (state.autosave_timer !== null) return;
   state.autosave_timer = window.setTimeout(() => {
     state.autosave_timer = null;
     void save_now(state, tablet_document, camera);
