@@ -1141,11 +1141,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   // Keyboard nudge of the selected handle (plan-sketchpad-selection-revamp.md
   // Q5/Q13): same keys, step and Shift as the vertex nudge, through the pen-drag
-  // path of that handle (edit_nudge_handle), so it stays in the line's plane and
-  // the smooth neighbour follows. `swing` = swing for this nudge, like Ctrl held
-  // during a pen drag; the sticky swing button applies too. A run of nudges on
-  // one handle is one history entry.
-  function nudge_selected_handle(right_steps: number, up_steps: number, forward_steps: number, shift: boolean, swing: boolean): void {
+  // path of that handle (edit_nudge_handle), so the smooth neighbour follows.
+  // A nudge swings (tilts the line's plane): a key step is an exact, known move,
+  // so it needs no plane to hold it. `in_plane` (Ctrl held) keeps the handle in
+  // the line's plane instead. The sticky swing button is for pen drags only. A
+  // run of nudges on one handle is one history entry.
+  function nudge_selected_handle(right_steps: number, up_steps: number, forward_steps: number, shift: boolean, in_plane: boolean): void {
     if (edit_state === null || edit_state.selected_handle === null || pen_down_screen !== null) return;
     const handle = edit_state.selected_handle;
     const step_pixels = NUDGE_STEP_PIXELS * (shift ? NUDGE_SHIFT_MULTIPLIER : 1);
@@ -1154,22 +1155,23 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       edit_state, tablet_document, camera, canvas, handle,
       { x: right_steps * step_pixels, y: -up_steps * step_pixels },
       forward_steps * step_pixels * camera_world_units_per_pixel(camera, canvas.clientHeight),
-      swing ? "swing" : handle_mode,
+      in_plane ? "plane" : "swing",
     );
     end_history_step(history, tablet_document, `nudge handle ${handle} of stroke ${edit_state.stroke_id}`, true);
     request_render();
   }
   window.addEventListener("keydown", (event) => {
     // The only modifier chord the sketchpad takes: Ctrl/cmd + a nudge key while a
-    // handle is selected = swing nudge. Every other chord is the browser's.
+    // handle is selected = nudge inside the line's plane (a bare nudge swings).
+    // Every other chord is the browser's.
     const modifier_held = event.ctrlKey || event.metaKey || event.altKey;
     const handle_selected = edit_state !== null && edit_state.selected_handle !== null;
-    const swing = (event.ctrlKey || event.metaKey) && !event.altKey;
-    if (modifier_held && !(handle_selected && swing)) return;
+    const in_plane = (event.ctrlKey || event.metaKey) && !event.altKey;
+    if (modifier_held && !(handle_selected && in_plane)) return;
     const nudge = (right_steps: number, up_steps: number, forward_steps: number) => {
       if (handle_selected) {
         event.preventDefault(); // Ctrl + h/l/j/k/o are browser shortcuts
-        nudge_selected_handle(right_steps, up_steps, forward_steps, event.shiftKey, swing);
+        nudge_selected_handle(right_steps, up_steps, forward_steps, event.shiftKey, in_plane);
       } else {
         nudge_selected_vertex(right_steps, up_steps, forward_steps, event.shiftKey);
       }
