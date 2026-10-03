@@ -666,3 +666,47 @@ export function bezier_tangent(points: StrokeControlPoints, t: number): V3 {
     v3_scale(v3_sub(points.p3, points.p2), 3 * t * t),
   );
 }
+
+// Copy every stroke of `from_layer` onto `to_layer`, with the patches, pins and smooth
+// knots built on those strokes (plan-skin-from-skull-wrap.md Q4). The copies get fresh
+// vertex and stroke ids and share nothing with the originals; vertex and stroke names are
+// not copied (they name things on the source layer), the midline flags and radii are.
+// Returns old vertex id -> copied vertex id.
+export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: Layer, to_layer: Layer): Map<VertexId, VertexId> {
+  const copied_vertex = new Map<VertexId, VertexId>();
+  const copied_stroke = new Map<StrokeId, StrokeId>();
+  function copy_vertex(vertex_id: VertexId): VertexId {
+    const existing = copied_vertex.get(vertex_id);
+    if (existing !== undefined) return existing;
+    const source = vertex_by_id(tablet_document, vertex_id);
+    const copy_id = add_vertex(tablet_document, vertex_world_position(tablet_document, source), source.bone_id);
+    if (source.midline === true) vertex_by_id(tablet_document, copy_id).midline = true;
+    copied_vertex.set(vertex_id, copy_id);
+    return copy_id;
+  }
+  // Snapshots of the source arrays: the copies are appended to the arrays being walked.
+  for (const source of tablet_document.strokes.filter((stroke) => stroke.layer === from_layer)) {
+    const copy_id = add_stroke(
+      tablet_document, copy_vertex(source.p0_vertex), copy_vertex(source.p3_vertex), { ...source.d0 }, { ...source.d3 }, to_layer,
+    );
+    const copy = stroke_by_id(tablet_document, copy_id);
+    if (source.midline === true) copy.midline = true;
+    if (source.radii !== undefined) copy.radii = [...source.radii];
+    copied_stroke.set(source.id, copy_id);
+  }
+  for (const pin of [...tablet_document.vertex_pins]) {
+    const host_stroke = copied_stroke.get(pin.host_stroke);
+    if (host_stroke === undefined) continue;
+    tablet_document.vertex_pins.push({ vertex: copy_vertex(pin.vertex), host_stroke, t: pin.t });
+  }
+  for (const knot of [...tablet_document.smooth_knots]) {
+    const stroke_a = copied_stroke.get(knot.stroke_a), stroke_b = copied_stroke.get(knot.stroke_b);
+    if (stroke_a === undefined || stroke_b === undefined) continue;
+    tablet_document.smooth_knots.push({ vertex: copy_vertex(knot.vertex), stroke_a, stroke_b });
+  }
+  for (const patch of [...tablet_document.patches]) {
+    if (patch_layer(patch, tablet_document) !== from_layer) continue;
+    tablet_document.patches.push({ strokes: patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!) });
+  }
+  return copied_vertex;
+}

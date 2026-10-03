@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -20,12 +20,17 @@ import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line
 import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
-import { V2, V3, v3, v3_add, v3_scale, v3_sub } from "./math";
+import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
+import { WORLD_PER_MM } from "./reference_skull_view";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { create_persistence_state, flush_autosave, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
+
+// One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
+type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
 
 // What differs between the pages that run the sketchpad.
 export type SketchpadSetup = {
@@ -1506,6 +1511,41 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     reference_mesh = mesh;
     request_render();
   });
+  // First draft of the skin drawing (plan-skin-from-skull-wrap.md): copy the skull layer
+  // onto the skin layer, then move each copied vertex outward onto the reference mesh,
+  // which on the skin-draw page is the skin. Endpoints only: move_vertex rotates the
+  // handles with the chord, so every copy keeps its d0/d3/chord plane. Pinned copies are
+  // left to update_pinned_vertex_positions. One history step. Returns one row per moved
+  // vertex, for checking the result.
+  function wrap_skull_onto_skin(): WrapRow[] {
+    if (reference_mesh === null) throw new Error("wrap: the skin mesh is not loaded yet");
+    if (tablet_document.strokes.some((stroke) => stroke.layer === "skin")) throw new Error("wrap: the skin layer is not empty");
+    const WRAP_MAX_PUSH_MM = 25;
+    const mesh = reference_mesh;
+    let head_center = v3(0, 0, 0);
+    for (const position of mesh.triangle_positions) head_center = v3_add(head_center, position);
+    head_center = v3_scale(head_center, 1 / mesh.triangle_positions.length);
+    begin_history_step(history, tablet_document);
+    const copied_vertex = copy_layer_strokes(tablet_document, "skull", "skin");
+    const rows: WrapRow[] = [];
+    for (const vertex_id of copied_vertex.values()) {
+      if (pin_by_vertex(tablet_document, vertex_id) !== null) continue;
+      const position = vertex_position(tablet_document, vertex_id);
+      let outward = v3_sub(position, head_center);
+      // Midline copies stay in the sagittal plane: the ray has no sideways part.
+      if (vertex_is_on_midline(tablet_document, vertex_id)) outward = v3(0, outward.y, outward.z);
+      const projection = project_vertex_onto_mesh(mesh, position, v3_normalize(outward), WRAP_MAX_PUSH_MM * WORLD_PER_MM);
+      move_vertex(tablet_document, vertex_id, projection.position);
+      rows.push({ vertex: vertex_id, method: projection.method, push_mm: v3_length(v3_sub(projection.position, position)) / WORLD_PER_MM });
+    }
+    end_history_step(history, tablet_document, "wrap");
+    request_render();
+    return rows;
+  }
+  // Only where the reference mesh is the skin (the skin-draw page).
+  if (setup.active_layer === "skin") {
+    (window as unknown as { debug_wrap_skull_onto_skin: unknown }).debug_wrap_skull_onto_skin = wrap_skull_onto_skin;
+  }
   // Debug hook: inspect the document from the browser console / automated tests.
   (window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;

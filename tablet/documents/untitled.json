@@ -1,5 +1,5 @@
 {
- "version": 4,
+ "version": 5,
  "camera": {
   "pivot": {
    "x": 0,
@@ -13,6 +13,30 @@
  "document": {
   "next_vertex_id": 0,
   "next_stroke_id": 0,
+  "bones": [
+   {
+    "id": "skull",
+    "parent_id": "",
+    "parent_from_bone": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1
+    ]
+   }
+  ],
   "vertices": [],
   "vertex_pins": [],
   "smooth_knots": [],
