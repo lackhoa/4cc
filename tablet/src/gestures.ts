@@ -3,7 +3,7 @@
 // *tap* (all fingers barely move and lift quickly) is undo (2 fingers) / redo
 // (3 fingers), Procreate-style. Pen (and mouse) events are forwarded to the caller
 // (drawing modes handle them in later steps). Mouse wheel = zoom, eased
-// toward a target distance over a few frames so notched wheels feel smooth;
+// toward a target distance over about 80 ms so notched wheels feel smooth;
 // alt+drag or middle-button drag with the pen/mouse = pan (never reaches the
 // pen handlers).
 
@@ -20,10 +20,11 @@ const FINGER_TAP_MAX_MOVEMENT_PIXELS = 12;
 const FINGER_TAP_MAX_DURATION_MS = 250;
 
 // Wheel zoom: one notch (deltaY ≈ 100) scales the target distance by e^0.15 ≈ 1.16x.
-// Each frame the camera closes this fraction of the remaining gap to the
-// target (~60 Hz), settling in roughly a quarter second.
+// The camera closes the gap to the target by elapsed time, not by frame count,
+// so slow frames take bigger steps: 63% of the gap per time constant, about
+// 90% done after 80 ms whatever the frame rate.
 const WHEEL_ZOOM_LOG_PER_DELTA = 0.0015;
-const WHEEL_ZOOM_EASE_PER_FRAME = 0.25;
+const WHEEL_ZOOM_EASE_TIME_CONSTANT_MS = 35;
 const WHEEL_ZOOM_SETTLE_RATIO = 1e-3;
 
 export type PenHandlers = {
@@ -154,16 +155,20 @@ export function attach_gestures(
   // is already scheduled. Wheel deltas accumulate into the target instantly.
   let wheel_zoom_target_distance: number | null = null;
   let wheel_zoom_frame_scheduled = false;
+  let wheel_zoom_last_step_ms = 0;
   function ease_wheel_zoom(): void {
     wheel_zoom_frame_scheduled = false;
     if (wheel_zoom_target_distance === null) return;
+    const now_ms = performance.now();
+    const eased_fraction = 1 - Math.exp(-(now_ms - wheel_zoom_last_step_ms) / WHEEL_ZOOM_EASE_TIME_CONSTANT_MS);
+    wheel_zoom_last_step_ms = now_ms;
     const ratio = wheel_zoom_target_distance / camera.distance;
     if (Math.abs(ratio - 1) < WHEEL_ZOOM_SETTLE_RATIO) {
       camera_zoom(camera, ratio);
       wheel_zoom_target_distance = null;
     } else {
       // Ease in log space so zooming in and out feel symmetric.
-      camera_zoom(camera, Math.exp(Math.log(ratio) * WHEEL_ZOOM_EASE_PER_FRAME));
+      camera_zoom(camera, Math.exp(Math.log(ratio) * eased_fraction));
       wheel_zoom_frame_scheduled = true;
       requestAnimationFrame(ease_wheel_zoom);
     }
@@ -177,6 +182,8 @@ export function attach_gestures(
     camera_zoom(scratch, Math.exp(e.deltaY * WHEEL_ZOOM_LOG_PER_DELTA));
     wheel_zoom_target_distance = scratch.distance;
     if (!wheel_zoom_frame_scheduled) {
+      // Start the clock one 60 Hz frame back, so the first step already moves.
+      wheel_zoom_last_step_ms = performance.now() - 16;
       wheel_zoom_frame_scheduled = true;
       requestAnimationFrame(ease_wheel_zoom);
     }
