@@ -480,15 +480,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       set_preview_line(renderer, new Float32Array(0));
       return;
     }
-    // The freehand path, plus the snapped end point so snapping is visible.
+    // The straight segment the stroke will be, from the start to the snapped end point.
     const vertices: number[] = [];
-    for (const point of [line_state.start_world, ...line_state.path_world, line_state.end_world]) {
+    for (const point of [line_state.start_world, line_state.end_world]) {
       vertices.push(point.x, point.y, point.z, PREVIEW_COLOR.r, PREVIEW_COLOR.g, PREVIEW_COLOR.b);
     }
     set_preview_line(renderer, new Float32Array(vertices));
   }
 
-  // Line-tool pen-up: a drag commits a stroke fitted to the pen path and
+  // Line-tool pen-up: a drag commits a straight stroke and
   // auto-selects it; a tap exits the tool (Q27). Either way the tool disarms, so
   // the very next drag adjusts the fresh stroke instead of creating another.
   function line_mode_pen_up(): void {
@@ -641,7 +641,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // the separate add-line button of plan-sketchpad-vertex-nudge-link.md Q80):
   // two vertices (tap one, ctrl-tap the other) = a straight stroke between them
   // at once; one vertex = arm the tool with the stroke starting at that vertex
-  // wherever the pen lands; none = arm the free-hand tool. The new stroke becomes
+  // wherever the pen lands; none = arm the tool to drag a line from anywhere. The new stroke becomes
   // the selection with its handles up, ready to bend.
   line_button.addEventListener("click", () => {
     if (armed_tool === "line") {
