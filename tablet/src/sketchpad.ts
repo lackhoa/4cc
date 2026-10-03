@@ -69,6 +69,10 @@ const KNOT_COLOR = { r: 0.55, g: 1.0, b: 0.55 }; // smooth knots (smooth_knots)
 const NAMED_VERTEX_COLOR = { r: 0.55, g: 1.0, b: 0.6 }; // landmarks (vertices with a name), always drawn
 const MIDLINE_VERTEX_COLOR = { r: 0.5, g: 0.6, b: 1.0 }; // vertices held on x = 0 (plan-sketchpad-midline.md Q74), always drawn
 const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
+// A locked layer (the skull under the skin on the skin page) draws in its own
+// colours, so it reads as the thing drawn over, not the thing being drawn.
+const LOCKED_LAYER_STROKE_COLOR = { r: 0.4, g: 0.27, b: 0.13 };
+const LOCKED_LAYER_SURFACE_COLOR = { r: 0.66, g: 0.6, b: 0.48 };
 // "surf" off: same opaque fill, painted in the clear color (render.ts) so the
 // patch still occludes what's behind it but reads as background.
 const SURFACE_BACKGROUND_COLOR = { r: 0.384, g: 0.384, b: 0.384 };
@@ -369,7 +373,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (hidden_layers.has(stroke.layer)) continue;
       const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
-      const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : STROKE_COLOR;
+      const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : locked_layers.has(stroke.layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       append_stroke_ribbon(stroke, tablet_document, camera, color, vertices);
     }
     append_contour_ribbons(vertices);
@@ -381,10 +385,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function append_contour_ribbons(vertices: VertexSink): void {
     const eye = camera_eye(camera);
     for (const patch of tablet_document.patches) {
-      if (hidden_layers.has(patch_layer(patch, tablet_document))) continue;
+      const layer = patch_layer(patch, tablet_document);
+      if (hidden_layers.has(layer)) continue;
       const grid = patch_surface_grid(patch, tablet_document);
       if (grid === null) continue;
-      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, STROKE_COLOR, vertices);
+      const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
+      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, color, vertices);
     }
   }
 
@@ -392,8 +398,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
     tablet_document.patches.forEach((patch, index) => {
-      if (hidden_layers.has(patch_layer(patch, tablet_document))) return;
-      const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR : surface_colored ? SURFACE_COLOR : SURFACE_BACKGROUND_COLOR;
+      const layer = patch_layer(patch, tablet_document);
+      if (hidden_layers.has(layer)) return;
+      const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
+        : !surface_colored ? SURFACE_BACKGROUND_COLOR
+        : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
       append_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
     set_surface_mesh(renderer, vertex_sink_view(vertices));
