@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -128,9 +128,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // later widen to vertices/patches without touching stroke editing.
   let extra_selection: StrokeId[] = [];
   // Vertex selection (plan-sketchpad-landmarks.md Q63): a tap on any vertex — a
-  // stroke endpoint or a landmark — selects it instead of a stroke. Exclusive with
-  // the stroke selection: selecting either clears the other. The selected vertex
-  // drags on the camera plane and is the target of the name/delete buttons.
+  // stroke endpoint or a landmark — selects it instead of a stroke. A plain tap
+  // selects one kind and clears the other; a ctrl-tap keeps both
+  // (plan-sketchpad-pin-vertex-to-selected-line.md Q1). While a stroke is selected
+  // too, the stroke owns the pen, the nudge keys and the name / midline / pin
+  // buttons, and the vertex is only marked (Q2): see sole_selected_vertex. Alone,
+  // the selected vertex drags on the camera plane and is the target of the
+  // name/delete buttons.
   let selected_vertex: VertexId | null = null;
   // Second vertex (plan-sketchpad-vertex-nudge-link.md Q79): ctrl-tap on another
   // vertex while one is selected. Only the add-line button reads it; nudge and
@@ -224,6 +228,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // goes first: a pin may ride a midline stroke, never the other way round (Q71).
     enforce_midline(tablet_document);
     update_pinned_vertex_positions(tablet_document);
+    // A stroke operation (join, split here) can garbage-collect a vertex that is
+    // selected along with the strokes.
+    if (extra_vertex !== null && !tablet_document.vertices.some((vertex) => vertex.id === extra_vertex)) extra_vertex = null;
+    if (selected_vertex !== null && !tablet_document.vertices.some((vertex) => vertex.id === selected_vertex)) {
+      selected_vertex = extra_vertex;
+      extra_vertex = null;
+    }
     refresh_pin_button_armed();
     refresh_split_here_button();
     refresh_lock_buttons();
@@ -604,10 +615,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Plain tap on a stroke: it becomes the sole selection. Ctrl-tap: toggles it
   // in the selection — on the primary, the first extra is promoted (Q4).
   function select_stroke_by_tap(picked: StrokeId, multi: boolean): void {
-    selected_vertex = null;
-    extra_vertex = null;
     selected_patch = null;
     if (!multi) {
+      selected_vertex = null;
+      extra_vertex = null;
       extra_selection = [];
       edit_state = begin_edit_state(picked);
       return;
@@ -625,8 +636,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
 
   // The one place a tap changes the selection (plan-sketchpad-selection-revamp.md
-  // Q8): ctrl-tap extends within a kind (line + line, vertex + vertex); a tap on
-  // another kind replaces the selection.
+  // Q8): a plain tap replaces the selection; a ctrl-tap toggles the tapped line
+  // or vertex and keeps the rest, the other kind included
+  // (plan-sketchpad-pin-vertex-to-selected-line.md Q1). Vertices: two at most.
   function select_tap_target(target: TapTarget, multi: boolean): void {
     switch (target.kind) {
       case "handle":
@@ -634,9 +646,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         if (edit_state !== null) edit_state.selected_handle = target.key;
         break;
       case "vertex":
-        if (multi && selected_vertex !== null && target.vertex !== selected_vertex) {
-          // Ctrl-tap on a second vertex sets / clears the extra (Q79).
-          extra_vertex = extra_vertex === target.vertex ? null : target.vertex;
+        if (multi) {
+          selected_patch = null;
+          if (selected_vertex === null) {
+            selected_vertex = target.vertex;
+          } else if (target.vertex === selected_vertex) {
+            // Ctrl-tap on the primary drops it; the extra is promoted.
+            selected_vertex = extra_vertex;
+            extra_vertex = null;
+          } else {
+            // Ctrl-tap on a second vertex sets / clears the extra (Q79).
+            extra_vertex = extra_vertex === target.vertex ? null : target.vertex;
+          }
           break;
         }
         edit_state = null;
@@ -734,8 +755,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   swing_button.addEventListener("click", () => set_handle_mode("swing"));
   // The pin of the selected vertex, or null: the target of unpin and split here.
+  // The selected vertex when no stroke is selected with it. With a stroke
+  // selected too, the stroke owns the buttons that take either kind
+  // (plan-sketchpad-pin-vertex-to-selected-line.md Q2).
+  function sole_selected_vertex(): VertexId | null {
+    return edit_state === null ? selected_vertex : null;
+  }
   function selected_vertex_pin(): VertexPin | null {
-    return selected_vertex === null ? null : pin_by_vertex(tablet_document, selected_vertex);
+    const vertex = sole_selected_vertex();
+    return vertex === null ? null : pin_by_vertex(tablet_document, vertex);
   }
   // The pin button also lights up while a pinned vertex is selected — in that
   // state tapping it unpins (Q11). Re-checked every frame since the selection
@@ -889,23 +917,46 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_armed_tool(armed_tool === "pin" ? null : "pin");
   });
 
+  // Pin to line (plan-sketchpad-pin-vertex-to-selected-line.md): with exactly one
+  // vertex and one stroke selected, pins the vertex to the nearest point of the
+  // stroke; a vertex pinned elsewhere moves its pin (Q7). Hidden when the pair is
+  // refused. Both stay selected (Q6).
+  const pin_to_line_button = document.getElementById("pin_to_line_button") as HTMLButtonElement;
+  function selected_pin_to_line_pair(): { vertex: VertexId; stroke_id: StrokeId } | null {
+    if (edit_state === null || extra_selection.length > 0 || selected_vertex === null || extra_vertex !== null) return null;
+    if (!vertex_can_pin_to_stroke(tablet_document, selected_vertex, edit_state.stroke_id)) return null;
+    // A patch's sub-curve ends at its current pin (Q7).
+    if (pin_by_vertex(tablet_document, selected_vertex) !== null && pin_is_locked(tablet_document, selected_vertex)) return null;
+    return { vertex: selected_vertex, stroke_id: edit_state.stroke_id };
+  }
+  pin_to_line_button.addEventListener("click", () => {
+    const pair = selected_pin_to_line_pair();
+    if (pair === null) return;
+    begin_history_step(history, tablet_document);
+    pin_vertex_to_stroke(tablet_document, pair.vertex, pair.stroke_id);
+    end_history_step(history, tablet_document, `pin vertex ${pair.vertex} to line ${pair.stroke_id}`);
+    request_render();
+  });
+
   // Midline (plan-sketchpad-midline.md Q72): toggles the midline flag on the
   // selected vertex or stroke; enforce_midline in request_render snaps it to
   // x = 0 at once. Setting the flag drops any pin competing for the same
   // position (Q71): the vertex's own, or the endpoints' of a stroke.
   const midline_button = document.getElementById("midline_button") as HTMLButtonElement;
   function refresh_midline_button_armed(): void {
-    const flagged = selected_vertex !== null
-      ? vertex_by_id(tablet_document, selected_vertex).midline === true
+    const vertex = sole_selected_vertex();
+    const flagged = vertex !== null
+      ? vertex_by_id(tablet_document, vertex).midline === true
       : edit_state !== null && stroke_by_id(tablet_document, edit_state.stroke_id).midline === true;
     midline_button.classList.toggle("armed", flagged);
   }
   midline_button.addEventListener("click", () => {
     let flagged: { midline?: boolean };
     let claimed_vertices: VertexId[];
-    if (selected_vertex !== null) {
-      flagged = vertex_by_id(tablet_document, selected_vertex);
-      claimed_vertices = [selected_vertex];
+    const vertex = sole_selected_vertex();
+    if (vertex !== null) {
+      flagged = vertex_by_id(tablet_document, vertex);
+      claimed_vertices = [vertex];
     } else if (edit_state !== null) {
       const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
       flagged = stroke;
@@ -914,7 +965,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return;
     }
     begin_history_step(history, tablet_document);
-    const midline_target = selected_vertex !== null ? `vertex ${selected_vertex}` : `stroke ${edit_state!.stroke_id}`;
+    const midline_target = vertex !== null ? `vertex ${vertex}` : `stroke ${edit_state!.stroke_id}`;
     let label = `set midline ${midline_target}`;
     if (flagged.midline === true) {
       delete flagged.midline;
@@ -1062,6 +1113,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const NUDGE_SHIFT_MULTIPLIER = 5;
   function nudge_selected_vertex(right_steps: number, up_steps: number, forward_steps: number, shift: boolean): void {
     if (selected_vertex === null || pen_down_screen !== null) return;
+    if (edit_state !== null) return; // a stroke selected too owns the keys
     if (pin_by_vertex(tablet_document, selected_vertex) !== null) return;
     const basis = camera_basis(camera);
     const step = NUDGE_STEP_PIXELS * (shift ? NUDGE_SHIFT_MULTIPLIER : 1) * camera_world_units_per_pixel(camera, canvas.clientHeight);
@@ -1281,11 +1333,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // is a landmark and survives garbage collection.
   const name_button = document.getElementById("name_button") as HTMLButtonElement;
   name_button.addEventListener("click", () => {
-    const named = selected_vertex !== null
-      ? vertex_by_id(tablet_document, selected_vertex)
+    const vertex = sole_selected_vertex();
+    const named = vertex !== null
+      ? vertex_by_id(tablet_document, vertex)
       : edit_state !== null ? stroke_by_id(tablet_document, edit_state.stroke_id) : null;
     if (named === null) return;
-    const what = selected_vertex !== null ? "Vertex" : "Line";
+    const what = vertex !== null ? "Vertex" : "Line";
     const name = window.prompt(`${what} name (empty to clear):`, named.name ?? "");
     if (name === null) return;
     begin_history_step(history, tablet_document);
@@ -1344,7 +1397,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (selected_patch === null && selected_vertex !== null && pin_is_locked(tablet_document, selected_vertex)) {
       delete_lock_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
     }
-    set_button_availability(delete_button, selected_patch !== null || line_or_vertex_selected, delete_lock_reason);
+    // del does nothing while a vertex and a line are selected together (Q2).
+    const vertex_and_line_selected = edit_state !== null && selected_vertex !== null;
+    set_button_availability(delete_button, selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected), delete_lock_reason);
+    set_button_availability(pin_to_line_button, selected_pin_to_line_pair() !== null, null);
     set_button_availability(
       join_button, two_lines_selected, join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
@@ -1368,6 +1424,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       request_render();
       return;
     }
+    if (edit_state !== null && selected_vertex !== null) return; // which of the two is meant is unclear (Q2)
     if (selected_vertex !== null) {
       if (pin_is_locked(tablet_document, selected_vertex)) return; // a patch's sub-curve ends here
       begin_history_step(history, tablet_document);

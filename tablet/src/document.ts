@@ -557,6 +557,34 @@ export function find_snap_target_stroke(
   return best;
 }
 
+// Whether the `pin to line` button may pin this vertex to this stroke
+// (plan-sketchpad-pin-vertex-to-selected-line.md Q5, Q7). Refused: the vertex
+// ends the stroke, it already rides the stroke, or a midline stroke holds it on
+// the midline. A patch locking the vertex's current pin is the caller's check
+// (patch.ts pin_is_locked).
+export function vertex_can_pin_to_stroke(tablet_document: TabletDocument, vertex_id: VertexId, stroke_id: StrokeId): boolean {
+  const host = stroke_by_id(tablet_document, stroke_id);
+  if (host.p0_vertex === vertex_id || host.p3_vertex === vertex_id) return false;
+  if (pin_by_vertex(tablet_document, vertex_id)?.host_stroke === stroke_id) return false;
+  return !tablet_document.strokes.some(
+    (stroke) => stroke.midline === true && (stroke.p0_vertex === vertex_id || stroke.p3_vertex === vertex_id),
+  );
+}
+
+// Pin a vertex to the nearest point (in world space, at any distance) of a
+// stroke. The vertex jumps there through move_vertex, so the strokes ending on
+// it follow. Replaces the vertex's current pin and drops its own midline flag
+// (the pin, being newer, wins the position, Q71). Call only when
+// vertex_can_pin_to_stroke.
+export function pin_vertex_to_stroke(tablet_document: TabletDocument, vertex_id: VertexId, stroke_id: StrokeId): void {
+  tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== vertex_id);
+  delete vertex_by_id(tablet_document, vertex_id).midline;
+  const host = stroke_by_id(tablet_document, stroke_id);
+  const nearest = nearest_point_on_stroke_world(host, tablet_document, vertex_position(tablet_document, vertex_id));
+  move_vertex(tablet_document, vertex_id, bezier_point(stroke_control_points(host, tablet_document), nearest.t));
+  tablet_document.vertex_pins.push({ vertex: vertex_id, host_stroke: stroke_id, t: nearest.t });
+}
+
 // Move one vertex, rotating the offsets of every stroke ending on it by the
 // minimal rotation taking the stroke's old chord direction to its new one
 // (plan Q4): the in-plane shape rides the chord, and d0/d3 stay coplanar with
