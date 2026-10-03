@@ -337,8 +337,32 @@ export function patch_junction_vertices(patch: Patch, tablet_document: TabletDoc
   return vertices;
 }
 
+// A patch without a fill locks nothing: it can't be seen or tapped, so the
+// lock could never be lifted. Deleting or joining its stroke removes it.
 export function stroke_bounds_a_patch(tablet_document: TabletDocument, stroke_id: StrokeId): boolean {
-  return tablet_document.patches.some((patch) => patch.strokes.includes(stroke_id));
+  return tablet_document.patches.some((patch) => patch.strokes.includes(stroke_id) && resolve_patch_fill(patch, tablet_document) !== null);
+}
+
+// A patch that has no fill, but whose strokes close into a filled loop once
+// one stroke is left out, loses that stroke. This is the state a split leaves
+// behind when the patch used only one side of the cut (its sub-curve ended at
+// a pin): split_stroke hands the patch both halves, the loop needs one.
+// Returns how many patches were repaired.
+export function drop_unused_patch_strokes(tablet_document: TabletDocument): number {
+  let repaired_count = 0;
+  for (const patch of tablet_document.patches) {
+    if (resolve_patch_fill(patch, tablet_document) !== null) continue;
+    for (const unused of patch.strokes) {
+      const candidate: Patch = { strokes: patch.strokes.filter((id) => id !== unused) };
+      // Loops only: a detached loft left with two of its strokes would fill too, as the wrong surface.
+      const closes = chain_into_loop(candidate.strokes.map((id) => stroke_by_id(tablet_document, id)), tablet_document) !== null;
+      if (!closes || resolve_patch_fill(candidate, tablet_document) === null) continue;
+      patch.strokes = candidate.strokes;
+      repaired_count++;
+      break;
+    }
+  }
+  return repaired_count;
 }
 
 export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId): boolean {

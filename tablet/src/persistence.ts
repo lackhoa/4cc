@@ -5,6 +5,7 @@
 
 import { OrbitCamera } from "./camera";
 import { SKULL_BONE_ID, Stroke, TabletDocument, Vertex, fallback_perpendicular, skull_bone, stroke_handles_from_control_points } from "./document";
+import { drop_unused_patch_strokes } from "./patch";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // Version 5 (2026-10-03): bones and layers — the document carries a `bones`
@@ -234,6 +235,8 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   tablet_document.patches.push(...(parsed.document.patches ?? []));
   for (const loft of parsed.document.lofts ?? []) tablet_document.patches.push({ strokes: [loft.stroke_a, loft.stroke_b] });
   for (const coons of parsed.document.coons ?? []) tablet_document.patches.push({ strokes: [...coons.strokes] });
+  const repaired_patch_count = drop_unused_patch_strokes(tablet_document);
+  if (repaired_patch_count > 0) console.log(`document load: ${repaired_patch_count} patch(es) had no fill, repaired by dropping a stroke their loop does not use`);
   camera.pivot = parsed.camera.pivot;
   camera.yaw = parsed.camera.yaw;
   camera.pitch = parsed.camera.pitch;

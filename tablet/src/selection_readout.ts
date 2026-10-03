@@ -1,6 +1,7 @@
 // Selection readout: what is selected and hovered, as text with document ids
 // ("line 22", "vertex 107", "patch 4"), so a bug report can name the items.
 
+import { resolve_patch_fill } from "./patch";
 import { StrokeId, TabletDocument, VertexId, pin_by_vertex, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, vertex_by_id } from "./document";
 
 export type SelectionSnapshot = {
@@ -30,7 +31,8 @@ function stroke_text(tablet_document: TabletDocument, stroke_id: StrokeId): stri
     `layer ${stroke.layer}`,
   ];
   const patches = tablet_document.patches.flatMap((patch, index) => (patch.strokes.includes(stroke_id) ? [index] : []));
-  if (patches.length > 0) parts.push(`in patch ${patches.join(" ")}`);
+  const patch_texts = patches.map((index) => (resolve_patch_fill(tablet_document.patches[index], tablet_document) === null ? `${index}(no fill)` : `${index}`));
+  if (patches.length > 0) parts.push(`in patch ${patch_texts.join(" ")}`);
   const pinned = pins_on_stroke(tablet_document, stroke_id).map((pin) => `v${pin.vertex}`);
   if (pinned.length > 0) parts.push(`pins ${pinned.join(" ")}`);
   if (stroke.midline === true) parts.push("midline");

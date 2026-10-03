@@ -18,7 +18,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
+import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -706,6 +706,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         const nearest = nearest_t_on_stroke_screen(tablet_document, selected_id, camera, position, canvas);
         if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) split_stroke(tablet_document, selected_id, nearest.t);
       }
+      drop_unused_patch_strokes(tablet_document); // a patch that used one side of the cut keeps only that half
       set_armed_tool(null); // tap off the curve = cancel, selection kept
       return;
     }
@@ -857,6 +858,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     begin_history_step(history, tablet_document);
     const new_stroke = split_stroke(tablet_document, stroke_id, pin.t, vertex);
     if (new_stroke === null) return; // pin within the end guard: nothing to record
+    drop_unused_patch_strokes(tablet_document); // a patch that used one side of the cut keeps only that half
     end_history_step(history, tablet_document, `split stroke ${stroke_id} at vertex ${vertex}`);
     request_render();
   });
