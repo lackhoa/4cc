@@ -21,7 +21,7 @@ import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
-import { mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
+import { mirror_camera_from_main_camera, mirror_focus_from_points, mirror_rectangle } from "./mirror_view";
 import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
@@ -282,13 +282,30 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     camera.yaw = unrocked_yaw;
   }
 
+  // The points the mirror zooms in on: the line being drawn, else everything
+  // selected (the control points of the selected lines, the selected vertices).
+  // Empty when nothing is selected.
+  function mirror_focus_points(): V3[] {
+    if (line_state !== null) return [line_state.start_world, line_state.end_world];
+    const points: V3[] = [];
+    const selected_strokes = edit_state === null ? extra_selection : [edit_state.stroke_id, ...extra_selection];
+    for (const stroke_id of selected_strokes) {
+      const control_points = stroke_control_points(stroke_by_id(tablet_document, stroke_id), tablet_document);
+      points.push(control_points.p0, control_points.p1, control_points.p2, control_points.p3);
+    }
+    for (const vertex of [selected_vertex, extra_vertex]) {
+      if (vertex !== null) points.push(vertex_position(tablet_document, vertex));
+    }
+    return points;
+  }
+
   // The mirror (see mirror_view.ts): the same scene again, into a corner of the
   // canvas, from the main view's right side and without perspective. The
   // camera-facing meshes are rebuilt for the mirror's camera; the next frame
   // rebuilds them for the main view.
   function render_mirror(clip: ClipPlane | null): void {
     const rectangle = mirror_rectangle(canvas.clientWidth, canvas.clientHeight);
-    mesh_camera = mirror_camera_from_main_camera(camera);
+    mesh_camera = mirror_camera_from_main_camera(camera, mirror_focus_from_points(mirror_focus_points()));
     mesh_viewport_height_pixels = rectangle.size;
     rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
     rebuild_surface_mesh();
