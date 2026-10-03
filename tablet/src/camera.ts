@@ -1,7 +1,7 @@
 // Orbit camera: eye position derived from (pivot, yaw, pitch, distance).
 // yaw 0 / pitch 0 looks down -z toward the pivot; pitch > 0 looks from above.
 
-import { Mat4, V3, mat4_look_at, mat4_multiply, mat4_perspective, v3, v3_add, v3_cross, v3_normalize, v3_scale, v3_sub } from "./math";
+import { Mat4, V3, mat4_look_at, mat4_multiply, mat4_orthographic, mat4_perspective, v3, v3_add, v3_cross, v3_normalize, v3_scale, v3_sub } from "./math";
 
 export type OrbitCamera = {
   pivot: V3;
@@ -131,4 +131,15 @@ export function camera_screen_projector(
 export function camera_view_projection(camera: OrbitCamera, aspect: number): Mat4 {
   const view = mat4_look_at(camera_eye(camera), camera.pivot, v3(0, 1, 0));
   return mat4_multiply(mat4_perspective(FOV_Y, aspect, NEAR, FAR), view);
+}
+
+// The same camera without perspective: things at the pivot's depth show at the
+// size camera_view_projection gives them, and depth changes no size. The eye
+// stands far back along the same line of sight, so a close zoom never puts it
+// inside the model.
+export function camera_orthographic_view_projection(camera: OrbitCamera, aspect: number): Mat4 {
+  const toward_eye = v3_normalize(v3_sub(camera_eye(camera), camera.pivot));
+  const view = mat4_look_at(v3_add(camera.pivot, v3_scale(toward_eye, FAR / 2)), camera.pivot, v3(0, 1, 0));
+  const half_height = camera.distance * Math.tan(FOV_Y / 2);
+  return mat4_multiply(mat4_orthographic(half_height * aspect, half_height, NEAR, FAR), view);
 }

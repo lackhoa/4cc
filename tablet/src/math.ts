@@ -114,6 +114,19 @@ export function mat4_perspective(fov_y_radians: number, aspect: number, near: nu
   ]);
 }
 
+// Orthographic projection of the box |x| <= half_width, |y| <= half_height,
+// near..far along -z (view space).
+export function mat4_orthographic(half_width: number, half_height: number, near: number, far: number): Mat4 {
+  const range_inverse = 1 / (near - far);
+  // prettier-ignore
+  return new Float32Array([
+    1 / half_width, 0, 0, 0,
+    0, 1 / half_height, 0, 0,
+    0, 0, 2 * range_inverse, 0,
+    0, 0, (near + far) * range_inverse, 1,
+  ]);
+}
+
 export function mat4_look_at(eye: V3, target: V3, up: V3): Mat4 {
   const forward = v3_normalize(v3_sub(eye, target)); // camera looks down -forward
   const right = v3_normalize(v3_cross(up, forward));
