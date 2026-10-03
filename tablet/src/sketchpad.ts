@@ -557,15 +557,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
 
   function rebuild_edit_overlay(): void {
-    if (mesh_camera !== camera) {
-      // The mirror draws no markers (vertex highlights, handles, weld warning):
-      // the highlighted curve is enough there. Only the pen ray.
-      const pen_ray_vertices: number[] = [];
-      append_pen_ray_overlay(pen_ray_vertices);
-      set_overlay_lines(renderer, new Float32Array(pen_ray_vertices));
-      set_overlay_triangles(renderer, new Float32Array(0));
-      return;
-    }
     const basis = camera_basis(mesh_camera);
     const units_per_pixel = camera_world_units_per_pixel(mesh_camera, mesh_viewport_height_pixels);
     const anchor_half = (ANCHOR_SIZE_PIXELS / 2) * units_per_pixel;
@@ -585,6 +576,16 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (hot) {
         append_billboard_square(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
       }
+    }
+    if (mesh_camera !== camera) {
+      // The mirror draws the vertex highlights above and the pen ray, but no
+      // handles, endpoint markers or weld warning: the highlighted curve is
+      // enough there.
+      const pen_ray_vertices: number[] = [];
+      append_pen_ray_overlay(pen_ray_vertices);
+      set_overlay_lines(renderer, new Float32Array(pen_ray_vertices));
+      set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
+      return;
     }
     if (edit_state === null) {
       // Drag-time weld warning for a dragged vertex, same marker as an endpoint drag below.
