@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.webmanifest">
-  <title>skull-draw</title>
+  <title>skin-draw</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #111;
                  touch-action: none; overscroll-behavior: none;
@@ -90,11 +90,15 @@
     <button id="delete_button">del</button>
     <button id="view_button">view</button>
     <button id="reference_button">ref</button>
+    <button id="eyeball_button" title="show the eyeballs with the reference">eyes</button>
+    <input type="range" id="reference_alpha" min="0.05" max="1" step="0.05" value="1" title="reference opacity">
+    <button id="clip_button" title="cut away one side of a sagittal plane; while armed, drag slides the plane">clip</button>
     <button id="surface_button">surf</button>
         <button id="docs_button">docs</button>
     <button id="pages_button" title="back to the main menu">menu</button>
   </div>
   <div id="stroke_labels"></div>
+  <div id="layer_bar"></div>
   <div id="docs_panel"></div>
   <div id="history_panel"></div>
   <div id="width_panel"></div>
