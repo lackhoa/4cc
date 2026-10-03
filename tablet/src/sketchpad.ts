@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -917,6 +917,26 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_armed_tool(armed_tool === "pin" ? null : "pin");
   });
 
+  // Detach end: with exactly one stroke and one vertex selected, the vertex being
+  // an end of the stroke that other strokes are welded to, gives the stroke its
+  // own new vertex at the same place. The stroke and the new vertex stay
+  // selected; drag the stroke's end away to separate them (releasing it next to
+  // the old vertex welds it back). Disabled while the stroke bounds a patch.
+  const detach_end_button = document.getElementById("detach_end_button") as HTMLButtonElement;
+  function selected_detach_end_pair(): { stroke_id: StrokeId; vertex: VertexId } | null {
+    if (edit_state === null || extra_selection.length > 0 || selected_vertex === null || extra_vertex !== null) return null;
+    if (!stroke_end_can_detach_from_weld(tablet_document, edit_state.stroke_id, selected_vertex)) return null;
+    return { stroke_id: edit_state.stroke_id, vertex: selected_vertex };
+  }
+  detach_end_button.addEventListener("click", () => {
+    const pair = selected_detach_end_pair();
+    if (pair === null || stroke_bounds_a_patch(tablet_document, pair.stroke_id)) return;
+    begin_history_step(history, tablet_document);
+    selected_vertex = detach_stroke_end_from_weld(tablet_document, pair.stroke_id, pair.vertex);
+    end_history_step(history, tablet_document, `detach line ${pair.stroke_id} from vertex ${pair.vertex}`);
+    request_render();
+  });
+
   // Pin to line (plan-sketchpad-pin-vertex-to-selected-line.md): with exactly one
   // vertex and one stroke selected, pins the vertex to the nearest point of the
   // stroke; a vertex pinned elsewhere moves its pin (Q7). Hidden when the pair is
@@ -1401,6 +1421,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertex_and_line_selected = edit_state !== null && selected_vertex !== null;
     set_button_availability(delete_button, selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected), delete_lock_reason);
     set_button_availability(pin_to_line_button, selected_pin_to_line_pair() !== null, null);
+    const detach_end_pair = selected_detach_end_pair();
+    set_button_availability(
+      detach_end_button, detach_end_pair !== null,
+      detach_end_pair !== null && stroke_bounds_a_patch(tablet_document, detach_end_pair.stroke_id)
+        ? `the selected line bounds a patch, ${DELETE_PATCH_FIRST}` : null,
+    );
     set_button_availability(
       join_button, two_lines_selected, join_is_locked() ? `one of these lines bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );

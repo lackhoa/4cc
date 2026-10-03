@@ -557,6 +557,34 @@ export function find_snap_target_stroke(
   return best;
 }
 
+// Whether the `detach end` button applies: exactly one end of the stroke is on
+// the vertex, and another stroke ends there too (a weld to detach from).
+export function stroke_end_can_detach_from_weld(tablet_document: TabletDocument, stroke_id: StrokeId, vertex_id: VertexId): boolean {
+  const stroke = stroke_by_id(tablet_document, stroke_id);
+  if ((stroke.p0_vertex === vertex_id) === (stroke.p3_vertex === vertex_id)) return false;
+  return tablet_document.strokes.some(
+    (other) => other.id !== stroke_id && (other.p0_vertex === vertex_id || other.p3_vertex === vertex_id),
+  );
+}
+
+// Undo a weld for one stroke: its end on `vertex_id` moves to a new vertex at
+// the same place, so the stroke no longer follows the other strokes welded
+// there. The old vertex keeps its name, pin and midline flag. Smooth knots of
+// the stroke at that vertex are dropped (the strokes no longer meet). Returns
+// the new vertex. Call only when stroke_end_can_detach_from_weld.
+export function detach_stroke_end_from_weld(tablet_document: TabletDocument, stroke_id: StrokeId, vertex_id: VertexId): VertexId {
+  const stroke = stroke_by_id(tablet_document, stroke_id);
+  const detached_vertex = add_vertex(
+    tablet_document, vertex_position(tablet_document, vertex_id), vertex_by_id(tablet_document, vertex_id).bone_id,
+  );
+  if (stroke.p0_vertex === vertex_id) stroke.p0_vertex = detached_vertex;
+  else stroke.p3_vertex = detached_vertex;
+  tablet_document.smooth_knots = tablet_document.smooth_knots.filter(
+    (knot) => !(knot.vertex === vertex_id && (knot.stroke_a === stroke_id || knot.stroke_b === stroke_id)),
+  );
+  return detached_vertex;
+}
+
 // Whether the `pin to line` button may pin this vertex to this stroke
 // (plan-sketchpad-pin-vertex-to-selected-line.md Q5, Q7). Refused: the vertex
 // ends the stroke, it already rides the stroke, or a midline stroke holds it on
