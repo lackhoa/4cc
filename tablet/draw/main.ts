@@ -10,4 +10,5 @@ start_sketchpad({
   can_switch_documents: true,
   active_layer: "skull",
   locked_layers: [],
+  hidden_layers: [],
 });

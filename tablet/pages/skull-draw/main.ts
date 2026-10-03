@@ -32,4 +32,6 @@ start_sketchpad({
   can_switch_documents: false,
   active_layer: "skull",
   locked_layers: [],
+  // The skin drawing lives in the same document; it belongs to the skin-draw page.
+  hidden_layers: ["skin"],
 });

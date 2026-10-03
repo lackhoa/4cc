@@ -36,4 +36,5 @@ start_sketchpad({
   // The skull is done: draw skin over it, skull strokes untouchable (Q4/Q10).
   active_layer: "skin",
   locked_layers: ["skull"],
+  hidden_layers: [],
 });

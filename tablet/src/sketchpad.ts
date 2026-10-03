@@ -49,6 +49,8 @@ export type SketchpadSetup = {
   // `#layer_bar` shows them locked but cannot unlock them or draw on them).
   active_layer: Layer;
   locked_layers: Layer[];
+  // Layers this page never draws or picks; the layer bar has no row for them.
+  hidden_layers: Layer[];
 };
 
 // Ported from the desktop app (driver.kc default_line_color = gray 0.03
@@ -107,7 +109,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // its strokes (vertex_is_on_layers), a patch on its first stroke's.
   let active_layer: Layer = setup.active_layer;
   const locked_layers = new Set<Layer>(setup.locked_layers);
-  const hidden_layers = new Set<Layer>();
+  const hidden_layers = new Set<Layer>(setup.hidden_layers);
   function visible_layers(): Set<Layer> {
     return new Set(ALL_LAYERS.filter((layer) => !hidden_layers.has(layer)));
   }
@@ -1473,8 +1475,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const name_buttons = new Map<Layer, HTMLButtonElement>();
     const lock_buttons = new Map<Layer, HTMLButtonElement>();
     const hide_buttons = new Map<Layer, HTMLButtonElement>();
+    // A layer the page hides for good gets no row.
+    const layers_with_a_row = ALL_LAYERS.filter((layer) => !setup.hidden_layers.includes(layer));
     function refresh_layer_bar(): void {
-      for (const layer of ALL_LAYERS) {
+      for (const layer of layers_with_a_row) {
         name_buttons.get(layer)!.classList.toggle("armed", layer === active_layer);
         lock_buttons.get(layer)!.classList.toggle("armed", locked_layers.has(layer));
         hide_buttons.get(layer)!.classList.toggle("armed", hidden_layers.has(layer));
@@ -1498,7 +1502,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       layer_bar!.appendChild(button);
       return button;
     }
-    for (const layer of ALL_LAYERS) {
+    for (const layer of layers_with_a_row) {
       const row = document.createElement("div");
       row.className = "layer_row";
       layer_bar.appendChild(row);
