@@ -21,7 +21,7 @@ import { merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
-import { mirror_camera_from_main_camera, mirror_focus_from_points, mirror_rectangle } from "./mirror_view";
+import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
 import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
@@ -95,6 +95,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let mesh_camera: OrbitCamera = camera;
   let mesh_viewport_height_pixels = canvas.clientHeight;
   let mirror_visible = false;
+  let mirror_camera: OrbitCamera | null = null; // null until the mirror first draws, then steered by the user only
   let pen_ray_screen: V2 | null = null; // where the pen last was, down or hovering
   let camera_rock_start_ms: number | null = null; // non-null while the rock key is held
   const tablet_document = empty_document();
@@ -282,30 +283,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     camera.yaw = unrocked_yaw;
   }
 
-  // The points the mirror zooms in on: the line being drawn, else everything
-  // selected (the control points of the selected lines, the selected vertices).
-  // Empty when nothing is selected.
-  function mirror_focus_points(): V3[] {
-    if (line_state !== null) return [line_state.start_world, line_state.end_world];
-    const points: V3[] = [];
-    const selected_strokes = edit_state === null ? extra_selection : [edit_state.stroke_id, ...extra_selection];
-    for (const stroke_id of selected_strokes) {
-      const control_points = stroke_control_points(stroke_by_id(tablet_document, stroke_id), tablet_document);
-      points.push(control_points.p0, control_points.p1, control_points.p2, control_points.p3);
-    }
-    for (const vertex of [selected_vertex, extra_vertex]) {
-      if (vertex !== null) points.push(vertex_position(tablet_document, vertex));
-    }
-    return points;
-  }
-
   // The mirror (see mirror_view.ts): the same scene again, into a corner of the
-  // canvas, from the main view's right side and without perspective. The
+  // canvas, through the mirror's own camera and without perspective. The
   // camera-facing meshes are rebuilt for the mirror's camera; the next frame
   // rebuilds them for the main view.
   function render_mirror(clip: ClipPlane | null): void {
     const rectangle = mirror_rectangle(canvas.clientWidth, canvas.clientHeight);
-    mesh_camera = mirror_camera_from_main_camera(camera, mirror_focus_from_points(mirror_focus_points()));
+    if (mirror_camera === null) mirror_camera = mirror_camera_from_main_camera(camera);
+    mesh_camera = mirror_camera;
     mesh_viewport_height_pixels = rectangle.size;
     rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
     rebuild_surface_mesh();
@@ -1601,9 +1586,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // snapping again toggles back to the previous view. previous starts at
   // profile so the very first snap from frontal has somewhere to toggle to.
   const camera_snap_state: CameraSnapState = { previous_snap_yaw: Math.PI / 2, current_snap_yaw: 0 };
-  // Mirror toggle, remembered per page. The frame is the mirror's border; it
-  // sits over that corner of the canvas and takes the pointer, so the pen and
-  // fingers do nothing there.
+  // Mirror toggle and the mirror's camera, both remembered per page. The frame
+  // is the mirror's border; it sits over that corner of the canvas and takes
+  // the pointer: drags there steer the mirror's camera and edit nothing.
   const mirror_button = document.getElementById("mirror_button") as HTMLButtonElement;
   const mirror_storage_key = `${setup.storage_key_prefix}_mirror`;
   const mirror_frame = document.createElement("div");
@@ -1619,6 +1604,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     mirror_button.classList.toggle("armed", mirror_visible);
   }
   mirror_visible = localStorage.getItem(mirror_storage_key) === "1";
+  const mirror_camera_storage_key = `${setup.storage_key_prefix}_mirror_camera`;
+  const stored_mirror_camera = localStorage.getItem(mirror_camera_storage_key);
+  if (stored_mirror_camera !== null) mirror_camera = JSON.parse(stored_mirror_camera) as OrbitCamera;
+  const on_mirror_camera_change = () => {
+    localStorage.setItem(mirror_camera_storage_key, JSON.stringify(mirror_camera));
+    request_render();
+  };
+  attach_mirror_gestures(mirror_frame, () => mirror_camera, on_mirror_camera_change, () => {
+    mirror_camera = mirror_camera_from_main_camera(camera);
+    on_mirror_camera_change();
+  });
   place_mirror_frame();
   window.addEventListener("resize", place_mirror_frame);
   mirror_button.addEventListener("click", () => {

@@ -1,39 +1,17 @@
-// The mirror: a small second view of the same scene, seen from the right side of
-// the main view, so depth in the main view reads as left-right in the mirror.
-// Look only: the pen does nothing inside it.
+// The mirror: a small second view of the same scene with a camera of its own,
+// so depth in the main view can be read from another side. The user steers it
+// with drags inside it; nothing moves it automatically. The pen edits nothing
+// inside it.
 
-import { OrbitCamera, camera_distance_for_view_half_height, camera_view_half_height } from "./camera";
-import { V3, v3_add, v3_length, v3_scale, v3_sub } from "./math";
+import { OrbitCamera, camera_orbit, camera_pan, camera_world_units_per_pixel, camera_zoom } from "./camera";
+import { ORBIT_RADIANS_PER_PIXEL } from "./gestures";
+import { V2 } from "./math";
 
-// What the mirror zooms in on: a ball around the thing being selected or adjusted.
-export type MirrorFocus = { center: V3; radius: number };
-
-// The ball around `points` (centre of their bounding box); null for no points.
-export function mirror_focus_from_points(points: V3[]): MirrorFocus | null {
-  if (points.length === 0) return null;
-  let low = points[0];
-  let high = points[0];
-  for (const point of points) {
-    low = { x: Math.min(low.x, point.x), y: Math.min(low.y, point.y), z: Math.min(low.z, point.z) };
-    high = { x: Math.max(high.x, point.x), y: Math.max(high.y, point.y), z: Math.max(high.z, point.z) };
-  }
-  const center = v3_scale(v3_add(low, high), 0.5);
-  return { center, radius: v3_length(v3_sub(high, center)) };
-}
-
-// The main camera turned a quarter turn to its right. Level (pitch 0), so the
-// drawing stays upright whatever the pitch of the main view; the pen ray drawn
-// in the mirror then shows that pitch as a slope.
-// Without a focus it turns around the main pivot at the main zoom. With one it
-// looks at the focus centre and zooms until the focus ball, plus some room
-// around it, fills the mirror: never wider than the main view, and never
-// closer than a sixth of it (a single vertex has radius 0).
-export function mirror_camera_from_main_camera(camera: OrbitCamera, focus: MirrorFocus | null): OrbitCamera {
-  const turned = { ...camera, yaw: camera.yaw + Math.PI / 2, pitch: 0 };
-  if (focus === null) return turned;
-  const main_half_height = camera_view_half_height(camera);
-  const half_height = Math.max(main_half_height / 6, Math.min(main_half_height, focus.radius * 1.6));
-  return { ...turned, pivot: focus.center, distance: camera_distance_for_view_half_height(half_height) };
+// The main camera turned a quarter turn to its right around the pivot, same
+// zoom, level (pitch 0): the mirror's first view, and the view a double tap
+// inside the mirror returns to.
+export function mirror_camera_from_main_camera(camera: OrbitCamera): OrbitCamera {
+  return { pivot: { ...camera.pivot }, yaw: camera.yaw + Math.PI / 2, pitch: 0, distance: camera.distance };
 }
 
 // Where the mirror sits in the canvas: a square, in CSS pixels from the top-left.
@@ -44,4 +22,86 @@ export function mirror_rectangle(canvas_width: number, canvas_height: number): M
   const margin = 12;
   const size = Math.round(canvas_height / 3);
   return { left: canvas_width - size - margin, top: canvas_height - size - margin, size };
+}
+
+// Drags inside the mirror's frame steer the mirror's camera, with the main
+// view's gestures: one pointer (pen, mouse or finger) orbits, two fingers pan
+// and pinch-zoom, alt+drag or a middle-button drag pans, the wheel zooms, a
+// double tap calls `on_reset`. `mirror_camera` returns null while the mirror
+// has no camera yet.
+export function attach_mirror_gestures(
+  frame: HTMLElement, mirror_camera: () => OrbitCamera | null, on_camera_change: () => void, on_reset: () => void,
+): void {
+  const pointer_positions = new Map<number, V2>(); // pointerId -> last position, CSS pixels
+  let panning_pointer: number | null = null; // the alt / middle-button drag
+
+  function centroid_and_spread(): { centroid: V2; spread: number } {
+    const points = [...pointer_positions.values()];
+    const centroid = {
+      x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+      y: points.reduce((sum, p) => sum + p.y, 0) / points.length,
+    };
+    const spread = points.reduce((sum, p) => sum + Math.hypot(p.x - centroid.x, p.y - centroid.y), 0) / points.length;
+    return { centroid, spread };
+  }
+
+  function pan_by_pixels(camera: OrbitCamera, delta_x: number, delta_y: number): void {
+    const units_per_pixel = camera_world_units_per_pixel(camera, frame.clientHeight);
+    camera_pan(camera, -delta_x * units_per_pixel, delta_y * units_per_pixel);
+  }
+
+  frame.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    try { frame.setPointerCapture(e.pointerId); } catch {} // throws for synthetic events
+    pointer_positions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (e.altKey || e.button === 1) panning_pointer = e.pointerId;
+  });
+
+  frame.addEventListener("pointermove", (e) => {
+    e.preventDefault();
+    const camera = mirror_camera();
+    const previous = pointer_positions.get(e.pointerId);
+    if (camera === null || previous === undefined) return;
+    const position = { x: e.clientX, y: e.clientY };
+    if (pointer_positions.size === 1) {
+      if (panning_pointer === e.pointerId) {
+        pan_by_pixels(camera, position.x - previous.x, position.y - previous.y);
+      } else {
+        camera_orbit(
+          camera,
+          -(position.x - previous.x) * ORBIT_RADIANS_PER_PIXEL,
+          (position.y - previous.y) * ORBIT_RADIANS_PER_PIXEL,
+        );
+      }
+      pointer_positions.set(e.pointerId, position);
+    } else {
+      const before = centroid_and_spread();
+      pointer_positions.set(e.pointerId, position);
+      const after = centroid_and_spread();
+      pan_by_pixels(camera, after.centroid.x - before.centroid.x, after.centroid.y - before.centroid.y);
+      if (before.spread > 1 && after.spread > 1) camera_zoom(camera, before.spread / after.spread);
+    }
+    on_camera_change();
+  });
+
+  for (const type of ["pointerup", "pointercancel"] as const) {
+    frame.addEventListener(type, (e) => {
+      e.preventDefault();
+      pointer_positions.delete(e.pointerId);
+      if (panning_pointer === e.pointerId) panning_pointer = null;
+    });
+  }
+
+  frame.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const camera = mirror_camera();
+    if (camera === null) return;
+    camera_zoom(camera, Math.exp(e.deltaY * 0.0015));
+    on_camera_change();
+  }, { passive: false });
+
+  frame.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    on_reset();
+  });
 }

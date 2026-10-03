@@ -51,16 +51,6 @@ export function camera_world_units_per_pixel(camera: OrbitCamera, viewport_heigh
   return (2 * camera.distance * Math.tan(FOV_Y / 2)) / viewport_height_pixels;
 }
 
-// Half the height of the view at the pivot's depth, in world units.
-export function camera_view_half_height(camera: OrbitCamera): number {
-  return camera.distance * Math.tan(FOV_Y / 2);
-}
-
-// The camera distance at which camera_view_half_height is `half_height`.
-export function camera_distance_for_view_half_height(half_height: number): number {
-  return half_height / Math.tan(FOV_Y / 2);
-}
-
 // Camera basis in world space: right, true up, and forward (eye -> pivot).
 export function camera_basis(camera: OrbitCamera): { right: V3; up: V3; forward: V3 } {
   const forward = v3_normalize(v3_sub(camera.pivot, camera_eye(camera)));
