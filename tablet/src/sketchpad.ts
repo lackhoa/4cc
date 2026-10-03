@@ -24,7 +24,7 @@ import { V2, V3, v3, v3_add, v3_scale, v3_sub } from "./math";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
-import { create_persistence_state, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
+import { create_persistence_state, flush_autosave, list_documents_from_server, load_current_document_on_startup, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
 
 // What differs between the pages that run the sketchpad.
@@ -1476,8 +1476,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     docs_panel.classList.add("open");
   }
 
+  // Back to the menu: flush the pending autosave first, or a stroke drawn in the last
+  // ~2 s is lost with the tab.
   document.getElementById("pages_button")!.addEventListener("click", () => {
-    window.location.href = "/";
+    void flush_autosave(persistence, tablet_document, camera).then(() => {
+      window.location.href = "/";
+    });
+  });
+  // Tab closed / reloaded / navigated by other means: same flush, keepalive so the
+  // request outlives the page.
+  window.addEventListener("pagehide", () => {
+    void flush_autosave(persistence, tablet_document, camera, true);
   });
 
   docs_button.addEventListener("click", () => {

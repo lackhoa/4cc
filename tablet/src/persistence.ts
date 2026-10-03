@@ -30,11 +30,22 @@ export type PersistenceState = {
   current_name_storage_key: string;
   crash_buffer_storage_key: string;
   last_saved_json: string | null; // skip autosaves when nothing changed
+  saving_json: string | null; // the save in flight (a flush during it must not send it twice)
   autosave_timer: number | null;
   // False until the startup load (or a document switch) finishes — blocks
   // autosave from overwriting the stored document with the pre-load state.
   ready: boolean;
+  // Toolbar `#save_status` (null when the page has none): shows where the autosave is.
+  save_status_element: HTMLElement | null;
 };
+
+// `kind` selects the color (CSS class on #save_status).
+type SaveStatusKind = "pending" | "saving" | "saved" | "failed" | "off";
+function show_save_status(state: PersistenceState, kind: SaveStatusKind, text: string): void {
+  if (state.save_status_element === null) return;
+  state.save_status_element.className = kind;
+  state.save_status_element.textContent = text;
+}
 
 // What sits in localStorage: the last autosaved snapshot plus whether the
 // server confirmed it. server_saved=false after a reload means the server
@@ -56,8 +67,10 @@ export function create_persistence_state(default_document_name: string, storage_
     current_name_storage_key,
     crash_buffer_storage_key: `${storage_key_prefix}_crash_buffer`,
     last_saved_json: null,
+    saving_json: null,
     autosave_timer: null,
     ready: false,
+    save_status_element: document.getElementById("save_status"),
   };
 }
 
@@ -217,12 +230,15 @@ function remember_current_name(state: PersistenceState, name: string): void {
   } catch { /* storage unavailable */ }
 }
 
-async function save_to_server(name: string, json: string): Promise<boolean> {
+// `keepalive` lets the request outlive the page (flush on pagehide); bodies are limited to
+// 64 KB then, so it stays off for ordinary saves.
+async function save_to_server(name: string, json: string, keepalive: boolean = false): Promise<boolean> {
   try {
     const response = await fetch(`/api/documents/${encodeURIComponent(name)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: json,
+      keepalive,
     });
     if (!response.ok) console.error(`document save failed: ${response.status}`);
     // 409 = the server refused to replace a document that has strokes with an empty one
@@ -235,28 +251,54 @@ async function save_to_server(name: string, json: string): Promise<boolean> {
   }
 }
 
-async function save_now(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera): Promise<void> {
+async function save_now(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, keepalive: boolean = false): Promise<void> {
   const json = serialize_document_state(tablet_document, camera);
-  if (json === state.last_saved_json) return;
+  if (json === state.last_saved_json) {
+    show_save_status(state, "saved", "saved");
+    return;
+  }
+  if (json === state.saving_json) return; // already on its way
   const name = state.current_document_name;
   const saved_at_ms = Date.now();
   write_crash_buffer(state, { name, json, server_saved: false, saved_at_ms });
-  const saved = await save_to_server(name, json);
+  show_save_status(state, "saving", "saving…");
+  state.saving_json = json;
+  const saved = await save_to_server(name, json, keepalive);
+  state.saving_json = null;
   if (saved) {
     write_crash_buffer(state, { name, json, server_saved: true, saved_at_ms });
     state.last_saved_json = json;
+    show_save_status(state, "saved", `saved ${new Date(saved_at_ms).toLocaleTimeString()}`);
+  } else {
+    show_save_status(state, "failed", "SAVE FAILED");
   }
   // Not saved: last_saved_json stays stale so the next autosave retries the server.
 }
 
 // Called on every render request; fires one save ~2 s after the last mutation.
 export function schedule_autosave(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera): void {
-  if (!state.ready) return;
+  if (!state.ready) {
+    show_save_status(state, "off", "autosave OFF");
+    return;
+  }
+  show_save_status(state, "pending", "unsaved…");
   if (state.autosave_timer !== null) window.clearTimeout(state.autosave_timer);
   state.autosave_timer = window.setTimeout(() => {
     state.autosave_timer = null;
     void save_now(state, tablet_document, camera);
   }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+// Save a pending autosave right now instead of waiting out the debounce. Used before
+// leaving the page (pages button, pagehide): a stroke drawn in the last ~2 s would
+// otherwise die with the tab. A no-op when nothing changed or the tab is not `ready`.
+export async function flush_autosave(state: PersistenceState, tablet_document: TabletDocument, camera: OrbitCamera, keepalive: boolean = false): Promise<void> {
+  if (!state.ready) return;
+  if (state.autosave_timer !== null) {
+    window.clearTimeout(state.autosave_timer);
+    state.autosave_timer = null;
+  }
+  await save_now(state, tablet_document, camera, keepalive);
 }
 
 export type DocumentListEntry = { name: string; mtime_ms: number };
