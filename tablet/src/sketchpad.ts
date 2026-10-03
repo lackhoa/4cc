@@ -13,7 +13,7 @@
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, pins_on_stroke, set_vertex_world_position, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
-import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, StrokePointKey, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -269,6 +269,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   window.addEventListener("resize", resize_canvas_to_display);
 
+  // The vertex the selected vertex would weld into if its drag ended now, or null:
+  // only while the pen has really dragged it (a tap never welds), and never for a
+  // landmark or a pinned vertex.
+  function selected_vertex_weld_target(): VertexId | null {
+    if (selected_vertex === null || selected_vertex_drag_last_screen === null) return null;
+    if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) return null;
+    if (vertex_by_id(tablet_document, selected_vertex).name !== undefined) return null;
+    if (pin_by_vertex(tablet_document, selected_vertex) !== null) return null;
+    return find_merge_target_vertex(tablet_document, selected_vertex, pickable_layers());
+  }
+
   // The stroke a dragged vertex would get pinned to on release (drag-time
   // warning, same function as the release so they can never disagree), or null.
   function drag_snap_target_stroke(): StrokeId | null {
@@ -401,6 +412,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
     }
     if (edit_state === null) {
+      // Drag-time weld warning for a dragged vertex, same marker as an endpoint drag below.
+      const weld_target = selected_vertex_weld_target();
+      if (weld_target !== null) {
+        append_billboard_square(
+          vertex_position(tablet_document, weld_target), anchor_half * 2, basis.right, basis.up,
+          HIGHLIGHT_COLOR, triangle_vertices,
+        );
+      }
       set_overlay_lines(renderer, new Float32Array(0));
       set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
       return;
@@ -1061,8 +1080,16 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (edit_state !== null) {
         edit_mode_pen_up(position, multi);
       } else if (selected_vertex_drag_last_screen !== null) {
-        // A vertex drag just ends (no weld/pin on release — landmarks are free points).
+        // A dragged vertex welds into a vertex it was released on, same as an
+        // endpoint drag of a selected stroke; the survivor takes the selection.
+        // No pin on release, and a landmark never welds (landmarks are free points).
         pen_history_label = `move vertex ${selected_vertex}`;
+        const weld_target = selected_vertex_weld_target();
+        if (weld_target !== null && merge_vertex_if_near_another(tablet_document, selected_vertex!, pickable_layers())) {
+          pen_history_label = `weld vertex ${selected_vertex} into ${weld_target}`;
+          selected_vertex = weld_target;
+          extra_vertex = null;
+        }
       } else if (pen_max_displacement_pixels < TAP_MAX_MOVEMENT_PIXELS) {
         // Tap with nothing (or a vertex) selected: vertex first, then stroke, else clear.
         // Ctrl-tap on a second vertex sets / clears the extra (Q79).

@@ -348,7 +348,7 @@ export function find_merge_target_vertex(tablet_document: TabletDocument, dragge
 // Merge the dragged vertex into another vertex within world-space snap range
 // (same feel as draw-time endpoint snapping): every stroke referencing it is
 // rewired to the target, welding the junction, and the vertex is removed.
-function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): boolean {
+export function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): boolean {
   const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, layers);
   if (target_vertex === null) return false;
   // Snap first so the strokes ending on the dragged vertex rotate their
