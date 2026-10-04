@@ -26,6 +26,7 @@
 // for everything drawn so far.
 
 import { Mat4, V3, mat4_identity, mat4_invert, mat4_multiply, mat4_transform_point, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
+import { snap_tuning } from "./snap_tuning";
 
 export type StrokeId = number;
 export type VertexId = number;
@@ -483,7 +484,7 @@ export function enforce_midline(tablet_document: TabletDocument): void {
 
 // Vertex snapping is done in world space (not on screen): two vertices weld
 // only when they are actually close in 3D, however the camera lines them up.
-const VERTEX_SNAP_RADIUS_WORLD = 0.05;
+// The two distances are tuned on the page `snap-tuning` (src/snap_tuning.ts).
 
 // Nearest vertex within world snap range of a point, or null. `exclude_vertex`
 // keeps a dragged vertex from snapping to itself. Only vertices on `layers`
@@ -492,7 +493,7 @@ export function pick_vertex_near_world_point(
   tablet_document: TabletDocument, point: V3, exclude_vertex: VertexId | null, layers: ReadonlySet<Layer>,
 ): VertexId | null {
   let best_id: VertexId | null = null;
-  let best_distance = VERTEX_SNAP_RADIUS_WORLD;
+  let best_distance = snap_tuning().vertex_weld_radius_world;
   for (const vertex of tablet_document.vertices) {
     if (vertex.id === exclude_vertex) continue;
     if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
@@ -535,7 +536,7 @@ export function nearest_point_on_stroke_world(
 }
 
 // The stroke a free vertex would get pinned to on release: the nearest curve
-// within VERTEX_SNAP_RADIUS_WORLD, or null. Skips strokes ending on the vertex
+// within the pin radius, or null. Skips strokes ending on the vertex
 // (always at distance 0) and vertices that are already pinned (unpin first).
 // Vertex-to-vertex welding takes priority — the caller checks that first.
 export function find_snap_target_stroke(
@@ -544,7 +545,7 @@ export function find_snap_target_stroke(
   if (pin_by_vertex(tablet_document, vertex_id) !== null) return null;
   const point = vertex_position(tablet_document, vertex_id);
   let best: { stroke_id: StrokeId; t: number } | null = null;
-  let best_distance = VERTEX_SNAP_RADIUS_WORLD;
+  let best_distance = snap_tuning().vertex_pin_radius_world;
   for (const stroke of tablet_document.strokes) {
     if (stroke.p0_vertex === vertex_id || stroke.p3_vertex === vertex_id) continue;
     if (!layers.has(stroke.layer)) continue;

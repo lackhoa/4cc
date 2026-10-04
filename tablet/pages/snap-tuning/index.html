@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>snap-tuning</title>
+<style>
+  .field { display: grid; grid-template-columns: 210px 1fr 190px auto; gap: 4px 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--faded); }
+  .field .name { color: var(--ink); font-weight: 600; }
+  .field input[type=range] { width: 100%; }
+  .field .value { font-family: ui-monospace, Consolas, monospace; font-size: 14px; color: var(--ink); white-space: nowrap; }
+  .field .value.changed { color: var(--yellow); }
+  .field .description { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin: 0; }
+  .field button, #reset_all_button { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--muted); border-radius: 6px; padding: 3px 12px; cursor: pointer; }
+  .field button:hover, #reset_all_button:hover { border-color: var(--accent); }
+  canvas { cursor: default; }
+  #drawing_frame { display: block; width: 100%; height: 75vh; border: 1px solid var(--faded); border-radius: 8px; }
+  @media (max-width: 700px) { .field { grid-template-columns: 1fr auto; } .field input[type=range] { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Snap tuning</h1>
+  <p class="sub">How close things must be before the drawing view snaps them together. A change is saved at once, in this browser, and every drawing view of this browser uses it from the next pen stroke: no reload. Move a slider, then drag a line end in the drawing view below. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>Distances</h2>
+    <div id="fields"></div>
+    <p class="hint">world = the document's units: on the skull pages 0.01 world is 1 mm, and a line of default width is 0.005 world across. pixels = on screen, whatever the zoom. A <span style="color: var(--yellow)">yellow</span> value differs from the default.</p>
+    <div class="controls"><button id="reset_all_button">reset all to the defaults</button></div>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <div class="controls" id="drawing_pages">
+      <button data-page="/draw/">draw</button>
+      <button data-page="/pages/skull-draw/">skull-draw</button>
+      <button data-page="/pages/skin-draw/">skin-draw</button>
+    </div>
+    <iframe id="drawing_frame" src="/draw/" title="drawing view"></iframe>
+    <p class="hint">This is the real drawing view on the real document: edits here are saved (undo works). While a line end is dragged, the vertex it would weld into, or the line it would be pinned onto, lights up.</p>
+  </section>
+
+  <section>
+    <h2>To scale</h2>
+    <canvas id="scale_canvas" height="300"></canvas>
+    <p class="hint">Left: the two 3D distances around a vertex and a line of default width, magnified (the bar is 0.05 world, 5 mm on the skull). A dragged line end released inside the <span style="color: var(--orange)">orange</span> circle welds into that vertex; released inside the <span style="color: var(--teal)">teal</span> band it is pinned onto that line. Right: the on-screen distance at its real size on this display, around a vertex marker of the drawing view's size.</p>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

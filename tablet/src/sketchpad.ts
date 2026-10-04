@@ -30,6 +30,7 @@ import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, v
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
+import { snap_tuning } from "./snap_tuning";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
 type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
@@ -656,7 +657,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       set_preview_line(renderer, new Float32Array(0));
       return;
     }
-    // The straight segment the stroke will be, from the start to the snapped end point.
+    // The straight segment the stroke will be, from the start to the end point.
     const vertices: number[] = [];
     for (const point of [line_state.start_world, line_state.end_world]) {
       vertices.push(point.x, point.y, point.z, PREVIEW_COLOR.r, PREVIEW_COLOR.g, PREVIEW_COLOR.b);
@@ -672,10 +673,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (!was_tap && line_state !== null) {
       // Every layer's vertices live on the skull bone until a mandible exists (Q15).
       const stroke_id = line_pen_up(line_state, tablet_document, active_layer, SKULL_BONE_ID);
-      if (stroke_id !== null) {
-        select_stroke_by_tap(stroke_id, false);
-        pen_history_label = `add line ${stroke_id}`;
-      }
+      select_stroke_by_tap(stroke_id, false);
+      pen_history_label = `add line ${stroke_id}`;
     }
     set_armed_tool(null); // also clears line_state
     update_preview_line();
@@ -1342,7 +1341,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       hover_screen = null; // nothing is hot while the pen is down
       pen_ray_screen = position;
       if (armed_tool === "line") {
-        line_state = line_pen_down(tablet_document, camera, position, canvas, pickable_layers(), line_start_vertex);
+        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on a control point or pin of the selection; otherwise orbit.
@@ -1360,7 +1359,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // pixels of jitter is still a tap, anything more is a drag of it.
       const pen_landed_on_point = selected_vertex_drag_last_screen !== null
         || (edit_state !== null && (edit_state.dragging !== null || edit_state.dragging_pin !== null));
-      pen_tap_max_movement_pixels = pen_landed_on_point ? 4 : TAP_MAX_MOVEMENT_PIXELS;
+      pen_tap_max_movement_pixels = pen_landed_on_point ? snap_tuning().point_drag_start_pixels : TAP_MAX_MOVEMENT_PIXELS;
       request_render();
     },
     on_pen_move: (position, event) => {
@@ -1373,7 +1372,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       if (armed_tool === "line") {
         if (line_state !== null) {
-          line_pen_move(line_state, tablet_document, camera, position, canvas, pickable_layers());
+          line_pen_move(line_state, camera, position, canvas);
           update_preview_line();
         }
       } else if (pen_orbit_last_screen !== null) {
