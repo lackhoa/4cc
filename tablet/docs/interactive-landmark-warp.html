@@ -1,0 +1,335 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landmark Warp</title>
+<link rel="stylesheet" href="explainer/explainer.css">
+<style>
+  .readout { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--ink); margin: 6px 0; white-space: pre-wrap; }
+  .controls button.on { border-color: var(--corner); color: var(--corner); }
+</style>
+
+<main>
+  <h1>How a landmark warp moves the head</h1>
+  <p class="sub">Fitting the template to a target means moving hundreds of control points. You
+    place about 20 landmarks. The warp decides where every other point goes. Below is the same
+    thing in 2D, on a profile, with 10 landmarks.</p>
+
+  <section>
+    <h2>1 · Try it</h2>
+    <p>Each landmark is a pair. The <strong>hollow ring</strong> is where it sits on the template.
+      The <strong>yellow dot</strong> is where it must end up on the target.
+      <strong>Drag a yellow dot.</strong> The skin, the skull and the grid all follow.</p>
+    <div class="controls">
+      <button id="preset_girl">move landmarks to a teenage girl</button>
+      <button id="preset_reset">reset</button>
+    </div>
+    <div class="controls">
+      <label><input type="radio" name="mode" value="full" checked> overall + local</label>
+      <label><input type="radio" name="mode" value="overall"> overall part only</label>
+      <label><input type="checkbox" id="show_grid" checked> grid</label>
+      <label><input type="checkbox" id="show_template" checked> template ghost</label>
+      <label><input type="checkbox" id="show_skull" checked> skull</label>
+    </div>
+    <canvas id="warp_canvas" height="560"></canvas>
+    <p class="hint">
+      <span class="swatch" style="background:#e6e6ef"></span>skin
+      <span class="swatch" style="background:#ffa94d; margin-left:14px"></span>skull
+      <span class="dot" style="background:#ffd166; margin-left:14px"></span>landmark target (drag)
+      <span class="dot" style="background:transparent; border:2px solid #9aa0b4; margin-left:14px"></span>landmark on the template
+      <span class="dot" style="background:#4dd4c0; margin-left:14px"></span>probe point (drag)
+    </p>
+    <div class="readout" id="readout"></div>
+  </section>
+
+  <section>
+    <h2>2 · What the warp is</h2>
+    <p>The warp is a rule for points: <strong>give it any point, it returns the moved point.</strong>
+      It knows nothing about curves, skin or bone. The grid shows the rule itself: every grid
+      crossing is a point fed through it.</p>
+    <p>A curve moves because each of its control points is fed through the rule. That is the
+      answer to "the skull moves how?". <strong>No landmark sits on the skull.</strong> The skull
+      points are just points in the same space, so they ride along with the space around them.
+      Drag the nose tip landmark and watch the nasal bone: it follows, but less, because it is
+      further from the landmark.</p>
+    <p>Smooth means the grid bends but never tears or folds. Two points that start close end
+      close. So a curve stays a curve, and the skull stays inside the skin.</p>
+  </section>
+
+  <section>
+    <h2>3 · The rule has two parts</h2>
+    <p>Press "move landmarks to a teenage girl", then switch between the two modes.</p>
+    <p><strong>Overall part.</strong> One scale, stretch, shear and shift for the whole head,
+      chosen so the landmarks get as close to their targets as one such move allows. The grid
+      stays straight. The landmarks do not land exactly: red lines show how far each one misses.</p>
+    <p><strong>Local part.</strong> Whatever is left. Each landmark pulls the space around it the
+      rest of the way to its target. The pull is strongest at the landmark and fades with
+      distance. Now every landmark lands exactly, and the grid bends.</p>
+    <p>The teal probe shows the split for one point. Drag it anywhere. The grey arrow is its
+      overall move. The pink arrow is its local move. Put it on a landmark ring: the two arrows
+      together end exactly on the yellow dot. Put it between two landmarks: it gets a blend.</p>
+  </section>
+
+  <section>
+    <h2>4 · What this means for the plan</h2>
+    <p><strong>Only the skin can be checked.</strong> Loomis drew skin, so landmarks go on skin
+      features. The fitted skull is what the warp carries along. Where the skin is stretched,
+      the tissue between skin and bone is stretched by the same amount. That is a guess, not
+      anatomy.</p>
+    <p><strong>More landmarks, tighter fit.</strong> Far from every landmark the warp falls back
+      to the overall part. A region that looks wrong after the warp needs one more landmark
+      there, or a hand fix.</p>
+    <p><strong>The app does this in 3D.</strong> Same rule, with x, y and z. A landmark seen in
+      the front view gives x and y. The same landmark seen in the profile gives y and z.</p>
+    <p class="hint">Method: thin-plate spline. Overall part = least-squares affine fit. Local
+      part = the spline minus that fit.</p>
+  </section>
+</main>
+
+<script src="explainer/explainer.js"></script>
+<script>
+const W = 700, H = 500;
+const UNIT = 100; // the solver works in units of 100 px so the matrix stays well scaled
+
+// ---------- template shapes (profile facing left, y down) ----------
+const pt = (x, y) => ({ x, y });
+function catmull_rom(points, per_segment = 10) {
+  const dense = [];
+  const at = (i) => points[Math.max(0, Math.min(points.length - 1, i))];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    for (let s = 0; s < per_segment; s++) {
+      const t = s / per_segment, t2 = t * t, t3 = t2 * t;
+      const blend = (a, b, c, d) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (3 * b - a - 3 * c + d) * t3);
+      dense.push(pt(blend(p0.x, p1.x, p2.x, p3.x), blend(p0.y, p1.y, p2.y, p3.y)));
+    }
+  }
+  dense.push(points[points.length - 1]);
+  return dense;
+}
+function ellipse(cx, cy, rx, ry) {
+  const dense = [];
+  for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2; dense.push(pt(cx + rx * Math.cos(a), cy + ry * Math.sin(a))); }
+  return dense;
+}
+const from_pairs = (pairs) => pairs.map(([x, y]) => pt(x, y));
+
+const SKIN_CURVES = [
+  catmull_rom(from_pairs([[470, 470], [455, 360], [520, 250], [500, 130], [400, 55], [290, 75], [235, 140], [222, 190],
+    [230, 210], [205, 250], [180, 285], [212, 300], [200, 325], [212, 338], [205, 352], [218, 368], [210, 395],
+    [235, 420], [300, 425], [330, 440], [335, 470]])),
+  catmull_rom(from_pairs([[240, 418], [310, 412], [372, 400], [388, 340], [385, 292]])), // jaw line
+  ellipse(385, 255, 20, 36),                                                              // ear
+  catmull_rom(from_pairs([[244, 222], [256, 213], [272, 216], [258, 224], [244, 222]])),  // eye
+];
+const SKULL_CURVES = [
+  catmull_rom(from_pairs([[450, 345], [505, 250], [487, 140], [395, 68], [298, 87], [247, 145], [236, 190], [243, 212],
+    [228, 245], [240, 270], [232, 298], [226, 322], [230, 340], [228, 356], [232, 372], [224, 392], [245, 410],
+    [300, 400], [362, 388], [372, 300], [380, 268]])),
+  ellipse(268, 222, 20, 18),                                                              // orbit
+  catmull_rom(from_pairs([[380, 268], [410, 300], [450, 345]])),                          // skull base
+];
+
+const LANDMARKS = [
+  { name: "crown",      source: pt(400, 55),  girl: pt(400, 52) },
+  { name: "forehead",   source: pt(235, 140), girl: pt(226, 138) },
+  { name: "nasion",     source: pt(230, 210), girl: pt(236, 218) },
+  { name: "nose tip",   source: pt(180, 285), girl: pt(198, 284) },
+  { name: "nose base",  source: pt(212, 300), girl: pt(220, 298) },
+  { name: "mouth",      source: pt(212, 338), girl: pt(220, 328) },
+  { name: "chin",       source: pt(210, 395), girl: pt(224, 372) },
+  { name: "jaw angle",  source: pt(372, 400), girl: pt(370, 378) },
+  { name: "ear",        source: pt(385, 255), girl: pt(385, 258) },
+  { name: "back",       source: pt(520, 250), girl: pt(522, 248) },
+];
+for (const landmark of LANDMARKS) landmark.target = { ...landmark.source };
+const probe = pt(232, 298); // starts on the skull, at the base of the nasal opening
+
+// ---------- solver ----------
+// Solves A X = B in place (Gaussian elimination, partial pivoting). B has one column per unknown vector.
+function solve_linear_system(A, B) {
+  const n = A.length;
+  for (let column = 0; column < n; column++) {
+    let pivot = column;
+    for (let row = column + 1; row < n; row++) if (Math.abs(A[row][column]) > Math.abs(A[pivot][column])) pivot = row;
+    [A[column], A[pivot]] = [A[pivot], A[column]];
+    [B[column], B[pivot]] = [B[pivot], B[column]];
+    for (let row = column + 1; row < n; row++) {
+      const factor = A[row][column] / A[column][column];
+      for (let k = column; k < n; k++) A[row][k] -= factor * A[column][k];
+      for (let k = 0; k < B[row].length; k++) B[row][k] -= factor * B[column][k];
+    }
+  }
+  for (let row = n - 1; row >= 0; row--) {
+    for (let k = 0; k < B[row].length; k++) {
+      let sum = B[row][k];
+      for (let column = row + 1; column < n; column++) sum -= A[row][column] * B[column][k];
+      B[row][k] = sum / A[row][row];
+    }
+  }
+  return B;
+}
+const thin_plate_kernel = (r) => (r === 0 ? 0 : r * r * Math.log(r));
+
+// Returns { overall(p), full(p) }: the least-squares affine move and the thin-plate spline move.
+function build_warp() {
+  const sources = LANDMARKS.map((l) => pt(l.source.x / UNIT, l.source.y / UNIT));
+  const targets = LANDMARKS.map((l) => pt(l.target.x / UNIT, l.target.y / UNIT));
+  const n = sources.length;
+
+  // overall part: minimize the summed squared landmark miss over affine maps (3x3 normal equations)
+  const normal = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  const right_side = [[0, 0], [0, 0], [0, 0]];
+  for (let i = 0; i < n; i++) {
+    const basis = [1, sources[i].x, sources[i].y];
+    for (let a = 0; a < 3; a++) {
+      for (let b = 0; b < 3; b++) normal[a][b] += basis[a] * basis[b];
+      right_side[a][0] += basis[a] * targets[i].x;
+      right_side[a][1] += basis[a] * targets[i].y;
+    }
+  }
+  const affine = solve_linear_system(normal, right_side);
+  const overall = (p) => {
+    const x = p.x / UNIT, y = p.y / UNIT;
+    return pt((affine[0][0] + affine[1][0] * x + affine[2][0] * y) * UNIT, (affine[0][1] + affine[1][1] * x + affine[2][1] * y) * UNIT);
+  };
+
+  // thin-plate spline: kernel weights per landmark + its own affine terms
+  const size = n + 3;
+  const matrix = Array.from({ length: size }, () => new Array(size).fill(0));
+  const values = Array.from({ length: size }, () => [0, 0]);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) matrix[i][j] = thin_plate_kernel(Math.hypot(sources[i].x - sources[j].x, sources[i].y - sources[j].y));
+    const basis = [1, sources[i].x, sources[i].y];
+    for (let a = 0; a < 3; a++) { matrix[i][n + a] = basis[a]; matrix[n + a][i] = basis[a]; }
+    values[i] = [targets[i].x, targets[i].y];
+  }
+  const spline = solve_linear_system(matrix, values);
+  const full = (p) => {
+    const x = p.x / UNIT, y = p.y / UNIT;
+    let out_x = spline[n][0] + spline[n + 1][0] * x + spline[n + 2][0] * y;
+    let out_y = spline[n][1] + spline[n + 1][1] * x + spline[n + 2][1] * y;
+    for (let i = 0; i < n; i++) {
+      const weight = thin_plate_kernel(Math.hypot(x - sources[i].x, y - sources[i].y));
+      out_x += spline[i][0] * weight;
+      out_y += spline[i][1] * weight;
+    }
+    return pt(out_x * UNIT, out_y * UNIT);
+  };
+  return { overall, full };
+}
+
+// ---------- drawing ----------
+const canvas = document.getElementById("warp_canvas");
+const readout = document.getElementById("readout");
+const ui = EX.bind_controls(["show_grid", "show_template", "show_skull"], draw_all);
+const mode_inputs = [...document.querySelectorAll("input[name=mode]")];
+for (const input of mode_inputs) input.addEventListener("input", draw_all);
+let canvas_from_scene = { k: 1, ox: 0, oy: 0 };
+
+function draw_arrow(ctx, from, to, color) {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  if (length < 1.5) return;
+  EX.stroke_polyline(ctx, [from, to], color, 2.5);
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const head = Math.min(9, length);
+  EX.fill_polygon(ctx, [to,
+    pt(to.x - head * Math.cos(angle - 0.45), to.y - head * Math.sin(angle - 0.45)),
+    pt(to.x - head * Math.cos(angle + 0.45), to.y - head * Math.sin(angle + 0.45))], color, null);
+}
+
+function draw_all() {
+  const { ctx } = EX.fit_canvas(canvas);
+  const k = Math.min(canvas.width / W, canvas.height / H);
+  const ox = (canvas.width - W * k) / 2, oy = (canvas.height - H * k) / 2;
+  canvas_from_scene = { k, ox, oy };
+  ctx.setTransform(k, 0, 0, k, ox, oy);
+
+  const warp = build_warp();
+  const is_full = mode_inputs.find((input) => input.checked).value === "full";
+  const move = is_full ? warp.full : warp.overall;
+
+  if (ui.show_grid.checked) {
+    for (let x = 100; x <= 600; x += 50) {
+      const line = [];
+      for (let y = 20; y <= 480; y += 10) line.push(move(pt(x, y)));
+      EX.stroke_polyline(ctx, line, "#3a3f52", 1);
+    }
+    for (let y = 20; y <= 480; y += 46) {
+      const line = [];
+      for (let x = 100; x <= 600; x += 10) line.push(move(pt(x, y)));
+      EX.stroke_polyline(ctx, line, "#3a3f52", 1);
+    }
+  }
+  if (ui.show_template.checked) {
+    ctx.setLineDash([5, 6]);
+    for (const curve of SKIN_CURVES) EX.stroke_polyline(ctx, curve, "#6b7186", 1.2);
+    if (ui.show_skull.checked) for (const curve of SKULL_CURVES) EX.stroke_polyline(ctx, curve, "#7a5a36", 1.2);
+    ctx.setLineDash([]);
+  }
+  if (ui.show_skull.checked) for (const curve of SKULL_CURVES) EX.stroke_polyline(ctx, curve.map(move), "#ffa94d", 2);
+  for (const curve of SKIN_CURVES) EX.stroke_polyline(ctx, curve.map(move), "#e6e6ef", 2.4);
+
+  let largest_miss = 0;
+  ctx.font = "11px ui-monospace, Consolas, monospace";
+  for (const landmark of LANDMARKS) {
+    const moved = move(landmark.source);
+    largest_miss = Math.max(largest_miss, Math.hypot(moved.x - landmark.target.x, moved.y - landmark.target.y));
+    EX.stroke_polyline(ctx, [landmark.source, landmark.target], "#9aa0b480", 1);
+    EX.stroke_polyline(ctx, [moved, landmark.target], "#ff6b6b", 2.5); // the miss, zero length in full mode
+    ctx.beginPath(); ctx.arc(landmark.source.x, landmark.source.y, 5, 0, Math.PI * 2);
+    ctx.strokeStyle = "#9aa0b4"; ctx.lineWidth = 1.5; ctx.stroke();
+    EX.fill_dot(ctx, landmark.target, 5.5, "#ffd166");
+    ctx.fillStyle = "#9aa0b4";
+    ctx.fillText(landmark.name, landmark.target.x + 9, landmark.target.y - 7);
+  }
+
+  const probe_overall = warp.overall(probe);
+  const probe_final = move(probe);
+  draw_arrow(ctx, probe, probe_overall, "#9aa0b4");
+  if (is_full) draw_arrow(ctx, probe_overall, probe_final, "#ef6b9a");
+  EX.fill_dot(ctx, probe, 5.5, "#4dd4c0");
+
+  const pair = (a, b) => `(${(b.x - a.x).toFixed(1).padStart(6)}, ${(b.y - a.y).toFixed(1).padStart(6)})`;
+  readout.textContent =
+    `probe move   overall ${pair(probe, probe_overall)} px` +
+    (is_full ? `   local ${pair(probe_overall, probe_final)} px   total ${pair(probe, probe_final)} px` : "") +
+    `\nlargest landmark miss: ${largest_miss.toFixed(1)} px` + (is_full ? "  (every landmark lands on its target)" : "  (red lines)");
+}
+
+// ---------- dragging ----------
+function scene_point(event) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const { k, ox, oy } = canvas_from_scene;
+  return pt(((event.clientX - rect.left) * dpr - ox) / k, ((event.clientY - rect.top) * dpr - oy) / k);
+}
+let dragged = null; // the point object being dragged: a landmark target or the probe
+canvas.addEventListener("pointerdown", (event) => {
+  const p = scene_point(event);
+  let nearest_distance = 18;
+  dragged = null;
+  for (const candidate of [...LANDMARKS.map((l) => l.target), probe]) {
+    const distance = Math.hypot(candidate.x - p.x, candidate.y - p.y);
+    if (distance < nearest_distance) { nearest_distance = distance; dragged = candidate; }
+  }
+  if (dragged !== null) canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener("pointermove", (event) => {
+  if (dragged === null) return;
+  const p = scene_point(event);
+  dragged.x = p.x; dragged.y = p.y;
+  draw_all();
+});
+canvas.addEventListener("pointerup", () => { dragged = null; });
+
+document.getElementById("preset_girl").addEventListener("click", () => {
+  for (const landmark of LANDMARKS) landmark.target = { ...landmark.girl };
+  draw_all();
+});
+document.getElementById("preset_reset").addEventListener("click", () => {
+  for (const landmark of LANDMARKS) landmark.target = { ...landmark.source };
+  draw_all();
+});
+window.addEventListener("resize", draw_all);
+draw_all();
+</script>
