@@ -263,6 +263,8 @@ for (const entry of fs.readdirSync(pages_directory, { withFileTypes: true })) {
 }
 
 export default defineConfig({
+  // Multi-page app: a path with no page answers 404 instead of falling back to the main menu.
+  appType: "mpa",
   // Type errors surface in dev (tsc --watch in the dev server: terminal +
   // browser overlay); the build itself doesn't type-check, so it stays fast.
   plugins: [tablet_server_plugin(), reload_on_rebuild_plugin(), checker({ typescript: true, enableBuild: false })],
