@@ -24,8 +24,8 @@
       <button id="preset_reset">reset</button>
     </div>
     <div class="controls">
-      <label><input type="radio" name="mode" value="full" checked> overall + local</label>
-      <label><input type="radio" name="mode" value="overall"> overall part only</label>
+      <label><input type="radio" name="mode" value="full" checked> affine + local</label>
+      <label><input type="radio" name="mode" value="overall"> affine part only</label>
       <label><input type="checkbox" id="show_grid" checked> grid</label>
       <label><input type="checkbox" id="show_template" checked> template ghost</label>
       <label><input type="checkbox" id="show_skull" checked> skull</label>
@@ -58,7 +58,9 @@
   <section>
     <h2>3 · The rule has two parts</h2>
     <p>Press "move landmarks to a teenage girl", then switch between the two modes.</p>
-    <p><strong>Overall part.</strong> One scale, stretch, shear and shift for the whole head,
+    <p><strong>Affine part.</strong> Affine = a linear transform plus a shift. A linear
+      transform alone keeps the origin fixed, so it cannot slide the head.
+      One scale, stretch, shear and shift for the whole head,
       chosen so the landmarks get as close to their targets as one such move allows. The grid
       stays straight. The landmarks do not land exactly: red lines show how far each one misses.</p>
     <p><strong>Local part.</strong> Whatever is left. Each landmark pulls the space around it the
@@ -68,11 +70,11 @@
       page. The app has no probe. The warp is a rule for points, and the probe is one point
       that you feed through the rule by hand, so you can ask "where does a point here go, and
       why?". The curves and the grid show only where points end up. The probe also shows how
-      the move is made up: the grey arrow is its overall move, the pink arrow is its local
+      the move is made up: the grey arrow is its affine move, the pink arrow is its local
       move.</p>
     <p>Drag it anywhere. Put it on a landmark ring: the two arrows together end exactly on the
       yellow dot. Put it between two landmarks: it gets a blend. Put it far from every
-      landmark: the pink arrow shrinks, and the overall move is almost all that is left.</p>
+      landmark: the pink arrow shrinks, and the affine move is almost all that is left.</p>
   </section>
 
   <section>
@@ -82,11 +84,11 @@
       the tissue between skin and bone is stretched by the same amount. That is a guess, not
       anatomy.</p>
     <p><strong>More landmarks, tighter fit.</strong> Far from every landmark the warp falls back
-      to the overall part. A region that looks wrong after the warp needs one more landmark
+      to the affine part. A region that looks wrong after the warp needs one more landmark
       there, or a hand fix.</p>
     <p><strong>The app does this in 3D.</strong> Same rule, with x, y and z. A landmark seen in
       the front view gives x and y. The same landmark seen in the profile gives y and z.</p>
-    <p class="hint">Method: thin-plate spline. Overall part = least-squares affine fit. Local
+    <p class="hint">Method: thin-plate spline. Affine part = least-squares affine fit. Local
       part = the spline minus that fit.</p>
   </section>
 </main>
@@ -297,7 +299,7 @@ function draw_all() {
 
   const pair = (a, b) => `(${(b.x - a.x).toFixed(1).padStart(6)}, ${(b.y - a.y).toFixed(1).padStart(6)})`;
   readout.textContent =
-    `probe move   overall ${pair(probe, probe_overall)} px` +
+    `probe move   affine ${pair(probe, probe_overall)} px` +
     (is_full ? `   local ${pair(probe_overall, probe_final)} px   total ${pair(probe, probe_final)} px` : "") +
     `\nlargest landmark miss: ${largest_miss.toFixed(1)} px` + (is_full ? "  (every landmark lands on its target)" : "  (red lines)");
 }
