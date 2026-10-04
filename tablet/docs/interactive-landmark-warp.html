@@ -94,12 +94,24 @@
       each miss and add them all up. That sum is the score. Lower is better.</p>
     <p><strong>No search is needed to find the lowest score.</strong> Each miss is the six
       numbers times known values, added up. So the score is a bowl with one lowest point. At
-      the bottom of a bowl the slope is zero in every direction. Writing "slope is zero" for
-      a, for b and for c gives three plain linear equations:</p>
+      the bottom of a bowl the slope is zero in every direction.</p>
+    <p><strong>The score splits into two separate problems.</strong> A squared miss distance
+      is (miss in x)² + (miss in y)². The miss in x is a + b·xᵢ + c·yᵢ − Xᵢ: it contains only
+      a, b, c and the target x. The miss in y is d + e·xᵢ + f·yᵢ − Yᵢ: it contains only d, e, f
+      and the target y. So the score is one sum that only a, b, c can change, plus one sum
+      that only d, e, f can change. Each half is minimized on its own. Changing a never moves
+      a point up or down, so the target y cannot appear in the equations for a, b, c.</p>
+    <p>Writing "slope is zero" for a, for b and for c gives three plain linear equations.
+      They hold only the target x:</p>
     <div class="formula">sum over landmarks of &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(a + b·xᵢ + c·yᵢ − Xᵢ) = 0<br>sum over landmarks of xᵢ · (a + b·xᵢ + c·yᵢ − Xᵢ) = 0<br>sum over landmarks of yᵢ · (a + b·xᵢ + c·yᵢ − Xᵢ) = 0</div>
     <p>(xᵢ, yᵢ) is where landmark i sits on the template. Xᵢ is its target x. Everything
       except a, b, c is a known number. Three equations, three unknowns, solved by elimination
-      as in school. The same three equations with the target y give d, e, f.</p>
+      as in school.</p>
+    <p>The other half gives the same three equations with d, e, f in place of a, b, c and the
+      target y, Yᵢ, in place of Xᵢ:</p>
+    <div class="formula">sum over landmarks of &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(d + e·xᵢ + f·yᵢ − Yᵢ) = 0<br>sum over landmarks of xᵢ · (d + e·xᵢ + f·yᵢ − Yᵢ) = 0<br>sum over landmarks of yᵢ · (d + e·xᵢ + f·yᵢ − Yᵢ) = 0</div>
+    <p>Note that the template position (xᵢ, yᵢ) appears in both sets. Only the target is
+      split.</p>
     <p>The result, per landmark, in px:</p>
     <table class="numbers" id="affine_table"></table>
     <p>The <strong>leftover</strong> column is what the affine part could not reach. It is the
