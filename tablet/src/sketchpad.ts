@@ -12,8 +12,8 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, find_snap_target_stroke, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
-import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, find_merge_target_vertex, merge_vertex_if_near_another, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -30,7 +30,6 @@ import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, v
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
 import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
-import { snap_tuning } from "./snap_tuning";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
 type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
@@ -268,7 +267,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     mesh_viewport_height_pixels = canvas.clientHeight;
     hot_item = resolve_hot_item();
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id);
     rebuild_surface_mesh();
     rebuild_reference_mesh();
     rebuild_edit_overlay();
@@ -292,7 +291,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (mirror_camera === null) mirror_camera = mirror_camera_from_main_camera(camera);
     mesh_camera = mirror_camera;
     mesh_viewport_height_pixels = rectangle.size;
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id, drag_snap_target_stroke());
+    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id);
     rebuild_surface_mesh();
     rebuild_reference_mesh();
     rebuild_edit_overlay();
@@ -427,39 +426,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   window.addEventListener("resize", resize_canvas_to_display);
 
-  // The vertex the selected vertex would weld into if its drag ended now, or null:
-  // only while the pen has really dragged it (a tap never welds), and never for a
-  // pinned vertex.
-  function selected_vertex_weld_target(): VertexId | null {
-    if (selected_vertex === null || selected_vertex_drag_last_screen === null) return null;
-    if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) return null;
-    if (pin_by_vertex(tablet_document, selected_vertex) !== null) return null;
-    return find_merge_target_vertex(tablet_document, selected_vertex, pickable_layers());
-  }
-
-  // The stroke a dragged vertex would get pinned to on release (drag-time
-  // warning, same function as the release so they can never disagree), or null.
-  function drag_snap_target_stroke(): StrokeId | null {
-    if (edit_state === null || (edit_state.dragging !== "p0" && edit_state.dragging !== "p3")) return null;
-    if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) return null; // a tap never pins
-    const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
-    const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    if (find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers()) !== null) return null; // weld wins
-    const target = find_snap_target_stroke(tablet_document, dragged_vertex, pickable_layers());
-    return target === null ? null : target.stroke_id;
-  }
-
   // Per-frame meshes reuse one sink each so a frame allocates nothing for them.
   const stroke_sink = create_vertex_sink(1 << 15);
   const surface_sink = create_vertex_sink(1 << 15);
   const reference_sink = create_vertex_sink(1 << 15);
 
-  function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null, snap_target_stroke: StrokeId | null): void {
+  function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
-      const highlighted = stroke.id === highlighted_stroke || stroke.id === snap_target_stroke || extra_selection.includes(stroke.id);
+      const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
       const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : locked_layers.has(stroke.layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, vertices);
@@ -590,14 +567,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return;
     }
     if (edit_state === null) {
-      // Drag-time weld warning for a dragged vertex, same marker as an endpoint drag below.
-      const weld_target = selected_vertex_weld_target();
-      if (weld_target !== null) {
-        append_billboard_square(
-          vertex_position(tablet_document, weld_target), anchor_half * 2, basis.right, basis.up,
-          HIGHLIGHT_COLOR, triangle_vertices,
-        );
-      }
       const pen_ray_vertices: number[] = [];
       append_pen_ray_overlay(pen_ray_vertices);
       set_overlay_lines(renderer, new Float32Array(pen_ray_vertices));
@@ -633,20 +602,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     };
     push_marker(points.p0, anchor_half, anchor_color(selected_stroke.p0_vertex), is_hot_vertex(selected_stroke.p0_vertex));
     push_marker(points.p3, anchor_half, anchor_color(selected_stroke.p3_vertex), is_hot_vertex(selected_stroke.p3_vertex));
-    // Drag-time snap warning (Q3): while a vertex is being dragged, mark the
-    // vertex it would weld into on release so the merge is never a surprise.
-    // Not during a tap, which never welds.
-    const pen_really_dragged = pen_max_displacement_pixels >= pen_tap_max_movement_pixels;
-    if (pen_really_dragged && (edit_state.dragging === "p0" || edit_state.dragging === "p3")) {
-      const dragged_vertex = edit_state.dragging === "p0" ? selected_stroke.p0_vertex : selected_stroke.p3_vertex;
-      const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, pickable_layers());
-      if (target_vertex !== null) {
-        append_billboard_square(
-          vertex_position(tablet_document, target_vertex), anchor_half * 2, basis.right, basis.up,
-          HIGHLIGHT_COLOR, triangle_vertices,
-        );
-      }
-    }
     append_pen_ray_overlay(line_vertices);
     set_overlay_lines(renderer, new Float32Array(line_vertices));
     set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
@@ -787,7 +742,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         pen_history_merge = true;
       }
     }
-    edit_pen_up(edit_state, tablet_document, pickable_layers(), !was_tap);
+    edit_pen_up(edit_state);
     if (!was_tap) return;
     if (armed_tool === "pin") {
       // Pin creation (Q2): a tap on the selected stroke's curve drops a new
@@ -890,6 +845,25 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     set_armed_tool("line");
     line_start_vertex = selected_vertex;
+  });
+  // Weld: with two vertices selected (tap A, ctrl-tap B), A is welded into B:
+  // A's stroke ends move onto B, B stays where it is and takes the selection.
+  // Hidden when the pair is refused (see vertex_can_weld_into).
+  const weld_button = document.getElementById("weld_button") as HTMLButtonElement;
+  function selected_weld_pair(): { vertex: VertexId; target_vertex: VertexId } | null {
+    if (selected_vertex === null || extra_vertex === null) return null;
+    if (!vertex_can_weld_into(tablet_document, selected_vertex, extra_vertex)) return null;
+    return { vertex: selected_vertex, target_vertex: extra_vertex };
+  }
+  weld_button.addEventListener("click", () => {
+    const pair = selected_weld_pair();
+    if (pair === null) return;
+    begin_history_step(history, tablet_document);
+    weld_vertex_into(tablet_document, pair.vertex, pair.target_vertex);
+    end_history_step(history, tablet_document, `weld vertex ${pair.vertex} into ${pair.target_vertex}`);
+    selected_vertex = pair.target_vertex;
+    extra_vertex = null;
+    request_render();
   });
   // Patch: fill the selected strokes (primary + extras, 2 or more). Which fill
   // they get is derived per frame from their corners (patch.ts).
@@ -1359,7 +1333,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // pixels of jitter is still a tap, anything more is a drag of it.
       const pen_landed_on_point = selected_vertex_drag_last_screen !== null
         || (edit_state !== null && (edit_state.dragging !== null || edit_state.dragging_pin !== null));
-      pen_tap_max_movement_pixels = pen_landed_on_point ? snap_tuning().point_drag_start_pixels : TAP_MAX_MOVEMENT_PIXELS;
+      pen_tap_max_movement_pixels = pen_landed_on_point ? 4 : TAP_MAX_MOVEMENT_PIXELS;
       request_render();
     },
     on_pen_move: (position, event) => {
@@ -1411,16 +1385,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) {
         select_tap_target(pick_tap_target(position), multi);
       } else if (selected_vertex_drag_last_screen !== null) {
-        // A dragged vertex welds into a vertex it was released on, same as an
-        // endpoint drag of a selected stroke; the survivor takes the selection.
-        // No pin on release.
         pen_history_label = `move vertex ${selected_vertex}`;
-        const weld_target = selected_vertex_weld_target();
-        if (weld_target !== null && merge_vertex_if_near_another(tablet_document, selected_vertex!, pickable_layers())) {
-          pen_history_label = `weld vertex ${selected_vertex} into ${weld_target}`;
-          selected_vertex = weld_target;
-          extra_vertex = null;
-        }
       }
       pen_down_screen = null;
       pen_orbit_last_screen = null;
@@ -1513,6 +1478,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertex_and_line_selected = edit_state !== null && selected_vertex !== null;
     set_button_availability(delete_button, selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected), delete_lock_reason);
     set_button_availability(pin_to_line_button, selected_pin_to_line_pair() !== null, null);
+    set_button_availability(weld_button, selected_weld_pair() !== null, null);
     const detach_end_pair = selected_detach_end_pair();
     set_button_availability(
       detach_end_button, detach_end_pair !== null,

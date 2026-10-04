@@ -13,7 +13,7 @@
 // consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, find_snap_target_stroke, move_vertex, pick_vertex_near_world_point, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -363,91 +363,54 @@ function swing_dragged_handle(state: EditState, stroke: Stroke, tablet_document:
   stroke[other_key] = swing_offset_into_plane(v3_normalize(chord), stroke[dragged_key], stroke[other_key]);
 }
 
-// The vertex the dragged vertex would weld into on release: nearest other
-// vertex within world-space snap range — null when none is in range, or when
-// the merge would leave any stroke with both endpoints on the same vertex.
-// Also drives the drag-time highlight, so it must match the merge exactly.
-export function find_merge_target_vertex(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): VertexId | null {
-  const target_vertex = pick_vertex_near_world_point(
-    tablet_document, vertex_position(tablet_document, dragged_vertex), dragged_vertex, layers,
-  );
-  if (target_vertex === null) return null;
-  const remap = (vertex: VertexId) => (vertex === dragged_vertex ? target_vertex! : vertex);
+// Whether `vertex` may be welded into `target_vertex`: not when it is pinned (the
+// weld removes it, and its pin with it: unpin first), not when a stroke would
+// end up with both endpoints on the same vertex, and not when a pinned vertex
+// would become an endpoint of its own host stroke (the constraint would chase
+// its own curve).
+export function vertex_can_weld_into(tablet_document: TabletDocument, vertex: VertexId, target_vertex: VertexId): boolean {
+  if (vertex === target_vertex) return false;
+  if (pin_by_vertex(tablet_document, vertex) !== null) return false;
+  const remap = (other: VertexId) => (other === vertex ? target_vertex : other);
   for (const stroke of tablet_document.strokes) {
-    if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return null;
+    if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return false;
   }
-  // Q10 guard: a merge must not leave a pinned vertex as an endpoint of its
-  // own host stroke (the constraint would chase its own curve).
   for (const pin of tablet_document.vertex_pins) {
     const host = stroke_by_id(tablet_document, pin.host_stroke);
-    const pinned_vertex = remap(pin.vertex);
-    if (remap(host.p0_vertex) === pinned_vertex || remap(host.p3_vertex) === pinned_vertex) return null;
+    if (remap(host.p0_vertex) === pin.vertex || remap(host.p3_vertex) === pin.vertex) return false;
   }
-  return target_vertex;
+  return true;
 }
 
-// Merge the dragged vertex into another vertex within world-space snap range
-// (same feel as draw-time endpoint snapping): every stroke referencing it is
-// rewired to the target, welding the junction, and the vertex is removed.
-export function merge_vertex_if_near_another(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): boolean {
-  const target_vertex = find_merge_target_vertex(tablet_document, dragged_vertex, layers);
-  if (target_vertex === null) return false;
-  // Snap first so the strokes ending on the dragged vertex rotate their
-  // offsets with the chord change (Q4), then rewire them to the target.
-  move_vertex(tablet_document, dragged_vertex, vertex_position(tablet_document, target_vertex));
-  const remap = (vertex: VertexId) => (vertex === dragged_vertex ? target_vertex : vertex);
+// Weld `vertex` into `target_vertex` (the weld button): every stroke end on it
+// is rewired to the target, which does not move, and the vertex is removed.
+// Call only when vertex_can_weld_into.
+export function weld_vertex_into(tablet_document: TabletDocument, vertex: VertexId, target_vertex: VertexId): void {
+  // Move first so the strokes ending on the vertex rotate their offsets with
+  // the chord change (Q4), then rewire them to the target.
+  move_vertex(tablet_document, vertex, vertex_position(tablet_document, target_vertex));
+  const remap = (other: VertexId) => (other === vertex ? target_vertex : other);
   for (const stroke of tablet_document.strokes) {
     stroke.p0_vertex = remap(stroke.p0_vertex);
     stroke.p3_vertex = remap(stroke.p3_vertex);
   }
-  // A knot at the dragged vertex rides along (a crossing = two knots, Q4).
+  // A knot at the vertex rides along (a crossing = two knots, Q4).
   for (const knot of tablet_document.smooth_knots) knot.vertex = remap(knot.vertex);
   // The survivor is on the midline if either was (plan-sketchpad-midline.md Q75).
-  if (vertex_by_id(tablet_document, dragged_vertex).midline === true) {
+  if (vertex_by_id(tablet_document, vertex).midline === true) {
     vertex_by_id(tablet_document, target_vertex).midline = true;
   }
-  // A landmark's name survives the weld: an unnamed survivor takes the dragged
+  // A landmark's name survives the weld: an unnamed survivor takes the welded
   // vertex's name (a named survivor keeps its own).
-  const dragged_name = vertex_by_id(tablet_document, dragged_vertex).name;
-  if (dragged_name !== undefined && vertex_by_id(tablet_document, target_vertex).name === undefined) {
-    vertex_by_id(tablet_document, target_vertex).name = dragged_name;
+  const welded_name = vertex_by_id(tablet_document, vertex).name;
+  if (welded_name !== undefined && vertex_by_id(tablet_document, target_vertex).name === undefined) {
+    vertex_by_id(tablet_document, target_vertex).name = welded_name;
   }
-  // The dragged vertex is never pinned (pin drags slide t and skip merging),
-  // so no pin references it.
-  tablet_document.vertices = tablet_document.vertices.filter((vertex) => vertex.id !== dragged_vertex);
-  return true;
+  tablet_document.vertices = tablet_document.vertices.filter((other) => other.id !== vertex);
 }
 
-// Pin the dragged vertex to the curve it was released next to (vertex weld
-// has priority — call after merge_vertex_if_near_another misses). The vertex
-// snaps onto the curve through move_vertex so its strokes' offsets follow.
-// A pin and the midline both claim the vertex's position (plan-sketchpad-midline.md
-// Q71): the pin, being newer, drops the vertex's own midline flag. A vertex held
-// on the midline by a midline stroke is not pinned — that flag belongs to the
-// stroke and is not dropped behind the user's back.
-function pin_vertex_if_near_curve(tablet_document: TabletDocument, dragged_vertex: VertexId, layers: ReadonlySet<Layer>): void {
-  const target = find_snap_target_stroke(tablet_document, dragged_vertex, layers);
-  if (target === null) return;
-  const vertex = vertex_by_id(tablet_document, dragged_vertex);
-  delete vertex.midline;
-  if (vertex_is_on_midline(tablet_document, dragged_vertex)) return;
-  const points = stroke_control_points(stroke_by_id(tablet_document, target.stroke_id), tablet_document);
-  move_vertex(tablet_document, dragged_vertex, bezier_point(points, target.t));
-  tablet_document.vertex_pins.push({ vertex: dragged_vertex, host_stroke: target.stroke_id, t: target.t });
-}
-
-// `layers`: a released vertex welds to / pins on strokes of these layers only.
-// `pen_really_dragged`: false for a tap, which never welds or pins anything.
-export function edit_pen_up(
-  state: EditState, tablet_document: TabletDocument, layers: ReadonlySet<Layer>, pen_really_dragged: boolean,
-): void {
-  if (pen_really_dragged && (state.dragging === "p0" || state.dragging === "p3")) {
-    const stroke = stroke_by_id(tablet_document, state.stroke_id);
-    const dragged_vertex = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    if (!merge_vertex_if_near_another(tablet_document, dragged_vertex, layers)) {
-      pin_vertex_if_near_curve(tablet_document, dragged_vertex, layers);
-    }
-  }
+// Nothing snaps on release: a drag only moves (welding is the weld button).
+export function edit_pen_up(state: EditState): void {
   state.dragging = null;
   state.dragging_pin = null;
   state.last_screen = null;

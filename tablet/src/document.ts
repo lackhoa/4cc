@@ -26,7 +26,6 @@
 // for everything drawn so far.
 
 import { Mat4, V3, mat4_identity, mat4_invert, mat4_multiply, mat4_transform_point, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
-import { snap_tuning } from "./snap_tuning";
 
 export type StrokeId = number;
 export type VertexId = number;
@@ -482,30 +481,6 @@ export function enforce_midline(tablet_document: TabletDocument): void {
   }
 }
 
-// Vertex snapping is done in world space (not on screen): two vertices weld
-// only when they are actually close in 3D, however the camera lines them up.
-// The two distances are tuned on the page `snap-tuning` (src/snap_tuning.ts).
-
-// Nearest vertex within world snap range of a point, or null. `exclude_vertex`
-// keeps a dragged vertex from snapping to itself. Only vertices on `layers`
-// count (the sketchpad passes the layers neither locked nor hidden).
-export function pick_vertex_near_world_point(
-  tablet_document: TabletDocument, point: V3, exclude_vertex: VertexId | null, layers: ReadonlySet<Layer>,
-): VertexId | null {
-  let best_id: VertexId | null = null;
-  let best_distance = snap_tuning().vertex_weld_radius_world;
-  for (const vertex of tablet_document.vertices) {
-    if (vertex.id === exclude_vertex) continue;
-    if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
-    const distance = v3_length(v3_sub(vertex_world_position(tablet_document, vertex), point));
-    if (distance < best_distance) {
-      best_distance = distance;
-      best_id = vertex.id;
-    }
-  }
-  return best_id;
-}
-
 // Nearest point of a stroke's curve to a world point: coarse t sweep, then a
 // local ternary refinement around the best sample.
 const CURVE_DISTANCE_SAMPLES = 128;
@@ -533,29 +508,6 @@ export function nearest_point_on_stroke_world(
   }
   const t = (low + high) / 2;
   return { t, distance: distance_at(t) };
-}
-
-// The stroke a free vertex would get pinned to on release: the nearest curve
-// within the pin radius, or null. Skips strokes ending on the vertex
-// (always at distance 0) and vertices that are already pinned (unpin first).
-// Vertex-to-vertex welding takes priority — the caller checks that first.
-export function find_snap_target_stroke(
-  tablet_document: TabletDocument, vertex_id: VertexId, layers: ReadonlySet<Layer>,
-): { stroke_id: StrokeId; t: number } | null {
-  if (pin_by_vertex(tablet_document, vertex_id) !== null) return null;
-  const point = vertex_position(tablet_document, vertex_id);
-  let best: { stroke_id: StrokeId; t: number } | null = null;
-  let best_distance = snap_tuning().vertex_pin_radius_world;
-  for (const stroke of tablet_document.strokes) {
-    if (stroke.p0_vertex === vertex_id || stroke.p3_vertex === vertex_id) continue;
-    if (!layers.has(stroke.layer)) continue;
-    const nearest = nearest_point_on_stroke_world(stroke, tablet_document, point);
-    if (nearest.distance < best_distance) {
-      best_distance = nearest.distance;
-      best = { stroke_id: stroke.id, t: nearest.t };
-    }
-  }
-  return best;
 }
 
 // Whether the `detach end` button applies: exactly one end of the stroke is on
