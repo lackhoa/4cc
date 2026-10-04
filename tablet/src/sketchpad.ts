@@ -473,19 +473,21 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_surface_mesh(renderer, vertex_sink_view(vertices));
   }
 
-  // Camera-facing square marker, two triangles.
-  function append_billboard_square(
+  // Camera-facing round marker.
+  // A disc of radius `half_size`, as a triangle fan.
+  function append_billboard_disc(
     center: V3, half_size: number, right: V3, up: V3,
     color: { r: number; g: number; b: number }, out: number[],
   ): void {
-    const right_half = v3_scale(right, half_size);
-    const up_half = v3_scale(up, half_size);
-    const corner_a = v3_sub(v3_sub(center, right_half), up_half);
-    const corner_b = v3_sub(v3_add(center, right_half), up_half);
-    const corner_c = v3_add(v3_add(center, right_half), up_half);
-    const corner_d = v3_add(v3_sub(center, right_half), up_half);
-    for (const corner of [corner_a, corner_b, corner_c, corner_a, corner_c, corner_d]) {
-      out.push(corner.x, corner.y, corner.z, color.r, color.g, color.b);
+    const segment_count = 16;
+    const rim_point = (index: number) => {
+      const angle = (index / segment_count) * Math.PI * 2;
+      return v3_add(center, v3_add(v3_scale(right, Math.cos(angle) * half_size), v3_scale(up, Math.sin(angle) * half_size)));
+    };
+    for (let index = 0; index < segment_count; index++) {
+      for (const corner of [center, rim_point(index), rim_point(index + 1)]) {
+        out.push(corner.x, corner.y, corner.z, color.r, color.g, color.b);
+      }
     }
   }
 
@@ -551,9 +553,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const hot = hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex.id;
       const world_position = vertex_world_position(tablet_document, vertex);
       if (vertex.id === selected_vertex || vertex.id === extra_vertex) {
-        append_billboard_square(world_position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
+        append_billboard_disc(world_position, anchor_half, basis.right, basis.up, HIGHLIGHT_COLOR, triangle_vertices);
       } else if (hot) {
-        append_billboard_square(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
+        append_billboard_disc(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
       }
     }
     if (mesh_camera !== camera) {
@@ -585,7 +587,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const is_hot_handle = (key: "p1" | "p2") => hot_item !== null && hot_item.kind === "handle" && hot_item.key === key;
     const is_hot_vertex = (vertex: VertexId) => hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex;
     const push_marker = (center: V3, half_size: number, color: { r: number; g: number; b: number }, hot: boolean) => {
-      append_billboard_square(
+      append_billboard_disc(
         center, hot ? half_size * HOT_SIZE_SCALE : half_size, basis.right, basis.up,
         hot ? HOT_COLOR : color, triangle_vertices,
       );
