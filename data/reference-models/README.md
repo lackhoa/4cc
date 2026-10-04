@@ -19,6 +19,13 @@ What that means for measurements taken on these meshes (as of 2026-09-26):
 `*.landmarks.txt` files next to the meshes hold hand-picked or confirmed landmarks in
 mesh coordinates (picked on the tablet pages, see `tablet/src/reference_skull_view.ts`).
 
+`z-anatomy-head-skin_head.obj` names Z-Anatomy's 82 skin regions on `o` lines (all
+vertices first, faces grouped per region, `.l` / `.r` suffix per side). These are
+Terminologia Anatomica surface regions: they say where on the head, not what the skin
+looks like. There is no lip region: "Oral region" covers both lips and the skin around
+them, and the border of the red lip is not marked. The tablet `skin-draw` page colors
+the mouth regions.
+
 ## `female-skull-hangar79-10k.obj`
 
 A second skull, female, decimated to 10k faces. Not yet used by the tablet pages; the
