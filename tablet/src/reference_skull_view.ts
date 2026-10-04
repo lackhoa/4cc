@@ -85,13 +85,6 @@ export async function load_eyeball(page_name: string, frame: FrankfurtFrame): Pr
   return load_mesh_in_skull_frame(page_name, EYEBALL_NAME, frame, false);
 }
 
-// The head's skin (the same scan, so it sits on the skull without alignment) in the
-// skull's Frankfurt frame; `landmarks` empty. The reference for drawing skin over the
-// finished skull (plan-skin-over-skull-study.md Q5).
-export async function load_skin_mesh(page_name: string, frame: FrankfurtFrame): Promise<Skull | null> {
-  return load_mesh_in_skull_frame(page_name, SKIN_NAME, frame, false);
-}
-
 async function load_mesh_in_skull_frame(page_name: string, mesh_name: string, frame: FrankfurtFrame, has_landmarks_file = true): Promise<Skull | null> {
   const [obj_text, landmarks_text] = await Promise.all([
     fetch_reference_text(`/reference/${mesh_name}.obj`),

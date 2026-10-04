@@ -1,38 +1,45 @@
 // Reference model (plan-skull-reference.md): an OBJ mesh fetched from the dev
 // server, shown dimmed as a drawing reference. Purely visual — nothing snaps
-// to it. Parsing handles only v/f lines (positions + faces, fan-triangulated);
-// normals/uvs/materials are ignored.
+// to it. Parsing handles only v/f/o lines (positions, faces fan-triangulated, object
+// names); normals/uvs/materials are ignored.
 
 import { OrbitCamera, camera_basis } from "./camera";
 import { V3, v3, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_sub } from "./math";
-import { VertexSink, push_vertex } from "./vertex_sink";
+import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
 const REFERENCE_AMBIENT = 0.2; // dimmer than surfaces (LOFT_AMBIENT 0.35)
-const REFERENCE_COLOR = { r: 0.5, g: 0.48, b: 0.46 };
+export const REFERENCE_COLOR: Rgb = { r: 0.5, g: 0.48, b: 0.46 };
 const REFERENCE_HEIGHT_WORLD_UNITS = 2;
 
-// Flat per-triangle storage: positions has 3 entries per triangle, normals 1.
-export type ReferenceMesh = { triangle_positions: V3[]; triangle_normals: V3[] };
+// Flat per-triangle storage: positions has 3 entries per triangle, normals and colors 1.
+export type ReferenceMesh = { triangle_positions: V3[]; triangle_normals: V3[]; triangle_colors: Rgb[] };
 
 // The OBJ as stored: unique vertices in the file's own units (mm for the Z-Anatomy
 // set), triangle corners as 0-based vertex indices, 3 per triangle. This is what the
 // construction pages fit shapes to (plan-skull-construction-docs.md).
-export type RawObjMesh = { positions: V3[]; triangle_indices: number[] };
+// `triangle_object_names`: one per triangle, the name on the `o` line its face came under
+// ("" before the first `o` line).
+export type RawObjMesh = { positions: V3[]; triangle_indices: number[]; triangle_object_names: string[] };
 
 // Returns null when the text yields no triangles (e.g. an error page served
 // instead of an OBJ).
 export function parse_obj_mesh_raw(obj_text: string): RawObjMesh | null {
   const positions: V3[] = [];
   const triangle_indices: number[] = [];
+  const triangle_object_names: string[] = [];
+  let object_name = "";
   for (const line of obj_text.split("\n")) {
     const parts = line.trim().split(/\s+/);
     if (parts[0] === "v") {
       positions.push(v3(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])));
+    } else if (parts[0] === "o") {
+      object_name = parts.slice(1).join(" "); // names may hold spaces: "Oral region.l"
     } else if (parts[0] === "f") {
       // "f 5/1/2 6/2/2 ..." — vertex index is the part before the first slash, 1-based.
       const corner_indices = parts.slice(1).map((part) => parseInt(part.split("/")[0], 10) - 1);
       for (let i = 2; i < corner_indices.length; i++) { // fan-triangulate quads/ngons
         triangle_indices.push(corner_indices[0], corner_indices[i - 1], corner_indices[i]);
+        triangle_object_names.push(object_name);
       }
     }
   }
@@ -40,14 +47,14 @@ export function parse_obj_mesh_raw(obj_text: string): RawObjMesh | null {
     console.error("OBJ parse produced no triangles");
     return null;
   }
-  return { positions, triangle_indices };
+  return { positions, triangle_indices, triangle_object_names };
 }
 
 export function parse_obj_mesh(obj_text: string): ReferenceMesh | null {
   const raw = parse_obj_mesh_raw(obj_text);
   if (raw === null) return null;
   const triangle_positions = raw.triangle_indices.map((index) => raw.positions[index]);
-  const mesh: ReferenceMesh = { triangle_positions, triangle_normals: [] };
+  const mesh: ReferenceMesh = { triangle_positions, triangle_normals: [], triangle_colors: raw.triangle_object_names.map(() => REFERENCE_COLOR) };
   normalize_reference_mesh(mesh);
   compute_triangle_normals(mesh);
   return mesh;
@@ -79,8 +86,13 @@ function normalize_reference_mesh(mesh: ReferenceMesh): void {
 // A reference mesh from positions already in world units (no normalization), e.g. the
 // Z-Anatomy skull in Frankfurt-frame mm * WORLD_PER_MM. Several meshes (skull + mandible)
 // concatenate by calling this once each and joining the arrays.
-export function reference_mesh_from_positions(positions_world: V3[], triangle_indices: number[]): ReferenceMesh {
-  const mesh: ReferenceMesh = { triangle_positions: triangle_indices.map((index) => positions_world[index]), triangle_normals: [] };
+// `triangle_colors`: one per triangle; null = every triangle is REFERENCE_COLOR.
+export function reference_mesh_from_positions(positions_world: V3[], triangle_indices: number[], triangle_colors: Rgb[] | null = null): ReferenceMesh {
+  const mesh: ReferenceMesh = {
+    triangle_positions: triangle_indices.map((index) => positions_world[index]),
+    triangle_normals: [],
+    triangle_colors: triangle_colors !== null ? triangle_colors : Array.from({ length: triangle_indices.length / 3 }, () => REFERENCE_COLOR),
+  };
   compute_triangle_normals(mesh);
   return mesh;
 }
@@ -175,9 +187,10 @@ export function append_reference_mesh(mesh: ReferenceMesh, camera: OrbitCamera, 
     const normal = mesh.triangle_normals[triangle];
     const brightness = REFERENCE_AMBIENT
       + (1 - REFERENCE_AMBIENT) * Math.abs(v3_dot(normal, camera_forward));
-    const r = REFERENCE_COLOR.r * brightness;
-    const g = REFERENCE_COLOR.g * brightness;
-    const b = REFERENCE_COLOR.b * brightness;
+    const color = mesh.triangle_colors[triangle];
+    const r = color.r * brightness;
+    const g = color.g * brightness;
+    const b = color.b * brightness;
     for (let corner = 0; corner < 3; corner++) {
       const position = mesh.triangle_positions[triangle * 3 + corner];
       push_vertex(out, position, { r, g, b });

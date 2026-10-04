@@ -22,6 +22,7 @@ async function load_skull_mandible_teeth_mesh(): Promise<ReferenceMesh | null> {
   return {
     triangle_positions: meshes.flatMap((mesh) => mesh.triangle_positions),
     triangle_normals: meshes.flatMap((mesh) => mesh.triangle_normals),
+    triangle_colors: meshes.flatMap((mesh) => mesh.triangle_colors),
   };
 }
 
