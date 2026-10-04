@@ -6,6 +6,11 @@
 <style>
   .readout { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--ink); margin: 6px 0; white-space: pre-wrap; }
   .controls button.on { border-color: var(--corner); color: var(--corner); }
+  table.numbers { display: block; overflow-x: auto; border-collapse: collapse; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; margin: 8px 0; color: var(--ink); }
+  table.numbers th, table.numbers td { padding: 2px 16px 2px 0; text-align: right; white-space: nowrap; }
+  table.numbers th { color: var(--muted); font-weight: normal; }
+  table.numbers th:first-child, table.numbers td:first-child { text-align: left; }
+  table.numbers tr.total td { border-top: 1px solid var(--muted); }
 </style>
 
 <main>
@@ -25,7 +30,7 @@
     </div>
     <div class="controls">
       <label><input type="radio" name="mode" value="full" checked> affine + local</label>
-      <label><input type="radio" name="mode" value="overall"> affine part only</label>
+      <label><input type="radio" name="mode" value="affine"> affine part only</label>
       <label><input type="checkbox" id="show_grid" checked> grid</label>
       <label><input type="checkbox" id="show_template" checked> template ghost</label>
       <label><input type="checkbox" id="show_skull" checked> skull</label>
@@ -73,18 +78,84 @@
       the move is made up: the grey arrow is its affine move, the pink arrow is its local
       move.</p>
     <p>Drag it anywhere. Put it on a landmark ring: the two arrows together end exactly on the
-      yellow dot. Put it between two landmarks: it gets a blend. Put it far from every
-      landmark: the pink arrow shrinks, and the affine move is almost all that is left.</p>
+      yellow dot. Put it between two landmarks: it gets a blend. Sections 4 and 5 show the
+      numbers behind both arrows.</p>
   </section>
 
   <section>
-    <h2>4 · What this means for the plan</h2>
+    <h2>4 · Computing the affine part</h2>
+    <p>The affine part is six numbers: a, b, c, d, e, f. They move any point (x, y) like this:</p>
+    <div class="formula">new x = a + b·x + c·y<br>new y = d + e·x + f·y</div>
+    <p>With the landmarks as they are now in section 1, the six numbers are:</p>
+    <div class="formula" id="affine_formula"></div>
+    <p><strong>How the six numbers are chosen.</strong> It is the trend line of a spreadsheet,
+      with two inputs in place of one. Take any six numbers. Feed each landmark's template
+      position through them. The result misses that landmark's target by some distance. Square
+      each miss and add them all up. That sum is the score. Lower is better.</p>
+    <p><strong>No search is needed to find the lowest score.</strong> Each miss is the six
+      numbers times known values, added up. So the score is a bowl with one lowest point. At
+      the bottom of a bowl the slope is zero in every direction. Writing "slope is zero" for
+      a, for b and for c gives three plain linear equations:</p>
+    <div class="formula">sum over landmarks of &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(a + b·xᵢ + c·yᵢ − Xᵢ) = 0<br>sum over landmarks of xᵢ · (a + b·xᵢ + c·yᵢ − Xᵢ) = 0<br>sum over landmarks of yᵢ · (a + b·xᵢ + c·yᵢ − Xᵢ) = 0</div>
+    <p>(xᵢ, yᵢ) is where landmark i sits on the template. Xᵢ is its target x. Everything
+      except a, b, c is a known number. Three equations, three unknowns, solved by elimination
+      as in school. The same three equations with the target y give d, e, f.</p>
+    <p>The result, per landmark, in px:</p>
+    <table class="numbers" id="affine_table"></table>
+    <p>The <strong>leftover</strong> column is what the affine part could not reach. It is the
+      red lines in "affine part only" mode. It is also the whole input of the local part.</p>
+  </section>
+
+  <section>
+    <h2>5 · Computing the local part</h2>
+    <p>The job: find a rule that moves each landmark by exactly its leftover, and moves the
+      points in between smoothly.</p>
+    <p><strong>The building block.</strong> Each landmark i gets one function of distance,
+      U(r) = r² · ln r, where r is the distance from a point to landmark i on the template.
+      Each landmark also gets a <strong>weight</strong> wᵢ, which is a small arrow. The local
+      move of a point p is every landmark's weight times its U, added up:</p>
+    <div class="formula">local(p) = w₁·U(r₁) + w₂·U(r₂) + … + wₙ·U(rₙ) + correction(p)</div>
+    <p>The correction is a second affine move. The reason for it comes below.</p>
+    <p><strong>Finding the weights.</strong> The weights are the unknowns. What we know: at
+      each landmark, the local move must equal that landmark's leftover. That is one equation
+      per landmark:</p>
+    <div class="formula">for landmark j: &nbsp; w₁·U(distance j to 1) + … + wₙ·U(distance j to n) + correction(j) = leftover of j</div>
+    <p>Every U(...) here is a known number, because the template positions are known. So this
+      is again a set of linear equations. Three more equations go with the three numbers of
+      the correction:</p>
+    <div class="formula">sum of wᵢ = 0 &nbsp;&nbsp;&nbsp; sum of wᵢ·xᵢ = 0 &nbsp;&nbsp;&nbsp; sum of wᵢ·yᵢ = 0</div>
+    <p>They say: the weights hold no net push and no net tilt. Any shift, scale or shear is
+      left to an affine move. With n landmarks that is n + 3 equations and n + 3 unknowns.
+      Here n = 10, so 13 equations, solved by the same elimination.</p>
+    <p><strong>Why the weight is not just the leftover.</strong> The terms overlap. A landmark
+      is moved by the terms of all the other landmarks. The equations untangle that. Compare
+      the two columns:</p>
+    <table class="numbers" id="weight_table"></table>
+    <p><strong>One point, worked out.</strong> This table follows the teal probe. Drag the
+      probe in section 1 and watch the rows. The last row is the pink arrow.</p>
+    <table class="numbers" id="probe_table"></table>
+    <p>Look at which rows are big. The far landmarks have the biggest rows, because U grows
+      with distance. The correction row is big too, in the opposite direction. They cancel,
+      and the small local move is what remains.</p>
+    <p><strong>Why this odd U.</strong> U alone is not a bump. It is zero at its own landmark
+      and it grows with distance. Only the weighted sum behaves, because the three extra
+      equations and the correction make the growth cancel. U is the shape a thin metal plate takes when it is
+      pushed at one point. The sum is a plate pushed at every landmark: it passes through
+      all of them with the least total bending. That is the name: thin-plate spline.</p>
+    <p class="hint">An easier picture with the same steps: swap U for a real bump,
+      exp(−r²/s²). Then each landmark has a bump and the weights come from the same equations.
+      The cost is one more choice, the bump width s. The plate function needs no width. In 3D
+      the plate function is U(r) = r and nothing else changes.</p>
+  </section>
+
+  <section>
+    <h2>6 · What this means for the plan</h2>
     <p><strong>Only the skin can be checked.</strong> Loomis drew skin, so landmarks go on skin
       features. The fitted skull is what the warp carries along. Where the skin is stretched,
       the tissue between skin and bone is stretched by the same amount. That is a guess, not
       anatomy.</p>
-    <p><strong>More landmarks, tighter fit.</strong> Far from every landmark the warp falls back
-      to the affine part. A region that looks wrong after the warp needs one more landmark
+    <p><strong>More landmarks, tighter fit.</strong> Far from every landmark nothing pins the
+      warp, so it only continues what the nearest landmarks do. A region that looks wrong after the warp needs one more landmark
       there, or a hand fix.</p>
     <p><strong>The app does this in 3D.</strong> Same rule, with x, y and z. A landmark seen in
       the front view gives x and y. The same landmark seen in the profile gives y and z.</p>
@@ -178,13 +249,13 @@ function solve_linear_system(A, B) {
 }
 const thin_plate_kernel = (r) => (r === 0 ? 0 : r * r * Math.log(r));
 
-// Returns { overall(p), full(p) }: the least-squares affine move and the thin-plate spline move.
+// Returns the warp as functions of a point in px, plus the numbers behind it for the tables of sections 4 and 5.
 function build_warp() {
   const sources = LANDMARKS.map((l) => pt(l.source.x / UNIT, l.source.y / UNIT));
   const targets = LANDMARKS.map((l) => pt(l.target.x / UNIT, l.target.y / UNIT));
   const n = sources.length;
 
-  // overall part: minimize the summed squared landmark miss over affine maps (3x3 normal equations)
+  // affine part: minimize the summed squared landmark miss over affine maps (3x3 normal equations)
   const normal = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
   const right_side = [[0, 0], [0, 0], [0, 0]];
   for (let i = 0; i < n; i++) {
@@ -195,13 +266,20 @@ function build_warp() {
       right_side[a][1] += basis[a] * targets[i].y;
     }
   }
-  const affine = solve_linear_system(normal, right_side);
-  const overall = (p) => {
-    const x = p.x / UNIT, y = p.y / UNIT;
-    return pt((affine[0][0] + affine[1][0] * x + affine[2][0] * y) * UNIT, (affine[0][1] + affine[1][1] * x + affine[2][1] * y) * UNIT);
+  // rows: constant, x, y. columns: output x, output y
+  const affine_coefficients = solve_linear_system(normal, right_side);
+  const apply_affine_rows = (rows, x, y) => pt(rows[0][0] + rows[1][0] * x + rows[2][0] * y, rows[0][1] + rows[1][1] * x + rows[2][1] * y);
+  const affine = (p) => {
+    const moved = apply_affine_rows(affine_coefficients, p.x / UNIT, p.y / UNIT);
+    return pt(moved.x * UNIT, moved.y * UNIT);
   };
 
-  // thin-plate spline: kernel weights per landmark + its own affine terms
+  // local part: one plate term per landmark, weighted so each landmark moves by its leftover.
+  // The last three rows are the side conditions that keep affine moves out of the weights.
+  const leftovers = sources.map((source, i) => {
+    const reached = apply_affine_rows(affine_coefficients, source.x, source.y);
+    return pt(targets[i].x - reached.x, targets[i].y - reached.y);
+  });
   const size = n + 3;
   const matrix = Array.from({ length: size }, () => new Array(size).fill(0));
   const values = Array.from({ length: size }, () => [0, 0]);
@@ -209,21 +287,62 @@ function build_warp() {
     for (let j = 0; j < n; j++) matrix[i][j] = thin_plate_kernel(Math.hypot(sources[i].x - sources[j].x, sources[i].y - sources[j].y));
     const basis = [1, sources[i].x, sources[i].y];
     for (let a = 0; a < 3; a++) { matrix[i][n + a] = basis[a]; matrix[n + a][i] = basis[a]; }
-    values[i] = [targets[i].x, targets[i].y];
+    values[i] = [leftovers[i].x, leftovers[i].y];
   }
-  const spline = solve_linear_system(matrix, values);
-  const full = (p) => {
-    const x = p.x / UNIT, y = p.y / UNIT;
-    let out_x = spline[n][0] + spline[n + 1][0] * x + spline[n + 2][0] * y;
-    let out_y = spline[n][1] + spline[n + 1][1] * x + spline[n + 2][1] * y;
-    for (let i = 0; i < n; i++) {
-      const weight = thin_plate_kernel(Math.hypot(x - sources[i].x, y - sources[i].y));
-      out_x += spline[i][0] * weight;
-      out_y += spline[i][1] * weight;
-    }
-    return pt(out_x * UNIT, out_y * UNIT);
+  const solution = solve_linear_system(matrix, values); // n weights, then the 3 rows of the correction
+  const weights = solution.slice(0, n).map(([x, y]) => pt(x * UNIT, y * UNIT));
+  const correction = (p) => {
+    const moved = apply_affine_rows(solution.slice(n), p.x / UNIT, p.y / UNIT);
+    return pt(moved.x * UNIT, moved.y * UNIT);
   };
-  return { overall, full };
+  // One entry per landmark: its distance to p (in units of 100 px), U of that distance, and the term's move in px.
+  const local_terms = (p) => sources.map((source, i) => {
+    const distance = Math.hypot(p.x / UNIT - source.x, p.y / UNIT - source.y);
+    const kernel = thin_plate_kernel(distance);
+    return { distance, kernel, move: pt(weights[i].x * kernel, weights[i].y * kernel) };
+  });
+  const local = (p) => {
+    const sum = correction(p);
+    for (const term of local_terms(p)) { sum.x += term.move.x; sum.y += term.move.y; }
+    return sum;
+  };
+  const full = (p) => {
+    const affine_moved = affine(p), local_move = local(p);
+    return pt(affine_moved.x + local_move.x, affine_moved.y + local_move.y);
+  };
+  return {
+    affine, local, full, correction, local_terms, affine_coefficients, weights,
+    leftovers: leftovers.map((leftover) => pt(leftover.x * UNIT, leftover.y * UNIT)),
+  };
+}
+
+// ---------- tables of sections 4 and 5 ----------
+function render_tables(warp) {
+  const number = (value, digits = 1) => value.toFixed(digits).replace("-", "−");
+  const pair = (p) => `(${number(p.x)}, ${number(p.y)})`;
+  const signed = (value) => (value < 0 ? "− " : "+ ") + Math.abs(value).toFixed(3);
+  const row = (cells, class_name = "") => `<tr class="${class_name}">` + cells.map((cell) => `<td>${cell}</td>`).join("") + "</tr>";
+  const header = (cells) => "<tr>" + cells.map((cell) => `<th>${cell}</th>`).join("") + "</tr>";
+
+  const c = warp.affine_coefficients;
+  document.getElementById("affine_formula").innerHTML =
+    `new x = ${number(c[0][0] * UNIT)} ${signed(c[1][0])}·x ${signed(c[2][0])}·y<br>` +
+    `new y = ${number(c[0][1] * UNIT)} ${signed(c[1][1])}·x ${signed(c[2][1])}·y`;
+
+  document.getElementById("affine_table").innerHTML =
+    header(["landmark", "on template", "target", "affine result", "leftover"]) +
+    LANDMARKS.map((landmark, i) => row([landmark.name, pair(landmark.source), pair(landmark.target), pair(warp.affine(landmark.source)), pair(warp.leftovers[i])])).join("");
+
+  document.getElementById("weight_table").innerHTML =
+    header(["landmark", "leftover (px)", "weight"]) +
+    LANDMARKS.map((landmark, i) => row([landmark.name, pair(warp.leftovers[i]), pair(warp.weights[i])])).join("");
+
+  const terms = warp.local_terms(probe);
+  document.getElementById("probe_table").innerHTML =
+    header(["landmark", "r (in 100 px)", "U(r)", "weight", "weight · U(r) (px)"]) +
+    LANDMARKS.map((landmark, i) => row([landmark.name, number(terms[i].distance, 2), number(terms[i].kernel, 3), pair(warp.weights[i]), pair(terms[i].move)])).join("") +
+    row(["correction", "", "", "", pair(warp.correction(probe))]) +
+    row(["local move of the probe", "", "", "", pair(warp.local(probe))], "total");
 }
 
 // ---------- drawing ----------
@@ -254,7 +373,8 @@ function draw_all() {
 
   const warp = build_warp();
   const is_full = mode_inputs.find((input) => input.checked).value === "full";
-  const move = is_full ? warp.full : warp.overall;
+  const move = is_full ? warp.full : warp.affine;
+  render_tables(warp);
 
   if (ui.show_grid.checked) {
     for (let x = 100; x <= 600; x += 50) {
@@ -291,16 +411,16 @@ function draw_all() {
     ctx.fillText(landmark.name, landmark.target.x + 9, landmark.target.y - 7);
   }
 
-  const probe_overall = warp.overall(probe);
+  const probe_affine = warp.affine(probe);
   const probe_final = move(probe);
-  draw_arrow(ctx, probe, probe_overall, "#9aa0b4");
-  if (is_full) draw_arrow(ctx, probe_overall, probe_final, "#ef6b9a");
+  draw_arrow(ctx, probe, probe_affine, "#9aa0b4");
+  if (is_full) draw_arrow(ctx, probe_affine, probe_final, "#ef6b9a");
   EX.fill_dot(ctx, probe, 5.5, "#4dd4c0");
 
   const pair = (a, b) => `(${(b.x - a.x).toFixed(1).padStart(6)}, ${(b.y - a.y).toFixed(1).padStart(6)})`;
   readout.textContent =
-    `probe move   affine ${pair(probe, probe_overall)} px` +
-    (is_full ? `   local ${pair(probe_overall, probe_final)} px   total ${pair(probe, probe_final)} px` : "") +
+    `probe move   affine ${pair(probe, probe_affine)} px` +
+    (is_full ? `   local ${pair(probe_affine, probe_final)} px   total ${pair(probe, probe_final)} px` : "") +
     `\nlargest landmark miss: ${largest_miss.toFixed(1)} px` + (is_full ? "  (every landmark lands on its target)" : "  (red lines)");
 }
 
