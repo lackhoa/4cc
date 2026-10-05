@@ -9,9 +9,9 @@ import { OrbitCamera, camera_eye, camera_screen_projector, camera_view_projectio
 import { TabletDocument, bezier_point, stroke_control_points, vertex_world_position } from "../../src/document";
 import { attach_orbit_controls } from "../../src/explainer/orbit_controls";
 import { FitLandmark, TemplatePoint, template_point_world_position, template_position_is_on_midline } from "../../src/loomis_girl_plate";
-import { V2, V3, v3, v3_length, v3_scale, v3_sub } from "../../src/math";
-import { ReferenceMesh, append_reference_mesh, fetch_reference_text, frankfurt_coordinates, parse_obj_mesh_raw, reference_mesh_from_positions } from "../../src/reference";
-import { SKIN_NAME, WORLD_PER_MM, load_skull } from "../../src/reference_skull_view";
+import { V2, V3, v3, v3_length, v3_sub } from "../../src/math";
+import { ReferenceMesh, append_reference_mesh } from "../../src/reference";
+import { load_skin_reference_mesh } from "../../src/skin_reference_mesh";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
 import { FLOATS_PER_VERTEX, create_vertex_sink, reset_vertex_sink } from "../../src/vertex_sink";
 
@@ -36,18 +36,6 @@ export type HeadModelPaneListeners = {
   on_template_point_picked: (template_point: TemplatePoint) => void;
   on_landmark_tapped: (landmark_index: number | null) => void; // null = the tap hit no landmark
 };
-
-// The head's skin in the skull's Frankfurt frame, world units: the space the template is drawn in.
-async function load_skin_mesh(): Promise<ReferenceMesh | null> {
-  const [skull, obj_text] = await Promise.all([load_skull(PAGE_NAME), fetch_reference_text(`/reference/${SKIN_NAME}.obj`)]);
-  if (skull === null || obj_text === null) return null;
-  const raw = parse_obj_mesh_raw(obj_text);
-  if (raw === null) {
-    console.error(`${PAGE_NAME}: ${SKIN_NAME} mesh unreadable`);
-    return null;
-  }
-  return reference_mesh_from_positions(raw.positions.map((p) => v3_scale(frankfurt_coordinates(skull.frame, p), WORLD_PER_MM)), raw.triangle_indices);
-}
 
 // A point of the template a tap can pick.
 type PickCandidate = { template_point: TemplatePoint; world_position: V3 };
@@ -276,7 +264,7 @@ export function start_head_model_pane(scene_now: () => HeadModelScene, listeners
   mesh_opacity_slider.addEventListener("input", draw);
   new ResizeObserver(draw).observe(overlay_canvas);
 
-  void load_skin_mesh().then((mesh) => {
+  void load_skin_reference_mesh(PAGE_NAME).then((mesh) => {
     skin_mesh = mesh;
     draw();
   });
