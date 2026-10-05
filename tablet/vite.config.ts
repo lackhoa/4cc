@@ -9,6 +9,8 @@
 //                                    (after document_backup, see document_backup.ts);
 //                                    header X-Base-Revision in, X-Revision out; 409 when
 //                                    the file on disk is not the revision the save is based on
+//   GET  /api/fit-landmarks/<name> -> fit-landmarks/<name>.json (src/loomis_girl_plate.ts), 404 when there is none
+//   POST /api/fit-landmarks/<name> -> write body to fit-landmarks/<name>.json (after document_backup)
 // A document's `revision` is the SHA-256 of its file's bytes: computed here only, never
 // written to disk, and compared for equality only.
 
@@ -22,6 +24,7 @@ import checker from "vite-plugin-checker";
 import { default_document_backup_root, document_backup } from "./document_backup";
 
 const documents_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "documents");
+const fit_landmarks_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "fit-landmarks");
 const reference_models_directory = path.join(path.dirname(fileURLToPath(import.meta.url)), "../data/reference-models");
 
 // Document names come from URLs — restrict to a safe charset so they can never
@@ -133,7 +136,7 @@ function handle_document_save(name: string, request: IncomingMessage, response: 
       }
     }
     // Before the write: the backup holds the documents as they were before this edit.
-    document_backup(documents_directory, default_document_backup_root());
+    document_backup(documents_directory, fit_landmarks_directory, default_document_backup_root());
     // Temp file + rename: a reader never sees a half-written document.
     const temporary_path = `${file_path}.tmp-${process.pid}`;
     try {
@@ -159,6 +162,46 @@ function handle_document_delete(name: string, response: ServerResponse): void {
   send_json(response, 200, { ok: true });
 }
 
+function handle_fit_landmarks_load(name: string, response: ServerResponse): void {
+  const file_path = path.join(fit_landmarks_directory, `${name}.json`);
+  if (!fs.existsSync(file_path)) {
+    send_json(response, 404, { error: `no fit landmarks ${name}` });
+    return;
+  }
+  response.setHeader("Content-Type", "application/json");
+  response.end(fs.readFileSync(file_path));
+}
+
+// The last write wins: one page edits a landmark file, and it saves on every edit.
+function handle_fit_landmarks_save(name: string, request: IncomingMessage, response: ServerResponse): void {
+  const chunks: Buffer[] = [];
+  request.on("data", (chunk: Buffer) => chunks.push(chunk));
+  request.on("end", () => {
+    const body_bytes = Buffer.concat(chunks);
+    try {
+      JSON.parse(body_bytes.toString("utf8")); // refuse to persist a corrupt payload
+    } catch {
+      send_json(response, 400, { error: "body is not valid JSON" });
+      return;
+    }
+    // Before the write: the backup holds the landmarks as they were before this edit.
+    document_backup(documents_directory, fit_landmarks_directory, default_document_backup_root());
+    const file_path = path.join(fit_landmarks_directory, `${name}.json`);
+    // Temp file + rename: a reader never sees a half-written file.
+    const temporary_path = `${file_path}.tmp-${process.pid}`;
+    try {
+      if (!fs.existsSync(fit_landmarks_directory)) fs.mkdirSync(fit_landmarks_directory);
+      fs.writeFileSync(temporary_path, body_bytes);
+      fs.renameSync(temporary_path, file_path);
+    } catch (error) {
+      console.error(`writing fit landmarks ${name} failed`, error);
+      send_json(response, 500, { error: `writing fit landmarks ${name} failed: ${error}` });
+      return;
+    }
+    send_json(response, 200, { ok: true });
+  });
+}
+
 function tablet_api_middleware(request: IncomingMessage, response: ServerResponse, next: () => void): void {
   const url = request.url ?? "";
   if (url.startsWith("/reference/") && request.method === "GET") {
@@ -172,6 +215,21 @@ function tablet_api_middleware(request: IncomingMessage, response: ServerRespons
   if (url === "/api/documents" && request.method === "GET") {
     handle_document_list(response);
     return;
+  }
+  if (url.startsWith("/api/fit-landmarks/")) {
+    const name = decodeURIComponent(url.slice("/api/fit-landmarks/".length));
+    if (!is_safe_document_name(name)) {
+      send_json(response, 400, { error: "bad fit landmarks name" });
+      return;
+    }
+    if (request.method === "GET") {
+      handle_fit_landmarks_load(name, response);
+      return;
+    }
+    if (request.method === "POST") {
+      handle_fit_landmarks_save(name, request, response);
+      return;
+    }
   }
   if (url.startsWith("/api/documents/")) {
     const name = decodeURIComponent(url.slice("/api/documents/".length));

@@ -1,21 +1,24 @@
-// The two plate views of the fit-head-to-loomis-girl page: the Loomis school girl plate
-// with the fitted document drawn over it, front view in one canvas, profile in the other.
-// Both are orthographic, so a world point maps to an image pixel by a scale and an offset
-// (src/loomis_girl_target_views.ts).
+// The plate views of the fit-head-to-loomis-girl page: the Loomis school girl plate with a
+// document drawn over it, front view in one canvas, profile in the other. The page shows
+// two such pairs: the template before the fit and the fitted document after it.
+// Both views are orthographic, so a world point maps to an image pixel by a scale and an
+// offset (src/loomis_girl_plate.ts).
 //
-// The views keep a document of their own, read from the server: the sketchpad next to
-// them autosaves its edits, and the views pick the new file up within POLL_MILLISECONDS.
+// View only: the documents and the landmark file are read from the server and never
+// written. Both are read again within POLL_MILLISECONDS of changing (the page
+// loomis-girl-fit-landmarks writes them).
 //
 // Gestures, per view: one pointer drags the picture, two fingers pinch-zoom, the wheel
 // zooms at the cursor, a double tap fits the head again.
 import { default_camera } from "../../src/camera";
-import { TabletDocument, bezier_point, empty_document, stroke_control_points, vertex_by_id, vertex_world_position } from "../../src/document";
+import { TabletDocument, bezier_point, empty_document, stroke_control_points } from "../../src/document";
 import { V2, V3 } from "../../src/math";
 import { apply_document_state, list_documents_from_server } from "../../src/persistence";
 import {
-  IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, TARGET_LANDMARKS, TARGET_MOST_FORWARD_POINT_LANDMARKS, front_pixel_from_world, profile_pixel_from_world,
-  target_landmark_world_position, target_most_forward_point_world_position,
-} from "../../src/loomis_girl_target_views";
+  FRONT_REGION, FitLandmarksFile, IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, LOOMIS_GIRL_FIT_LANDMARKS_NAME, PROFILE_REGION, PlateRegion,
+  fetch_fit_landmarks_file, fit_landmark_mark_world_position, front_pixel_from_world, plate_view_transform_showing_region, plate_view_transform_zoomed_at,
+  profile_pixel_from_world, starting_fit_landmarks_file, template_point_world_position, template_position_is_on_midline,
+} from "../../src/loomis_girl_plate";
 
 const PLATE_IMAGE_URL = "/loomis-girl-front-and-profile.webp";
 const POLL_MILLISECONDS = 2000;
@@ -23,50 +26,54 @@ const SKIN_STROKE_COLOR = "#e8262a";
 const SKULL_STROKE_COLOR = "#2a62e8";
 const LANDMARK_COLOR = "#0a9a3a";
 
-// The part of the plate a view shows when fitted, in image pixels.
-type PlateRegion = { left: number; top: number; width: number; height: number };
+// One document drawn over the plate, as last read from the server.
+type ShownDocument = {
+  name: string;
+  tablet_document: TabletDocument;
+  revision: string | null; // null = nothing loaded yet
+};
 
 // One plate view. `image_pixels_to_canvas_scale` and `image_pixel_at_canvas_origin` say
 // where the plate sits in the canvas (canvas CSS pixel = (image pixel - origin) * scale).
 type PlateView = {
   canvas: HTMLCanvasElement;
+  shown: ShownDocument;
   region: PlateRegion;
-  image_pixel_from_world: (p: V3) => V2;
-  draws_mirrored_side: boolean; // front view: the document holds one side of the face
+  is_front_view: boolean; // the front view also draws the mirrored side: the document holds one side of the face
   image_pixels_to_canvas_scale: number;
   image_pixel_at_canvas_origin: V2;
 };
 
 type PlateViewsState = {
   views: PlateView[];
-  tablet_document: TabletDocument;
-  document_revision: string | null; // null = nothing loaded yet
+  shown_documents: ShownDocument[];
+  template_document: TabletDocument; // says which landmarks are midline landmarks
+  landmarks_file: FitLandmarksFile;
   plate_image: HTMLImageElement | null; // null = not loaded (the scan is not in the repo)
   plate_opacity: number;
   skull_visible: boolean;
   landmarks_visible: boolean;
 };
 
+// A front and a profile canvas showing one document.
+export type PlateViewPair = { document_name: string; front_canvas_id: string; profile_canvas_id: string };
+
 function fit_view_to_region(view: PlateView): void {
-  const scale = Math.min(view.canvas.clientWidth / view.region.width, view.canvas.clientHeight / view.region.height);
-  view.image_pixels_to_canvas_scale = scale;
-  view.image_pixel_at_canvas_origin = {
-    x: view.region.left - (view.canvas.clientWidth / scale - view.region.width) / 2,
-    y: view.region.top - (view.canvas.clientHeight / scale - view.region.height) / 2,
-  };
+  const transform = plate_view_transform_showing_region(view.canvas.clientWidth, view.canvas.clientHeight, view.region);
+  view.image_pixels_to_canvas_scale = transform.image_pixels_to_canvas_scale;
+  view.image_pixel_at_canvas_origin = transform.image_pixel_at_canvas_origin;
 }
 
 // Zoom by `factor`, keeping the image pixel under `canvas_point` where it is.
 function zoom_view_at(view: PlateView, canvas_point: V2, factor: number): void {
-  const new_scale = Math.max(0.2, Math.min(40, view.image_pixels_to_canvas_scale * factor));
-  const image_x = view.image_pixel_at_canvas_origin.x + canvas_point.x / view.image_pixels_to_canvas_scale;
-  const image_y = view.image_pixel_at_canvas_origin.y + canvas_point.y / view.image_pixels_to_canvas_scale;
-  view.image_pixels_to_canvas_scale = new_scale;
-  view.image_pixel_at_canvas_origin = { x: image_x - canvas_point.x / new_scale, y: image_y - canvas_point.y / new_scale };
+  const transform = plate_view_transform_zoomed_at(view, canvas_point, factor);
+  view.image_pixels_to_canvas_scale = transform.image_pixels_to_canvas_scale;
+  view.image_pixel_at_canvas_origin = transform.image_pixel_at_canvas_origin;
 }
 
 function draw_view(state: PlateViewsState, view: PlateView): void {
   const canvas = view.canvas;
+  const tablet_document = view.shown.tablet_document;
   const device_pixel_ratio = window.devicePixelRatio || 1;
   const width = Math.round(canvas.clientWidth * device_pixel_ratio);
   const height = Math.round(canvas.clientHeight * device_pixel_ratio);
@@ -88,17 +95,18 @@ function draw_view(state: PlateViewsState, view: PlateView): void {
     context.globalAlpha = 1;
   }
 
+  const image_pixel_from_world = (p: V3): V2 => view.is_front_view ? front_pixel_from_world(p, state.landmarks_file.front_midline_column_pixels) : profile_pixel_from_world(p);
   const mirror = (p: V3): V3 => ({ x: -p.x, y: p.y, z: p.z });
-  const sides = view.draws_mirrored_side ? [(p: V3) => p, mirror] : [(p: V3) => p];
-  for (const stroke of state.tablet_document.strokes) {
+  const sides = view.is_front_view ? [(p: V3) => p, mirror] : [(p: V3) => p];
+  for (const stroke of tablet_document.strokes) {
     if (stroke.layer === "skull" && !state.skull_visible) continue;
-    const control_points = stroke_control_points(stroke, state.tablet_document);
+    const control_points = stroke_control_points(stroke, tablet_document);
     context.strokeStyle = stroke.layer === "skin" ? SKIN_STROKE_COLOR : SKULL_STROKE_COLOR;
     context.lineWidth = (stroke.layer === "skin" ? 1.6 : 1) / view.image_pixels_to_canvas_scale;
     for (const side of sides) {
       context.beginPath();
       for (let i = 0; i <= 24; i++) {
-        const pixel = view.image_pixel_from_world(side(bezier_point(control_points, i / 24)));
+        const pixel = image_pixel_from_world(side(bezier_point(control_points, i / 24)));
         if (i === 0) context.moveTo(pixel.x, pixel.y);
         else context.lineTo(pixel.x, pixel.y);
       }
@@ -107,7 +115,8 @@ function draw_view(state: PlateViewsState, view: PlateView): void {
   }
 
   if (state.landmarks_visible) {
-    // A cross where the landmark was marked on the plate, a dot where the fitted vertex is.
+    // A cross where the landmark was marked on the plate, a dot where the document's point
+    // is, and a line between the two: how far the point is from its mark.
     const arm = 5 / view.image_pixels_to_canvas_scale;
     context.strokeStyle = LANDMARK_COLOR;
     context.fillStyle = LANDMARK_COLOR;
@@ -120,19 +129,21 @@ function draw_view(state: PlateViewsState, view: PlateView): void {
       context.lineTo(pixel.x, pixel.y + arm);
       context.stroke();
     };
-    for (const landmark of TARGET_LANDMARKS) {
-      draw_cross(view.image_pixel_from_world(target_landmark_world_position(landmark)));
-      const vertex = state.tablet_document.vertices.find((v) => v.id === landmark.template_vertex);
-      if (vertex === undefined) continue; // deleted by hand in the sketchpad
-      const fitted = view.image_pixel_from_world(vertex_world_position(state.tablet_document, vertex_by_id(state.tablet_document, landmark.template_vertex)));
+    for (const landmark of state.landmarks_file.landmarks) {
+      const template_position = template_point_world_position(state.template_document, landmark.template_point);
+      if (template_position === null) continue; // template not loaded yet, or the point was deleted from it
+      const marked = image_pixel_from_world(fit_landmark_mark_world_position(landmark, template_position_is_on_midline(template_position)));
+      draw_cross(marked);
+      const drawn_position = template_point_world_position(tablet_document, landmark.template_point);
+      if (drawn_position === null) continue; // not loaded yet, or deleted from the document
+      const drawn = image_pixel_from_world(drawn_position);
       context.beginPath();
-      context.arc(fitted.x, fitted.y, 2.5 / view.image_pixels_to_canvas_scale, 0, 2 * Math.PI);
+      context.moveTo(drawn.x, drawn.y);
+      context.lineTo(marked.x, marked.y);
+      context.stroke();
+      context.beginPath();
+      context.arc(drawn.x, drawn.y, 2.5 / view.image_pixels_to_canvas_scale, 0, 2 * Math.PI);
       context.fill();
-    }
-    // The profile view is the one with z in it: the most-forward-point landmarks are
-    // midline points marked in the profile only.
-    if (!view.draws_mirrored_side) {
-      for (const landmark of TARGET_MOST_FORWARD_POINT_LANDMARKS) draw_cross(view.image_pixel_from_world(target_most_forward_point_world_position(landmark)));
     }
   }
 }
@@ -196,44 +207,66 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
   }, { passive: false });
 }
 
-// Read the document again when the file on the server is not the revision last drawn.
-async function reload_document_if_changed(state: PlateViewsState, document_name: string): Promise<void> {
-  const listed = await list_documents_from_server();
-  const entry = listed?.find((e) => e.name === document_name);
-  if (entry === undefined || entry.revision === state.document_revision) return;
-  const response = await fetch(`/api/documents/${encodeURIComponent(document_name)}`, { cache: "no-store" });
-  if (!response.ok) {
-    console.error(`plate views: loading document '${document_name}' failed, status ${response.status}`);
-    return;
+// Read again every document whose file on the server is not the revision last drawn, and
+// the landmark file.
+async function reload_documents_if_changed(state: PlateViewsState, on_document_loaded: PlateViewsListener): Promise<void> {
+  const landmarks_file = await fetch_fit_landmarks_file(LOOMIS_GIRL_FIT_LANDMARKS_NAME);
+  if (landmarks_file !== null && JSON.stringify(landmarks_file) !== JSON.stringify(state.landmarks_file)) {
+    state.landmarks_file = landmarks_file;
+    draw_all_views(state);
+    for (const shown of state.shown_documents) if (shown.revision !== null) on_document_loaded(shown.name, shown.tablet_document, state);
   }
-  // The camera in the file belongs to the sketchpad: read into a throwaway one.
-  apply_document_state(await response.text(), state.tablet_document, default_camera());
-  state.document_revision = entry.revision;
-  draw_all_views(state);
+  const listed = await list_documents_from_server();
+  for (const shown of state.shown_documents) {
+    const entry = listed?.find((e) => e.name === shown.name);
+    if (entry === undefined || entry.revision === shown.revision) continue;
+    const response = await fetch(`/api/documents/${encodeURIComponent(shown.name)}`, { cache: "no-store" });
+    if (!response.ok) {
+      console.error(`plate views: loading document '${shown.name}' failed, status ${response.status}`);
+      continue;
+    }
+    // The camera in the file belongs to the sketchpad: read into a throwaway one.
+    apply_document_state(await response.text(), shown.tablet_document, default_camera());
+    shown.revision = entry.revision;
+    draw_all_views(state);
+    on_document_loaded(shown.name, shown.tablet_document, state);
+  }
 }
 
-export function start_loomis_girl_plate_views(document_name: string): void {
-  const make_view = (canvas_id: string, region: PlateRegion, image_pixel_from_world: (p: V3) => V2, draws_mirrored_side: boolean): PlateView => ({
-    canvas: document.getElementById(canvas_id) as HTMLCanvasElement,
-    region, image_pixel_from_world, draws_mirrored_side,
-    image_pixels_to_canvas_scale: 1,
-    image_pixel_at_canvas_origin: { x: 0, y: 0 },
-  });
+// What the listener gets besides the document: the landmarks and the template they point into.
+export type PlateViewsLandmarks = { template_document: TabletDocument; landmarks_file: FitLandmarksFile };
+export type PlateViewsListener = (document_name: string, tablet_document: TabletDocument, landmarks: PlateViewsLandmarks) => void;
+
+// `on_document_loaded` is called each time a document was read (first load and every
+// change), and for every loaded document when the landmark file changed.
+// `template_document_name` must be one of the pairs' documents.
+export function start_loomis_girl_plate_views(pairs: PlateViewPair[], template_document_name: string, on_document_loaded: PlateViewsListener): void {
   const opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement;
   const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
   const landmarks_checkbox = document.getElementById("plate_landmarks_visible") as HTMLInputElement;
   const state: PlateViewsState = {
-    views: [
-      make_view("front_plate_canvas", { left: 50, top: 30, width: 505, height: 690 }, front_pixel_from_world, true),
-      make_view("profile_plate_canvas", { left: 580, top: 30, width: 630, height: 690 }, profile_pixel_from_world, false),
-    ],
-    tablet_document: empty_document(),
-    document_revision: null,
+    views: [],
+    shown_documents: [],
+    template_document: empty_document(),
+    landmarks_file: starting_fit_landmarks_file(),
     plate_image: null,
     plate_opacity: Number(opacity_slider.value),
     skull_visible: skull_checkbox.checked,
     landmarks_visible: landmarks_checkbox.checked,
   };
+  const make_view = (canvas_id: string, shown: ShownDocument, region: PlateRegion, is_front_view: boolean): PlateView => ({
+    canvas: document.getElementById(canvas_id) as HTMLCanvasElement,
+    shown, region, is_front_view,
+    image_pixels_to_canvas_scale: 1,
+    image_pixel_at_canvas_origin: { x: 0, y: 0 },
+  });
+  for (const pair of pairs) {
+    const shown: ShownDocument = { name: pair.document_name, tablet_document: empty_document(), revision: null };
+    if (pair.document_name === template_document_name) state.template_document = shown.tablet_document;
+    state.shown_documents.push(shown);
+    state.views.push(make_view(pair.front_canvas_id, shown, FRONT_REGION, true));
+    state.views.push(make_view(pair.profile_canvas_id, shown, PROFILE_REGION, false));
+  }
   for (const view of state.views) {
     fit_view_to_region(view);
     attach_view_gestures(state, view);
@@ -251,7 +284,11 @@ export function start_loomis_girl_plate_views(document_name: string): void {
     state.landmarks_visible = landmarks_checkbox.checked;
     draw_all_views(state);
   });
-  window.addEventListener("resize", () => draw_all_views(state));
+  // The canvases follow the page's width, so the head is fitted to the new size.
+  window.addEventListener("resize", () => {
+    for (const view of state.views) fit_view_to_region(view);
+    draw_all_views(state);
+  });
 
   const plate_image = new Image();
   plate_image.onload = () => {
@@ -265,6 +302,6 @@ export function start_loomis_girl_plate_views(document_name: string): void {
   plate_image.src = PLATE_IMAGE_URL;
 
   draw_all_views(state);
-  void reload_document_if_changed(state, document_name);
-  setInterval(() => void reload_document_if_changed(state, document_name), POLL_MILLISECONDS);
+  void reload_documents_if_changed(state, on_document_loaded);
+  setInterval(() => void reload_documents_if_changed(state, on_document_loaded), POLL_MILLISECONDS);
 }

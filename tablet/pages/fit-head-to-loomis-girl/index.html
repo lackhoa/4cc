@@ -1,127 +1,100 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <title>fit-head-to-loomis-girl</title>
-  <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #111;
-                 touch-action: none; overscroll-behavior: none;
-                 -webkit-user-select: none; user-select: none; }
-    /* The sketchpad's canvas keeps the window's top-left corner (its gestures read
-       window coordinates) and the left half; the plate views take the right half. */
-    #canvas { display: block; width: 50vw; height: 100vh; }
-    #plate_views { position: fixed; top: 0; right: 0; width: 50vw; height: 100vh; display: flex;
-                   flex-direction: column; background: #fff; border-left: 2px solid #444; box-sizing: border-box; }
-    #plate_canvases { flex: 1; display: flex; min-height: 0; }
-    #plate_canvases canvas { flex: 1; min-width: 0; height: 100%; display: block; touch-action: none; }
-    #profile_plate_canvas { border-left: 1px solid #bbb; }
-    #plate_controls { display: flex; gap: 16px; align-items: center; padding: 8px 12px; font-size: 14px;
-                      color: #ccc; background: #222228; }
-    #plate_controls label { display: flex; align-items: center; gap: 6px; }
-    #plate_missing_note { color: #e05a5a; }
-    #toolbar { position: fixed; top: max(12px, env(safe-area-inset-top));
-               right: calc(50vw + 12px); display: flex; gap: 8px;
-               flex-wrap: wrap; justify-content: flex-end;
-               max-width: calc(50vw - 24px - env(safe-area-inset-left)); }
-    #toolbar button { padding: 10px 16px; font-size: 15px; color: #ccc;
-                      background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
-    #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
-    #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
-    #toolbar input[type=range] { width: 110px; align-self: center; }
-    #docs_panel { position: fixed; top: max(64px, calc(env(safe-area-inset-top) + 52px));
-                  right: calc(50vw + 12px); display: none;
-                  flex-direction: column; gap: 6px; padding: 10px;
-                  background: #222228; border: 1px solid #444; border-radius: 8px; }
-    #docs_panel.open { display: flex; }
-    #docs_panel button { padding: 8px 14px; font-size: 15px; color: #ccc; text-align: left;
-                         background: #2a2a30; border: 1px solid #444; border-radius: 6px; }
-    #docs_panel button.current { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
-    #toolbar button:disabled { color: #666; border-color: #333; }
-    #save_status { align-self: center; font-size: 13px; color: #888; }
-    #save_status.pending { color: #c9a227; }
-    #save_status.saving { color: #6a9ad0; }
-    #save_status.saved { color: #6c9f5a; }
-    #save_status.failed, #save_status.off { color: #e05a5a; font-weight: bold; }
-    #history_panel { position: fixed; top: max(64px, calc(env(safe-area-inset-top) + 52px));
-                     left: max(12px, env(safe-area-inset-left)); display: none;
-                     flex-direction: column; gap: 2px; padding: 10px; max-height: 60vh; overflow-y: auto;
-                     background: #222228; border: 1px solid #444; border-radius: 8px;
-                     font-family: monospace; }
-    #history_panel.open { display: flex; }
-    #history_panel button { padding: 4px 10px; font-size: 14px; color: #ccc; text-align: left;
-                            white-space: pre; font-family: inherit;
-                            background: transparent; border: 1px solid transparent; border-radius: 4px; }
-    #history_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
-    #history_panel button.current { color: #fff; background: #3a5a8a; }
-    #history_panel button.undone { color: #666; }
-    #history_panel .empty { color: #666; font-size: 14px; }
-    #width_panel { position: fixed; bottom: max(12px, env(safe-area-inset-bottom));
-                   right: calc(50vw + 12px); display: none;
-                   flex-direction: column; gap: 8px; padding: 10px; color: #ccc; font-size: 14px;
-                   background: #222228; border: 1px solid #444; border-radius: 8px; }
-    #width_panel.open { display: flex; }
-    #width_panel .controls { display: flex; flex-direction: column; gap: 8px; }
-    #width_panel label { display: flex; align-items: center; gap: 8px; }
-    #width_panel input[type=range] { width: 180px; }
-    #width_panel input[type=number] { width: 56px; }
-    #width_panel .empty { color: #666; }
-    #stroke_labels { position: fixed; top: 0; left: 0; width: 50vw; height: 100vh; pointer-events: none; overflow: hidden; }
-    #stroke_labels div { position: absolute; transform: translate(-50%, -50%);
-                         padding: 2px 6px; font-size: 13px; color: #eee; white-space: nowrap;
-                         background: rgba(20, 20, 26, 0.75); border-radius: 4px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fit-head-to-loomis-girl</title>
+<style>
+  .views { display: flex; gap: 10px; }
+  .views figure { margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  /* Each plate canvas has the shape of the part of the plate it shows (505 x 690 and
+     630 x 690 image pixels), so the two views of a pair come out the same height. */
+  .views figure.front { flex: 505; }
+  .views figure.profile { flex: 630; }
+  .views figure.front canvas { aspect-ratio: 505 / 690; }
+  .views figure.profile canvas { aspect-ratio: 630 / 690; }
+  #plate_missing_note { color: #e05a5a; }
+  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
+  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
+  table.numbers th { color: var(--ink); }
+  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
+  table.numbers td:nth-child(2), table.numbers th:nth-child(2) { text-align: left; }
+</style>
 </head>
 <body>
-  <canvas id="canvas"></canvas>
-  <div id="toolbar">
-    <button id="line_button" title="no vertex selected: drag a straight line; one vertex: drag a straight line from it; two (tap one, ctrl-tap the other): straight line between them">line</button>
-    <button id="weld_button" hidden title="two vertices selected (tap A, ctrl-tap B): weld A into B, B stays where it is">weld</button>
-    <button id="patch_button">patch</button>
-    <button id="join_button">join</button>
-    <button id="split_button">split</button>
-    <button id="split_here_button" hidden title="cut the selected line at the selected pinned vertex (smooth knot)">split here</button>
-    <button id="smooth_button">smooth</button>
-    <button id="straighten_button" title="make the selected line(s) straight between their endpoints">straight</button>
-    <button id="pin_button">pin</button>
-    <button id="pin_to_line_button" hidden title="pin the selected vertex to the selected line, at the nearest point of the line">pin to line</button>
-    <button id="detach_end_button" hidden title="give this end of the selected line its own vertex, detaching it from the other lines welded at the selected vertex">detach end</button>
-    <button id="swing_button" title="sticky swing mode; or hold ctrl while dragging a handle">swing</button>
-    <button id="mirror_button" title="small second view from the right side, shows depth; hold r to rock the main view">mirror</button>
-    <button id="midline_button" title="hold the selected vertex / line on the midline (x = 0)">mid</button>
-    <button id="width_button" title="width / taper of the selected line">width</button>
-    <button id="name_button">name</button>
-    <button id="undo_button">undo</button>
-    <button id="redo_button">redo</button>
-    <button id="history_button" title="edit history: tap a row to jump to it">hist</button>
-    <button id="delete_button">del</button>
-    <button id="view_button">view</button>
-    <button id="reference_button" hidden>ref</button>
-    <input type="range" id="clip_offset" min="-1" max="1" step="0.01" value="1" title="sagittal clip: cuts away the far side of the plane; all the way right = off">
-    <button id="surface_button">surf</button>
-        <button id="docs_button">docs</button>
-    <span id="save_status" title="autosave status"></span>
-    <button id="pages_button" title="back to the main menu">menu</button>
-  </div>
-  <div id="stroke_labels"></div>
-  <div id="docs_panel"></div>
-  <div id="history_panel"></div>
-  <div id="width_panel"></div>
-  <div id="plate_views">
-    <div id="plate_canvases">
-      <canvas id="front_plate_canvas" title="drag: move, wheel or pinch: zoom, double tap: fit"></canvas>
-      <canvas id="profile_plate_canvas" title="drag: move, wheel or pinch: zoom, double tap: fit"></canvas>
+<main>
+  <h1>Fitting the head to Loomis's school girl</h1>
+  <p class="sub">The template is the head we drew on the Z-Anatomy model: document <code>skull-zanatomy</code>, skull and skin. The target is Loomis's plate of a school girl, a front view and a profile. The fit moves the template's curves until they match the plate, and writes the result to document <code>loomis-school-girl</code>. This page only shows the fit: nothing here can be edited. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>1. The template on the plate, before the fit</h2>
+    <p>The template drawn over the plate at the plate's scale, chin bottom on chin bottom. Each green cross is a landmark marked on the plate. Each green dot is the template vertex that belongs to it, and the green line between them is the move the fit has to make.</p>
+    <div class="views">
+      <figure class="front">
+        <canvas id="template_front_canvas"></canvas>
+        <figcaption>front</figcaption>
+      </figure>
+      <figure class="profile">
+        <canvas id="template_profile_canvas"></canvas>
+        <figcaption>profile</figcaption>
+      </figure>
     </div>
-    <div id="plate_controls">
+    <div class="controls">
       <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
       <label><input type="checkbox" id="plate_skull_visible"> skull</label>
-      <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks (cross = marked, dot = fitted)</label>
+      <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
       <span id="plate_missing_note" hidden>plate image missing: copy the scan into tablet/public/</span>
     </div>
-  </div>
-  <script type="module" src="./main.ts"></script>
+    <p class="hint">These three controls act on all four plate views of this page. In a view: drag to move, wheel or pinch to zoom, double tap to fit the head again. <span style="color: #e8262a">red</span> = skin, <span style="color: #2a62e8">blue</span> = skull.</p>
+  </section>
+
+  <section>
+    <h2>2. The fitted head on the plate</h2>
+    <p>One smooth warp of space carries every template landmark to its cross, and every curve of the drawing goes through the same warp. A dot that is not on its cross is a landmark the fit missed; the green line shows by how much.</p>
+    <div class="views">
+      <figure class="front">
+        <canvas id="fitted_front_canvas"></canvas>
+        <figcaption>front</figcaption>
+      </figure>
+      <figure class="profile">
+        <canvas id="fitted_profile_canvas"></canvas>
+        <figcaption>profile</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. The fitted head, turned</h2>
+    <p>The same document seen from any side. Lines only: the far side of the head shows through the near side.</p>
+    <canvas id="turned_canvas" height="560"></canvas>
+    <div class="controls">
+      <label><input type="checkbox" id="turned_skull_visible"> skull</label>
+    </div>
+    <p class="hint">drag to orbit, wheel to zoom.</p>
+  </section>
+
+  <section>
+    <h2>4. Landmarks</h2>
+    <p>How far each fitted vertex is from its mark, in plate pixels (the head is about 610 pixels tall). "Read from" says which views the mark was read off; the rest of a mark's position is a guess, because hair or the face hides the point there.</p>
+    <table class="numbers" id="landmark_table">
+      <thead><tr><th>landmark</th><th>read from</th><th>front miss, px</th><th>profile miss, px</th></tr></thead>
+      <tbody><tr><td colspan="4">loading…</td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5. What is off (as of 2026-10-04)</h2>
+    <ul>
+      <li><strong>Landmarks that miss.</strong> A landmark on a vertex that is pinned to a stroke rides that stroke, so it cannot be put on its cross exactly. These misses run along the curve; the curves themselves sit on the drawn lines.</li>
+      <li><strong>Nose bridge.</strong> The fitted bridge is straight, the drawn one is slightly scooped. No landmark sits there.</li>
+      <li><strong>Lips.</strong> The plate's front and profile disagree by about 10 pixels on lip heights. The profile is used.</li>
+      <li><strong>Under the hair.</strong> Top of head, back of head and the widest point of the cranium are guesses.</li>
+      <li><strong>The skull.</strong> Only the skin can be checked against the plate. The fitted skull is a guess carried by the warp.</li>
+    </ul>
+    <p>Sources: the marks in <code>tablet/fit-landmarks/loomis-school-girl.json</code> (edited on the page <a href="/pages/loomis-girl-fit-landmarks/">loomis-girl-fit-landmarks</a>; starting values in <code>tablet/src/loomis_girl_plate.ts</code>), the fit in <code>tablet/src/landmark_fit.ts</code>; decisions in <code>notes/tasks/autodraw_draw_as_data/plan-loomis-girl-elaboration.md</code>.</p>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
 </body>
 </html>

@@ -2,7 +2,8 @@
 // game/game_document_backup.cpp. Runs inside the document server, right before a save
 // writes a file, so a backup holds the documents as they were before that edit.
 //
-//   <root>/YYYY-MM-DD_HH-MM/*.json   one folder per 10-minute slot that had a save
+//   <root>/YYYY-MM-DD_HH-MM/*.json                 one folder per 10-minute slot that had a save
+//   <root>/YYYY-MM-DD_HH-MM/fit-landmarks/*.json   the landmark files (fit-landmarks/), when there are any
 //
 // Two tiers, one mechanism: the newest RECENT_BACKUP_COUNT folders are always kept (by
 // count, not by age: the last hour of actual work, even days later). A folder pushed
@@ -60,7 +61,10 @@ function thin_old_backups(root: string): void {
 
 function folder_bytes(folder: string): number {
   let bytes = 0;
-  for (const file_name of fs.readdirSync(folder)) bytes += fs.statSync(path.join(folder, file_name)).size;
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+    const entry_path = path.join(folder, entry.name);
+    bytes += entry.isDirectory() ? folder_bytes(entry_path) : fs.statSync(entry_path).size;
+  }
   return bytes;
 }
 
@@ -76,9 +80,14 @@ function prune_over_size_cap(root: string, max_bytes: number): void {
   }
 }
 
-// Copy every documents/*.json into this slot's folder unless the slot already has one,
-// then thin and prune. Never throws: a failed backup must not block the save.
-export function document_backup(documents_directory: string, root: string | null, now: Date = new Date(), max_bytes: number = DOCUMENT_BACKUP_MAX_BYTES): void {
+function json_file_names(directory: string): string[] {
+  return fs.existsSync(directory) ? fs.readdirSync(directory).filter((file_name) => file_name.endsWith(".json")) : [];
+}
+
+// Copy every documents/*.json and fit-landmarks/*.json into this slot's folder unless the
+// slot already has one, then thin and prune. Never throws: a failed backup must not block
+// the save.
+export function document_backup(documents_directory: string, fit_landmarks_directory: string, root: string | null, now: Date = new Date(), max_bytes: number = DOCUMENT_BACKUP_MAX_BYTES): void {
   try {
     if (root === null) {
       console.error("document backup: no backup location (Google Drive not mounted?)");
@@ -86,14 +95,19 @@ export function document_backup(documents_directory: string, root: string | null
     }
     const slot_folder = path.join(root, backup_folder_name(now));
     if (fs.existsSync(slot_folder)) return;
-    const file_names = fs.existsSync(documents_directory) ? fs.readdirSync(documents_directory).filter((file_name) => file_name.endsWith(".json")) : [];
-    if (file_names.length === 0) return;
+    const file_names = json_file_names(documents_directory);
+    const fit_landmarks_file_names = json_file_names(fit_landmarks_directory);
+    if (file_names.length === 0 && fit_landmarks_file_names.length === 0) return;
     // Copy into a scratch folder and rename, so a half-copied folder is never mistaken
     // for a finished backup (which would also block this slot from retrying).
     const partial_folder = `${slot_folder}.partial`;
     fs.rmSync(partial_folder, { recursive: true, force: true });
     fs.mkdirSync(partial_folder, { recursive: true });
     for (const file_name of file_names) fs.copyFileSync(path.join(documents_directory, file_name), path.join(partial_folder, file_name));
+    if (fit_landmarks_file_names.length > 0) {
+      fs.mkdirSync(path.join(partial_folder, "fit-landmarks"));
+      for (const file_name of fit_landmarks_file_names) fs.copyFileSync(path.join(fit_landmarks_directory, file_name), path.join(partial_folder, "fit-landmarks", file_name));
+    }
     fs.renameSync(partial_folder, slot_folder);
     console.log(`document backup: copied to ${slot_folder}`);
     thin_old_backups(root);
