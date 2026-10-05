@@ -14,6 +14,11 @@
   .views figure.profile { flex: 630; }
   .views figure.front canvas { aspect-ratio: 505 / 690; }
   .views figure.profile canvas { aspect-ratio: 630 / 690; }
+  /* The turned head: the surfaces on a WebGL canvas, the lines on a 2D canvas over it. */
+  .turned_canvases { position: relative; margin: 10px 0; }
+  .turned_canvases canvas { margin: 0; }
+  #turned_mesh_canvas { position: absolute; left: 0; top: 0; height: 100%; }
+  #turned_canvas { position: relative; background: transparent; }
   #plate_missing_note { color: #e05a5a; }
   table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
   table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
@@ -66,9 +71,11 @@
 
   <section>
     <h2>3. The fitted head, turned</h2>
-    <p>The same document seen from any side. Lines only: the far side of the head shows through the near side.</p>
-    <canvas id="turned_canvas" height="560"></canvas>
+    <p>The same document seen from any side, with its surfaces. The lines are drawn over the surfaces, so the lines of the far side show through. Without surfaces the far side of the head shows through the near side.</p>
+    <div class="turned_canvases"><canvas id="turned_mesh_canvas"></canvas><canvas id="turned_canvas" height="560"></canvas></div>
     <div class="controls">
+      <label><input type="checkbox" id="turned_surfaces_visible" checked> surfaces</label>
+      <label><input type="checkbox" id="turned_lines_visible" checked> lines</label>
       <label><input type="checkbox" id="turned_skull_visible"> skull</label>
     </div>
     <p class="hint">drag to orbit, wheel to zoom.</p>
