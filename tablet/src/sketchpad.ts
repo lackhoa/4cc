@@ -115,7 +115,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // sagittal (x > offset cut away). Driven by the page's optional `#clip_offset`
   // slider; parked at its max it cuts nothing.
   const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
-  let surface_colored = true; // "surf" button: blue fill vs. background-colored fill
+  // "surf" button cycles: blue fill, background-colored fill (still covers what is behind
+  // it), no fill (the reference shows through everywhere).
+  let surface_fill: "colored" | "background_colored" | "not_drawn" = "colored";
   // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
   // active_layer; locked layers are ignored by every pick and snap; hidden
   // layers are not drawn (and not picked either). A vertex is on the layers of
@@ -465,8 +467,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     tablet_document.patches.forEach((patch, index) => {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
+      // The selected patch is drawn even with no fill, so the selection stays visible.
+      if (surface_fill === "not_drawn" && index !== selected_patch) return;
       const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
-        : !surface_colored ? SURFACE_BACKGROUND_COLOR
+        : surface_fill === "background_colored" ? SURFACE_BACKGROUND_COLOR
         : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
       append_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
     });
@@ -1694,12 +1698,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
 
   const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
+  function refresh_surface_button(): void {
+    surface_button.classList.toggle("armed", surface_fill === "colored");
+    surface_button.textContent = surface_fill === "not_drawn" ? "no surf" : "surf";
+  }
   surface_button.addEventListener("click", () => {
-    surface_colored = !surface_colored;
-    surface_button.classList.toggle("armed", surface_colored);
+    surface_fill = surface_fill === "colored" ? "background_colored"
+      : surface_fill === "background_colored" ? "not_drawn" : "colored";
+    refresh_surface_button();
     request_render();
   });
-  surface_button.classList.toggle("armed", surface_colored);
+  refresh_surface_button();
 
   // Layer bar (plan-skin-over-skull-study.md): per layer a name button (tap =
   // active layer), a lock toggle and a hide toggle. Pages without a `#layer_bar`
