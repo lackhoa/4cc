@@ -72,9 +72,6 @@ const SURFACE_COLOR = { r: 0.45, g: 0.55, b: 0.7 };
 // colours, so it reads as the thing drawn over, not the thing being drawn.
 const LOCKED_LAYER_STROKE_COLOR = { r: 0.4, g: 0.27, b: 0.13 };
 const LOCKED_LAYER_SURFACE_COLOR = { r: 0.66, g: 0.6, b: 0.48 };
-// "surf" off: same opaque fill, painted in the clear color (render.ts) so the
-// patch still occludes what's behind it but reads as background.
-const SURFACE_BACKGROUND_COLOR = { r: 0.384, g: 0.384, b: 0.384 };
 const ANCHOR_SIZE_PIXELS = 12;
 const HANDLE_SIZE_PIXELS = 9;
 const HOT_SIZE_SCALE = 1.5; // hot markers grow by this much
@@ -115,9 +112,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // sagittal (x > offset cut away). Driven by the page's optional `#clip_offset`
   // slider; parked at its max it cuts nothing.
   const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
-  // "surf" button cycles: blue fill, background-colored fill (still covers what is behind
-  // it), no fill (the reference shows through everywhere).
-  let surface_fill: "colored" | "background_colored" | "not_drawn" = "colored";
+  let surface_drawn = true; // "surf" button: off = no fill, the reference shows through everywhere
   // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
   // active_layer; locked layers are ignored by every pick and snap; hidden
   // layers are not drawn (and not picked either). A vertex is on the layers of
@@ -468,9 +463,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
       // The selected patch is drawn even with no fill, so the selection stays visible.
-      if (surface_fill === "not_drawn" && index !== selected_patch) return;
+      if (!surface_drawn && index !== selected_patch) return;
       const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
-        : surface_fill === "background_colored" ? SURFACE_BACKGROUND_COLOR
         : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
       append_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
     });
@@ -1699,12 +1693,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
   function refresh_surface_button(): void {
-    surface_button.classList.toggle("armed", surface_fill === "colored");
-    surface_button.textContent = surface_fill === "not_drawn" ? "no surf" : "surf";
+    surface_button.classList.toggle("armed", surface_drawn);
+    surface_button.textContent = surface_drawn ? "surf" : "no surf";
   }
   surface_button.addEventListener("click", () => {
-    surface_fill = surface_fill === "colored" ? "background_colored"
-      : surface_fill === "background_colored" ? "not_drawn" : "colored";
+    surface_drawn = !surface_drawn;
     refresh_surface_button();
     request_render();
   });
