@@ -51,6 +51,12 @@ export function camera_world_units_per_pixel(camera: OrbitCamera, viewport_heigh
   return (2 * camera.distance * Math.tan(FOV_Y / 2)) / viewport_height_pixels;
 }
 
+// The distance that gives `world_units_per_pixel` at the pivot's depth: the inverse of
+// camera_world_units_per_pixel, for a camera that has to show a known scale.
+export function camera_distance_for_world_units_per_pixel(world_units_per_pixel: number, viewport_height_pixels: number): number {
+  return (world_units_per_pixel * viewport_height_pixels) / (2 * Math.tan(FOV_Y / 2));
+}
+
 // Camera basis in world space: right, true up, and forward (eye -> pivot).
 export function camera_basis(camera: OrbitCamera): { right: V3; up: V3; forward: V3 } {
   const forward = v3_normalize(v3_sub(camera.pivot, camera_eye(camera)));

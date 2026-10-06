@@ -12,13 +12,14 @@
      630 x 690 image pixels), so the two views of a pair come out the same height. */
   .views figure.front { flex: 505; }
   .views figure.profile { flex: 630; }
-  .views figure.front canvas { aspect-ratio: 505 / 690; }
-  .views figure.profile canvas { aspect-ratio: 630 / 690; }
-  /* The turned head: the surfaces on a WebGL canvas, the lines on a 2D canvas over it. */
-  .turned_canvases { position: relative; margin: 10px 0; }
-  .turned_canvases canvas { margin: 0; }
-  #turned_mesh_canvas { position: absolute; left: 0; top: 0; height: 100%; }
-  #turned_canvas { position: relative; background: transparent; }
+  .views figure.front .plate_view { aspect-ratio: 505 / 690; }
+  .views figure.profile .plate_view { aspect-ratio: 630 / 690; }
+  /* A plate view: the plate on one canvas, the document's surfaces and strokes on a WebGL
+     canvas over it, the landmarks on a third canvas on top. */
+  .plate_view { position: relative; margin: 10px 0; }
+  .plate_view canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; background: transparent; }
+  .plate_view canvas:first-child { position: static; }
+  #turned_canvas { height: 560px; }
   #plate_missing_note { color: #e05a5a; }
   table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
   table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
@@ -37,16 +38,17 @@
     <p>The template drawn over the plate at the plate's scale, chin bottom on chin bottom. Each green cross is a landmark marked on the plate. Each green dot is the template vertex that belongs to it, and the green line between them is the move the fit has to make.</p>
     <div class="views">
       <figure class="front">
-        <canvas id="template_front_canvas"></canvas>
+        <div id="template_front_view" class="plate_view"></div>
         <figcaption>front</figcaption>
       </figure>
       <figure class="profile">
-        <canvas id="template_profile_canvas"></canvas>
+        <div id="template_profile_view" class="plate_view"></div>
         <figcaption>profile</figcaption>
       </figure>
     </div>
     <div class="controls">
       <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
+      <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
       <label><input type="checkbox" id="plate_skull_visible"> skull</label>
       <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
       <span id="plate_missing_note" hidden>plate image missing: copy the scan into tablet/public/</span>
@@ -59,11 +61,11 @@
     <p>One smooth warp of space carries every template landmark to its cross, and every curve of the drawing goes through the same warp. A dot that is not on its cross is a landmark the fit missed; the green line shows by how much.</p>
     <div class="views">
       <figure class="front">
-        <canvas id="fitted_front_canvas"></canvas>
+        <div id="fitted_front_view" class="plate_view"></div>
         <figcaption>front</figcaption>
       </figure>
       <figure class="profile">
-        <canvas id="fitted_profile_canvas"></canvas>
+        <div id="fitted_profile_view" class="plate_view"></div>
         <figcaption>profile</figcaption>
       </figure>
     </div>
@@ -71,8 +73,8 @@
 
   <section>
     <h2>3. The fitted head, turned</h2>
-    <p>The same document seen from any side, with its surfaces. The lines are drawn over the surfaces, so the lines of the far side show through. Without surfaces the far side of the head shows through the near side.</p>
-    <div class="turned_canvases"><canvas id="turned_mesh_canvas"></canvas><canvas id="turned_canvas" height="560"></canvas></div>
+    <p>The same document seen from any side, with its surfaces. The surfaces hide the lines behind them; untick them and the far side of the head shows through the near side.</p>
+    <canvas id="turned_canvas"></canvas>
     <div class="controls">
       <label><input type="checkbox" id="turned_surfaces_visible" checked> surfaces</label>
       <label><input type="checkbox" id="turned_lines_visible" checked> lines</label>

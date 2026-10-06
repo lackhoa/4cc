@@ -342,6 +342,18 @@ function sort_translucent_mesh(mesh: TranslucentMesh, eye: V3): void {
 // Draws over the current framebuffer contents (call after the opaque geometry); depth
 // test on so opaque things in front still hide it, depth writes off.
 export function draw_mesh_translucent(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, clip: ClipPlane | null = null): void {
+  draw_translucent_mesh_triangles(mesh, view_projection, eye, clip, false, 0);
+}
+
+// The same draw with depth writes on, so what is drawn later and lies behind this mesh is
+// hidden by it, whatever its own alpha. `depth_offset` > 0 pushes the mesh back by that
+// many depth units, so a later mesh lying ON its surface (strokes on the surface they bound)
+// wins the depth test instead of z-fighting.
+export function draw_mesh_translucent_writing_depth(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, depth_offset: number): void {
+  draw_translucent_mesh_triangles(mesh, view_projection, eye, null, true, depth_offset);
+}
+
+function draw_translucent_mesh_triangles(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, clip: ClipPlane | null, writes_depth: boolean, depth_offset: number): void {
   const vertex_count = mesh.vertices.length / FLOATS_PER_TRANSLUCENT_VERTEX;
   if (vertex_count === 0) return;
   const eye_moved = mesh.sorted_eye === null
@@ -360,10 +372,15 @@ export function draw_mesh_translucent(mesh: TranslucentMesh, view_projection: Ma
   gl.enableVertexAttribArray(a_color);
   gl.vertexAttribPointer(a_color, 4, gl.FLOAT, false, stride, 3 * 4);
   gl.enable(gl.DEPTH_TEST);
-  gl.depthMask(false);
+  gl.depthMask(writes_depth);
+  if (depth_offset > 0) {
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1, depth_offset);
+  }
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied in the fragment shader
   gl.drawArrays(gl.TRIANGLES, 0, vertex_count);
   gl.disable(gl.BLEND);
+  gl.disable(gl.POLYGON_OFFSET_FILL);
   gl.depthMask(true);
 }
