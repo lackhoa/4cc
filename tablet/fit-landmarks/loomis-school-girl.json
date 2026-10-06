@@ -1,0 +1,306 @@
+{
+ "version": 1,
+ "front_midline_column_pixels": 302,
+ "stiffness": 0,
+ "landmarks": [
+  {
+   "name": "top of head",
+   "template_point": {
+    "vertex": 70
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 62,
+   "profile_column_pixels": 923,
+   "read_from_front": false,
+   "read_from_profile": false
+  },
+  {
+   "name": "upper forehead",
+   "template_point": {
+    "vertex": 69
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 196,
+   "profile_column_pixels": 675,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "glabella",
+   "template_point": {
+    "vertex": 113
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 322,
+   "profile_column_pixels": 659,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "nasion",
+   "template_point": {
+    "vertex": 73
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 360,
+   "profile_column_pixels": 672,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "under nose tip",
+   "template_point": {
+    "vertex": 101
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 487.37613312020073,
+   "profile_column_pixels": 637.3761331202007,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "upper lip front",
+   "template_point": {
+    "vertex": 136
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 531,
+   "profile_column_pixels": 652,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "between the lips",
+   "template_point": {
+    "vertex": 139
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 552,
+   "profile_column_pixels": 668,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "lower lip front",
+   "template_point": {
+    "vertex": 141
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 585.9396275620302,
+   "profile_column_pixels": 671.9611587851136,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "fold under lower lip",
+   "template_point": {
+    "vertex": 82
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 595,
+   "profile_column_pixels": 683,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "chin bottom",
+   "template_point": {
+    "vertex": 81
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 670,
+   "profile_column_pixels": 705,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "back of head",
+   "template_point": {
+    "vertex": 76
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 462,
+   "profile_column_pixels": 1160,
+   "read_from_front": false,
+   "read_from_profile": false
+  },
+  {
+   "name": "inner eye corner",
+   "template_point": {
+    "vertex": 116
+   },
+   "front_half_width_pixels": 49,
+   "row_pixels": 374,
+   "profile_column_pixels": 730,
+   "read_from_front": true,
+   "read_from_profile": false
+  },
+  {
+   "name": "outer eye corner",
+   "template_point": {
+    "vertex": 112
+   },
+   "front_half_width_pixels": 143,
+   "row_pixels": 373,
+   "profile_column_pixels": 770,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "upper lid top",
+   "template_point": {
+    "vertex": 117
+   },
+   "front_half_width_pixels": 93,
+   "row_pixels": 356,
+   "profile_column_pixels": 722,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "nose wing top",
+   "template_point": {
+    "vertex": 104
+   },
+   "front_half_width_pixels": 42,
+   "row_pixels": 456,
+   "profile_column_pixels": 693,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "nose wing base",
+   "template_point": {
+    "vertex": 94
+   },
+   "front_half_width_pixels": 46,
+   "row_pixels": 488,
+   "profile_column_pixels": 684,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "upper lip peak",
+   "template_point": {
+    "vertex": 137
+   },
+   "front_half_width_pixels": 33,
+   "row_pixels": 528,
+   "profile_column_pixels": 654,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "mouth corner",
+   "template_point": {
+    "vertex": 138
+   },
+   "front_half_width_pixels": 70,
+   "row_pixels": 556,
+   "profile_column_pixels": 722,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "jaw angle",
+   "template_point": {
+    "vertex": 84
+   },
+   "front_half_width_pixels": 150,
+   "row_pixels": 583,
+   "profile_column_pixels": 920,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "ear canal",
+   "template_point": {
+    "vertex": 1
+   },
+   "front_half_width_pixels": 151,
+   "row_pixels": 462,
+   "profile_column_pixels": 988,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "widest point of the cranium",
+   "template_point": {
+    "vertex": 75
+   },
+   "front_half_width_pixels": 205,
+   "row_pixels": 211,
+   "profile_column_pixels": 923,
+   "read_from_front": false,
+   "read_from_profile": false
+  },
+  {
+   "name": "chin front",
+   "template_point": {
+    "stroke": 76,
+    "position_along_stroke": 0.41
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 626,
+   "profile_column_pixels": 669,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "brow in",
+   "template_point": {
+    "vertex": 162
+   },
+   "front_half_width_pixels": 44.410006911971834,
+   "row_pixels": 324.6015366876753,
+   "profile_column_pixels": 676.8833969075735,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "brow out",
+   "template_point": {
+    "stroke": 125,
+    "position_along_stroke": 0.45
+   },
+   "front_half_width_pixels": 152.77618046109353,
+   "row_pixels": 330.783177695892,
+   "profile_column_pixels": 769.9747976183104,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "hairline",
+   "template_point": {
+    "vertex": 163
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 150,
+   "profile_column_pixels": 693,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "hairline temple",
+   "template_point": {
+    "vertex": 164
+   },
+   "front_half_width_pixels": 160,
+   "row_pixels": 165,
+   "profile_column_pixels": 735,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
+   "name": "hairline sideburn",
+   "template_point": {
+    "vertex": 165
+   },
+   "front_half_width_pixels": 186,
+   "row_pixels": 300,
+   "profile_column_pixels": 838,
+   "read_from_front": true,
+   "read_from_profile": true
+  }
+ ]
+}
