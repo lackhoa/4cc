@@ -24,7 +24,7 @@ const tablet_directory = path.join(path.dirname(fileURLToPath(import.meta.url)),
 const models_directory = path.join(tablet_directory, "../data/reference-models");
 const document_path = path.join(tablet_directory, "documents/skull-zanatomy.json");
 
-const HAIRLINE_RADII: StrokeRadii = [0.1, 0.1, 0.1, 0.1]; // thinner than the 0.25 default: a construction line
+const HAIRLINE_RADII: StrokeRadii = [0.5, 0.5, 0.5, 0.5]; // twice the 0.25 default: the hairline must stand out from the skin strokes
 
 // Z-Anatomy region names (without the .l/.r) that belong to the external ear.
 const EAR_REGION_WORDS = ["auricle", "auricular", "helix", "tragus", "concha", "scapha", "fossa", "incisure", "crura", "eminentia", "lobule"];
@@ -108,7 +108,8 @@ for (const point of points) {
 
 let added_strokes = 0;
 function ensure_stroke(name: string, from: string, to: string): void {
-  if (tablet_document.strokes.some((stroke) => stroke.name === name)) return;
+  const existing = tablet_document.strokes.find((stroke) => stroke.name === name);
+  if (existing !== undefined) { existing.radii = [...HAIRLINE_RADII]; return; } // re-run: only the width is refreshed
   const id = add_stroke(tablet_document, vertex_ids.get(from)!, vertex_ids.get(to)!, v3(0, 0, 0), v3(0, 0, 0), "skin");
   const stroke = tablet_document.strokes.find((s) => s.id === id)!;
   stroke.name = name;
