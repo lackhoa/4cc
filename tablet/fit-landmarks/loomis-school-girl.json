@@ -268,39 +268,6 @@
    "profile_column_pixels": 769.9747976183104,
    "read_from_front": true,
    "read_from_profile": true
-  },
-  {
-   "name": "hairline",
-   "template_point": {
-    "vertex": 163
-   },
-   "front_half_width_pixels": 0,
-   "row_pixels": 150,
-   "profile_column_pixels": 693,
-   "read_from_front": true,
-   "read_from_profile": true
-  },
-  {
-   "name": "hairline temple",
-   "template_point": {
-    "vertex": 164
-   },
-   "front_half_width_pixels": 160,
-   "row_pixels": 165,
-   "profile_column_pixels": 735,
-   "read_from_front": true,
-   "read_from_profile": true
-  },
-  {
-   "name": "hairline sideburn",
-   "template_point": {
-    "vertex": 165
-   },
-   "front_half_width_pixels": 186,
-   "row_pixels": 300,
-   "profile_column_pixels": 838,
-   "read_from_front": true,
-   "read_from_profile": true
   }
  ]
 }

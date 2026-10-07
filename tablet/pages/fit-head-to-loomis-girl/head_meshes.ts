@@ -8,7 +8,8 @@ import { Mat4, V3, v3 } from "../../src/math";
 import { patch_surface_grid } from "../../src/patch";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "../../src/reference";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "../../src/render";
-import { TaperWindow, append_bezier_ribbon } from "../../src/ribbon";
+import { HAIRLINE_COLOR, HAIRLINE_RADII, hairline_chain } from "../../src/hairline";
+import { TaperWindow, append_bezier_ribbon, append_chain_ribbon } from "../../src/ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "../../src/vertex_sink";
 
 export const SURFACE_COLOR: Rgb = { r: 0.45, g: 0.55, b: 0.7 };
@@ -108,6 +109,13 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
         const mirrored_points = { p0: mirror(points.p0), p1: mirror(points.p1), p2: mirror(points.p2), p3: mirror(points.p3) };
         append_bezier_ribbon(mirrored_points, radii, WHOLE_STROKE, camera, color, meshes.shaded_vertices);
       }
+    }
+    // The computed hairline (src/hairline.ts), a skin-layer curve like the strokes above.
+    const hairline = hairline_chain(tablet_document);
+    append_chain_ribbon(hairline, camera, HAIRLINE_COLOR, meshes.shaded_vertices, HAIRLINE_RADII);
+    if (options.mirrored) {
+      const mirrored_hairline = hairline.map((points) => ({ p0: mirror(points.p0), p1: mirror(points.p1), p2: mirror(points.p2), p3: mirror(points.p3) }));
+      append_chain_ribbon(mirrored_hairline, camera, HAIRLINE_COLOR, meshes.shaded_vertices, HAIRLINE_RADII);
     }
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));

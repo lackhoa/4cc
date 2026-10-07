@@ -20,6 +20,7 @@ import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
 import { extract_contour_chains } from "./contour";
+import { HAIRLINE_COLOR, HAIRLINE_RADII, hairline_chain } from "./hairline";
 import { describe_selection } from "./selection_readout";
 import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
 import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -454,6 +455,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, mesh_camera, color, vertices);
     }
+    // The computed hairline (src/hairline.ts) lives on the skin layer: hidden with it, never picked.
+    if (!hidden_layers.has("skin")) append_chain_ribbon(hairline_chain(tablet_document), mesh_camera, HAIRLINE_COLOR, vertices, HAIRLINE_RADII);
   }
 
   function rebuild_surface_mesh(): void {

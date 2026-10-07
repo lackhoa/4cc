@@ -7,6 +7,7 @@
 import "../../pages.css";
 import { default_camera } from "../../src/camera";
 import { TabletDocument, bezier_point, empty_document, stroke_control_points } from "../../src/document";
+import { HAIRLINE_CSS_COLOR, hairline_chain } from "../../src/hairline";
 import { fitted_document_from_landmarks, largest_vertex_distance_between_documents } from "../../src/landmark_fit";
 import {
   FRONT_REGION, FitLandmark, FitLandmarksFile, IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, LOOMIS_GIRL_FIT_LANDMARKS_NAME, PIXELS_PER_WORLD_UNIT,
@@ -329,6 +330,22 @@ function draw_plate_pane(pane: PlatePane): void {
           const pixel = plate_pixel_from_world(pane, side(bezier_point(control_points, i / 24)));
           if (i === 0) context.moveTo(pixel.x, pixel.y); else context.lineTo(pixel.x, pixel.y);
         }
+        context.stroke();
+      }
+    }
+    // The fitted head's computed hairline (src/hairline.ts), to check against the plate's hair edge.
+    const hairline = hairline_chain(fitted_document);
+    if (hairline.length > 0) {
+      context.strokeStyle = HAIRLINE_CSS_COLOR;
+      context.lineWidth = 3 / scale;
+      for (const side of sides) {
+        context.beginPath();
+        hairline.forEach((cubic, cubic_index) => {
+          for (let i = 0; i <= 8; i++) {
+            const pixel = plate_pixel_from_world(pane, side(bezier_point(cubic, i / 8)));
+            if (cubic_index === 0 && i === 0) context.moveTo(pixel.x, pixel.y); else context.lineTo(pixel.x, pixel.y);
+          }
+        });
         context.stroke();
       }
     }

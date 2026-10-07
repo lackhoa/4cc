@@ -71,10 +71,12 @@ export function append_bezier_ribbon(
   }
 }
 
-// A chain of cubics rendered as one stroke: a single (default, flat) profile
-// spread over the chain by chord length (cubics here are short cell segments,
-// chord ≈ arc).
-export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: VertexSink): void {
+// A chain of cubics rendered as one stroke: a single flat profile (default
+// width unless given) spread over the chain by chord length (cubics here are
+// short cell segments, chord ≈ arc).
+export function append_chain_ribbon(
+  chain: StrokeControlPoints[], camera: OrbitCamera, color: Rgb, out: VertexSink, radii: StrokeRadii = DEFAULT_STROKE_RADII,
+): void {
   const chords = chain.map((points) => v3_length(v3_sub(points.p3, points.p0)));
   const total = chords.reduce((sum, chord) => sum + chord, 0);
   if (total < 1e-9) return;
@@ -82,6 +84,6 @@ export function append_chain_ribbon(chain: StrokeControlPoints[], camera: OrbitC
   chain.forEach((points, index) => {
     const start = covered / total;
     covered += chords[index];
-    append_bezier_ribbon(points, DEFAULT_STROKE_RADII, { start, end: covered / total }, camera, color, out);
+    append_bezier_ribbon(points, radii, { start, end: covered / total }, camera, color, out);
   });
 }

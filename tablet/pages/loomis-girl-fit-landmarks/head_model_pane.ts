@@ -8,6 +8,7 @@
 import { OrbitCamera, camera_eye, camera_screen_projector, camera_view_projection } from "../../src/camera";
 import { TabletDocument, bezier_point, stroke_control_points, vertex_world_position } from "../../src/document";
 import { attach_orbit_controls } from "../../src/explainer/orbit_controls";
+import { HAIRLINE_CSS_COLOR, hairline_chain } from "../../src/hairline";
 import { FitLandmark, TemplatePoint, template_point_world_position, template_position_is_on_midline } from "../../src/loomis_girl_plate";
 import { V2, V3, v3, v3_length, v3_sub } from "../../src/math";
 import { ReferenceMesh, append_reference_mesh } from "../../src/reference";
@@ -171,6 +172,25 @@ export function start_head_model_pane(scene_now: () => HeadModelScene, listeners
           if (screen === null) { pen_is_down = false; continue; }
           if (pen_is_down) context.lineTo(screen.x, screen.y); else context.moveTo(screen.x, screen.y);
           pen_is_down = true;
+        }
+        context.stroke();
+      }
+    }
+    // The computed hairline (src/hairline.ts): one polyline through its chain, both sides.
+    const hairline = hairline_chain(scene.template_document);
+    if (hairline.length > 0) {
+      context.strokeStyle = HAIRLINE_CSS_COLOR;
+      context.lineWidth = 3.2; // twice the skin strokes, as in the 3D drawers (plan Q14)
+      for (const side of [(p: V3) => p, mirrored]) {
+        context.beginPath();
+        let pen_is_down = false;
+        for (const cubic of hairline) {
+          for (let i = 0; i <= 8; i++) {
+            const screen = project(side(bezier_point(cubic, i / 8)));
+            if (screen === null) { pen_is_down = false; continue; }
+            if (pen_is_down) context.lineTo(screen.x, screen.y); else context.moveTo(screen.x, screen.y);
+            pen_is_down = true;
+          }
         }
         context.stroke();
       }

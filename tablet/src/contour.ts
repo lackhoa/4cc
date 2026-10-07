@@ -7,6 +7,10 @@
 // stroke. Everything here is per frame: the result is never stored.
 // Walkthrough with pictures: docs/interactive-contour-extraction.html.
 //
+// The extractor takes any scalar field on the surface (`ScalarField`); the
+// silhouette field above is one caller, the hairline's height field
+// (plan-skin-hairline-landmark.md Q12, src/hairline.ts) another.
+//
 // Grid indices are the parameter space: u = i, v = j (no rescaling; the
 // zero set and the tangent directions don't care about the units).
 
@@ -20,6 +24,14 @@ import { V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scal
 const DEGENERATE_NORMAL_FRACTION = 1e-3;
 
 export type ContourChain = StrokeControlPoints[];
+
+// A scalar on the surface, evaluated at a grid corner from its position and
+// the surface partials there; the extractor returns its zero set.
+export type ScalarField = (position: V3, partial_u: V3, partial_v: V3) => number;
+
+export function silhouette_field(eye: V3): ScalarField {
+  return (position, partial_u, partial_v) => v3_dot(v3_cross(partial_u, partial_v), v3_sub(eye, position));
+}
 
 type GridPoint = { i: number; j: number };
 // A zero of f on a grid edge. Edge id is unique per grid edge so the two
@@ -37,7 +49,7 @@ function central_difference(values: V3[], index: number): V3 {
   return v3_scale(v3_sub(values[index + 1], values[index - 1]), 0.5);
 }
 
-function evaluate_corner_field(grid: SurfaceGrid, eye: V3): CornerField {
+function evaluate_corner_field(grid: SurfaceGrid, field_value: ScalarField): CornerField {
   const f: number[][] = [];
   const s_u: V3[][] = [];
   const s_v: V3[][] = [];
@@ -55,7 +67,7 @@ function evaluate_corner_field(grid: SurfaceGrid, eye: V3): CornerField {
       const normal = v3_cross(partial_u, partial_v);
       const normal_length = v3_length(normal);
       max_normal_length = Math.max(max_normal_length, normal_length);
-      f[i].push(v3_dot(normal, v3_sub(eye, grid.positions[i][j])));
+      f[i].push(field_value(grid.positions[i][j], partial_u, partial_v));
       s_u[i].push(partial_u);
       s_v[i].push(partial_v);
       normal_lengths[i].push(normal_length);
@@ -195,7 +207,12 @@ function fit_bezier_chain(knots: Knot[]): ContourChain {
 }
 
 export function extract_contour_chains(grid: SurfaceGrid, eye: V3): ContourChain[] {
-  const field = evaluate_corner_field(grid, eye);
+  return extract_level_set_chains(grid, silhouette_field(eye));
+}
+
+// Zero set of `field_value` on the grid as bezier chains, one per polyline.
+export function extract_level_set_chains(grid: SurfaceGrid, field_value: ScalarField): ContourChain[] {
+  const field = evaluate_corner_field(grid, field_value);
   const segments = marching_squares(grid, field);
   const polylines = join_into_polylines(segments);
   return polylines
