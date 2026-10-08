@@ -2,7 +2,7 @@
 // ("line 22", "vertex 107", "patch 4"), so a bug report can name the items.
 
 import { resolve_patch_fill } from "./patch";
-import { StrokeId, TabletDocument, VertexId, pin_by_vertex, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, vertex_by_id } from "./document";
+import { StrokeId, TabletDocument, VertexId, pin_by_vertex, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, surface_pin_by_vertex, vertex_by_id } from "./document";
 
 export type SelectionSnapshot = {
   stroke: StrokeId | null; // the primary selected line
@@ -36,6 +36,7 @@ function stroke_text(tablet_document: TabletDocument, stroke_id: StrokeId): stri
   const pinned = pins_on_stroke(tablet_document, stroke_id).map((pin) => `v${pin.vertex}`);
   if (pinned.length > 0) parts.push(`pins ${pinned.join(" ")}`);
   if (stroke.midline === true) parts.push("midline");
+  if (stroke.on_surface === true) parts.push("on surface");
   return parts.join("  ");
 }
 
@@ -51,6 +52,10 @@ function vertex_text(tablet_document: TabletDocument, vertex_id: VertexId): stri
   parts.push(strokes.length > 0 ? `ends lines ${strokes.join(" ")}` : "ends no line");
   const pin = pin_by_vertex(tablet_document, vertex_id);
   if (pin !== null) parts.push(`pinned to line ${pin.host_stroke} at t ${pin.t.toFixed(3)}`);
+  const surface_pin = surface_pin_by_vertex(tablet_document, vertex_id);
+  // The patch by its list position, the number "in patch N" shows on a line.
+  const patch_index = surface_pin === null ? -1 : tablet_document.patches.findIndex((patch) => patch.id === surface_pin.patch);
+  if (surface_pin !== null) parts.push(`on surface (patch ${patch_index} at u ${surface_pin.u.toFixed(3)}, v ${surface_pin.v.toFixed(3)})`);
   for (const knot of smooth_knots_at_vertex(tablet_document, vertex_id)) parts.push(`smooth ${knot.stroke_a}~${knot.stroke_b}`);
   if (vertex.midline === true) parts.push("midline");
   return parts.join("  ");

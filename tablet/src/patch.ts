@@ -13,7 +13,7 @@
 // position+color pipeline.
 
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
-import { Layer, Patch, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
+import { Layer, Patch, PatchId, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, move_vertex, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
@@ -568,6 +568,70 @@ export function drop_unused_patch_strokes(tablet_document: TabletDocument): numb
 
 export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId): boolean {
   return tablet_document.patches.some((patch) => patch_junction_vertices(patch, tablet_document).includes(vertex));
+}
+
+export function patch_by_id(tablet_document: TabletDocument, patch_id: PatchId): Patch | null {
+  return tablet_document.patches.find((patch) => patch.id === patch_id) ?? null;
+}
+
+// Re-derive every pinned vertex's position. Called once per frame before
+// tessellation, so any host reshape (handle/vertex drags, undo/redo, merges)
+// carries its riders along — and, through move_vertex, the strokes ending on
+// those riders. Stroke pins first: bezier_point(host, t), moved onto the
+// surface when the host is an on-surface stroke (plan-hairline-drawn-on-surface
+// Q12). Then surface pins: patch_point(patch, u, v) (Q5).
+export function update_pinned_vertex_positions(tablet_document: TabletDocument): void {
+  for (const pin of tablet_document.vertex_pins) {
+    const host = stroke_by_id(tablet_document, pin.host_stroke);
+    const point = bezier_point(stroke_control_points(host, tablet_document), pin.t);
+    move_vertex(
+      tablet_document, pin.vertex,
+      host.on_surface === true ? project_onto_surface(tablet_document, [point], host.layer, host.id)[0] : point,
+    );
+  }
+  for (const pin of tablet_document.vertex_surface_pins) {
+    const patch = patch_by_id(tablet_document, pin.patch);
+    const point = patch === null ? null : patch_point(patch, tablet_document, pin.u, pin.v);
+    if (point !== null) move_vertex(tablet_document, pin.vertex, point);
+  }
+}
+
+// Whether a vertex may be held on this patch: not one of its corners or side
+// pins — the patch would depend on itself (Q5).
+export function vertex_can_pin_to_surface(tablet_document: TabletDocument, vertex: VertexId, patch: Patch): boolean {
+  for (const stroke_id of patch.strokes) {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    if (stroke.p0_vertex === vertex || stroke.p3_vertex === vertex) return false;
+    if (pins_on_stroke(tablet_document, stroke_id).some((pin) => pin.vertex === vertex)) return false;
+  }
+  return true;
+}
+
+// Hold a vertex at patch_point(patch, u, v), replacing any pin it had. The
+// vertex jumps there. Call only when vertex_can_pin_to_surface.
+export function pin_vertex_to_surface(tablet_document: TabletDocument, vertex: VertexId, patch: Patch, u: number, v: number): void {
+  unpin_vertices(tablet_document, [vertex]);
+  delete vertex_by_id(tablet_document, vertex).midline;
+  tablet_document.vertex_surface_pins.push({ vertex, patch: patch.id, u, v });
+  const point = patch_point(patch, tablet_document, u, v);
+  if (point !== null) move_vertex(tablet_document, vertex, point);
+}
+
+// Drag of a surface-pinned vertex: (patch, u, v) follows the surface under the
+// pen on the pin's layer, switching patch at a seam; a miss, or a patch the
+// vertex may not sit on, leaves it where it was (Q5).
+export function drag_surface_pin(
+  tablet_document: TabletDocument, vertex: VertexId, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
+): void {
+  const pin = surface_pin_by_vertex(tablet_document, vertex);
+  const patch = pin === null ? null : patch_by_id(tablet_document, pin.patch);
+  if (pin === null || patch === null) return;
+  const hit = pick_surface_point(tablet_document, camera, screen, canvas, new Set([patch_layer(patch, tablet_document)]));
+  if (hit === null || !vertex_can_pin_to_surface(tablet_document, vertex, hit.patch)) return;
+  pin.patch = hit.patch.id;
+  pin.u = hit.u;
+  pin.v = hit.v;
+  move_vertex(tablet_document, vertex, hit.position);
 }
 
 // Fill hit test (Q10): the index of the patch whose surface is under the tap,

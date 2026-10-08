@@ -7,9 +7,9 @@
 // smooth knots of stroke B carry over to the joined stroke
 // (plan-join-lines-through-patches.html).
 
-import { StrokeId, StrokeRadii, TabletDocument, VertexId, bezier_point, delete_stroke, enforce_smooth_knots_of_stroke, nearest_point_on_stroke_world, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_handles_from_control_points, stroke_radii, stroke_radii_at, update_pinned_vertex_positions, vertex_by_id, vertex_position } from "./document";
+import { StrokeId, StrokeRadii, TabletDocument, VertexId, bezier_point, delete_stroke, drop_surface_pins_of_missing_patches, enforce_smooth_knots_of_stroke, nearest_point_on_stroke_world, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_handles_from_control_points, stroke_radii, stroke_radii_at, surface_pin_by_vertex, vertex_by_id, vertex_position } from "./document";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
-import { resolve_patch_fill } from "./patch";
+import { resolve_patch_fill, update_pinned_vertex_positions } from "./patch";
 
 const MERGE_SAMPLES_PER_STROKE = 24;
 
@@ -150,6 +150,7 @@ function shared_vertex_pin_refusal_reason(
   // A vertex is pinned at most once.
   const existing_pin = pin_by_vertex(tablet_document, shared_vertex);
   if (existing_pin !== null) return `the point where these lines meet is pinned to line ${existing_pin.host_stroke}, unpin it first`;
+  if (surface_pin_by_vertex(tablet_document, shared_vertex) !== null) return "the point where these lines meet is pinned on the surface, unpin it first";
   // A midline stroke ending on the vertex holds it on the midline; the pin would pull it off.
   const joined_is_midline = stroke_by_id(tablet_document, stroke_a_id).midline === true && stroke_by_id(tablet_document, stroke_b_id).midline === true;
   const held_on_midline = tablet_document.strokes.some(
@@ -169,6 +170,7 @@ export function replace_stroke_in_patches(tablet_document: TabletDocument, repla
     patch.strokes = without_replaced.includes(kept_stroke) ? without_replaced : [...without_replaced, kept_stroke];
   }
   tablet_document.patches = tablet_document.patches.filter((patch) => patch.strokes.length >= 2);
+  drop_surface_pins_of_missing_patches(tablet_document);
 }
 
 // Merge stroke B into stroke A. Returns the merged stroke's id (A's), or
@@ -216,6 +218,8 @@ export function merge_adjacent_strokes(
   stroke_a.d3 = fit.d3;
   // The merged stroke is on the midline only if both parts were (plan-sketchpad-midline.md Q75).
   if (stroke_a.midline === true && stroke_b.midline !== true) delete stroke_a.midline;
+  // Likewise on the surface (plan-hairline-drawn-on-surface Q4).
+  if (stroke_a.on_surface === true && stroke_b.on_surface !== true) delete stroke_a.on_surface;
 
   for (const { pin, world_position } of riding_pins) {
     pin.host_stroke = stroke_a_id;

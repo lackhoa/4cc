@@ -123,6 +123,7 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.bones.push(skull_bone());
   tablet_document.vertices.length = 0;
   tablet_document.vertex_pins.length = 0;
+  tablet_document.vertex_surface_pins.length = 0;
   tablet_document.smooth_knots.length = 0;
   tablet_document.strokes.length = 0;
   tablet_document.patches.length = 0;
@@ -227,6 +228,8 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   }
   // vertex_pins arrived after the v2 bump — absent in v1 docs and early v2 saves.
   tablet_document.vertex_pins.push(...(parsed.document.vertex_pins ?? []));
+  // vertex_surface_pins arrived within v5 — absent in earlier saves.
+  tablet_document.vertex_surface_pins.push(...(parsed.document.vertex_surface_pins ?? []));
   // smooth_knots arrived within v4 — absent in earlier files and early v4 saves.
   tablet_document.smooth_knots.push(...(parsed.document.smooth_knots ?? []));
   // Files saved before revolve/inflate were removed still carry `revolves` /

@@ -12,8 +12,8 @@
 // self (warped_stroke_control_points).
 import {
   StrokeControlPoints, TabletDocument, bezier_point, enforce_midline, stroke_control_points, stroke_handles_from_control_points,
-  update_pinned_vertex_positions,
 } from "./document";
+import { update_pinned_vertex_positions } from "./patch";
 import { FitLandmarksFile, fit_landmark_mark_world_position, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 

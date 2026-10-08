@@ -13,9 +13,9 @@
 // consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
+import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
-import { stroke_drawn_point, stroke_drawn_polyline } from "./patch";
+import { drag_surface_pin, stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
@@ -186,7 +186,7 @@ export function edit_pen_down(
     // A pinned vertex grabbed as another stroke's endpoint still slides on
     // its host curve — the pin owns the vertex's motion.
     const vertex_id = state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
-    if (pin_by_vertex(tablet_document, vertex_id) !== null) {
+    if (vertex_is_pinned(tablet_document, vertex_id)) {
       state.dragging = null;
       state.dragging_pin = vertex_id;
     }
@@ -238,6 +238,11 @@ export function edit_pen_move(
   const world_delta = camera_plane_drag(camera, state.last_screen, screen, canvas);
   state.last_screen = screen;
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
+  if (state.dragging_pin !== null && surface_pin_by_vertex(tablet_document, state.dragging_pin) !== null) {
+    // A point on surface slides over its layer's surface.
+    drag_surface_pin(tablet_document, state.dragging_pin, camera, screen, canvas);
+    return;
+  }
   if (state.dragging_pin !== null) {
     // A pinned vertex only slides along its host curve (Q8): move t to the
     // curve point nearest the pen on screen, and place the vertex there.
@@ -369,7 +374,7 @@ function swing_dragged_handle(state: EditState, stroke: Stroke, tablet_document:
 // its own curve).
 export function vertex_can_weld_into(tablet_document: TabletDocument, vertex: VertexId, target_vertex: VertexId): boolean {
   if (vertex === target_vertex) return false;
-  if (pin_by_vertex(tablet_document, vertex) !== null) return false;
+  if (vertex_is_pinned(tablet_document, vertex)) return false;
   const remap = (other: VertexId) => (other === vertex ? target_vertex : other);
   for (const stroke of tablet_document.strokes) {
     if (remap(stroke.p0_vertex) === remap(stroke.p3_vertex)) return false;

@@ -50,6 +50,7 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   tablet_document.bones.push(...parsed.bones);
   tablet_document.vertices.push(...parsed.vertices);
   tablet_document.vertex_pins.push(...parsed.vertex_pins);
+  tablet_document.vertex_surface_pins.push(...(parsed.vertex_surface_pins ?? []));
   tablet_document.smooth_knots.push(...parsed.smooth_knots);
   tablet_document.strokes.push(...parsed.strokes);
   tablet_document.patches.push(...parsed.patches);

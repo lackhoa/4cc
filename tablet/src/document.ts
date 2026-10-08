@@ -116,6 +116,13 @@ export type Patch = { id: PatchId; strokes: StrokeId[] };
 // vertex is pinned at most once, so a pin is identified by its vertex id.
 export type VertexPin = { vertex: VertexId; host_stroke: StrokeId; t: number };
 
+// A vertex held at a point of a patch (plan-hairline-drawn-on-surface Q5): its
+// position is always patch_point(patch, u, v), re-derived with the stroke pins
+// (patch.ts update_pinned_vertex_positions, after them). Dragging it moves
+// (patch, u, v) along the surface under the pen. Deleting the patch freezes it in
+// place as a free vertex. A vertex has at most one pin of either kind.
+export type VertexSurfacePin = { vertex: VertexId; patch: PatchId; u: number; v: number };
+
 // Smooth knot (plan-tablet-partial-boundary-patches.md): a vertex where two
 // strokes meet end-to-end with their tangents locked, so a chain of strokes
 // reads as one curve. Made by split_stroke (exact de Casteljau) and kept by
@@ -133,6 +140,7 @@ export type TabletDocument = {
   bones: Bone[]; // never empty: the skull bone is always there
   vertices: Vertex[]; // shared junctions; stroke endpoints reference these by id
   vertex_pins: VertexPin[];
+  vertex_surface_pins: VertexSurfacePin[];
   smooth_knots: SmoothKnot[];
   strokes: Stroke[]; // array order = draw order
   patches: Patch[];
@@ -144,7 +152,7 @@ export function skull_bone(): Bone {
 
 export function empty_document(): TabletDocument {
   return {
-    next_vertex_id: 0, next_stroke_id: 0, next_patch_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
+    next_vertex_id: 0, next_stroke_id: 0, next_patch_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], vertex_surface_pins: [], smooth_knots: [], strokes: [], patches: [],
   };
 }
 
@@ -197,6 +205,28 @@ export function vertex_position(tablet_document: TabletDocument, vertex_id: Vert
 
 export function pin_by_vertex(tablet_document: TabletDocument, vertex_id: VertexId): VertexPin | null {
   return tablet_document.vertex_pins.find((pin) => pin.vertex === vertex_id) ?? null;
+}
+
+export function surface_pin_by_vertex(tablet_document: TabletDocument, vertex_id: VertexId): VertexSurfacePin | null {
+  return tablet_document.vertex_surface_pins.find((pin) => pin.vertex === vertex_id) ?? null;
+}
+
+// Pinned either way: its position is derived, so it never moves freely.
+export function vertex_is_pinned(tablet_document: TabletDocument, vertex_id: VertexId): boolean {
+  return pin_by_vertex(tablet_document, vertex_id) !== null || surface_pin_by_vertex(tablet_document, vertex_id) !== null;
+}
+
+// Drop the pins (either kind) of these vertices; they stay where they are.
+export function unpin_vertices(tablet_document: TabletDocument, vertex_ids: readonly VertexId[]): void {
+  tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => !vertex_ids.includes(pin.vertex));
+  tablet_document.vertex_surface_pins = tablet_document.vertex_surface_pins.filter((pin) => !vertex_ids.includes(pin.vertex));
+}
+
+// Surface pins whose patch is gone are dropped; the vertex freezes in place
+// (Q5, the same as a stroke pin losing its host). Called wherever patches are removed.
+export function drop_surface_pins_of_missing_patches(tablet_document: TabletDocument): void {
+  const patch_ids = new Set(tablet_document.patches.map((patch) => patch.id));
+  tablet_document.vertex_surface_pins = tablet_document.vertex_surface_pins.filter((pin) => patch_ids.has(pin.patch));
 }
 
 // A vertex is on the layers of the strokes ending on it. A vertex no stroke
@@ -268,6 +298,7 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_id: Stroke
   // references it (the vertex GC below treats surviving pins as references).
   tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.host_stroke !== stroke_id);
   tablet_document.patches = tablet_document.patches.filter((patch) => !patch.strokes.includes(stroke_id));
+  drop_surface_pins_of_missing_patches(tablet_document);
   // A knot with one stroke isn't a knot (Q7).
   tablet_document.smooth_knots = tablet_document.smooth_knots
     .filter((knot) => knot.stroke_a !== stroke_id && knot.stroke_b !== stroke_id);
@@ -324,6 +355,7 @@ export function split_stroke(
   // Both halves of a midline stroke stay in the plane (Q75); the knot is on it
   // through them, so the vertex needs no flag of its own.
   if (stroke.midline === true) stroke_by_id(tablet_document, second_stroke).midline = true;
+  if (stroke.on_surface === true) stroke_by_id(tablet_document, second_stroke).on_surface = true;
   if (stroke.radii !== undefined) {
     const halves = split_stroke_radii(stroke.radii, t);
     stroke.radii = halves.left;
@@ -450,19 +482,10 @@ export function garbage_collect_vertices(tablet_document: TabletDocument): void 
   for (const pin of tablet_document.vertex_pins) {
     used_vertices.add(pin.vertex);
   }
-  tablet_document.vertices = tablet_document.vertices.filter((vertex) => used_vertices.has(vertex.id) || vertex.name !== undefined);
-}
-
-// Re-derive every pinned vertex's position from its host curve. Called once
-// per frame before tessellation, so any host reshape (handle/vertex drags,
-// undo/redo, merges) carries its riders along — and, through move_vertex, the
-// strokes ending on those riders.
-export function update_pinned_vertex_positions(tablet_document: TabletDocument): void {
-  for (const pin of tablet_document.vertex_pins) {
-    const host = stroke_by_id(tablet_document, pin.host_stroke);
-    const points = stroke_control_points(host, tablet_document);
-    move_vertex(tablet_document, pin.vertex, bezier_point(points, pin.t));
+  for (const pin of tablet_document.vertex_surface_pins) {
+    used_vertices.add(pin.vertex);
   }
+  tablet_document.vertices = tablet_document.vertices.filter((vertex) => used_vertices.has(vertex.id) || vertex.name !== undefined);
 }
 
 // A vertex is on the midline if flagged itself or if a midline stroke ends on
@@ -572,7 +595,7 @@ export function vertex_can_pin_to_stroke(tablet_document: TabletDocument, vertex
 // (the pin, being newer, wins the position, Q71). Call only when
 // vertex_can_pin_to_stroke.
 export function pin_vertex_to_stroke(tablet_document: TabletDocument, vertex_id: VertexId, stroke_id: StrokeId): void {
-  tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== vertex_id);
+  unpin_vertices(tablet_document, [vertex_id]);
   delete vertex_by_id(tablet_document, vertex_id).midline;
   const host = stroke_by_id(tablet_document, stroke_id);
   const nearest = nearest_point_on_stroke_world(host, tablet_document, vertex_position(tablet_document, vertex_id));
@@ -744,9 +767,15 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
     if (stroke_a === undefined || stroke_b === undefined) continue;
     tablet_document.smooth_knots.push({ vertex: copy_vertex(knot.vertex), stroke_a, stroke_b });
   }
+  const copied_patch = new Map<PatchId, PatchId>();
   for (const patch of [...tablet_document.patches]) {
     if (patch_layer(patch, tablet_document) !== from_layer) continue;
-    add_patch(tablet_document, patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!));
+    copied_patch.set(patch.id, add_patch(tablet_document, patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!)));
+  }
+  for (const pin of [...tablet_document.vertex_surface_pins]) {
+    const patch = copied_patch.get(pin.patch);
+    if (patch === undefined) continue;
+    tablet_document.vertex_surface_pins.push({ vertex: copy_vertex(pin.vertex), patch, u: pin.u, v: pin.v });
   }
   return copied_vertex;
 }

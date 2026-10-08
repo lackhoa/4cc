@@ -12,13 +12,13 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, update_pinned_vertex_positions, vertex_by_id, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point } from "./patch";
+import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { HAIRLINE_COLOR, HAIRLINE_RADII, hairline_chain } from "./hairline";
 import { describe_selection } from "./selection_readout";
@@ -809,11 +809,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertex = sole_selected_vertex();
     return vertex === null ? null : pin_by_vertex(tablet_document, vertex);
   }
+  // The selected vertex when it carries a pin of either kind (on a line or on a
+  // surface): the target of the unpin button.
+  function selected_pinned_vertex(): VertexId | null {
+    const vertex = sole_selected_vertex();
+    return vertex !== null && vertex_is_pinned(tablet_document, vertex) ? vertex : null;
+  }
   // The pin button also lights up while a pinned vertex is selected — in that
   // state tapping it unpins (Q11). Re-checked every frame since the selection
   // changes on pen gestures, not just button presses.
   function refresh_pin_button_armed(): void {
-    pin_button.classList.toggle("armed", armed_tool === "pin" || selected_vertex_pin() !== null);
+    pin_button.classList.toggle("armed", armed_tool === "pin" || selected_pinned_vertex() !== null);
   }
   function set_armed_tool(tool: ArmedTool | null): void {
     armed_tool = tool;
@@ -966,12 +972,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // vertex, still selected); otherwise, with a stroke selected, arm pin creation
   // — the next tap on the selected stroke's curve drops a vertex constrained there.
   pin_button.addEventListener("click", () => {
-    const selected_pin = selected_vertex_pin();
-    if (selected_pin !== null) {
+    const unpinned_vertex = selected_pinned_vertex();
+    if (unpinned_vertex !== null) {
       if (unpin_is_locked()) return; // a patch's sub-curve ends here (Q3)
       begin_history_step(history, tablet_document);
-      const unpinned_vertex = selected_pin.vertex;
-      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== unpinned_vertex);
+      unpin_vertices(tablet_document, [unpinned_vertex]);
       end_history_step(history, tablet_document, `unpin vertex ${unpinned_vertex}`);
       request_render();
       return;
@@ -1055,7 +1060,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       label = `clear midline ${midline_target}`;
     } else {
       flagged.midline = true;
-      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => !claimed_vertices.includes(pin.vertex));
+      unpin_vertices(tablet_document, claimed_vertices);
     }
     end_history_step(history, tablet_document, label);
     request_render();
@@ -1197,7 +1202,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function nudge_selected_vertex(right_steps: number, up_steps: number, forward_steps: number, shift: boolean): void {
     if (selected_vertex === null || pen_down_screen !== null) return;
     if (edit_state !== null) return; // a stroke selected too owns the keys
-    if (pin_by_vertex(tablet_document, selected_vertex) !== null) return;
+    if (vertex_is_pinned(tablet_document, selected_vertex)) return;
     const basis = camera_basis(camera);
     const step = NUDGE_STEP_PIXELS * (shift ? NUDGE_SHIFT_MULTIPLIER : 1) * camera_world_units_per_pixel(camera, canvas.clientHeight);
     const delta = v3_add(
@@ -1360,7 +1365,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         // catches up with the pen.
       } else if (selected_vertex_drag_last_screen !== null && selected_vertex !== null) {
         const pin = pin_by_vertex(tablet_document, selected_vertex);
-        if (pin !== null) {
+        if (surface_pin_by_vertex(tablet_document, selected_vertex) !== null) {
+          // A surface-pinned vertex slides over its layer's surface (step 5).
+          drag_surface_pin(tablet_document, selected_vertex, camera, position, canvas);
+        } else if (pin !== null) {
           // A pinned vertex only slides along its host curve, same as a pin drag
           // in edit mode; a free move would be snapped back by the pin anyway.
           pin.t = nearest_t_on_stroke_screen(tablet_document, pin.host_stroke, camera, position, canvas).t;
@@ -1492,7 +1500,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       join_button, two_lines_selected, selected_join_refusal_reason(),
     );
     set_button_availability(
-      pin_button, line_selected || selected_vertex_pin() !== null, unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
+      pin_button, line_selected || selected_pinned_vertex() !== null, unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
     set_button_availability(split_button, line_selected, null);
     set_button_availability(smooth_button, two_lines_selected, null);
@@ -1506,6 +1514,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       begin_history_step(history, tablet_document);
       const deleted = tablet_document.patches[selected_patch];
       tablet_document.patches.splice(selected_patch, 1);
+      drop_surface_pins_of_missing_patches(tablet_document); // its points on surface become free vertices
       end_history_step(history, tablet_document, `delete patch [${deleted.strokes.join(" ")}]`);
       selected_patch = null;
       request_render();
@@ -1518,7 +1527,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // Deleting a pinned vertex takes its pin along; without that the pin
       // keeps the vertex alive and delete does nothing.
       const deleted_vertex = selected_vertex;
-      tablet_document.vertex_pins = tablet_document.vertex_pins.filter((pin) => pin.vertex !== deleted_vertex);
+      unpin_vertices(tablet_document, [deleted_vertex]);
       delete vertex_by_id(tablet_document, selected_vertex).name;
       garbage_collect_vertices(tablet_document);
       end_history_step(history, tablet_document, `delete vertex ${selected_vertex}`);
@@ -2009,7 +2018,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const copied_vertex = copy_layer_strokes(tablet_document, "skull", "skin");
     const rows: WrapRow[] = [];
     for (const vertex_id of copied_vertex.values()) {
-      if (pin_by_vertex(tablet_document, vertex_id) !== null) continue;
+      if (vertex_is_pinned(tablet_document, vertex_id)) continue;
       const position = vertex_position(tablet_document, vertex_id);
       let outward = v3_sub(position, head_center);
       // Midline copies stay in the sagittal plane: the ray has no sideways part.
