@@ -631,8 +631,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (!was_tap && line_state !== null) {
       // Every layer's vertices live on the skull bone until a mandible exists (Q15).
       const stroke_id = line_pen_up(line_state, tablet_document, active_layer, SKULL_BONE_ID);
-      select_stroke_by_tap(stroke_id, false);
-      pen_history_label = `add line ${stroke_id}`;
+      if (stroke_id !== null) {
+        select_stroke_by_tap(stroke_id, false);
+        pen_history_label = line_state.surface !== null ? `add line ${stroke_id} on surface` : `add line ${stroke_id}`;
+      }
     }
     set_armed_tool(null); // also clears line_state
     update_preview_line();
@@ -798,6 +800,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     swing_button.classList.toggle("armed", handle_mode === "swing");
   }
   swing_button.addEventListener("click", () => set_handle_mode("swing"));
+  // Sticky: the line tool draws on the active layer's surface (plan-hairline-drawn-on-surface Q8).
+  const on_surface_button = document.getElementById("on_surface_button") as HTMLButtonElement;
+  let line_on_surface = false;
+  on_surface_button.addEventListener("click", () => {
+    line_on_surface = !line_on_surface;
+    on_surface_button.classList.toggle("armed", line_on_surface);
+  });
   // The pin of the selected vertex, or null: the target of unpin and split here.
   // The selected vertex when no stroke is selected with it. With a stroke
   // selected too, the stroke owns the buttons that take either kind
@@ -1323,7 +1332,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       hover_screen = null; // nothing is hot while the pen is down
       pen_ray_screen = position;
       if (armed_tool === "line") {
-        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
+        const surface = line_on_surface ? { layer: active_layer, snap_layers: pickable_layers() } : null;
+        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex, surface);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on a control point or pin of the selection; otherwise orbit.
@@ -1354,7 +1364,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       if (armed_tool === "line") {
         if (line_state !== null) {
-          line_pen_move(line_state, camera, position, canvas);
+          line_pen_move(line_state, tablet_document, camera, position, canvas);
           update_preview_line();
         }
       } else if (pen_orbit_last_screen !== null) {
