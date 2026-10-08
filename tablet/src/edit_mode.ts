@@ -15,6 +15,7 @@
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
 import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
 // length — a real Apple Pencil tap jitters through many sub-pixel moves whose
@@ -72,10 +73,8 @@ export function pick_stroke(
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   for (const stroke of tablet_document.strokes) {
     if (!layers.has(stroke.layer)) continue;
-    const points = stroke_control_points(stroke, tablet_document);
     let previous: V2 | null = null;
-    for (let i = 0; i <= PICK_SAMPLES_PER_STROKE; i++) {
-      const world = bezier_point(points, i / PICK_SAMPLES_PER_STROKE);
+    for (const world of stroke_drawn_polyline(stroke, tablet_document, PICK_SAMPLES_PER_STROKE)) {
       const projected = project(world);
       if (projected === null) {
         previous = null;
@@ -126,12 +125,12 @@ export function pick_stroke_point(
 export function nearest_t_on_stroke_screen(
   tablet_document: TabletDocument, stroke_id: StrokeId, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
 ): { t: number; distance: number } {
-  const points = stroke_control_points(stroke_by_id(tablet_document, stroke_id), tablet_document);
+  const stroke = stroke_by_id(tablet_document, stroke_id);
   let best_t = 0;
   let best_distance = Infinity;
   for (let i = 0; i <= PIN_SLIDE_SAMPLES; i++) {
     const t = i / PIN_SLIDE_SAMPLES;
-    const projected = camera_world_to_screen(camera, bezier_point(points, t), canvas.clientWidth, canvas.clientHeight);
+    const projected = camera_world_to_screen(camera, stroke_drawn_point(stroke, tablet_document, t), canvas.clientWidth, canvas.clientHeight);
     if (projected === null) continue;
     const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
     if (distance < best_distance) {

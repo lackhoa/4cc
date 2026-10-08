@@ -18,7 +18,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch } from "./patch";
+import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { HAIRLINE_COLOR, HAIRLINE_RADII, hairline_chain } from "./hairline";
 import { describe_selection } from "./selection_readout";
@@ -360,7 +360,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     };
     const stroke = edit_state === null ? null : stroke_by_id(tablet_document, edit_state.stroke_id);
     if (stroke !== null && stroke.name !== undefined) {
-      push_label(stroke.name, bezier_point(stroke_control_points(stroke, tablet_document), 0.5), 0);
+      push_label(stroke.name, stroke_drawn_point(stroke, tablet_document, 0.5), 0);
     }
     // A vertex's name shows only while it is hot (hovered) or selected — the
     // landmarks would otherwise paper the skull with text.

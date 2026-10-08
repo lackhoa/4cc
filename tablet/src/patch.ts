@@ -484,6 +484,27 @@ export function on_surface_stroke_samples(stroke: Stroke, tablet_document: Table
   return samples;
 }
 
+// The point at t on the line as drawn: the cubic, or for an on-surface stroke
+// the polyline through its projected samples (Q14 — picking and the pin t
+// search follow what is on screen, without projecting again).
+export function stroke_drawn_point(stroke: Stroke, tablet_document: TabletDocument, t: number): V3 {
+  if (stroke.on_surface !== true) return bezier_point(stroke_control_points(stroke, tablet_document), t);
+  const samples = on_surface_stroke_samples(stroke, tablet_document);
+  const along = Math.max(0, Math.min(1, t)) * ON_SURFACE_STROKE_SAMPLES;
+  const index = Math.min(Math.floor(along), ON_SURFACE_STROKE_SAMPLES - 1);
+  return v3_lerp(samples[index], samples[index + 1], along - index);
+}
+
+// The drawn line as a polyline: the projected samples of an on-surface
+// stroke, else the cubic at planar_samples + 1 points.
+export function stroke_drawn_polyline(stroke: Stroke, tablet_document: TabletDocument, planar_samples: number): V3[] {
+  if (stroke.on_surface === true) return on_surface_stroke_samples(stroke, tablet_document);
+  const points = stroke_control_points(stroke, tablet_document);
+  const polyline: V3[] = [];
+  for (let i = 0; i <= planar_samples; i++) polyline.push(bezier_point(points, i / planar_samples));
+  return polyline;
+}
+
 // Null when the patch has no drawable fill.
 export function patch_surface_grid(patch: Patch, tablet_document: TabletDocument): SurfaceGrid | null {
   const fill = resolve_patch_fill(patch, tablet_document);
