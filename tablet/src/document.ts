@@ -99,7 +99,10 @@ function split_stroke_radii(radii: StrokeRadii, t: number): { left: StrokeRadii;
 // undirected, two or more. How it's filled (loft, Coons, N-sided) is derived
 // every frame from the current strokes and smooth knots (patch.ts), never
 // stored, so reshaping a side or adding/removing a knot reshapes the fill.
-export type Patch = { strokes: StrokeId[] };
+// `id` is stable (allocated like stroke ids, never reused) so a vertex surface
+// pin can name its patch across deletions (plan-hairline-drawn-on-surface Q6).
+export type PatchId = number;
+export type Patch = { id: PatchId; strokes: StrokeId[] };
 
 // A vertex permanently constrained to ride a host stroke's curve
 // (plan-tablet-vertex-insert-and-normal.md Q7/Q10): its position is always
@@ -122,6 +125,7 @@ export type SmoothKnot = { vertex: VertexId; stroke_a: StrokeId; stroke_b: Strok
 export type TabletDocument = {
   next_vertex_id: VertexId; // counters only ever grow — ids are never reused
   next_stroke_id: StrokeId;
+  next_patch_id: PatchId;
   bones: Bone[]; // never empty: the skull bone is always there
   vertices: Vertex[]; // shared junctions; stroke endpoints reference these by id
   vertex_pins: VertexPin[];
@@ -136,7 +140,7 @@ export function skull_bone(): Bone {
 
 export function empty_document(): TabletDocument {
   return {
-    next_vertex_id: 0, next_stroke_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
+    next_vertex_id: 0, next_stroke_id: 0, next_patch_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], smooth_knots: [], strokes: [], patches: [],
   };
 }
 
@@ -233,6 +237,12 @@ export function add_stroke(
 ): StrokeId {
   const id = tablet_document.next_stroke_id++;
   tablet_document.strokes.push({ id, layer, p0_vertex, p3_vertex, d0, d3 });
+  return id;
+}
+
+export function add_patch(tablet_document: TabletDocument, strokes: StrokeId[]): PatchId {
+  const id = tablet_document.next_patch_id++;
+  tablet_document.patches.push({ id, strokes });
   return id;
 }
 
@@ -731,7 +741,7 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
   }
   for (const patch of [...tablet_document.patches]) {
     if (patch_layer(patch, tablet_document) !== from_layer) continue;
-    tablet_document.patches.push({ strokes: patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!) });
+    add_patch(tablet_document, patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!));
   }
   return copied_vertex;
 }

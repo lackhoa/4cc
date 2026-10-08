@@ -45,6 +45,7 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   clear_document_in_place(tablet_document);
   tablet_document.next_vertex_id = parsed.next_vertex_id;
   tablet_document.next_stroke_id = parsed.next_stroke_id;
+  tablet_document.next_patch_id = parsed.next_patch_id;
   tablet_document.bones.length = 0;
   tablet_document.bones.push(...parsed.bones);
   tablet_document.vertices.push(...parsed.vertices);

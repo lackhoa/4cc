@@ -13,7 +13,7 @@
 // position+color pipeline.
 
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
-import { Layer, Patch, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
+import { Layer, Patch, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, vertex_position } from "./document";
 import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
@@ -136,12 +136,17 @@ function cut_loop_into_sides(loop: OrientedStroke[], tablet_document: TabletDocu
 
 // Position and forward tangent at parameter u in [0, 1] along a whole side,
 // each stroke piece taking an equal share of the parameter range (Q4).
-function side_point(side: Side, tablet_document: TabletDocument, u: number): { position: V3; tangent: V3 } {
+// `points_of` lets a caller that evaluates many points reuse control points
+// (fill_surface_function); vertex positions go through bone matrices.
+function side_point(
+  side: Side, tablet_document: TabletDocument, u: number,
+  points_of: (stroke: Stroke) => StrokeControlPoints = (stroke) => stroke_control_points(stroke, tablet_document),
+): { position: V3; tangent: V3 } {
   const scaled = Math.min(u * side.length, side.length - 1e-9);
   const oriented = side[Math.floor(scaled)];
   const local = scaled - Math.floor(scaled);
   const t = oriented.start.t + (oriented.end.t - oriented.start.t) * local;
-  const points = stroke_control_points(oriented.stroke, tablet_document);
+  const points = points_of(oriented.stroke);
   const tangent = bezier_tangent(points, t);
   return { position: bezier_point(points, t), tangent: oriented.reversed ? v3_scale(tangent, -1) : tangent };
 }
@@ -304,6 +309,130 @@ export function resolve_patch_fill(patch: Patch, tablet_document: TabletDocument
   return null;
 }
 
+// The fill's surface as a function of (u, v) in [0, 1]²: the same blends the
+// grids sample (coons_surface_grid, loft_surface_grid), evaluated anywhere, so
+// a grid node and the point at its (u, v) coincide.
+// Control points are read once: the function is meant for one burst of
+// evaluations (a projection, a pin resolve) against an unchanging document.
+function fill_surface_function(fill: PatchFill, tablet_document: TabletDocument): (u: number, v: number) => V3 {
+  const control_points = new Map<Stroke, StrokeControlPoints>();
+  const points_of = (stroke: Stroke): StrokeControlPoints => {
+    let points = control_points.get(stroke);
+    if (points === undefined) {
+      points = stroke_control_points(stroke, tablet_document);
+      control_points.set(stroke, points);
+    }
+    return points;
+  };
+  const at = (side: Side, u: number): V3 => side_point(side, tablet_document, u, points_of).position;
+  if (fill.kind === "loft") return (u, v) => v3_lerp(at(fill.side_a, u), at(fill.side_b, u), v);
+  const sides = fill.sides;
+  const bottom = (s: number): V3 => at(sides[0], s);
+  const right = (t: number): V3 => at(sides[1], t);
+  const top = (s: number): V3 => at(sides[2], 1 - s);
+  const corner_00 = bottom(0);
+  const left = sides.length === 4 ? (t: number): V3 => at(sides[3], 1 - t) : (): V3 => corner_00;
+  const corner_10 = bottom(1);
+  const corner_11 = right(1);
+  const corner_01 = top(0);
+  return (s, t) => {
+    const ruled = v3_add(v3_lerp(bottom(s), top(s), t), v3_lerp(left(t), right(t), s));
+    const bilinear = v3_add(
+      v3_add(v3_scale(corner_00, (1 - s) * (1 - t)), v3_scale(corner_10, s * (1 - t))),
+      v3_add(v3_scale(corner_01, (1 - s) * t), v3_scale(corner_11, s * t)),
+    );
+    return v3_sub(ruled, bilinear);
+  };
+}
+
+// The point at (u, v) on the patch's current surface (plan-hairline-drawn-on-surface
+// Q5: a vertex surface pin rides it); null when the patch has no fill.
+export function patch_point(patch: Patch, tablet_document: TabletDocument, u: number, v: number): V3 | null {
+  const fill = resolve_patch_fill(patch, tablet_document);
+  return fill === null ? null : fill_surface_function(fill, tablet_document)(u, v);
+}
+
+// Nearest point to `target` on one surface: start at the nearest grid node,
+// then Gauss-Newton on (u, v) with central-difference partials, clamped to
+// the unit square (so off the patch it lands on the rim).
+function nearest_on_surface(surface: (u: number, v: number) => V3, grid: SurfaceGrid, target: V3): { u: number; v: number; position: V3 } {
+  let u = 0, v = 0, best = Infinity;
+  for (let i = 0; i <= grid.columns; i++) {
+    for (let j = 0; j <= grid.rows; j++) {
+      const distance = v3_length(v3_sub(grid.positions[i][j], target));
+      if (distance < best) {
+        best = distance;
+        u = i / grid.columns;
+        v = j / grid.rows;
+      }
+    }
+  }
+  const h = 1e-4;
+  const clamp = (x: number) => Math.max(0, Math.min(1, x));
+  for (let iteration = 0; iteration < 8; iteration++) {
+    const position = surface(u, v);
+    // One-sided at the rim: side_point is only defined on [0, 1].
+    const u_lo = clamp(u - h), u_hi = clamp(u + h), v_lo = clamp(v - h), v_hi = clamp(v + h);
+    const du = v3_scale(v3_sub(surface(u_hi, v), surface(u_lo, v)), 1 / (u_hi - u_lo));
+    const dv = v3_scale(v3_sub(surface(u, v_hi), surface(u, v_lo)), 1 / (v_hi - v_lo));
+    const residual = v3_sub(target, position);
+    const a = v3_dot(du, du), b = v3_dot(du, dv), c = v3_dot(dv, dv);
+    const det = a * c - b * b;
+    if (Math.abs(det) < 1e-18) break;
+    const gu = v3_dot(du, residual), gv = v3_dot(dv, residual);
+    const next_u = clamp(u + (c * gu - b * gv) / det);
+    const next_v = clamp(v + (a * gv - b * gu) / det);
+    const converged = Math.abs(next_u - u) + Math.abs(next_v - v) < 1e-7;
+    u = next_u;
+    v = next_v;
+    if (converged) break;
+  }
+  return { u, v, position: surface(u, v) };
+}
+
+// How many patches (nearest by grid node) get the Gauss-Newton refinement: a
+// point near a seam can be nearest to the neighbour's rim.
+const PROJECTION_CANDIDATE_PATCHES = 3;
+
+// Each point moved to the nearest point on the `layer` patches' surfaces
+// (plan-hairline-drawn-on-surface Q4: an on-surface stroke's ribbon). Patches
+// `excluded_stroke` bounds are skipped (Q17: an on-surface stroke used as a side
+// would otherwise project onto its own patch). Points come back unchanged when
+// no patch qualifies.
+export function project_onto_surface(tablet_document: TabletDocument, points: V3[], layer: Layer, excluded_stroke: StrokeId | null): V3[] {
+  const surfaces: { surface: (u: number, v: number) => V3; grid: SurfaceGrid }[] = [];
+  for (const patch of tablet_document.patches) {
+    if (patch_layer(patch, tablet_document) !== layer) continue;
+    if (excluded_stroke !== null && patch.strokes.includes(excluded_stroke)) continue;
+    const fill = resolve_patch_fill(patch, tablet_document);
+    if (fill === null) continue;
+    const grid = fill.kind === "loft" ? loft_surface_grid(fill.side_a, fill.side_b, tablet_document) : coons_surface_grid(fill.sides, tablet_document);
+    surfaces.push({ surface: fill_surface_function(fill, tablet_document), grid });
+  }
+  if (surfaces.length === 0) return points;
+  return points.map((point) => {
+    const node_distance = (grid: SurfaceGrid): number => {
+      let best = Infinity;
+      for (const column of grid.positions) for (const position of column) best = Math.min(best, v3_length(v3_sub(position, point)));
+      return best;
+    };
+    const candidates = surfaces
+      .map((entry) => ({ entry, distance: node_distance(entry.grid) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, PROJECTION_CANDIDATE_PATCHES);
+    let best = point, best_distance = Infinity;
+    for (const { entry } of candidates) {
+      const nearest = nearest_on_surface(entry.surface, entry.grid, point).position;
+      const distance = v3_length(v3_sub(nearest, point));
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = nearest;
+      }
+    }
+    return best;
+  });
+}
+
 // Null when the patch has no drawable fill.
 export function patch_surface_grid(patch: Patch, tablet_document: TabletDocument): SurfaceGrid | null {
   const fill = resolve_patch_fill(patch, tablet_document);
@@ -353,7 +482,7 @@ export function drop_unused_patch_strokes(tablet_document: TabletDocument): numb
   for (const patch of tablet_document.patches) {
     if (resolve_patch_fill(patch, tablet_document) !== null) continue;
     for (const unused of patch.strokes) {
-      const candidate: Patch = { strokes: patch.strokes.filter((id) => id !== unused) };
+      const candidate: Patch = { id: patch.id, strokes: patch.strokes.filter((id) => id !== unused) };
       // Loops only: a detached loft left with two of its strokes would fill too, as the wrong surface.
       const closes = chain_into_loop(candidate.strokes.map((id) => stroke_by_id(tablet_document, id)), tablet_document) !== null;
       if (!closes || resolve_patch_fill(candidate, tablet_document) === null) continue;
@@ -375,34 +504,64 @@ export function pin_is_locked(tablet_document: TabletDocument, vertex: VertexId)
 // what you pick. Callers try vertices and strokes first.
 // Only patches on `layers` count (the sketchpad passes the layers neither locked nor hidden).
 export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>): number | null {
+  return pick_patch_grid_triangle(tablet_document, camera, screen, canvas, layers)?.index ?? null;
+}
+
+// The point of the surface under the tap (plan-hairline-drawn-on-surface Q5/Q8:
+// placing or dragging a vertex on the surface), or null on a miss. (u, v) is
+// interpolated across the hit grid triangle in screen space, then the position
+// re-evaluated on the true surface, so the point is exactly patch_point(u, v).
+export function pick_surface_point(
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+): { patch: Patch; u: number; v: number; position: V3 } | null {
+  const hit = pick_patch_grid_triangle(tablet_document, camera, screen, canvas, layers);
+  if (hit === null) return null;
+  const patch = tablet_document.patches[hit.index];
+  const position = patch_point(patch, tablet_document, hit.u, hit.v);
+  return position === null ? null : { patch, u: hit.u, v: hit.v, position };
+}
+
+// Shared by pick_patch / pick_surface_point: the patch index and (u, v) of the
+// nearest-to-eye grid triangle containing the tap.
+function pick_patch_grid_triangle(
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+): { index: number; u: number; v: number } | null {
   const eye = camera_eye(camera);
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
-  const contains = (a: V2, b: V2, c: V2): boolean => {
-    const ab = side(a, b), bc = side(b, c), ca = side(c, a);
-    return (ab >= 0 && bc >= 0 && ca >= 0) || (ab <= 0 && bc <= 0 && ca <= 0);
-  };
-  let best_index: number | null = null;
+  let best: { index: number; u: number; v: number } | null = null;
   let best_distance = Infinity;
   tablet_document.patches.forEach((patch, index) => {
     if (!layers.has(patch_layer(patch, tablet_document))) return;
     const grid = patch_surface_grid(patch, tablet_document);
     if (grid === null) return;
-    const test = (p: V3, q: V3, r: V3): void => {
+    // Corners as grid indices (i, j); the weights of the tap are the opposite
+    // edges' signed areas, normalized.
+    const test = (i0: number, j0: number, i1: number, j1: number, i2: number, j2: number): void => {
+      const p = grid.positions[i0][j0], q = grid.positions[i1][j1], r = grid.positions[i2][j2];
       const a = project(p), b = project(q), c = project(r);
-      if (a === null || b === null || c === null || !contains(a, b, c)) return;
+      if (a === null || b === null || c === null) return;
+      const ab = side(a, b), bc = side(b, c), ca = side(c, a);
+      const inside = (ab >= 0 && bc >= 0 && ca >= 0) || (ab <= 0 && bc <= 0 && ca <= 0);
+      if (!inside) return;
       const distance = v3_length(v3_sub(v3_scale(v3_add(v3_add(p, q), r), 1 / 3), eye));
-      if (distance < best_distance) {
-        best_distance = distance;
-        best_index = index;
-      }
+      if (distance >= best_distance) return;
+      best_distance = distance;
+      const total = ab + bc + ca;
+      // Degenerate (zero-area) triangle: take its first corner.
+      const [wa, wb, wc] = Math.abs(total) < 1e-12 ? [1, 0, 0] : [bc / total, ca / total, ab / total];
+      best = {
+        index,
+        u: (wa * i0 + wb * i1 + wc * i2) / grid.columns,
+        v: (wa * j0 + wb * j1 + wc * j2) / grid.rows,
+      };
     };
     for (let j = 0; j < grid.rows; j++) {
       for (let i = 0; i < grid.columns; i++) {
-        test(grid.positions[i][j], grid.positions[i + 1][j], grid.positions[i + 1][j + 1]);
-        test(grid.positions[i][j], grid.positions[i + 1][j + 1], grid.positions[i][j + 1]);
+        test(i, j, i + 1, j, i + 1, j + 1);
+        test(i, j, i + 1, j + 1, i, j + 1);
       }
     }
   });
-  return best_index;
+  return best;
 }

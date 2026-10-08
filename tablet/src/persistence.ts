@@ -4,7 +4,7 @@
 // server is unreachable. Debounced autosave, no save button.
 
 import { OrbitCamera } from "./camera";
-import { SKULL_BONE_ID, Stroke, TabletDocument, Vertex, fallback_perpendicular, skull_bone, stroke_handles_from_control_points } from "./document";
+import { SKULL_BONE_ID, Stroke, TabletDocument, Vertex, add_patch, fallback_perpendicular, skull_bone, stroke_handles_from_control_points } from "./document";
 import { drop_unused_patch_strokes } from "./patch";
 import { V2, V3, v3, v3_add, v3_cross, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
@@ -118,6 +118,7 @@ export function serialize_document_state(tablet_document: TabletDocument, camera
 export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.next_vertex_id = 0;
   tablet_document.next_stroke_id = 0;
+  tablet_document.next_patch_id = 0;
   tablet_document.bones.length = 0;
   tablet_document.bones.push(skull_bone());
   tablet_document.vertices.length = 0;
@@ -232,9 +233,16 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
   // `inflates` arrays — ignored, dropped on the next save. Files from before
   // `patches` carry `lofts` (two rails) and `coons` (four sides) instead:
   // both are just stroke sets now, migrated here and dropped on the next save.
-  tablet_document.patches.push(...(parsed.document.patches ?? []));
-  for (const loft of parsed.document.lofts ?? []) tablet_document.patches.push({ strokes: [loft.stroke_a, loft.stroke_b] });
-  for (const coons of parsed.document.coons ?? []) tablet_document.patches.push({ strokes: [...coons.strokes] });
+  // Patch ids arrived within v5 (plan-hairline-drawn-on-surface Q6): files saved
+  // before carry neither `next_patch_id` nor `Patch.id`, so ids are handed out
+  // here in array order (no format bump: nothing referenced patches by id yet).
+  tablet_document.next_patch_id = parsed.document.next_patch_id ?? 0;
+  for (const patch of parsed.document.patches ?? []) {
+    if (patch.id === undefined) add_patch(tablet_document, patch.strokes);
+    else tablet_document.patches.push(patch);
+  }
+  for (const loft of parsed.document.lofts ?? []) add_patch(tablet_document, [loft.stroke_a, loft.stroke_b]);
+  for (const coons of parsed.document.coons ?? []) add_patch(tablet_document, [...coons.strokes]);
   const repaired_patch_count = drop_unused_patch_strokes(tablet_document);
   if (repaired_patch_count > 0) console.log(`document load: ${repaired_patch_count} patch(es) had no fill, repaired by dropping a stroke their loop does not use`);
   camera.pivot = parsed.camera.pivot;
