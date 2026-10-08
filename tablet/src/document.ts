@@ -67,6 +67,10 @@ export type Stroke = {
   name?: string; // optional label drawn at the curve's midpoint (absent = unnamed)
   midline?: boolean; // the whole curve lies in x = 0: both endpoints and both handles (Q69)
   radii?: StrokeRadii; // width profile; absent = DEFAULT_STROKE_RADII (flat, width 0.25)
+  // Drawn on its layer's patches (plan-hairline-drawn-on-surface Q4): the cubic is
+  // stored as usual, the ribbon and picking use its samples projected onto the
+  // nearest patch surface (on_surface_stroke_samples). Absent = an ordinary stroke.
+  on_surface?: boolean;
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
@@ -727,6 +731,7 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
     const copy = stroke_by_id(tablet_document, copy_id);
     if (source.midline === true) copy.midline = true;
     if (source.radii !== undefined) copy.radii = [...source.radii];
+    if (source.on_surface === true) copy.on_surface = true;
     copied_stroke.set(source.id, copy_id);
   }
   for (const pin of [...tablet_document.vertex_pins]) {

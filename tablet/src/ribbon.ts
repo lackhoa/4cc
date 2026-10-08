@@ -12,6 +12,7 @@ import {
   bezier_point, bezier_tangent, stroke_control_points, stroke_radii, stroke_radii_at,
 } from "./document";
 import { v3_add, v3_dot, v3_length, v3_scale, v3_sub, V3 } from "./math";
+import { on_surface_stroke_samples } from "./patch";
 import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
 const RIBBON_RADIUS = 0.01; // world units; grid cell = 1
@@ -20,9 +21,18 @@ const RIBBON_SAMPLES = 24;
 export type { Rgb };
 
 // Appends interleaved [x,y,z, r,g,b] triangle vertices to out.
+// An on-surface stroke (plan-hairline-drawn-on-surface Q4) draws its projected
+// samples, tangents by finite differences between them.
 export function append_stroke_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
+  if (stroke.on_surface === true) {
+    const centers = on_surface_stroke_samples(stroke, tablet_document);
+    const last = centers.length - 1;
+    const tangents = centers.map((_, i) => v3_sub(centers[Math.min(i + 1, last)], centers[Math.max(i - 1, 0)]));
+    append_polyline_ribbon(centers, tangents, stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out);
+    return;
+  }
   append_bezier_ribbon(
     stroke_control_points(stroke, tablet_document), stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out,
   );
@@ -36,13 +46,25 @@ export type TaperWindow = { start: number; end: number };
 export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
-  const basis = camera_basis(camera);
   const centers: V3[] = [];
-  const offsets: V3[] = [];
+  const tangents: V3[] = [];
   for (let i = 0; i <= RIBBON_SAMPLES; i++) {
     const t = i / RIBBON_SAMPLES;
     centers.push(bezier_point(points, t));
-    const tangent = bezier_tangent(points, t);
+    tangents.push(bezier_tangent(points, t));
+  }
+  append_polyline_ribbon(centers, tangents, radii, taper_window, camera, color, out);
+}
+
+// Samples evenly spaced in the curve parameter; the taper runs over them by index.
+function append_polyline_ribbon(
+  centers: V3[], tangents: V3[], radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
+): void {
+  const basis = camera_basis(camera);
+  const offsets: V3[] = [];
+  for (let i = 0; i < centers.length; i++) {
+    const t = i / (centers.length - 1);
+    const tangent = tangents[i];
     // Project onto the camera's screen plane, take the 2D perpendicular there.
     const screen_x = v3_dot(tangent, basis.right);
     const screen_y = v3_dot(tangent, basis.up);

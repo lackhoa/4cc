@@ -433,6 +433,57 @@ export function project_onto_surface(tablet_document: TabletDocument, points: V3
   });
 }
 
+// Samples of an on-surface stroke (t = i / ON_SURFACE_STROKE_SAMPLES), same count as
+// the ribbon's.
+export const ON_SURFACE_STROKE_SAMPLES = 24;
+
+// Projected samples per stroke, with the signature of everything they were
+// projected from (Q9: reprojected only when the stroke or its layer's patches
+// change). Per document: ids repeat across documents.
+type OnSurfaceCacheEntry = { signature: string; samples: V3[] };
+const on_surface_cache = new WeakMap<TabletDocument, Map<StrokeId, OnSurfaceCacheEntry>>();
+
+// The geometry the projection depends on: the stroke's control points, and the
+// strokes + pins + knots of the layer's patches (pins and knots decide where the
+// sides run).
+function on_surface_signature(stroke: Stroke, tablet_document: TabletDocument): string {
+  const numbers: number[] = [];
+  const push_points = (target: Stroke): void => {
+    const points = stroke_control_points(target, tablet_document);
+    for (const point of [points.p0, points.p1, points.p2, points.p3]) numbers.push(point.x, point.y, point.z);
+  };
+  push_points(stroke);
+  for (const patch of tablet_document.patches) {
+    if (patch_layer(patch, tablet_document) !== stroke.layer) continue;
+    numbers.push(NaN, patch.id); // NaN separates patches
+    for (const id of patch.strokes) {
+      push_points(stroke_by_id(tablet_document, id));
+      for (const pin of pins_on_stroke(tablet_document, id)) numbers.push(pin.vertex, pin.t);
+    }
+  }
+  const knots = tablet_document.smooth_knots.map((knot) => `${knot.vertex}:${knot.stroke_a}:${knot.stroke_b}`).join(",");
+  return numbers.join(",") + "|" + knots;
+}
+
+// The stroke's cubic sampled at ON_SURFACE_STROKE_SAMPLES + 1 points and each
+// moved onto the nearest patch of its layer, skipping patches it bounds (Q17).
+export function on_surface_stroke_samples(stroke: Stroke, tablet_document: TabletDocument): V3[] {
+  let cache = on_surface_cache.get(tablet_document);
+  if (cache === undefined) {
+    cache = new Map();
+    on_surface_cache.set(tablet_document, cache);
+  }
+  const signature = on_surface_signature(stroke, tablet_document);
+  const cached = cache.get(stroke.id);
+  if (cached !== undefined && cached.signature === signature) return cached.samples;
+  const points = stroke_control_points(stroke, tablet_document);
+  const along: V3[] = [];
+  for (let i = 0; i <= ON_SURFACE_STROKE_SAMPLES; i++) along.push(bezier_point(points, i / ON_SURFACE_STROKE_SAMPLES));
+  const samples = project_onto_surface(tablet_document, along, stroke.layer, stroke.id);
+  cache.set(stroke.id, { signature, samples });
+  return samples;
+}
+
 // Null when the patch has no drawable fill.
 export function patch_surface_grid(patch: Patch, tablet_document: TabletDocument): SurfaceGrid | null {
   const fill = resolve_patch_fill(patch, tablet_document);
