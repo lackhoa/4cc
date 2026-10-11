@@ -19,10 +19,10 @@ import { V2, V3 } from "../../src/math";
 import { apply_document_state, list_documents_from_server, serialize_document_state } from "../../src/persistence";
 import { Rgb } from "../../src/vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../fit-head-to-loomis-girl/head_meshes";
-import { PlateRegion, PlateViewTransform, plate_view_transform_showing_region, plate_view_transform_zoomed_at } from "../../src/loomis_girl_plate";
+import { PlateRegion, PlateViewTransform, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
 import {
-  FRONT_PLATE, LoomisPlanesManLandmarksFile, PROFILE_PLATE, POINT_MARKS, PlateImage, PlateLandmarks, PlateRegistration,
-  fetch_landmarks_file, named_vertex_world_position, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
+  FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
+  fetch_landmarks_file, landmark_mark, landmarks_from_named_marks, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
 } from "../../src/loomis_planes_man_plate";
 import { LiftedHit, cast_hairline_samples, merge_hits_by_angle, write_hairline_strokes } from "./hairline_lift";
 
@@ -39,7 +39,6 @@ const SURFACE_OPACITY = 0.35;
 const MARK_GRAB_RADIUS_CSS_PIXELS = 18;
 
 type Mode = "move" | "landmarks" | "hairline";
-type MarkName = "brow" | "nasion" | "nose_base" | "porion" | "midline";
 
 type PlateView = {
   container: HTMLElement;
@@ -59,6 +58,9 @@ type PageState = {
   tablet_document: TabletDocument;
   revision: string | null; // null = not loaded yet
   landmarks_file: LoomisPlanesManLandmarksFile;
+  // Marks by vertex name waiting for the document (the starting marks, or a version 1
+  // file's): added to the landmarks when it loads, then null.
+  named_marks_to_add: readonly NamedMark[] | null;
   mode: Mode;
   plate_opacity: number;
   surfaces_visible: boolean;
@@ -89,12 +91,20 @@ function image_pixel_at_canvas_point(view: PlateView, canvas_point: V2): V2 {
   };
 }
 
-function view_landmarks(state: PageState, view: PlateView): PlateLandmarks {
-  return view.is_front_view ? state.landmarks_file.front : state.landmarks_file.profile;
+function view_registration(state: PageState, view: PlateView): PlateRegistration | null {
+  return plate_registration(state.tablet_document, state.landmarks_file.landmarks, view.is_front_view);
 }
 
-function view_registration(state: PageState, view: PlateView): PlateRegistration | null {
-  return plate_registration(state.tablet_document, view_landmarks(state, view), view.is_front_view);
+// The landmarks marked in a view, with their marks (image pixels) and their head points.
+type ViewMark = { index: number; landmark: PlateLandmark; pixel: V2; head_position: V3 | null };
+function view_marks(state: PageState, view: PlateView): ViewMark[] {
+  const marks: ViewMark[] = [];
+  state.landmarks_file.landmarks.forEach((landmark, index) => {
+    const pixel = landmark_mark(landmark, view.is_front_view);
+    if (pixel === null) return;
+    marks.push({ index, landmark, pixel, head_position: template_point_world_position(state.tablet_document, landmark.template_point) });
+  });
+  return marks;
 }
 
 // The orthographic camera showing the world as the registered plate does: looking down
@@ -164,24 +174,10 @@ const HEAD_MARKER_RADIUS = 0.04;
 const HEAD_MARKER_COLOR: Rgb = { r: 1, g: 1, b: 1 };
 function head_landmark_markers(state: PageState, view: PlateView): { position: V3; color: Rgb; radius: number }[] {
   const markers: { position: V3; color: Rgb; radius: number }[] = [];
-  for (const point of POINT_MARKS) {
-    if (view.is_front_view && !point.in_front_view) continue;
-    const position = named_vertex_world_position(state.tablet_document, point.vertex_name);
-    if (position !== null) markers.push({ position, color: HEAD_MARKER_COLOR, radius: HEAD_MARKER_RADIUS });
+  for (const mark of view_marks(state, view)) {
+    if (mark.head_position !== null) markers.push({ position: mark.head_position, color: HEAD_MARKER_COLOR, radius: HEAD_MARKER_RADIUS });
   }
   return markers;
-}
-
-// The marks of a view in image pixels: the midline is drawn as a line, the others as crosses.
-function mark_pixels(landmarks: PlateLandmarks, is_front_view: boolean): { name: MarkName; pixel: V2 }[] {
-  const marks: { name: MarkName; pixel: V2 }[] = [
-    { name: "brow", pixel: landmarks.brow },
-    { name: "nasion", pixel: landmarks.nasion },
-    { name: "nose_base", pixel: landmarks.nose_base },
-  ];
-  if (is_front_view) marks.push({ name: "midline", pixel: { x: landmarks.midline_column, y: landmarks.brow.y } });
-  else marks.push({ name: "porion", pixel: landmarks.porion });
-  return marks;
 }
 
 function draw_overlay_layer(state: PageState, view: PlateView): void {
@@ -193,47 +189,47 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
   const canvas_scale = view.transform.image_pixels_to_canvas_scale;
   const scale = canvas_scale * device_pixel_ratio;
   context.setTransform(scale, 0, 0, scale, -view.transform.image_pixel_at_canvas_origin.x * scale, -view.transform.image_pixel_at_canvas_origin.y * scale);
-  const landmarks = view_landmarks(state, view);
+  const marks = view_marks(state, view);
 
-  // Marks: crosses, and the midline as a line down the front plate.
+  // Marks: crosses with their names.
   const arm = 6 / canvas_scale;
   context.strokeStyle = MARK_COLOR;
   context.fillStyle = MARK_COLOR;
   context.lineWidth = 1.4 / canvas_scale;
   context.font = `${11 / canvas_scale}px system-ui, sans-serif`;
-  for (const mark of mark_pixels(landmarks, view.is_front_view)) {
+  for (const mark of marks) {
     context.beginPath();
-    if (mark.name === "midline") {
-      context.moveTo(mark.pixel.x, 0);
-      context.lineTo(mark.pixel.x, view.plate.height_pixels);
-    } else {
-      context.moveTo(mark.pixel.x - arm, mark.pixel.y);
-      context.lineTo(mark.pixel.x + arm, mark.pixel.y);
-      context.moveTo(mark.pixel.x, mark.pixel.y - arm);
-      context.lineTo(mark.pixel.x, mark.pixel.y + arm);
-    }
+    context.moveTo(mark.pixel.x - arm, mark.pixel.y);
+    context.lineTo(mark.pixel.x + arm, mark.pixel.y);
+    context.moveTo(mark.pixel.x, mark.pixel.y - arm);
+    context.lineTo(mark.pixel.x, mark.pixel.y + arm);
     context.stroke();
-    context.fillText(mark.name, mark.pixel.x + arm, mark.pixel.y - arm);
+    context.fillText(mark.landmark.name, mark.pixel.x + arm, mark.pixel.y - arm);
   }
 
-  // The head's own brow, nasion, nose base and ear hole, where the registration puts them.
+  // The head's own points of the marks, where the registration puts them, and in front
+  // the head's midline.
   const registration = view_registration(state, view);
   if (registration !== null) {
+    context.strokeStyle = HEAD_POINT_COLOR;
+    context.lineWidth = 0.8 / canvas_scale;
+    if (view.is_front_view) {
+      context.beginPath();
+      context.moveTo(registration.pixel_of_world_origin.x, 0);
+      context.lineTo(registration.pixel_of_world_origin.x, view.plate.height_pixels);
+      context.stroke();
+    }
     context.fillStyle = HEAD_POINT_COLOR;
     context.strokeStyle = "#000";
-    context.lineWidth = 0.8 / canvas_scale;
-    for (const name of POINT_MARKS.filter((point) => point.in_front_view || !view.is_front_view).map((point) => point.vertex_name)) {
-      const world = named_vertex_world_position(state.tablet_document, name);
-      if (world === null) continue;
-      const pixel = pixel_from_world(registration, world);
+    for (const mark of marks) {
+      if (mark.head_position === null) continue;
+      const pixel = pixel_from_world(registration, mark.head_position);
       context.beginPath();
       context.arc(pixel.x, pixel.y, 3 / canvas_scale, 0, 2 * Math.PI);
       context.fill();
       context.stroke();
-      // Labelled with the head's vertex name, below-right so it doesn't sit on the
-      // green mark's label (above-right).
-      context.fillText(`head ${name}`, pixel.x + arm, pixel.y + arm + 10 / canvas_scale);
-      context.fillStyle = HEAD_POINT_COLOR;
+      // Labelled below-right so it doesn't sit on the green mark's label (above-right).
+      context.fillText(`head ${mark.landmark.name}`, pixel.x + arm, pixel.y + arm + 10 / canvas_scale);
     }
   }
 
@@ -298,30 +294,28 @@ function save_landmarks(state: PageState): void {
 
 // ---- gestures ---------------------------------------------------------------------------
 
-// The mark within reach of `canvas_point`, nearest first; null when none is.
-function mark_near(state: PageState, view: PlateView, canvas_point: V2): MarkName | null {
-  const landmarks = view_landmarks(state, view);
+// The landmark (index into the file's list) whose mark in this view is within reach of
+// `canvas_point`, nearest first; null when none is.
+function mark_near(state: PageState, view: PlateView, canvas_point: V2): number | null {
   const image_point = image_pixel_at_canvas_point(view, canvas_point);
   const reach = MARK_GRAB_RADIUS_CSS_PIXELS / view.transform.image_pixels_to_canvas_scale;
-  let best: MarkName | null = null;
+  let best: number | null = null;
   let best_distance = reach;
-  for (const mark of mark_pixels(landmarks, view.is_front_view)) {
-    const distance = mark.name === "midline" ? Math.abs(image_point.x - mark.pixel.x) : Math.hypot(image_point.x - mark.pixel.x, image_point.y - mark.pixel.y);
+  for (const mark of view_marks(state, view)) {
+    const distance = Math.hypot(image_point.x - mark.pixel.x, image_point.y - mark.pixel.y);
     if (distance < best_distance) {
       best_distance = distance;
-      best = mark.name;
+      best = mark.index;
     }
   }
   return best;
 }
 
-function move_mark(state: PageState, view: PlateView, mark: MarkName, image_delta: V2): void {
-  const landmarks = view_landmarks(state, view);
-  if (mark === "midline") landmarks.midline_column += image_delta.x;
-  else {
-    landmarks[mark].x += image_delta.x;
-    landmarks[mark].y += image_delta.y;
-  }
+function move_mark(state: PageState, view: PlateView, landmark_index: number, image_delta: V2): void {
+  const mark = landmark_mark(state.landmarks_file.landmarks[landmark_index], view.is_front_view);
+  if (mark === null) return;
+  mark.x += image_delta.x;
+  mark.y += image_delta.y;
 }
 
 function attach_view_gestures(state: PageState, view: PlateView): void {
@@ -329,7 +323,7 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   const pointer_positions = new Map<number, V2>(); // pointerId -> last position, canvas CSS pixels
   let last_tap_milliseconds = 0;
   let moved_since_pointer_down = false;
-  let dragged_mark: MarkName | null = null;
+  let dragged_mark: number | null = null; // index into the landmarks list
   let drawing_hairline = false;
 
   const canvas_point = (e: PointerEvent | WheelEvent): V2 => {
@@ -434,6 +428,16 @@ async function reload_document_if_changed(state: PageState): Promise<void> {
   // The camera in the file belongs to the sketchpad: read into a throwaway one.
   apply_document_state(await response.text(), state.tablet_document, default_camera());
   state.revision = entry.revision;
+  // Marks given by vertex name (starting marks, a version 1 file) become landmarks now
+  // that the head's vertices are known.
+  if (state.named_marks_to_add !== null) {
+    const added = landmarks_from_named_marks(state.tablet_document, state.named_marks_to_add);
+    if (added !== null) {
+      state.landmarks_file.landmarks.push(...added);
+      state.named_marks_to_add = null;
+      save_landmarks(state);
+    }
+  }
   draw_all_views(state);
 }
 
@@ -489,7 +493,7 @@ async function lift_hairline(state: PageState): Promise<void> {
   const front_registration = view_registration(state, front);
   const profile_registration = view_registration(state, profile);
   if (front_registration === null || profile_registration === null) {
-    show_status("the head is not loaded yet (no brow / nose base / ear hole)", true);
+    show_status("no registration (fewer than two marks in a view, or head not loaded)", true);
     return;
   }
   const file = state.landmarks_file;
@@ -550,14 +554,15 @@ async function start(): Promise<void> {
   const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
   const mode_radios = Array.from(document.querySelectorAll<HTMLInputElement>("input[name=mode]"));
 
-  const landmarks_file = await fetch_landmarks_file();
-  if (landmarks_file === null) show_status("loading the landmark file failed; changes will not be saved", true);
+  const fetched = await fetch_landmarks_file();
+  if (fetched === null) show_status("loading the landmark file failed; changes will not be saved", true);
 
   const state: PageState = {
     views: [],
     tablet_document: empty_document(),
     revision: null,
-    landmarks_file: landmarks_file ?? starting_landmarks_file(),
+    landmarks_file: fetched?.file ?? starting_landmarks_file(),
+    named_marks_to_add: fetched === null ? STARTING_MARKS : fetched.named_marks_to_add,
     mode: (mode_radios.find((radio) => radio.checked)?.value as Mode | undefined) ?? "move",
     plate_opacity: Number(opacity_slider.value),
     surfaces_visible: surfaces_checkbox.checked,
