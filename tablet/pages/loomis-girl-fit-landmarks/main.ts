@@ -17,7 +17,7 @@ import {
 } from "../../src/loomis_girl_plate";
 import { V2, V3, v3 } from "../../src/math";
 import { apply_document_state, serialize_document_state } from "../../src/persistence";
-import { start_head_model_pane } from "./head_model_pane";
+import { start_head_model_pane } from "../../src/head_model_pane";
 
 const PAGE_NAME = "loomis-girl-fit-landmarks";
 const TEMPLATE_DOCUMENT_NAME = "skull-zanatomy";
@@ -489,6 +489,8 @@ function draw_plate_panes(): void {
 // ---- head model pane ----------------------------------------------------------------
 
 const draw_head_model_pane = start_head_model_pane(
+  PAGE_NAME,
+  { mesh_canvas: "head_model_mesh_canvas", overlay_canvas: "head_model_overlay_canvas", mesh_opacity_slider: "head_model_mesh_opacity" },
   () => ({
     template_document,
     landmarks: editor.file.landmarks,

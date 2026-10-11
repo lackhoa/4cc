@@ -1,21 +1,22 @@
-// The head model pane of the loomis-girl-fit-landmarks page: the template drawing (document
-// `skull-zanatomy`) as lines over the Z-Anatomy skin mesh, with a dot at every landmark's
-// template point. Drag orbits (middle button pans, wheel zooms); a tap picks: a landmark,
-// or, while the page is adding a landmark, the template point the new landmark gets.
+// The head model pane of the landmark pages (loomis-girl-fit-landmarks,
+// fit-hairline-to-loomis-man): the template drawing (document `skull-zanatomy`) as lines
+// over the Z-Anatomy skin mesh, with a dot at every landmark's template point. Drag orbits
+// (middle button pans, wheel zooms); a tap picks: a landmark, or, while the page is adding
+// a landmark, the template point the new landmark gets.
 //
 // Two canvases stacked: WebGL for the mesh, 2D on top for lines, dots and names. The lines
 // are not hidden by the mesh, so the far side of the head shows through.
-import { OrbitCamera, camera_eye, camera_screen_projector, camera_view_projection } from "../../src/camera";
-import { TabletDocument, bezier_point, stroke_control_points, vertex_world_position } from "../../src/document";
-import { attach_orbit_controls } from "../../src/explainer/orbit_controls";
-import { FitLandmark, TemplatePoint, template_point_world_position, template_position_is_on_midline } from "../../src/loomis_girl_plate";
-import { V2, V3, v3, v3_length, v3_sub } from "../../src/math";
-import { ReferenceMesh, append_reference_mesh } from "../../src/reference";
-import { load_skin_reference_mesh } from "../../src/skin_reference_mesh";
-import { FLOATS_PER_TRANSLUCENT_VERTEX, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "../../src/render";
-import { FLOATS_PER_VERTEX, create_vertex_sink, reset_vertex_sink } from "../../src/vertex_sink";
+import { OrbitCamera, camera_eye, camera_screen_projector, camera_view_projection } from "./camera";
+import { TabletDocument, bezier_point, stroke_control_points, vertex_world_position } from "./document";
+import { attach_orbit_controls } from "./explainer/orbit_controls";
+import { EditableLandmark } from "./fit_landmark_editing";
+import { TemplatePoint, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
+import { V2, V3, v3, v3_length, v3_sub } from "./math";
+import { ReferenceMesh, append_reference_mesh } from "./reference";
+import { load_skin_reference_mesh } from "./skin_reference_mesh";
+import { FLOATS_PER_TRANSLUCENT_VERTEX, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "./render";
+import { FLOATS_PER_VERTEX, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
-const PAGE_NAME = "loomis-girl-fit-landmarks";
 const TAP_RADIUS_PIXELS = 14;
 const SKIN_STROKE_STYLE = "#ff6b6e";
 const SKULL_STROKE_STYLE = "#7fb3ff";
@@ -25,7 +26,7 @@ const SELECTED_LANDMARK_STYLE = "#ff2fb4";
 // What the pane draws, asked from the page on every draw.
 export type HeadModelScene = {
   template_document: TabletDocument;
-  landmarks: FitLandmark[];
+  landmarks: EditableLandmark[]; // a page's own landmark type: only `name` and `template_point` are read
   selected_landmark_index: number | null;
   landmark_names_visible: boolean;
   skull_visible: boolean;
@@ -66,14 +67,21 @@ function candidate_under_tap<Candidate extends { world_position: V3 }>(candidate
 }
 
 // Returns the function that draws the pane again (call it when the scene changed).
-export function start_head_model_pane(scene_now: () => HeadModelScene, listeners: HeadModelPaneListeners): () => void {
-  const mesh_canvas = document.getElementById("head_model_mesh_canvas") as HTMLCanvasElement;
-  const overlay_canvas = document.getElementById("head_model_overlay_canvas") as HTMLCanvasElement;
-  const mesh_opacity_slider = document.getElementById("head_model_mesh_opacity") as HTMLInputElement;
+// `page_name` names the page in the skin mesh's loading errors; `element_ids` are the
+// page's two stacked canvases (the WebGL one below) and its mesh opacity slider.
+export function start_head_model_pane(
+  page_name: string,
+  element_ids: { mesh_canvas: string; overlay_canvas: string; mesh_opacity_slider: string },
+  scene_now: () => HeadModelScene,
+  listeners: HeadModelPaneListeners,
+): () => void {
+  const mesh_canvas = document.getElementById(element_ids.mesh_canvas) as HTMLCanvasElement;
+  const overlay_canvas = document.getElementById(element_ids.overlay_canvas) as HTMLCanvasElement;
+  const mesh_opacity_slider = document.getElementById(element_ids.mesh_opacity_slider) as HTMLInputElement;
   const camera: OrbitCamera = { pivot: v3(0, 0.2, 0), yaw: 0.6, pitch: 0.05, distance: 3.8 };
 
   const gl = mesh_canvas.getContext("webgl");
-  if (gl === null) console.error(`${PAGE_NAME}: no WebGL, the head model pane shows lines only`);
+  if (gl === null) console.error(`${page_name}: no WebGL, the head model pane shows lines only`);
   const translucent_mesh = gl === null ? null : create_translucent_mesh(gl);
   let skin_mesh: ReferenceMesh | null = null;
   const shaded_vertices = create_vertex_sink(1024);
@@ -264,7 +272,7 @@ export function start_head_model_pane(scene_now: () => HeadModelScene, listeners
   mesh_opacity_slider.addEventListener("input", draw);
   new ResizeObserver(draw).observe(overlay_canvas);
 
-  void load_skin_reference_mesh(PAGE_NAME).then((mesh) => {
+  void load_skin_reference_mesh(page_name).then((mesh) => {
     skin_mesh = mesh;
     draw();
   });
