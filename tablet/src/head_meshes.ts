@@ -5,11 +5,11 @@
 import { OrbitCamera, camera_eye } from "./camera";
 import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
-import { patch_surface_grid } from "./patch";
+import { on_surface_stroke_samples, patch_surface_grid } from "./patch";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
-import { TaperWindow, append_bezier_ribbon } from "./ribbon";
+import { TaperWindow, append_bezier_ribbon, append_sampled_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
 export const SURFACE_COLOR: Rgb = { r: 0.45, g: 0.55, b: 0.7 };
@@ -137,8 +137,16 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
     for (const stroke of tablet_document.strokes) {
       if (stroke.layer === "skull" && !options.skull_visible) continue;
       const color = stroke.layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
-      const points = stroke_control_points(stroke, tablet_document);
       const radii = stroke_radii(stroke);
+      if (stroke.on_surface === true) {
+        // Drawn through its samples projected onto the surface: the chord between its
+        // ends would run inside the head and be hidden by the skin.
+        const centers = on_surface_stroke_samples(stroke, tablet_document);
+        append_sampled_ribbon(centers, radii, camera, color, meshes.shaded_vertices);
+        if (options.mirrored) append_sampled_ribbon(centers.map(mirror), radii, camera, color, meshes.shaded_vertices);
+        continue;
+      }
+      const points = stroke_control_points(stroke, tablet_document);
       append_bezier_ribbon(points, radii, WHOLE_STROKE, camera, color, meshes.shaded_vertices);
       if (options.mirrored) {
         const mirrored_points = { p0: mirror(points.p0), p1: mirror(points.p1), p2: mirror(points.p2), p3: mirror(points.p3) };

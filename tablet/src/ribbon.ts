@@ -27,15 +27,21 @@ export function append_stroke_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
   if (stroke.on_surface === true) {
-    const centers = on_surface_stroke_samples(stroke, tablet_document);
-    const last = centers.length - 1;
-    const tangents = centers.map((_, i) => v3_sub(centers[Math.min(i + 1, last)], centers[Math.max(i - 1, 0)]));
-    append_polyline_ribbon(centers, tangents, stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out);
+    append_sampled_ribbon(on_surface_stroke_samples(stroke, tablet_document), stroke_radii(stroke), camera, color, out);
     return;
   }
   append_bezier_ribbon(
     stroke_control_points(stroke, tablet_document), stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out,
   );
+}
+
+// A ribbon through sample points already on the curve (an on-surface stroke's projected
+// samples), tangents by finite differences between them.
+export function append_sampled_ribbon(centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink): void {
+  if (centers.length < 2) return;
+  const last = centers.length - 1;
+  const tangents = centers.map((_, i) => v3_sub(centers[Math.min(i + 1, last)], centers[Math.max(i - 1, 0)]));
+  append_polyline_ribbon(centers, tangents, radii, { start: 0, end: 1 }, camera, color, out);
 }
 
 // Where this cubic sits in the taper of the whole curve it belongs to, as a
