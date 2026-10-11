@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fit-hairline-to-loomis-man</title>
+<style>
+  .views { display: flex; gap: 10px; }
+  .views figure { margin: 0; min-width: 0; }
+  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
+  /* Each view has the shape of its plate (414 x 529 and 561 x 670 image pixels). */
+  .views figure.front { flex: 414; }
+  .views figure.profile { flex: 561; }
+  .views figure.front .plate_view { aspect-ratio: 414 / 529; }
+  .views figure.profile .plate_view { aspect-ratio: 561 / 670; }
+  /* A plate view: the plate on one canvas, the head's surfaces and strokes on a WebGL
+     canvas over it, the marks and the hairline on a third canvas on top. */
+  .plate_view { position: relative; margin: 10px 0; }
+  .plate_view canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; background: transparent; }
+  .plate_view canvas:first-child { position: static; }
+  #plate_missing_note, #status.failed { color: #e05a5a; }
+  #status { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Fitting the hairline to Loomis's planes head</h1>
+  <p class="sub">The template head <code>skull-zanatomy</code> over Loomis's planes-head plates, a front view and a profile. The head is not changed: the plates are scaled and moved to it by three marks each, and the hairline is drawn on the plates and lifted onto the skin as on-surface strokes. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>1. Register the plates</h2>
+    <p>Drag the green marks onto the plate: <strong>brow</strong> and <strong>nose base</strong> set the scale and height in both views, the <strong>midline</strong> sets the front view sideways, the <strong>ear hole</strong> the profile. The head's own brow, nose base and ear hole are the white dots; brow and nose base land on their marks by construction, so check the midline and the ear hole, and the chin and top of head for scale.</p>
+    <div class="views">
+      <figure class="front">
+        <div id="front_view" class="plate_view"></div>
+        <figcaption>front</figcaption>
+      </figure>
+      <figure class="profile">
+        <div id="profile_view" class="plate_view"></div>
+        <figcaption>profile</figcaption>
+      </figure>
+    </div>
+    <div class="controls">
+      <label><input type="radio" name="mode" value="move" checked> move</label>
+      <label><input type="radio" name="mode" value="landmarks"> drag marks</label>
+      <label><input type="radio" name="mode" value="hairline"> draw hairline</label>
+      <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
+      <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
+      <label><input type="checkbox" id="plate_skull_visible"> skull</label>
+      <span id="plate_missing_note" hidden>plate images missing: copy them from Drive into tablet/public/</span>
+    </div>
+    <p class="hint">In a view: drag to move (in "move" mode; the other modes drag a mark or draw), wheel or pinch to zoom, double tap to fit the plate again.</p>
+  </section>
+
+  <section>
+    <h2>2. Draw and lift the hairline</h2>
+    <p>In "draw hairline" mode, one drag per view draws the hairline (a new drag replaces the old one): the arch in front, the forehead-to-ear run in profile. "Lift" casts both drawings onto the skin, drops the grazing hits, merges them by angle around the head, and writes the chain into <code>skull-zanatomy</code> as on-surface strokes, replacing the strokes of the last lift. Teal dots are the merged hits of the last lift.</p>
+    <div class="controls">
+      <button id="lift_button">lift onto the skin</button>
+      <button id="clear_front_hairline">clear front hairline</button>
+      <button id="clear_profile_hairline">clear profile hairline</button>
+      <button id="remove_lifted">remove lifted strokes</button>
+      <span id="status"></span>
+    </div>
+    <p class="hint">Marks and hairlines are saved to <code>tablet/fit-landmarks/loomis-planes-man.json</code> as you change them.</p>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

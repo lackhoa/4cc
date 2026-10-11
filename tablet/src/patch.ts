@@ -640,7 +640,8 @@ export function drag_surface_pin(
 // what you pick. Callers try vertices and strokes first.
 // Only patches on `layers` count (the sketchpad passes the layers neither locked nor hidden).
 export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>): number | null {
-  return pick_patch_grid_triangle(tablet_document, camera, screen, canvas, layers)?.index ?? null;
+  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
+  return pick_patch_grid_triangle(tablet_document, project, camera_eye(camera), screen, layers)?.index ?? null;
 }
 
 // The point of the surface under the tap (plan-hairline-drawn-on-surface Q5/Q8:
@@ -650,7 +651,20 @@ export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera,
 export function pick_surface_point(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
 ): { patch: Patch; u: number; v: number; position: V3 } | null {
-  const hit = pick_patch_grid_triangle(tablet_document, camera, screen, canvas, layers);
+  const eye = camera_eye(camera);
+  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
+  return pick_surface_point_projected(tablet_document, project, eye, screen, layers);
+}
+
+// pick_surface_point under any projection: `project` maps world to the 2D space
+// `screen` is given in (null = not projectable), `eye` orders the candidate triangles
+// (nearest wins). The plate pages cast through an orthographic view this way
+// (pages/fit-hairline-to-loomis-man), where the sketchpad's perspective projector would
+// land the pick elsewhere.
+export function pick_surface_point_projected(
+  tablet_document: TabletDocument, project: (world: V3) => V2 | null, eye: V3, screen: V2, layers: ReadonlySet<Layer>,
+): { patch: Patch; u: number; v: number; position: V3 } | null {
+  const hit = pick_patch_grid_triangle(tablet_document, project, eye, screen, layers);
   if (hit === null) return null;
   const patch = tablet_document.patches[hit.index];
   const position = patch_point(patch, tablet_document, hit.u, hit.v);
@@ -660,10 +674,8 @@ export function pick_surface_point(
 // Shared by pick_patch / pick_surface_point: the patch index and (u, v) of the
 // nearest-to-eye grid triangle containing the tap.
 function pick_patch_grid_triangle(
-  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+  tablet_document: TabletDocument, project: (world: V3) => V2 | null, eye: V3, screen: V2, layers: ReadonlySet<Layer>,
 ): { index: number; u: number; v: number } | null {
-  const eye = camera_eye(camera);
-  const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
   let best: { index: number; u: number; v: number } | null = null;
   let best_distance = Infinity;

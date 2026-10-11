@@ -2,3 +2,6 @@ node_modules/
 dist/
 # The Loomis plate behind the fit-head-to-loomis-girl page: a book scan, kept out of the repo.
 public/loomis-girl-front-and-profile.webp
+# The Loomis planes-head plates behind fit-hairline-to-loomis-man, same: originals on Drive.
+public/loomis-planes-man-front.webp
+public/loomis-planes-man-profile.webp
