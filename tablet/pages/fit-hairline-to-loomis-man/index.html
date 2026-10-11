@@ -7,12 +7,21 @@
 <style>
   .views { display: flex; gap: 10px; }
   .views figure { margin: 0; min-width: 0; }
-  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
-  /* Each view has the shape of its plate (414 x 529 and 561 x 670 image pixels). */
+  .views figcaption { display: flex; justify-content: center; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+  .views figcaption button { font: inherit; font-size: 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--muted); border-radius: 6px; padding: 1px 10px; cursor: pointer; }
+  .views figcaption input[type=range] { width: 80px; }
+  /* Each view has the shape of its plate (414 x 529 and 561 x 670 image pixels); the head
+     model is square. "bigger" gives a view most of the row. */
   .views figure.front { flex: 414; }
   .views figure.profile { flex: 561; }
+  .views figure.head { flex: 450; }
+  .views figure.enlarged { flex: 2000; }
   .views figure.front .plate_view { aspect-ratio: 414 / 529; }
   .views figure.profile .plate_view { aspect-ratio: 561 / 670; }
+  .views figure.head .plate_view { aspect-ratio: 1; }
+  #bottom_bar button:disabled { opacity: 0.4; cursor: default; }
+  #bottom_bar button.armed { background: #3a5a8a; border-color: var(--accent); }
+  #landmark_name_field { font: inherit; font-size: 14px; width: 210px; color: var(--ink); background: var(--bg); border: 1px solid var(--muted); border-radius: 6px; padding: 2px 8px; -webkit-user-select: text; user-select: text; }
   /* A plate view: the plate on one canvas, the head's surfaces and strokes on a WebGL
      canvas over it, the marks and the hairline on a third canvas on top. */
   .plate_view { position: relative; margin: 10px 0; }
@@ -30,15 +39,28 @@
   <section>
     <h2>1. Register the plates</h2>
     <p>Drag the green marks onto the plate. Each mark is a point of the head (to start: <strong>brow</strong>, <strong>nasion</strong> and <strong>nose base</strong> in both views, the <strong>ear hole</strong> in profile). Each view gets one scale and one offset, least squares over its marks (no rotation, no deformation); the head's midline is the white line in front. The head's own points are the white dots: the gap from a white dot to its green mark is that mark's residual, so if the plate and the head disagree the marks are spread over the disagreement rather than any one of them landing exactly.</p>
+    <p>More marks: "add landmark", then tap a point of the head model (the white dots are the stroke ends; anywhere along a stroke works too). The new mark starts where the registration puts that point in each view; drag it to where the plate has it. A tap on a mark, in a plate view or on the head model, selects it for renaming or removing.</p>
     <div class="views">
       <figure class="front">
         <div id="front_view" class="plate_view"></div>
-        <figcaption>front</figcaption>
+        <figcaption>front <button class="enlarge_pane_button">bigger</button></figcaption>
       </figure>
       <figure class="profile">
         <div id="profile_view" class="plate_view"></div>
-        <figcaption>profile</figcaption>
+        <figcaption>profile <button class="enlarge_pane_button">bigger</button></figcaption>
       </figure>
+      <figure class="head">
+        <div id="head_view" class="plate_view"><canvas id="head_model_mesh_canvas"></canvas><canvas id="head_model_overlay_canvas"></canvas></div>
+        <figcaption>head model <label>skin <input type="range" id="head_model_mesh_opacity" min="0" max="1" step="0.05" value="0.5"></label> <button class="enlarge_pane_button">bigger</button></figcaption>
+      </figure>
+    </div>
+    <div id="bottom_bar" class="controls">
+      <button id="add_landmark_button">add landmark</button>
+      <input type="text" id="landmark_name_field" placeholder="no landmark selected" autocomplete="off">
+      <button id="remove_landmark_button">remove</button>
+      <button id="undo_landmark_edit_button">undo</button>
+      <button id="reset_landmarks_button">reset marks</button>
+      <label><input type="checkbox" id="landmark_names_visible" checked> names on the head model</label>
     </div>
     <div class="controls">
       <label><input type="radio" name="mode" value="move" checked> move</label>
@@ -49,7 +71,7 @@
       <label><input type="checkbox" id="plate_skull_visible"> skull</label>
       <span id="plate_missing_note" hidden>plate images missing: copy them from Drive into tablet/public/</span>
     </div>
-    <p class="hint">In a view: drag to move (in "move" mode; the other modes drag a mark or draw), wheel or pinch to zoom, double tap to fit the plate again.</p>
+    <p class="hint">In a plate view: drag to move (in "move" mode; the other modes drag a mark or draw), wheel or pinch to zoom, double tap to fit the plate again. On the head model: drag to orbit, wheel to zoom. Undo (or Ctrl+Z) takes back mark drags, adds, removes, renames, hairline drags and clears; not a lift.</p>
   </section>
 
   <section>

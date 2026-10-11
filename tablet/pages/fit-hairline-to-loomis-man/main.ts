@@ -12,14 +12,22 @@
 //
 // The document is read from the server and polled; the lift writes it back. The
 // landmark file is read once and written on every change (this page is its only writer).
+//
+// The landmarks are edited through the shared editor (src/fit_landmark_editing.ts: add by
+// a tap on the head model pane, remove, rename, undo, reset) and the head model pane
+// (src/head_model_pane.ts), as on loomis-girl-fit-landmarks. The file as a whole is the
+// unit of undo, so a mark drag, a hairline drag and a clear are undone too; a lift is not:
+// `lifted_stroke_ids` is carried over any undo so the next lift still replaces the last.
 import "../../pages.css";
 import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthographic_view_projection, default_camera } from "../../src/camera";
 import { TabletDocument, VertexId, delete_stroke, empty_document, garbage_collect_vertices, unpin_vertices } from "../../src/document";
+import { FitLandmarkEditor, create_fit_landmark_editor } from "../../src/fit_landmark_editing";
+import { start_head_model_pane } from "../../src/head_model_pane";
 import { V2, V3 } from "../../src/math";
 import { apply_document_state, list_documents_from_server, serialize_document_state } from "../../src/persistence";
 import { Rgb } from "../../src/vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../fit-head-to-loomis-girl/head_meshes";
-import { PlateRegion, PlateViewTransform, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
+import { PlateRegion, PlateViewTransform, TemplatePoint, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
 import {
   FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
   fetch_landmarks_file, landmark_mark, landmarks_from_named_marks, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
@@ -32,6 +40,7 @@ const POLL_MILLISECONDS = 2000;
 const SKIN_STROKE_COLOR: Rgb = { r: 0.91, g: 0.15, b: 0.16 };
 const SKULL_STROKE_COLOR: Rgb = { r: 0.16, g: 0.38, b: 0.91 };
 const MARK_COLOR = "#0a9a3a";
+const SELECTED_MARK_COLOR = "#ff2fb4";
 const HEAD_POINT_COLOR = "#ffffff";
 const HAIRLINE_COLOR = "#ffa94d";
 const LIFTED_HIT_COLOR = "#4dd4c0";
@@ -57,10 +66,14 @@ type PageState = {
   views: PlateView[];
   tablet_document: TabletDocument;
   revision: string | null; // null = not loaded yet
-  landmarks_file: LoomisPlanesManLandmarksFile;
+  editor: FitLandmarkEditor<LoomisPlanesManLandmarksFile>; // holds the landmark file (`editor.file`)
+  // The strokes of the last lift, the page's copy: an undo puts back an older file,
+  // whose `lifted_stroke_ids` may be stale, so this is written over it before a save.
+  lifted_stroke_ids: number[];
   // Marks by vertex name waiting for the document (the starting marks, or a version 1
   // file's): added to the landmarks when it loads, then null.
   named_marks_to_add: readonly NamedMark[] | null;
+  draw_head_model_pane: () => void;
   mode: Mode;
   plate_opacity: number;
   surfaces_visible: boolean;
@@ -92,14 +105,14 @@ function image_pixel_at_canvas_point(view: PlateView, canvas_point: V2): V2 {
 }
 
 function view_registration(state: PageState, view: PlateView): PlateRegistration | null {
-  return plate_registration(state.tablet_document, state.landmarks_file.landmarks, view.is_front_view);
+  return plate_registration(state.tablet_document, state.editor.file.landmarks, view.is_front_view);
 }
 
 // The landmarks marked in a view, with their marks (image pixels) and their head points.
 type ViewMark = { index: number; landmark: PlateLandmark; pixel: V2; head_position: V3 | null };
 function view_marks(state: PageState, view: PlateView): ViewMark[] {
   const marks: ViewMark[] = [];
-  state.landmarks_file.landmarks.forEach((landmark, index) => {
+  state.editor.file.landmarks.forEach((landmark, index) => {
     const pixel = landmark_mark(landmark, view.is_front_view);
     if (pixel === null) return;
     marks.push({ index, landmark, pixel, head_position: template_point_world_position(state.tablet_document, landmark.template_point) });
@@ -191,13 +204,14 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
   context.setTransform(scale, 0, 0, scale, -view.transform.image_pixel_at_canvas_origin.x * scale, -view.transform.image_pixel_at_canvas_origin.y * scale);
   const marks = view_marks(state, view);
 
-  // Marks: crosses with their names.
+  // Marks: crosses with their names, the selected one in its own colour.
   const arm = 6 / canvas_scale;
-  context.strokeStyle = MARK_COLOR;
-  context.fillStyle = MARK_COLOR;
   context.lineWidth = 1.4 / canvas_scale;
   context.font = `${11 / canvas_scale}px system-ui, sans-serif`;
   for (const mark of marks) {
+    const color = mark.index === state.editor.selected_landmark_index ? SELECTED_MARK_COLOR : MARK_COLOR;
+    context.strokeStyle = color;
+    context.fillStyle = color;
     context.beginPath();
     context.moveTo(mark.pixel.x - arm, mark.pixel.y);
     context.lineTo(mark.pixel.x + arm, mark.pixel.y);
@@ -234,7 +248,7 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
   }
 
   // The hairline drawn on this plate.
-  const hairline = view.is_front_view ? state.landmarks_file.front_hairline : state.landmarks_file.profile_hairline;
+  const hairline = view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline;
   if (hairline.length > 0) {
     context.strokeStyle = HAIRLINE_COLOR;
     context.lineWidth = 2 / canvas_scale;
@@ -270,6 +284,11 @@ function draw_all_views(state: PageState): void {
   for (const view of state.views) draw_view(state, view);
 }
 
+function draw_everything(state: PageState): void {
+  draw_all_views(state);
+  state.draw_head_model_pane();
+}
+
 // ---- landmark file ----------------------------------------------------------------------
 
 let save_in_flight: Promise<void> | null = null;
@@ -277,12 +296,13 @@ let save_again = false;
 
 // Save the landmark file, one request at a time; a change during a save triggers another.
 function save_landmarks(state: PageState): void {
+  state.editor.file.lifted_stroke_ids = state.lifted_stroke_ids;
   if (save_in_flight !== null) {
     save_again = true;
     return;
   }
   save_in_flight = (async () => {
-    const saved = await save_landmarks_file(state.landmarks_file);
+    const saved = await save_landmarks_file(state.editor.file);
     if (!saved) show_status("saving the landmark file failed", true);
     save_in_flight = null;
     if (save_again) {
@@ -290,6 +310,28 @@ function save_landmarks(state: PageState): void {
       save_landmarks(state);
     }
   })();
+}
+
+// The landmark "add landmark" makes for a point of the head picked on the head model
+// pane: marked in each view where the registration puts that point (no registration in a
+// view: not marked there; it still shows on the head model and can be marked later...
+// by hand there is no way yet, so add it once the view is registered).
+function new_plate_landmark(state: PageState, template_point: TemplatePoint, name: string): PlateLandmark | null {
+  const position = template_point_world_position(state.tablet_document, template_point);
+  if (position === null) return null;
+  const mark_in = (view: PlateView): V2 | null => {
+    const registration = view_registration(state, view);
+    return registration === null ? null : pixel_from_world(registration, position);
+  };
+  const front = state.views.find((view) => view.is_front_view)!;
+  const profile = state.views.find((view) => !view.is_front_view)!;
+  return { name, template_point, front: mark_in(front), profile: mark_in(profile) };
+}
+
+// "reset marks": the starting marks again, the hairlines and the last lift kept.
+function file_with_starting_landmarks(state: PageState): LoomisPlanesManLandmarksFile {
+  const landmarks = landmarks_from_named_marks(state.tablet_document, STARTING_MARKS) ?? [];
+  return { ...state.editor.file, landmarks };
 }
 
 // ---- gestures ---------------------------------------------------------------------------
@@ -312,7 +354,7 @@ function mark_near(state: PageState, view: PlateView, canvas_point: V2): number 
 }
 
 function move_mark(state: PageState, view: PlateView, landmark_index: number, image_delta: V2): void {
-  const mark = landmark_mark(state.landmarks_file.landmarks[landmark_index], view.is_front_view);
+  const mark = landmark_mark(state.editor.file.landmarks[landmark_index], view.is_front_view);
   if (mark === null) return;
   mark.x += image_delta.x;
   mark.y += image_delta.y;
@@ -324,6 +366,7 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   let last_tap_milliseconds = 0;
   let moved_since_pointer_down = false;
   let dragged_mark: number | null = null; // index into the landmarks list
+  let mark_drag_is_remembered = false; // the undo entry of this mark drag is taken (at its first move)
   let drawing_hairline = false;
 
   const canvas_point = (e: PointerEvent | WheelEvent): V2 => {
@@ -336,7 +379,7 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     const spread = points.reduce((sum, p) => sum + Math.hypot(p.x - centroid.x, p.y - centroid.y), 0) / points.length;
     return { centroid, spread };
   };
-  const hairline_of_view = (): V2[] => (view.is_front_view ? state.landmarks_file.front_hairline : state.landmarks_file.profile_hairline);
+  const hairline_of_view = (): V2[] => (view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline);
 
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -346,11 +389,14 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     moved_since_pointer_down = false;
     if (pointer_positions.size === 1) {
       dragged_mark = state.mode === "landmarks" ? mark_near(state, view, point) : null;
+      if (dragged_mark !== null) state.editor.select_landmark(dragged_mark);
       drawing_hairline = state.mode === "hairline";
       if (drawing_hairline) {
+        // The old hairline goes at the first touch, so the undo entry is taken here.
+        state.editor.remember_for_undo();
         const image_point = image_pixel_at_canvas_point(view, point);
-        if (view.is_front_view) state.landmarks_file.front_hairline = [image_point];
-        else state.landmarks_file.profile_hairline = [image_point];
+        if (view.is_front_view) state.editor.file.front_hairline = [image_point];
+        else state.editor.file.profile_hairline = [image_point];
         draw_overlay_layer(state, view);
       }
     } else {
@@ -372,6 +418,10 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
       return;
     }
     if (dragged_mark !== null) {
+      if (!mark_drag_is_remembered) {
+        state.editor.remember_for_undo();
+        mark_drag_is_remembered = true;
+      }
       move_mark(state, view, dragged_mark, image_delta);
       draw_view(state, view);
       return;
@@ -386,15 +436,17 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   const end_pointer = (e: PointerEvent): void => {
     if (!pointer_positions.delete(e.pointerId)) return;
     if (pointer_positions.size > 0) return;
-    if ((dragged_mark !== null || drawing_hairline) && moved_since_pointer_down) save_landmarks(state);
     if (drawing_hairline && !moved_since_pointer_down) {
-      // A tap in hairline mode leaves a one-point hairline behind: drop it.
-      if (view.is_front_view) state.landmarks_file.front_hairline = [];
-      else state.landmarks_file.profile_hairline = [];
-      draw_overlay_layer(state, view);
+      // A tap in hairline mode leaves a one-point hairline behind: drop it (the tap
+      // cleared the hairline that was there, which undo brings back).
+      if (view.is_front_view) state.editor.file.front_hairline = [];
+      else state.editor.file.profile_hairline = [];
     }
+    // The edit is done: save and draw (the head model's dots for a mark drag, too).
+    if ((dragged_mark !== null && moved_since_pointer_down) || drawing_hairline) state.editor.landmarks_edited();
     const was_plain_tap = e.type === "pointerup" && !moved_since_pointer_down && dragged_mark === null && !drawing_hairline;
     dragged_mark = null;
+    mark_drag_is_remembered = false;
     drawing_hairline = false;
     if (was_plain_tap) {
       if (e.timeStamp - last_tap_milliseconds < 350) {
@@ -433,12 +485,12 @@ async function reload_document_if_changed(state: PageState): Promise<void> {
   if (state.named_marks_to_add !== null) {
     const added = landmarks_from_named_marks(state.tablet_document, state.named_marks_to_add);
     if (added !== null) {
-      state.landmarks_file.landmarks.push(...added);
+      state.editor.file.landmarks.push(...added);
       state.named_marks_to_add = null;
       save_landmarks(state);
     }
   }
-  draw_all_views(state);
+  draw_everything(state);
 }
 
 // Rewrite the document on the server: `edit` changes a fresh copy of the server's
@@ -496,7 +548,7 @@ async function lift_hairline(state: PageState): Promise<void> {
     show_status("no registration (fewer than two marks in a view, or head not loaded)", true);
     return;
   }
-  const file = state.landmarks_file;
+  const file = state.editor.file;
   if (file.front_hairline.length < 2 && file.profile_hairline.length < 2) {
     show_status("draw a hairline on a plate first", true);
     return;
@@ -505,7 +557,7 @@ async function lift_hairline(state: PageState): Promise<void> {
   let written_ids: number[] = [];
   let hit_counts = { front: 0, profile: 0, merged: 0 };
   const written = await edit_document_on_server(state, (tablet_document) => {
-    remove_lifted_strokes(tablet_document, file.lifted_stroke_ids);
+    remove_lifted_strokes(tablet_document, state.lifted_stroke_ids);
     const front_hits = cast_hairline_samples(tablet_document, front_registration, file.front_hairline);
     const profile_hits = cast_hairline_samples(tablet_document, profile_registration, file.profile_hairline);
     const merged = merge_hits_by_angle([...front_hits, ...profile_hits]);
@@ -522,24 +574,23 @@ async function lift_hairline(state: PageState): Promise<void> {
     draw_all_views(state);
     return;
   }
-  file.lifted_stroke_ids = written_ids;
+  state.lifted_stroke_ids = written_ids;
   save_landmarks(state);
   show_status(`lifted: ${hit_counts.front} front hits, ${hit_counts.profile} profile hits, ${hit_counts.merged} merged, ${written_ids.length} strokes written`);
   await reload_document_if_changed(state);
 }
 
 async function remove_lifted(state: PageState): Promise<void> {
-  const file = state.landmarks_file;
-  if (file.lifted_stroke_ids.length === 0) {
+  if (state.lifted_stroke_ids.length === 0) {
     show_status("nothing lifted to remove");
     return;
   }
   const written = await edit_document_on_server(state, (tablet_document) => {
-    remove_lifted_strokes(tablet_document, file.lifted_stroke_ids);
+    remove_lifted_strokes(tablet_document, state.lifted_stroke_ids);
     return true;
   });
   if (!written) return;
-  file.lifted_stroke_ids = [];
+  state.lifted_stroke_ids = [];
   state.last_lift_hits = [];
   save_landmarks(state);
   show_status("lifted strokes removed");
@@ -552,17 +603,32 @@ async function start(): Promise<void> {
   const opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement;
   const surfaces_checkbox = document.getElementById("plate_surfaces_visible") as HTMLInputElement;
   const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
+  const names_checkbox = document.getElementById("landmark_names_visible") as HTMLInputElement;
   const mode_radios = Array.from(document.querySelectorAll<HTMLInputElement>("input[name=mode]"));
 
   const fetched = await fetch_landmarks_file();
   if (fetched === null) show_status("loading the landmark file failed; changes will not be saved", true);
+  const landmarks_file = fetched?.file ?? starting_landmarks_file();
+
+  // The editor's listeners run on user edits, once `state` below exists.
+  const editor = create_fit_landmark_editor<LoomisPlanesManLandmarksFile>(landmarks_file, {
+    starting_file: () => file_with_starting_landmarks(state),
+    new_landmark: (template_point, name) => new_plate_landmark(state, template_point, name),
+    on_edited: () => {
+      save_landmarks(state);
+      draw_everything(state);
+    },
+    on_view_changed: () => draw_everything(state),
+  });
 
   const state: PageState = {
     views: [],
     tablet_document: empty_document(),
     revision: null,
-    landmarks_file: fetched?.file ?? starting_landmarks_file(),
+    editor,
+    lifted_stroke_ids: landmarks_file.lifted_stroke_ids,
     named_marks_to_add: fetched === null ? STARTING_MARKS : fetched.named_marks_to_add,
+    draw_head_model_pane: () => {},
     mode: (mode_radios.find((radio) => radio.checked)?.value as Mode | undefined) ?? "move",
     plate_opacity: Number(opacity_slider.value),
     surfaces_visible: surfaces_checkbox.checked,
@@ -603,6 +669,38 @@ async function start(): Promise<void> {
     attach_view_gestures(state, view);
   }
 
+  state.draw_head_model_pane = start_head_model_pane(
+    PAGE_NAME,
+    { mesh_canvas: "head_model_mesh_canvas", overlay_canvas: "head_model_overlay_canvas", mesh_opacity_slider: "head_model_mesh_opacity" },
+    () => ({
+      template_document: state.tablet_document,
+      landmarks: state.editor.file.landmarks,
+      selected_landmark_index: state.editor.selected_landmark_index,
+      landmark_names_visible: names_checkbox.checked,
+      skull_visible: state.skull_visible,
+      is_picking_template_point: state.editor.is_adding_landmark,
+    }),
+    { on_template_point_picked: state.editor.add_landmark_at, on_landmark_tapped: state.editor.select_landmark },
+  );
+  names_checkbox.addEventListener("change", () => state.draw_head_model_pane());
+
+  // "bigger" on a view gives it most of the row, until "smaller" or another view's "bigger".
+  const enlarge_buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(".enlarge_pane_button"));
+  for (const button of enlarge_buttons) {
+    button.addEventListener("click", () => {
+      const figure = button.closest("figure")!;
+      const is_enlarged = !figure.classList.contains("enlarged");
+      for (const other of enlarge_buttons) {
+        other.closest("figure")!.classList.remove("enlarged");
+        other.textContent = "bigger";
+      }
+      figure.classList.toggle("enlarged", is_enlarged);
+      if (is_enlarged) button.textContent = "smaller";
+      for (const view of state.views) fit_view_to_plate(view);
+      draw_all_views(state); // the head model pane sees its own resize
+    });
+  }
+
   for (const radio of mode_radios) {
     radio.addEventListener("change", () => {
       if (radio.checked) state.mode = radio.value as Mode;
@@ -619,7 +717,7 @@ async function start(): Promise<void> {
   });
   skull_checkbox.addEventListener("change", () => {
     state.skull_visible = skull_checkbox.checked;
-    draw_all_views(state);
+    draw_everything(state);
   });
   window.addEventListener("resize", () => {
     for (const view of state.views) fit_view_to_plate(view);
@@ -628,18 +726,16 @@ async function start(): Promise<void> {
 
   document.getElementById("lift_button")!.addEventListener("click", () => void lift_hairline(state));
   document.getElementById("remove_lifted")!.addEventListener("click", () => void remove_lifted(state));
-  document.getElementById("clear_front_hairline")!.addEventListener("click", () => {
-    state.landmarks_file.front_hairline = [];
-    save_landmarks(state);
-    draw_all_views(state);
-  });
-  document.getElementById("clear_profile_hairline")!.addEventListener("click", () => {
-    state.landmarks_file.profile_hairline = [];
-    save_landmarks(state);
-    draw_all_views(state);
-  });
+  const clear_hairline = (is_front_view: boolean): void => {
+    state.editor.remember_for_undo();
+    if (is_front_view) state.editor.file.front_hairline = [];
+    else state.editor.file.profile_hairline = [];
+    state.editor.landmarks_edited();
+  };
+  document.getElementById("clear_front_hairline")!.addEventListener("click", () => clear_hairline(true));
+  document.getElementById("clear_profile_hairline")!.addEventListener("click", () => clear_hairline(false));
 
-  draw_all_views(state);
+  draw_everything(state);
   void reload_document_if_changed(state);
   setInterval(() => void reload_document_if_changed(state), POLL_MILLISECONDS);
 }
