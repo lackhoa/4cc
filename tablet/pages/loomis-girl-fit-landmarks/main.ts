@@ -7,6 +7,7 @@
 import "../../pages.css";
 import { default_camera } from "../../src/camera";
 import { TabletDocument, bezier_point, empty_document, stroke_control_points } from "../../src/document";
+import { create_fit_landmark_editor } from "../../src/fit_landmark_editing";
 import { fitted_document_from_landmarks, largest_vertex_distance_between_documents } from "../../src/landmark_fit";
 import {
   FRONT_REGION, FitLandmark, FitLandmarksFile, IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, LOOMIS_GIRL_FIT_LANDMARKS_NAME, PIXELS_PER_WORLD_UNIT,
@@ -31,23 +32,14 @@ const MIDLINE_STYLE = "#7a4bd6";
 
 // ---- state --------------------------------------------------------------------------
 
-let landmarks_file: FitLandmarksFile = starting_fit_landmarks_file();
-const undo_stack: FitLandmarksFile[] = []; // the file as it was before each edit, oldest first
-let selected_landmark_index: number | null = null;
 let template_document: TabletDocument = empty_document();
 let template_document_is_loaded = false;
 let fitted_document: TabletDocument | null = null; // document `loomis-school-girl` as on the server
-let is_adding_landmark = false;
 let marks_differ_from_last_fit = false;
 let marks_can_be_fitted = true;
 let failure_message = ""; // the last save or recompute that failed; cleared by the next one that works
 let plate_image: HTMLImageElement | null = null;
 
-const add_landmark_button = document.getElementById("add_landmark_button") as HTMLButtonElement;
-const landmark_name_field = document.getElementById("landmark_name_field") as HTMLInputElement;
-const remove_landmark_button = document.getElementById("remove_landmark_button") as HTMLButtonElement;
-const undo_button = document.getElementById("undo_landmark_edit_button") as HTMLButtonElement;
-const reset_button = document.getElementById("reset_landmarks_button") as HTMLButtonElement;
 const names_checkbox = document.getElementById("landmark_names_visible") as HTMLInputElement;
 const skull_checkbox = document.getElementById("skull_visible") as HTMLInputElement;
 const plate_opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement;
@@ -74,7 +66,7 @@ function stiffness_from_slider(slider_value: number): number {
 let save_queue: Promise<void> = Promise.resolve(); // one save at a time, in edit order
 
 function save_landmarks_file(): void {
-  const file_to_save = structuredClone(landmarks_file);
+  const file_to_save = structuredClone(editor.file);
   save_queue = save_queue.then(async () => {
     const is_saved = await save_fit_landmarks_file(LOOMIS_GIRL_FIT_LANDMARKS_NAME, file_to_save);
     if (!is_saved) console.error(`${PAGE_NAME}: saving the landmarks failed`);
@@ -86,80 +78,46 @@ function save_landmarks_file(): void {
 // Whether a fit of the marks as they are now gives the document that is on the server.
 function compare_marks_with_last_fit(): void {
   if (!template_document_is_loaded) return;
-  const fitted_now = fitted_document_from_landmarks(template_document, landmarks_file);
+  const fitted_now = fitted_document_from_landmarks(template_document, editor.file);
   marks_can_be_fitted = fitted_now !== null;
   marks_differ_from_last_fit = fitted_now !== null && (fitted_document === null || largest_vertex_distance_between_documents(fitted_now, fitted_document) > 1e-6);
 }
 
-// Call before changing `landmarks_file`, then `landmarks_edited` after.
-function remember_for_undo(): void {
-  undo_stack.push(structuredClone(landmarks_file));
-}
-
-function landmarks_edited(): void {
-  save_landmarks_file();
-  compare_marks_with_last_fit();
-  update_bottom_bar();
-  draw_everything();
-}
-
-function select_landmark(landmark_index: number | null): void {
-  selected_landmark_index = landmark_index;
-  update_bottom_bar();
-  draw_everything();
-}
-
-function undo_landmark_edit(): void {
-  const before = undo_stack.pop();
-  if (before === undefined) return;
-  landmarks_file = before;
-  if (selected_landmark_index !== null && selected_landmark_index >= landmarks_file.landmarks.length) selected_landmark_index = null;
-  landmarks_edited();
-}
-
-function remove_selected_landmark(): void {
-  if (selected_landmark_index === null) return;
-  remember_for_undo();
-  landmarks_file.landmarks.splice(selected_landmark_index, 1);
-  selected_landmark_index = null;
-  landmarks_edited();
-}
-
 // A new landmark starts with its marks where the template point itself is: no pull on the
 // fit until the marks are dragged.
-function add_landmark_at(template_point: TemplatePoint): void {
+function new_landmark_at(template_point: TemplatePoint, name: string): FitLandmark | null {
   const template_position = template_point_world_position(template_document, template_point);
-  if (template_position === null) return;
-  const names = new Set(landmarks_file.landmarks.map((landmark) => landmark.name));
-  let number = landmarks_file.landmarks.length + 1;
-  while (names.has(`landmark ${number}`)) number++;
-  remember_for_undo();
-  landmarks_file.landmarks.push({
-    name: `landmark ${number}`,
+  if (template_position === null) return null;
+  return {
+    name,
     template_point,
     front_half_width_pixels: template_position_is_on_midline(template_position) ? 0 : Math.abs(template_position.x) * PIXELS_PER_WORLD_UNIT,
     row_pixels: WORLD_Y_ZERO_ROW_PIXELS - template_position.y * PIXELS_PER_WORLD_UNIT,
     profile_column_pixels: PROFILE_PORION_X_PIXELS - template_position.z * PIXELS_PER_WORLD_UNIT,
     read_from_front: false,
     read_from_profile: false,
-  });
-  selected_landmark_index = landmarks_file.landmarks.length - 1;
-  is_adding_landmark = false;
-  landmarks_edited();
+  };
 }
+
+// Undo, selection, add / remove / rename / reset and the bottom bar's buttons for them.
+const editor = create_fit_landmark_editor<FitLandmarksFile>(starting_fit_landmarks_file(), {
+  starting_file: starting_fit_landmarks_file,
+  new_landmark: new_landmark_at,
+  on_edited: () => {
+    save_landmarks_file();
+    compare_marks_with_last_fit();
+    update_bottom_bar();
+    draw_everything();
+  },
+  on_view_changed: () => draw_everything(),
+});
 
 // ---- bottom bar ---------------------------------------------------------------------
 
 function update_bottom_bar(): void {
-  const selected = selected_landmark_index === null ? null : landmarks_file.landmarks[selected_landmark_index];
-  if (document.activeElement !== landmark_name_field) landmark_name_field.value = selected === null ? "" : selected.name;
-  landmark_name_field.disabled = selected === null;
-  remove_landmark_button.disabled = selected === null;
-  undo_button.disabled = undo_stack.length === 0;
-  add_landmark_button.classList.toggle("armed", is_adding_landmark);
-  add_landmark_button.textContent = is_adding_landmark ? "tap a point on the head model…" : "add landmark";
-  stiffness_slider.value = String(Math.cbrt(landmarks_file.stiffness));
-  stiffness_value.textContent = landmarks_file.stiffness === 0 ? "0" : landmarks_file.stiffness.toPrecision(2);
+  editor.update_bottom_bar();
+  stiffness_slider.value = String(Math.cbrt(editor.file.stiffness));
+  stiffness_value.textContent = editor.file.stiffness === 0 ? "0" : editor.file.stiffness.toPrecision(2);
   recompute_button.disabled = !template_document_is_loaded || !marks_can_be_fitted;
   fit_status.textContent =
     failure_message !== "" ? failure_message
@@ -207,7 +165,7 @@ function create_plate_pane(canvas_id: string, is_front: boolean): PlatePane {
 const plate_panes = [create_plate_pane("plate_front_canvas", true), create_plate_pane("plate_profile_canvas", false)];
 
 function plate_pixel_from_world(pane: PlatePane, p: V3): V2 {
-  return pane.is_front ? front_pixel_from_world(p, landmarks_file.front_midline_column_pixels) : profile_pixel_from_world(p);
+  return pane.is_front ? front_pixel_from_world(p, editor.file.front_midline_column_pixels) : profile_pixel_from_world(p);
 }
 
 function canvas_point_from_image_pixel(pane: PlatePane, image_pixel: V2): V2 {
@@ -225,7 +183,7 @@ function image_pixel_from_canvas_point(pane: PlatePane, canvas_point: V2): V2 {
 // The marks of one landmark in a pane: two in the front view when the landmark is paired.
 function plate_marks_of_landmark(pane: PlatePane, landmark: FitLandmark, landmark_index: number): PlateMark[] {
   if (!pane.is_front) return [{ landmark_index, side_sign: 1, image_pixel: { x: landmark.profile_column_pixels, y: landmark.row_pixels } }];
-  const midline = landmarks_file.front_midline_column_pixels;
+  const midline = editor.file.front_midline_column_pixels;
   if (landmark_is_on_midline(landmark)) return [{ landmark_index, side_sign: 1, image_pixel: { x: midline, y: landmark.row_pixels } }];
   return [1, -1].map((side_sign) => ({ landmark_index, side_sign, image_pixel: { x: midline + side_sign * landmark.front_half_width_pixels, y: landmark.row_pixels } }));
 }
@@ -233,11 +191,11 @@ function plate_marks_of_landmark(pane: PlatePane, landmark: FitLandmark, landmar
 function plate_mark_under_pointer(pane: PlatePane, canvas_point: V2): PlateMark | null {
   let nearest: PlateMark | null = null;
   let nearest_distance = GRAB_RADIUS_PIXELS;
-  landmarks_file.landmarks.forEach((landmark, landmark_index) => {
+  editor.file.landmarks.forEach((landmark, landmark_index) => {
     for (const mark of plate_marks_of_landmark(pane, landmark, landmark_index)) {
       const mark_point = canvas_point_from_image_pixel(pane, mark.image_pixel);
       let distance = Math.hypot(mark_point.x - canvas_point.x, mark_point.y - canvas_point.y);
-      if (landmark_index === selected_landmark_index) distance *= 0.5; // where marks crowd, the selected one is the one grabbed
+      if (landmark_index === editor.selected_landmark_index) distance *= 0.5; // where marks crowd, the selected one is the one grabbed
       if (distance <= nearest_distance) {
         nearest = mark;
         nearest_distance = distance;
@@ -252,18 +210,18 @@ const MIDLINE_HANDLE_CENTER_Y_PIXELS = 12;
 
 function midline_handle_is_under_pointer(pane: PlatePane, canvas_point: V2): boolean {
   if (!pane.is_front) return false;
-  const handle_x = canvas_point_from_image_pixel(pane, { x: landmarks_file.front_midline_column_pixels, y: 0 }).x;
+  const handle_x = canvas_point_from_image_pixel(pane, { x: editor.file.front_midline_column_pixels, y: 0 }).x;
   return Math.hypot(handle_x - canvas_point.x, MIDLINE_HANDLE_CENTER_Y_PIXELS - canvas_point.y) <= GRAB_RADIUS_PIXELS;
 }
 
 // Moves the dragged mark to the pointer. The view a mark is dragged in becomes a view the
 // landmark is read from.
 function plate_mark_drag(pane: PlatePane, drag: PlateDrag & { kind: "mark" }, canvas_point: V2): void {
-  const landmark = landmarks_file.landmarks[drag.landmark_index];
+  const landmark = editor.file.landmarks[drag.landmark_index];
   const image_pixel = image_pixel_from_canvas_point(pane, { x: canvas_point.x + drag.pointer_to_mark_offset.x, y: canvas_point.y + drag.pointer_to_mark_offset.y });
   landmark.row_pixels = image_pixel.y;
   if (pane.is_front) {
-    if (!landmark_is_on_midline(landmark)) landmark.front_half_width_pixels = Math.max(0, (image_pixel.x - landmarks_file.front_midline_column_pixels) * drag.side_sign);
+    if (!landmark_is_on_midline(landmark)) landmark.front_half_width_pixels = Math.max(0, (image_pixel.x - editor.file.front_midline_column_pixels) * drag.side_sign);
     landmark.read_from_front = true;
   } else {
     landmark.profile_column_pixels = image_pixel.x;
@@ -303,7 +261,7 @@ function draw_plate_pane(pane: PlatePane): void {
   }
 
   if (pane.is_front) {
-    const midline = landmarks_file.front_midline_column_pixels;
+    const midline = editor.file.front_midline_column_pixels;
     context.strokeStyle = MIDLINE_STYLE;
     context.lineWidth = 1 / scale;
     context.setLineDash([6 / scale, 4 / scale]);
@@ -335,8 +293,8 @@ function draw_plate_pane(pane: PlatePane): void {
   }
 
   const labels: { text: string; image_pixel: V2; is_selected: boolean; style: string }[] = [];
-  landmarks_file.landmarks.forEach((landmark, landmark_index) => {
-    const is_selected = landmark_index === selected_landmark_index;
+  editor.file.landmarks.forEach((landmark, landmark_index) => {
+    const is_selected = landmark_index === editor.selected_landmark_index;
     const template_position = template_point_world_position(template_document, landmark.template_point);
     const is_missing_template_point = template_document_is_loaded && template_position === null;
     const is_read_from_this_view = pane.is_front ? landmark.read_from_front : landmark.read_from_profile;
@@ -391,7 +349,7 @@ function draw_plate_pane(pane: PlatePane): void {
     context.fillText(label.text, point.x + 9, point.y - 7);
   }
   if (pane.is_front) {
-    const handle_x = canvas_point_from_image_pixel(pane, { x: landmarks_file.front_midline_column_pixels, y: 0 }).x;
+    const handle_x = canvas_point_from_image_pixel(pane, { x: editor.file.front_midline_column_pixels, y: 0 }).x;
     context.fillStyle = MIDLINE_STYLE;
     context.beginPath();
     context.moveTo(handle_x - 9, MIDLINE_HANDLE_CENTER_Y_PIXELS - 9);
@@ -433,10 +391,10 @@ function attach_plate_pane_gestures(pane: PlatePane): void {
       const now_ms = performance.now();
       if (now_ms - pane.last_empty_tap_time_ms < 350) fit_plate_pane_to_region(pane);
       pane.last_empty_tap_time_ms = now_ms;
-      select_landmark(null);
+      editor.select_landmark(null);
       return;
     }
-    if (drag.has_moved) landmarks_edited();
+    if (drag.has_moved) editor.landmarks_edited();
   };
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -454,7 +412,7 @@ function attach_plate_pane_gestures(pane: PlatePane): void {
     if (mark !== null) {
       const mark_point = canvas_point_from_image_pixel(pane, mark.image_pixel);
       pane.drag = { kind: "mark", landmark_index: mark.landmark_index, side_sign: mark.side_sign, pointer_to_mark_offset: { x: mark_point.x - canvas_point.x, y: mark_point.y - canvas_point.y }, has_moved: false };
-      select_landmark(mark.landmark_index);
+      editor.select_landmark(mark.landmark_index);
     } else if (midline_handle_is_under_pointer(pane, canvas_point)) {
       pane.drag = { kind: "midline", has_moved: false };
     } else {
@@ -491,11 +449,11 @@ function attach_plate_pane_gestures(pane: PlatePane): void {
     }
     pane.pointers.set(e.pointerId, canvas_point);
     if (!drag.has_moved) {
-      remember_for_undo();
+      editor.remember_for_undo();
       drag.has_moved = true;
     }
     if (drag.kind === "mark") plate_mark_drag(pane, drag, canvas_point);
-    else landmarks_file.front_midline_column_pixels = image_pixel_from_canvas_point(pane, canvas_point).x;
+    else editor.file.front_midline_column_pixels = image_pixel_from_canvas_point(pane, canvas_point).x;
     draw_plate_panes();
   });
 
@@ -533,13 +491,13 @@ function draw_plate_panes(): void {
 const draw_head_model_pane = start_head_model_pane(
   () => ({
     template_document,
-    landmarks: landmarks_file.landmarks,
-    selected_landmark_index,
+    landmarks: editor.file.landmarks,
+    selected_landmark_index: editor.selected_landmark_index,
     landmark_names_visible: names_checkbox.checked,
     skull_visible: skull_checkbox.checked,
-    is_picking_template_point: is_adding_landmark,
+    is_picking_template_point: editor.is_adding_landmark,
   }),
-  { on_template_point_picked: add_landmark_at, on_landmark_tapped: select_landmark },
+  { on_template_point_picked: editor.add_landmark_at, on_landmark_tapped: editor.select_landmark },
 );
 
 function draw_everything(): void {
@@ -552,7 +510,7 @@ function draw_everything(): void {
 // Fits the template to the marks and writes the result as document `loomis-school-girl`,
 // over whatever that document held. The document keeps its camera.
 async function recompute_fit(): Promise<void> {
-  const fitted_now = fitted_document_from_landmarks(template_document, landmarks_file);
+  const fitted_now = fitted_document_from_landmarks(template_document, editor.file);
   if (fitted_now === null) return;
   recompute_button.disabled = true;
   const url = `/api/documents/${FITTED_DOCUMENT_NAME}`;
@@ -599,66 +557,24 @@ enlarge_pane_buttons.forEach((button) => {
   });
 });
 
-add_landmark_button.addEventListener("click", () => {
-  is_adding_landmark = !is_adding_landmark;
-  update_bottom_bar();
-  draw_head_model_pane();
-});
-remove_landmark_button.addEventListener("click", remove_selected_landmark);
-undo_button.addEventListener("click", undo_landmark_edit);
-reset_button.addEventListener("click", () => {
-  remember_for_undo();
-  landmarks_file = starting_fit_landmarks_file();
-  selected_landmark_index = null;
-  landmarks_edited();
-});
 recompute_button.addEventListener("click", () => void recompute_fit());
-
-landmark_name_field.addEventListener("change", () => {
-  const name = landmark_name_field.value.trim();
-  if (selected_landmark_index === null || name === "" || name === landmarks_file.landmarks[selected_landmark_index].name) {
-    update_bottom_bar();
-    return;
-  }
-  remember_for_undo();
-  landmarks_file.landmarks[selected_landmark_index].name = name;
-  landmarks_edited();
-});
-landmark_name_field.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === "Escape") landmark_name_field.blur();
-});
 
 // Dragging the stiffness slider is one edit: remembered for undo when the drag starts, saved when it ends.
 let stiffness_drag_is_remembered = false;
 stiffness_slider.addEventListener("input", () => {
-  if (!stiffness_drag_is_remembered) remember_for_undo();
+  if (!stiffness_drag_is_remembered) editor.remember_for_undo();
   stiffness_drag_is_remembered = true;
-  landmarks_file.stiffness = stiffness_from_slider(Number(stiffness_slider.value));
-  stiffness_value.textContent = landmarks_file.stiffness === 0 ? "0" : landmarks_file.stiffness.toPrecision(2);
+  editor.file.stiffness = stiffness_from_slider(Number(stiffness_slider.value));
+  stiffness_value.textContent = editor.file.stiffness === 0 ? "0" : editor.file.stiffness.toPrecision(2);
 });
 stiffness_slider.addEventListener("change", () => {
   stiffness_drag_is_remembered = false;
-  landmarks_edited();
+  editor.landmarks_edited();
 });
 
 names_checkbox.addEventListener("change", draw_everything);
 skull_checkbox.addEventListener("change", draw_everything);
 plate_opacity_slider.addEventListener("input", draw_plate_panes);
-
-window.addEventListener("keydown", (e) => {
-  if (document.activeElement === landmark_name_field) return; // the keys belong to the name being typed
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-    e.preventDefault();
-    undo_landmark_edit();
-  } else if (e.key === "Delete") {
-    e.preventDefault();
-    remove_selected_landmark();
-  } else if (e.key === "Escape" && is_adding_landmark) {
-    is_adding_landmark = false;
-    update_bottom_bar();
-    draw_head_model_pane();
-  }
-});
 
 async function fetch_document(document_name: string): Promise<TabletDocument | null> {
   try {
@@ -695,7 +611,7 @@ async function load_everything(): Promise<void> {
     fetch_fit_landmarks_file(LOOMIS_GIRL_FIT_LANDMARKS_NAME), fetch_document(TEMPLATE_DOCUMENT_NAME), fetch_document(FITTED_DOCUMENT_NAME),
   ]);
   if (fetched_landmarks_file === null) failure_message = "could not read the saved marks: showing the starting ones";
-  else landmarks_file = fetched_landmarks_file;
+  else editor.file = fetched_landmarks_file;
   if (fetched_template === null) failure_message = `could not read document ${TEMPLATE_DOCUMENT_NAME}`;
   else {
     template_document = fetched_template;
@@ -705,7 +621,7 @@ async function load_everything(): Promise<void> {
   compare_marks_with_last_fit();
   update_bottom_bar();
   draw_everything();
-  console.log(`${PAGE_NAME}: ${landmarks_file.landmarks.length} landmarks, template ${template_document.vertices.length} vertices, fitted document ${fitted_document === null ? "missing" : "loaded"}`);
+  console.log(`${PAGE_NAME}: ${editor.file.landmarks.length} landmarks, template ${template_document.vertices.length} vertices, fitted document ${fitted_document === null ? "missing" : "loaded"}`);
 }
 
 update_bottom_bar();
