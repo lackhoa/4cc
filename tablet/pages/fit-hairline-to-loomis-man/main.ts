@@ -456,13 +456,18 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   };
   const drawing_hairline = (): boolean => placed_cubic !== null || dragged_handle !== null;
 
+  // Chrome's middle-click autoscroll starts on mousedown, not pointerdown.
+  canvas.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     try { canvas.setPointerCapture(e.pointerId); } catch {} // throws for synthetic events
     const point = canvas_point(e);
     pointer_positions.set(e.pointerId, point);
     moved_since_pointer_down = false;
+    // The middle mouse button pans in every mode (the fall-through below).
+    const middle_button = e.pointerType === "mouse" && e.button === 1;
     if (pointer_positions.size === 1) {
+      if (middle_button) return;
       dragged_mark = state.mode === "landmarks" ? mark_near(state, view, point) : null;
       if (dragged_mark !== null) state.editor.select_landmark(dragged_mark);
       if (state.mode === "hairline") {
