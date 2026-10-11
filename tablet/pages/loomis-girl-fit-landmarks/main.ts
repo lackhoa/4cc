@@ -493,6 +493,7 @@ const draw_head_model_pane = start_head_model_pane(
   { mesh_canvas: "head_model_mesh_canvas", overlay_canvas: "head_model_overlay_canvas", mesh_opacity_slider: "head_model_mesh_opacity" },
   () => ({
     template_document,
+    document_revision: template_document_is_loaded ? "loaded" : "", // read once, never edited here
     landmarks: editor.file.landmarks,
     selected_landmark_index: editor.selected_landmark_index,
     landmark_names_visible: names_checkbox.checked,

@@ -26,7 +26,7 @@ import { start_head_model_pane } from "../../src/head_model_pane";
 import { V2, V3 } from "../../src/math";
 import { apply_document_state, list_documents_from_server, serialize_document_state } from "../../src/persistence";
 import { Rgb } from "../../src/vertex_sink";
-import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../fit-head-to-loomis-girl/head_meshes";
+import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../../src/head_meshes";
 import { PlateRegion, PlateViewTransform, TemplatePoint, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
 import {
   FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
@@ -674,6 +674,7 @@ async function start(): Promise<void> {
     { mesh_canvas: "head_model_mesh_canvas", overlay_canvas: "head_model_overlay_canvas", mesh_opacity_slider: "head_model_mesh_opacity" },
     () => ({
       template_document: state.tablet_document,
+      document_revision: state.revision ?? "",
       landmarks: state.editor.file.landmarks,
       selected_landmark_index: state.editor.selected_landmark_index,
       landmark_names_visible: names_checkbox.checked,

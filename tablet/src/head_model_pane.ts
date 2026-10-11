@@ -1,31 +1,38 @@
 // The head model pane of the landmark pages (loomis-girl-fit-landmarks,
-// fit-hairline-to-loomis-man): the template drawing (document `skull-zanatomy`) as lines
-// over the Z-Anatomy skin mesh, with a dot at every landmark's template point. Drag orbits
-// (middle button pans, wheel zooms); a tap picks: a landmark, or, while the page is adding
-// a landmark, the template point the new landmark gets.
+// fit-hairline-to-loomis-man): the template drawing (document `skull-zanatomy`) as its
+// surfaces and strokes with depth (head_meshes.ts, plan-hairline-reference-plate Q13),
+// with a marker at every landmark's template point, hidden when the head is in front of
+// it (Q14). Drag orbits (middle button pans, wheel zooms); a tap picks: a landmark, or,
+// while the page is adding a landmark, the template point the new landmark gets. Only
+// what is visible can be picked: a tap on the cheek adds nothing on the far ear.
 //
-// Two canvases stacked: WebGL for the mesh, 2D on top for lines, dots and names. The lines
-// are not hidden by the mesh, so the far side of the head shows through.
+// Two canvases stacked: WebGL for the head and the markers, 2D on top for the names.
 import { OrbitCamera, camera_eye, camera_screen_projector, camera_view_projection } from "./camera";
 import { TabletDocument, bezier_point, stroke_control_points, vertex_world_position } from "./document";
 import { attach_orbit_controls } from "./explainer/orbit_controls";
 import { EditableLandmark } from "./fit_landmark_editing";
+import { HeadMeshes, create_head_meshes, draw_head_meshes, head_surface_hides_point, update_head_meshes } from "./head_meshes";
 import { TemplatePoint, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
 import { V2, V3, v3, v3_length, v3_sub } from "./math";
-import { ReferenceMesh, append_reference_mesh } from "./reference";
-import { load_skin_reference_mesh } from "./skin_reference_mesh";
-import { FLOATS_PER_TRANSLUCENT_VERTEX, create_translucent_mesh, draw_mesh_translucent, set_translucent_mesh } from "./render";
-import { FLOATS_PER_VERTEX, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
+import { Rgb } from "./vertex_sink";
 
 const TAP_RADIUS_PIXELS = 14;
-const SKIN_STROKE_STYLE = "#ff6b6e";
-const SKULL_STROKE_STYLE = "#7fb3ff";
-const LANDMARK_STYLE = "#3fd97a";
-const SELECTED_LANDMARK_STYLE = "#ff2fb4";
+const SKIN_STROKE_COLOR: Rgb = { r: 1, g: 0.42, b: 0.43 };
+const SKULL_STROKE_COLOR: Rgb = { r: 0.5, g: 0.7, b: 1 };
+const LANDMARK_COLOR: Rgb = { r: 0.25, g: 0.85, b: 0.48 };
+const SELECTED_LANDMARK_COLOR: Rgb = { r: 1, g: 0.18, b: 0.7 };
+const CANDIDATE_COLOR: Rgb = { r: 1, g: 1, b: 1 };
+const LANDMARK_RADIUS = 0.02; // world units
+const SELECTED_LANDMARK_RADIUS = 0.03;
+const CANDIDATE_RADIUS = 0.008;
+// A point this far behind the surface in front of it still counts as on that surface
+// (the landmarks sit on the strokes, which lie on the patches' surfaces, give or take).
+const ON_SURFACE_TOLERANCE = 0.02;
 
 // What the pane draws, asked from the page on every draw.
 export type HeadModelScene = {
   template_document: TabletDocument;
+  document_revision: string; // any string that changes when the document does (the meshes are rebuilt then)
   landmarks: EditableLandmark[]; // a page's own landmark type: only `name` and `template_point` are read
   selected_landmark_index: number | null;
   landmark_names_visible: boolean;
@@ -45,30 +52,30 @@ function mirrored(p: V3): V3 {
   return v3(-p.x, p.y, p.z);
 }
 
-// The candidate under the tap. The lines are see-through, so a tap can cover points of
-// both the near and the far side of the head: the near ones win, then the one closest to
-// the tap. A candidate is also hit through its mirror image on the other side of the face.
-function candidate_under_tap<Candidate extends { world_position: V3 }>(candidates: Candidate[], tap: V2, project: (world: V3) => V2 | null, eye: V3): Candidate | null {
-  const NEAR_SIDE_DEPTH = 0.15; // world units behind the nearest hit that still count as the near side
-  const hits: { candidate: Candidate; tap_distance: number; eye_distance: number }[] = [];
+// The candidate under the tap: among the candidates within reach that the head does
+// not hide, the one closest to the tap. A candidate is also hit through its mirror image
+// on the other side of the face.
+function candidate_under_tap<Candidate extends { world_position: V3 }>(
+  candidates: Candidate[], tap: V2, project: (world: V3) => V2 | null, is_hidden: (world: V3) => boolean,
+): Candidate | null {
+  let best: Candidate | null = null;
+  let best_distance = TAP_RADIUS_PIXELS;
   for (const candidate of candidates) {
     for (const position of [candidate.world_position, mirrored(candidate.world_position)]) {
       const screen = project(position);
       if (screen === null) continue;
       const tap_distance = Math.hypot(screen.x - tap.x, screen.y - tap.y);
-      if (tap_distance <= TAP_RADIUS_PIXELS) hits.push({ candidate, tap_distance, eye_distance: v3_length(v3_sub(position, eye)) });
+      if (tap_distance >= best_distance || is_hidden(position)) continue;
+      best = candidate;
+      best_distance = tap_distance;
     }
   }
-  if (hits.length === 0) return null;
-  const nearest_eye_distance = Math.min(...hits.map((hit) => hit.eye_distance));
-  const near_hits = hits.filter((hit) => hit.eye_distance <= nearest_eye_distance + NEAR_SIDE_DEPTH);
-  near_hits.sort((a, b) => a.tap_distance - b.tap_distance);
-  return near_hits[0].candidate;
+  return best;
 }
 
 // Returns the function that draws the pane again (call it when the scene changed).
-// `page_name` names the page in the skin mesh's loading errors; `element_ids` are the
-// page's two stacked canvases (the WebGL one below) and its mesh opacity slider.
+// `page_name` names the page in the pane's errors; `element_ids` are the page's two
+// stacked canvases (the WebGL one below) and its surface opacity slider.
 export function start_head_model_pane(
   page_name: string,
   element_ids: { mesh_canvas: string; overlay_canvas: string; mesh_opacity_slider: string },
@@ -81,12 +88,8 @@ export function start_head_model_pane(
   const camera: OrbitCamera = { pivot: v3(0, 0.2, 0), yaw: 0.6, pitch: 0.05, distance: 3.8 };
 
   const gl = mesh_canvas.getContext("webgl");
-  if (gl === null) console.error(`${page_name}: no WebGL, the head model pane shows lines only`);
-  const translucent_mesh = gl === null ? null : create_translucent_mesh(gl);
-  let skin_mesh: ReferenceMesh | null = null;
-  const shaded_vertices = create_vertex_sink(1024);
-  let translucent_vertices = new Float32Array(0);
-  let uploaded_shading = ""; // camera direction and opacity the uploaded vertices were shaded for
+  if (gl === null) console.error(`${page_name}: no WebGL, the head model pane shows names only`);
+  const head_meshes: HeadMeshes | null = gl === null ? null : create_head_meshes(gl);
 
   const size_canvas_to_pane = (canvas: HTMLCanvasElement): void => {
     const device_pixel_ratio = window.devicePixelRatio || 1;
@@ -98,33 +101,8 @@ export function start_head_model_pane(
     }
   };
 
-  const draw_mesh = (): void => {
-    if (gl === null || translucent_mesh === null) return;
-    size_canvas_to_pane(mesh_canvas);
-    gl.viewport(0, 0, mesh_canvas.width, mesh_canvas.height);
-    gl.clearColor(0.078, 0.086, 0.11, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    const opacity = Number(mesh_opacity_slider.value);
-    if (skin_mesh === null || opacity <= 0 || mesh_canvas.height === 0) return;
-    // The shading is a headlight: it changes when the camera turns.
-    const shading = `${camera.yaw} ${camera.pitch} ${opacity}`;
-    if (shading !== uploaded_shading) {
-      reset_vertex_sink(shaded_vertices);
-      append_reference_mesh(skin_mesh, camera, shaded_vertices);
-      const vertex_count = shaded_vertices.length / FLOATS_PER_VERTEX;
-      const float_count = vertex_count * FLOATS_PER_TRANSLUCENT_VERTEX;
-      if (translucent_vertices.length !== float_count) translucent_vertices = new Float32Array(float_count);
-      for (let vertex = 0; vertex < vertex_count; vertex++) {
-        const source = vertex * FLOATS_PER_VERTEX;
-        const target = vertex * FLOATS_PER_TRANSLUCENT_VERTEX;
-        for (let i = 0; i < FLOATS_PER_VERTEX; i++) translucent_vertices[target + i] = shaded_vertices.data[source + i];
-        translucent_vertices[target + FLOATS_PER_VERTEX] = opacity;
-      }
-      set_translucent_mesh(translucent_mesh, translucent_vertices);
-      uploaded_shading = shading;
-    }
-    draw_mesh_translucent(translucent_mesh, camera_view_projection(camera, mesh_canvas.width / mesh_canvas.height), camera_eye(camera));
-  };
+  // Whether the head hides `position` from the camera (false before the meshes are built).
+  const is_hidden = (position: V3): boolean => head_meshes !== null && head_surface_hides_point(head_meshes, camera_eye(camera), position, ON_SURFACE_TOLERANCE);
 
   const visible_strokes = (scene: HeadModelScene) => scene.template_document.strokes.filter((stroke) => stroke.layer === "skin" || scene.skull_visible);
 
@@ -151,8 +129,45 @@ export function start_head_model_pane(
     return candidates;
   };
 
-  const draw_overlay = (): void => {
-    const scene = scene_now();
+  // The landmarks' template positions, null for a landmark not in the template (only the
+  // plate panes show that one).
+  const landmark_positions = (scene: HeadModelScene): (V3 | null)[] =>
+    scene.landmarks.map((landmark) => template_point_world_position(scene.template_document, landmark.template_point));
+
+  const draw_head = (scene: HeadModelScene): void => {
+    if (gl === null || head_meshes === null) return;
+    size_canvas_to_pane(mesh_canvas);
+    gl.viewport(0, 0, mesh_canvas.width, mesh_canvas.height);
+    gl.clearColor(0.078, 0.086, 0.11, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    if (mesh_canvas.height === 0) return;
+    // The document holds one side of the head, the meshes mirror it; a midline landmark
+    // is one marker, any other is mirrored with the head.
+    const markers: { position: V3; color: Rgb; radius: number }[] = [];
+    landmark_positions(scene).forEach((position, landmark_index) => {
+      if (position === null) return;
+      const is_selected = landmark_index === scene.selected_landmark_index;
+      markers.push({ position, color: is_selected ? SELECTED_LANDMARK_COLOR : LANDMARK_COLOR, radius: is_selected ? SELECTED_LANDMARK_RADIUS : LANDMARK_RADIUS });
+    });
+    if (scene.is_picking_template_point) {
+      for (const candidate of vertex_candidates(scene)) markers.push({ position: candidate.world_position, color: CANDIDATE_COLOR, radius: CANDIDATE_RADIUS });
+    }
+    update_head_meshes(head_meshes, scene.template_document, scene.document_revision, camera, {
+      skull_visible: scene.skull_visible,
+      surfaces_visible: true,
+      strokes_visible: true,
+      mirrored: true,
+      surface_opacity: Number(mesh_opacity_slider.value),
+      skin_stroke_color: SKIN_STROKE_COLOR,
+      skull_stroke_color: SKULL_STROKE_COLOR,
+      markers,
+      markers_depth_tested: true,
+    });
+    draw_head_meshes(head_meshes, camera_view_projection(camera, mesh_canvas.width / mesh_canvas.height), camera);
+  };
+
+  // The names, beside the markers the head does not hide.
+  const draw_overlay = (scene: HeadModelScene): void => {
     size_canvas_to_pane(overlay_canvas);
     const device_pixel_ratio = window.devicePixelRatio || 1;
     const width = overlay_canvas.clientWidth;
@@ -164,58 +179,24 @@ export function start_head_model_pane(
     // From here on, coordinates are CSS pixels.
     context.setTransform(device_pixel_ratio, 0, 0, device_pixel_ratio, 0, 0);
     const project = camera_screen_projector(camera, width, height);
-
-    context.lineJoin = "round";
-    for (const stroke of visible_strokes(scene)) {
-      const control_points = stroke_control_points(stroke, scene.template_document);
-      context.strokeStyle = stroke.layer === "skin" ? SKIN_STROKE_STYLE : SKULL_STROKE_STYLE;
-      context.lineWidth = stroke.layer === "skin" ? 1.6 : 1;
-      // The document holds one side of the head; the other side is its mirror.
-      for (const side of [(p: V3) => p, mirrored]) {
-        context.beginPath();
-        let pen_is_down = false;
-        for (let i = 0; i <= 24; i++) {
-          const screen = project(side(bezier_point(control_points, i / 24)));
-          if (screen === null) { pen_is_down = false; continue; }
-          if (pen_is_down) context.lineTo(screen.x, screen.y); else context.moveTo(screen.x, screen.y);
-          pen_is_down = true;
-        }
-        context.stroke();
-      }
-    }
-
-    if (scene.is_picking_template_point) {
-      context.fillStyle = "#ffffff";
-      for (const candidate of vertex_candidates(scene)) {
-        const screen = project(candidate.world_position);
-        if (screen === null) continue;
-        context.beginPath();
-        context.arc(screen.x, screen.y, 2.5, 0, 2 * Math.PI);
-        context.fill();
-      }
-    }
-
-    scene.landmarks.forEach((landmark, landmark_index) => {
-      const template_position = template_point_world_position(scene.template_document, landmark.template_point);
-      if (template_position === null) return; // not in the template: only the plate panes show this landmark
+    landmark_positions(scene).forEach((template_position, landmark_index) => {
+      if (template_position === null) return;
       const is_selected = landmark_index === scene.selected_landmark_index;
-      const style = is_selected ? SELECTED_LANDMARK_STYLE : LANDMARK_STYLE;
+      if (!(is_selected || scene.landmark_names_visible)) return;
+      // The name goes by the side nearer the camera, if the head does not hide it.
       const positions = template_position_is_on_midline(template_position) ? [template_position] : [template_position, mirrored(template_position)];
-      positions.forEach((position, position_index) => {
-        const screen = project(position);
-        if (screen === null) return;
-        context.fillStyle = style;
-        context.beginPath();
-        context.arc(screen.x, screen.y, is_selected ? 5.5 : 3.5, 0, 2 * Math.PI);
-        context.fill();
-        if (position_index === 0 && (is_selected || scene.landmark_names_visible)) {
-          context.font = is_selected ? "bold 15px system-ui, sans-serif" : "12px system-ui, sans-serif";
-          context.lineWidth = 3;
-          context.strokeStyle = "#14161c";
-          context.strokeText(landmark.name, screen.x + 8, screen.y - 6);
-          context.fillText(landmark.name, screen.x + 8, screen.y - 6);
-        }
-      });
+      const eye = camera_eye(camera);
+      positions.sort((a, b) => v3_length(v3_sub(a, eye)) - v3_length(v3_sub(b, eye)));
+      const shown = positions.find((position) => !is_hidden(position));
+      if (shown === undefined) return;
+      const screen = project(shown);
+      if (screen === null) return;
+      context.font = is_selected ? "bold 15px system-ui, sans-serif" : "12px system-ui, sans-serif";
+      context.lineWidth = 3;
+      context.strokeStyle = "#14161c";
+      context.fillStyle = is_selected ? "#ff2fb4" : "#3fd97a";
+      context.strokeText(scene.landmarks[landmark_index].name, screen.x + 8, screen.y - 6);
+      context.fillText(scene.landmarks[landmark_index].name, screen.x + 8, screen.y - 6);
     });
   };
 
@@ -227,25 +208,24 @@ export function start_head_model_pane(
       camera.distance *= Math.max(1, WIDTH_PER_HEIGHT_THE_HEAD_FITS_IN / (overlay_canvas.clientWidth / overlay_canvas.clientHeight));
       camera_is_fitted_to_pane = true;
     }
-    draw_mesh();
-    draw_overlay();
+    const scene = scene_now();
+    draw_head(scene);
+    draw_overlay(scene);
   };
 
   const tap = (tap_point: V2): void => {
     const scene = scene_now();
     const project = camera_screen_projector(camera, overlay_canvas.clientWidth, overlay_canvas.clientHeight);
-    const eye = camera_eye(camera);
     if (scene.is_picking_template_point) {
-      const picked = candidate_under_tap(vertex_candidates(scene), tap_point, project, eye) ?? candidate_under_tap(stroke_candidates(scene), tap_point, project, eye);
+      const picked = candidate_under_tap(vertex_candidates(scene), tap_point, project, is_hidden) ?? candidate_under_tap(stroke_candidates(scene), tap_point, project, is_hidden);
       if (picked !== null) listeners.on_template_point_picked(picked.template_point);
       return;
     }
     const landmark_candidates: { landmark_index: number; world_position: V3 }[] = [];
-    scene.landmarks.forEach((landmark, landmark_index) => {
-      const world_position = template_point_world_position(scene.template_document, landmark.template_point);
+    landmark_positions(scene).forEach((world_position, landmark_index) => {
       if (world_position !== null) landmark_candidates.push({ landmark_index, world_position });
     });
-    const tapped = candidate_under_tap(landmark_candidates, tap_point, project, eye);
+    const tapped = candidate_under_tap(landmark_candidates, tap_point, project, is_hidden);
     listeners.on_landmark_tapped(tapped === null ? null : tapped.landmark_index);
   };
 
@@ -271,11 +251,6 @@ export function start_head_model_pane(
   attach_orbit_controls([overlay_canvas], camera, draw);
   mesh_opacity_slider.addEventListener("input", draw);
   new ResizeObserver(draw).observe(overlay_canvas);
-
-  void load_skin_reference_mesh(page_name).then((mesh) => {
-    skin_mesh = mesh;
-    draw();
-  });
   draw();
   return draw;
 }

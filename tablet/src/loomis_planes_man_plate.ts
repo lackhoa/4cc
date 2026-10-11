@@ -10,7 +10,7 @@
 // starting ones are the brow, nasion and nose base in both views and the ear hole
 // (`porion_r`) in profile. Both views are orthographic; the profile faces left, so world
 // z grows to the viewer's left, as on the girl plate (src/loomis_girl_plate.ts).
-import { TabletDocument } from "./document";
+import { TabletDocument, VertexId } from "./document";
 import { TemplatePoint, template_point_world_position } from "./loomis_girl_plate";
 import { V2, V3, v3 } from "./math";
 
@@ -36,35 +36,37 @@ export type LoomisPlanesManLandmarksFile = {
   lifted_stroke_ids: number[];
 };
 
-// A landmark given by the head vertex's name instead of a template point: the starting
-// landmarks (read off the scans by eye, 2026-10-11, for Khoa to drag into place), and
-// what a version 1 file converts to. Names resolve to vertex ids once the document is
-// loaded (`landmarks_from_named_marks`).
-export type NamedMark = { name: string; vertex_name: string; front: V2 | null; profile: V2 | null };
+// A landmark given by its head vertex, by name or by id, instead of a template point: the
+// starting landmarks (read off the scans by eye, 2026-10-11, for Khoa to drag into
+// place), and what a version 1 file converts to. They become landmarks once the document
+// is loaded (`landmarks_from_named_marks`). The vertices are skin points (plan Q12): the
+// document's `nasion` is the skull's, so the nasion is skin vertex 73, the unnamed vertex
+// the girl page's starting landmarks call "nasion".
+export type NamedMark = { name: string; vertex: string | VertexId; front: V2 | null; profile: V2 | null };
 
 export const STARTING_MARKS: readonly NamedMark[] = [
-  { name: "brow", vertex_name: "brow", front: { x: 207, y: 255 }, profile: { x: 120, y: 210 } },
-  { name: "nasion", vertex_name: "nasion", front: { x: 207, y: 275 }, profile: { x: 112, y: 232 } },
-  { name: "nose base", vertex_name: "nose_base", front: { x: 207, y: 370 }, profile: { x: 60, y: 365 } },
-  { name: "ear hole", vertex_name: "porion_r", front: null, profile: { x: 340, y: 290 } },
+  { name: "brow", vertex: "brow", front: { x: 207, y: 255 }, profile: { x: 120, y: 210 } },
+  { name: "nasion", vertex: 73, front: { x: 207, y: 275 }, profile: { x: 112, y: 232 } },
+  { name: "nose base", vertex: "nose_base", front: { x: 207, y: 370 }, profile: { x: 60, y: 365 } },
+  { name: "ear hole", vertex: "porion_r", front: null, profile: { x: 340, y: 290 } },
 ];
 
 export function starting_landmarks_file(): LoomisPlanesManLandmarksFile {
   return { version: 2, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: [] };
 }
 
-// Null when the document has none of the named vertices (not loaded yet); a mark whose
+// Null when the document has none of the marks' vertices (not loaded yet); a mark whose
 // vertex the document lacks is dropped with a console error.
 export function landmarks_from_named_marks(tablet_document: TabletDocument, marks: readonly NamedMark[]): PlateLandmark[] | null {
   const landmarks: PlateLandmark[] = [];
   for (const mark of marks) {
-    const vertex = tablet_document.vertices.find((v) => v.name === mark.vertex_name);
+    const vertex = tablet_document.vertices.find((v) => (typeof mark.vertex === "string" ? v.name === mark.vertex : v.id === mark.vertex));
     if (vertex === undefined) continue;
     landmarks.push({ name: mark.name, template_point: { vertex: vertex.id }, front: mark.front, profile: mark.profile });
   }
   if (landmarks.length === 0) return null;
   for (const mark of marks) {
-    if (!landmarks.some((landmark) => landmark.name === mark.name)) console.error(`landmark '${mark.name}': the head has no vertex named '${mark.vertex_name}', dropped`);
+    if (!landmarks.some((landmark) => landmark.name === mark.name)) console.error(`landmark '${mark.name}': the head has no vertex '${mark.vertex}', dropped`);
   }
   return landmarks;
 }

@@ -19,7 +19,7 @@ import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthogra
 import { TabletDocument, empty_document } from "../../src/document";
 import { V2, V3, v3 } from "../../src/math";
 import { Rgb } from "../../src/vertex_sink";
-import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "./head_meshes";
+import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../../src/head_meshes";
 import { apply_document_state, list_documents_from_server } from "../../src/persistence";
 import {
   FRONT_REGION, FitLandmarksFile, IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, LOOMIS_GIRL_FIT_LANDMARKS_NAME, PIXELS_PER_WORLD_UNIT, PROFILE_PORION_X_PIXELS,

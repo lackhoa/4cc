@@ -13,7 +13,7 @@ import {
   fit_landmark_mark_world_position, front_pixel_from_world, profile_pixel_from_world, template_point_world_position, template_position_is_on_midline,
 } from "../../src/loomis_girl_plate";
 import { Rgb } from "../../src/vertex_sink";
-import { create_head_meshes, draw_head_meshes, update_head_meshes } from "./head_meshes";
+import { create_head_meshes, draw_head_meshes, update_head_meshes } from "../../src/head_meshes";
 import { PlateViewsLandmarks, start_loomis_girl_plate_views } from "./loomis_girl_plate_views";
 
 const TEMPLATE_DOCUMENT_NAME = "skull-zanatomy";

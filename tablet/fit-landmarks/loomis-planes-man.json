@@ -18,7 +18,7 @@
   {
    "name": "nasion",
    "template_point": {
-    "vertex": 7
+    "vertex": 73
    },
    "front": {
     "x": 215.5902237607948,
@@ -27,31 +27,6 @@
    "profile": {
     "x": 58.012552301255226,
     "y": 261.3410041841003
-   }
-  },
-  {
-   "name": "nose base",
-   "template_point": {
-    "vertex": 101
-   },
-   "front": {
-    "x": 207,
-    "y": 370
-   },
-   "profile": {
-    "x": 60,
-    "y": 365
-   }
-  },
-  {
-   "name": "ear hole",
-   "template_point": {
-    "vertex": 1
-   },
-   "front": null,
-   "profile": {
-    "x": 340,
-    "y": 290
    }
   }
  ],

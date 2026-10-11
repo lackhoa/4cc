@@ -2,14 +2,15 @@
 // patches hide the strokes behind them, both for the plate views and for the turned head.
 // Shading follows the camera, so the meshes are shaded again when it turns. The document
 // holds one side of the head; `mirrored` adds the other side.
-import { OrbitCamera, camera_eye } from "../../src/camera";
-import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "../../src/document";
-import { Mat4, V3, v3 } from "../../src/math";
-import { patch_surface_grid } from "../../src/patch";
-import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "../../src/reference";
-import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "../../src/render";
-import { TaperWindow, append_bezier_ribbon } from "../../src/ribbon";
-import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "../../src/vertex_sink";
+import { OrbitCamera, camera_eye } from "./camera";
+import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
+import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
+import { patch_surface_grid } from "./patch";
+import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
+import { ray_triangle_distance } from "./reference_skull_view";
+import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
+import { TaperWindow, append_bezier_ribbon } from "./ribbon";
+import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
 export const SURFACE_COLOR: Rgb = { r: 0.45, g: 0.55, b: 0.7 };
 
@@ -19,7 +20,8 @@ const SURFACE_DEPTH_OFFSET = 4;
 export type HeadMeshes = {
   surfaces: TranslucentMesh;
   strokes: TranslucentMesh;
-  markers: TranslucentMesh; // drawn last, on top of everything
+  markers: TranslucentMesh; // drawn last, on top of everything unless `markers_depth_tested`
+  markers_depth_tested: boolean; // from the options of the last update
   shaded_vertices: VertexSink; // scratch for the shading pass
   surface_triangles: ReferenceMesh | null; // the patches as triangles, shaded per camera
   shaded_for: string; // document, camera and options the uploaded meshes were built for
@@ -36,6 +38,10 @@ export type HeadMeshOptions = {
   // Points marked on the head itself (landmarks), drawn as small octahedra on top of the
   // surfaces and strokes, mirrored with them. World units.
   markers?: { position: V3; color: Rgb; radius: number }[];
+  // Markers hidden by the surfaces in front of them (the head model pane, plan
+  // plan-hairline-reference-plate Q14); off, they show through everything (the plate
+  // views: a marker under a translucent surface must stay visible).
+  markers_depth_tested?: boolean;
 };
 
 export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
@@ -43,6 +49,7 @@ export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
     surfaces: create_translucent_mesh(gl),
     strokes: create_translucent_mesh(gl),
     markers: create_translucent_mesh(gl),
+    markers_depth_tested: false,
     shaded_vertices: create_vertex_sink(1024),
     surface_triangles: null,
     shaded_for: "",
@@ -145,14 +152,36 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
   const marker_triangles = marker_triangles_of(options);
   if (marker_triangles !== null) append_reference_mesh(marker_triangles, camera, meshes.shaded_vertices);
   set_translucent_mesh(meshes.markers, translucent_vertices_of(meshes.shaded_vertices, 1));
+  meshes.markers_depth_tested = options.markers_depth_tested ?? false;
   meshes.shaded_for = shaded_for;
 }
 
-// Surfaces first, then the strokes depth-tested against them, then the markers on top of
-// both (a landmark vertex sits on or under a surface, so depth-tested it would be hidden).
+// Surfaces first, then the strokes depth-tested against them, then the markers: on top of
+// both by default (a landmark vertex sits on or under a surface, so depth-tested it would
+// be hidden), or depth-tested (`markers_depth_tested`): a marker on the surface still
+// shows, its near half sticks out of it by its radius, one behind the head is hidden.
 export function draw_head_meshes(meshes: HeadMeshes, view_projection: Mat4, camera: OrbitCamera): void {
   const eye = camera_eye(camera);
   draw_mesh_translucent_writing_depth(meshes.surfaces, view_projection, eye, SURFACE_DEPTH_OFFSET);
   draw_mesh_translucent_writing_depth(meshes.strokes, view_projection, eye, 0);
-  draw_mesh_translucent_on_top(meshes.markers, view_projection, eye);
+  if (meshes.markers_depth_tested) draw_mesh_translucent(meshes.markers, view_projection, eye);
+  else draw_mesh_translucent_on_top(meshes.markers, view_projection, eye);
+}
+
+// Whether `position` is hidden from `eye` by a surface of the last `update_head_meshes`
+// (both sides of the head when mirrored): some surface triangle is on the ray from the
+// eye to the point, nearer than the point by more than `tolerance` world units (a point
+// ON a surface is not hidden by it).
+export function head_surface_hides_point(meshes: HeadMeshes, eye: V3, position: V3, tolerance: number): boolean {
+  const triangles = meshes.surface_triangles;
+  if (triangles === null) return false;
+  const to_point = v3_sub(position, eye);
+  const point_distance = v3_length(to_point);
+  const direction = v3_normalize(to_point);
+  const positions = triangles.triangle_positions;
+  for (let i = 0; i < positions.length; i += 3) {
+    const t = ray_triangle_distance(eye, direction, positions[i], positions[i + 1], positions[i + 2]);
+    if (t !== null && t < point_distance - tolerance) return true;
+  }
+  return false;
 }
