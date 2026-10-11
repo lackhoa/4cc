@@ -24,15 +24,30 @@ export const PROFILE_PLATE: PlateImage = { url: "/loomis-planes-man-profile.webp
 // (null = not marked in that view, so the view's registration ignores it).
 export type PlateLandmark = { name: string; template_point: TemplatePoint; front: V2 | null; profile: V2 | null };
 
+// One cubic bezier drawn on a plate, image pixels (plan Q15): a hairline is a bunch of
+// them, joined or not, each with its four points as handles.
+export type PlateCubic = { p0: V2; p1: V2; p2: V2; p3: V2 };
+
+export function plate_cubic_point(cubic: PlateCubic, t: number): V2 {
+  const s = 1 - t;
+  const a = s * s * s, b = 3 * s * s * t, c = 3 * s * t * t, d = t * t * t;
+  return { x: a * cubic.p0.x + b * cubic.p1.x + c * cubic.p2.x + d * cubic.p3.x, y: a * cubic.p0.y + b * cubic.p1.y + c * cubic.p2.y + d * cubic.p3.y };
+}
+
+// `count` points along the cubic, t evenly spaced, both ends included.
+export function plate_cubic_samples(cubic: PlateCubic, count: number): V2[] {
+  return Array.from({ length: count }, (_, k) => plate_cubic_point(cubic, k / (count - 1)));
+}
+
 // The file tablet/fit-landmarks/loomis-planes-man.json (server route
-// /api/fit-landmarks/<name>). The hairlines are polylines drawn on the plates, image
+// /api/fit-landmarks/<name>). The hairlines are the cubics drawn on the plates, image
 // pixels; lifted_stroke_ids are the document strokes the last lift wrote, so the next
 // lift replaces them.
 export type LoomisPlanesManLandmarksFile = {
-  version: 2;
+  version: 3;
   landmarks: PlateLandmark[];
-  front_hairline: V2[];
-  profile_hairline: V2[];
+  front_hairline: PlateCubic[];
+  profile_hairline: PlateCubic[];
   lifted_stroke_ids: number[];
 };
 
@@ -52,7 +67,7 @@ export const STARTING_MARKS: readonly NamedMark[] = [
 ];
 
 export function starting_landmarks_file(): LoomisPlanesManLandmarksFile {
-  return { version: 2, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: [] };
+  return { version: 3, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: [] };
 }
 
 // Null when the document has none of the marks' vertices (not loaded yet); a mark whose
@@ -76,6 +91,9 @@ export function landmarks_from_named_marks(tablet_document: TabletDocument, mark
 // already fix it.
 type Version1Marks = { brow: V2; nasion?: V2; nose_base: V2; porion: V2; midline_column: number };
 type Version1File = { version: 1; front: Version1Marks; profile: Version1Marks; front_hairline: V2[]; profile_hairline: V2[]; lifted_stroke_ids: number[] };
+// Version 2 files (2026-10-11) held the hairlines as freehand polylines; those are
+// dropped on load (they were test drawings), the landmarks are kept.
+type Version2File = { version: 2; landmarks: PlateLandmark[]; front_hairline: V2[]; profile_hairline: V2[]; lifted_stroke_ids: number[] };
 
 function named_marks_from_version_1(file: Version1File): NamedMark[] {
   const starting = (name: string) => STARTING_MARKS.find((mark) => mark.name === name)!;
@@ -168,10 +186,14 @@ export async function fetch_landmarks_file(): Promise<FetchedLandmarksFile | nul
       console.error(`loading landmarks '${LOOMIS_PLANES_MAN_LANDMARKS_NAME}' failed: status ${response.status}`);
       return null;
     }
-    const json = (await response.json()) as LoomisPlanesManLandmarksFile | Version1File;
+    const json = (await response.json()) as LoomisPlanesManLandmarksFile | Version2File | Version1File;
     if (json.version === 1) {
-      const file: LoomisPlanesManLandmarksFile = { version: 2, landmarks: [], front_hairline: json.front_hairline, profile_hairline: json.profile_hairline, lifted_stroke_ids: json.lifted_stroke_ids };
+      const file: LoomisPlanesManLandmarksFile = { version: 3, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: json.lifted_stroke_ids };
       return { file, named_marks_to_add: named_marks_from_version_1(json) };
+    }
+    if (json.version === 2) {
+      const file: LoomisPlanesManLandmarksFile = { version: 3, landmarks: json.landmarks, front_hairline: [], profile_hairline: [], lifted_stroke_ids: json.lifted_stroke_ids };
+      return { file, named_marks_to_add: null };
     }
     return { file: json, named_marks_to_add: null };
   } catch (error) {

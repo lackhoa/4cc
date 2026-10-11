@@ -9,6 +9,10 @@
 // orthographic camera that reproduces the plate's registration, and the marks, hairline
 // and lifted hits (2D) on top. The top canvas takes the gestures; what one pointer does
 // depends on the mode (move, drag marks, draw hairline); two fingers always pinch-zoom.
+// The hairline is a bunch of cubics per plate, drawn the tablet's way (plan Q15-Q18): in
+// hairline mode a drag from empty space places a straight cubic, a drag from one of a
+// cubic's four points moves that point (ends move the curve, p1/p2 bend it), and an end
+// let go on another cubic's end snaps onto it.
 //
 // The document is read from the server and polled; the lift writes it back. The
 // landmark file is read once and written on every change (this page is its only writer).
@@ -29,7 +33,7 @@ import { Rgb } from "../../src/vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../../src/head_meshes";
 import { PlateRegion, PlateViewTransform, TemplatePoint, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
 import {
-  FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
+  FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateCubic, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
   fetch_landmarks_file, landmark_mark, landmarks_from_named_marks, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
 } from "../../src/loomis_planes_man_plate";
 import { LiftedHit, cast_hairline_samples, merge_hits_by_angle, write_hairline_strokes } from "./hairline_lift";
@@ -46,8 +50,14 @@ const HAIRLINE_COLOR = "#ffa94d";
 const LIFTED_HIT_COLOR = "#4dd4c0";
 const SURFACE_OPACITY = 0.35;
 const MARK_GRAB_RADIUS_CSS_PIXELS = 18;
+const HANDLE_GRAB_RADIUS_CSS_PIXELS = 14;
+const HANDLE_SNAP_RADIUS_CSS_PIXELS = 14; // an end let go this close to another end joins it
 
 type Mode = "move" | "landmarks" | "hairline";
+
+type CubicPointKey = "p0" | "p1" | "p2" | "p3";
+// One of a hairline cubic's four points: `index` into the view's cubics.
+type CubicHandle = { index: number; key: CubicPointKey };
 
 type PlateView = {
   container: HTMLElement;
@@ -247,16 +257,41 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
     }
   }
 
-  // The hairline drawn on this plate.
-  const hairline = view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline;
+  // The hairline drawn on this plate: its cubics, and in hairline mode their handles
+  // (filled dots at the ends, hollow dots at p1/p2 with a thin line to their end).
+  const hairline = hairline_of_view(state, view);
   if (hairline.length > 0) {
     context.strokeStyle = HAIRLINE_COLOR;
     context.lineWidth = 2 / canvas_scale;
-    context.lineJoin = "round";
     context.beginPath();
-    context.moveTo(hairline[0].x, hairline[0].y);
-    for (const point of hairline) context.lineTo(point.x, point.y);
+    for (const cubic of hairline) {
+      context.moveTo(cubic.p0.x, cubic.p0.y);
+      context.bezierCurveTo(cubic.p1.x, cubic.p1.y, cubic.p2.x, cubic.p2.y, cubic.p3.x, cubic.p3.y);
+    }
     context.stroke();
+    if (state.mode === "hairline") {
+      const dot = 4 / canvas_scale;
+      context.fillStyle = HAIRLINE_COLOR;
+      context.lineWidth = 1 / canvas_scale;
+      for (const cubic of hairline) {
+        context.beginPath();
+        context.moveTo(cubic.p0.x, cubic.p0.y);
+        context.lineTo(cubic.p1.x, cubic.p1.y);
+        context.moveTo(cubic.p3.x, cubic.p3.y);
+        context.lineTo(cubic.p2.x, cubic.p2.y);
+        context.stroke();
+        for (const end of [cubic.p0, cubic.p3]) {
+          context.beginPath();
+          context.arc(end.x, end.y, dot, 0, 2 * Math.PI);
+          context.fill();
+        }
+        for (const handle of [cubic.p1, cubic.p2]) {
+          context.beginPath();
+          context.arc(handle.x, handle.y, dot, 0, 2 * Math.PI);
+          context.stroke();
+        }
+      }
+    }
   }
 
   // The merged hits of the last lift, seen through this view (both sides in front).
@@ -360,6 +395,42 @@ function move_mark(state: PageState, view: PlateView, landmark_index: number, im
   mark.y += image_delta.y;
 }
 
+function hairline_of_view(state: PageState, view: PlateView): PlateCubic[] {
+  return view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline;
+}
+
+function set_hairline_of_view(state: PageState, view: PlateView, hairline: PlateCubic[]): void {
+  if (view.is_front_view) state.editor.file.front_hairline = hairline;
+  else state.editor.file.profile_hairline = hairline;
+}
+
+// The hairline point within `reach_css_pixels` of `canvas_point`, nearest first; ends
+// win over p1/p2 at the same distance. `except` is left out (the point being dragged);
+// `ends_only` skips p1/p2 altogether (snapping an end onto another end).
+function cubic_handle_near(state: PageState, view: PlateView, canvas_point: V2, reach_css_pixels: number, except: CubicHandle | null = null, ends_only = false): CubicHandle | null {
+  const image_point = image_pixel_at_canvas_point(view, canvas_point);
+  let best: CubicHandle | null = null;
+  let best_distance = reach_css_pixels / view.transform.image_pixels_to_canvas_scale;
+  const keys = ends_only ? (["p0", "p3"] as const) : (["p0", "p3", "p1", "p2"] as const);
+  hairline_of_view(state, view).forEach((cubic, index) => {
+    for (const key of keys) {
+      if (except !== null && except.index === index && except.key === key) continue;
+      const distance = Math.hypot(image_point.x - cubic[key].x, image_point.y - cubic[key].y);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = { index, key };
+      }
+    }
+  });
+  return best;
+}
+
+// A straight cubic from `start` to `end`, its handles at the thirds.
+function straight_cubic(start: V2, end: V2): PlateCubic {
+  const third = (t: number): V2 => ({ x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t });
+  return { p0: { ...start }, p1: third(1 / 3), p2: third(2 / 3), p3: { ...end } };
+}
+
 function attach_view_gestures(state: PageState, view: PlateView): void {
   const canvas = view.overlay_canvas;
   const pointer_positions = new Map<number, V2>(); // pointerId -> last position, canvas CSS pixels
@@ -367,7 +438,11 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   let moved_since_pointer_down = false;
   let dragged_mark: number | null = null; // index into the landmarks list
   let mark_drag_is_remembered = false; // the undo entry of this mark drag is taken (at its first move)
-  let drawing_hairline = false;
+  // Hairline mode, one pointer: a new cubic being placed (index into the view's cubics,
+  // its p0 at the pen-down point) or one point of an existing cubic being dragged.
+  let placed_cubic: number | null = null;
+  let dragged_handle: CubicHandle | null = null;
+  let handle_drag_is_remembered = false;
 
   const canvas_point = (e: PointerEvent | WheelEvent): V2 => {
     const rectangle = canvas.getBoundingClientRect();
@@ -379,7 +454,7 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     const spread = points.reduce((sum, p) => sum + Math.hypot(p.x - centroid.x, p.y - centroid.y), 0) / points.length;
     return { centroid, spread };
   };
-  const hairline_of_view = (): V2[] => (view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline);
+  const drawing_hairline = (): boolean => placed_cubic !== null || dragged_handle !== null;
 
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -390,18 +465,24 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     if (pointer_positions.size === 1) {
       dragged_mark = state.mode === "landmarks" ? mark_near(state, view, point) : null;
       if (dragged_mark !== null) state.editor.select_landmark(dragged_mark);
-      drawing_hairline = state.mode === "hairline";
-      if (drawing_hairline) {
-        // The old hairline goes at the first touch, so the undo entry is taken here.
-        state.editor.remember_for_undo();
-        const image_point = image_pixel_at_canvas_point(view, point);
-        if (view.is_front_view) state.editor.file.front_hairline = [image_point];
-        else state.editor.file.profile_hairline = [image_point];
-        draw_overlay_layer(state, view);
+      if (state.mode === "hairline") {
+        dragged_handle = cubic_handle_near(state, view, point, HANDLE_GRAB_RADIUS_CSS_PIXELS);
+        if (dragged_handle === null) {
+          // A new cubic, a point for now; the undo entry is taken here, a tap removes it.
+          state.editor.remember_for_undo();
+          const image_point = image_pixel_at_canvas_point(view, point);
+          placed_cubic = hairline_of_view(state, view).push(straight_cubic(image_point, image_point)) - 1;
+        }
       }
     } else {
-      dragged_mark = null; // a second finger turns any drag into a pinch
-      drawing_hairline = false;
+      // A second finger turns any drag into a pinch; a cubic being placed is dropped.
+      dragged_mark = null;
+      dragged_handle = null;
+      if (placed_cubic !== null) {
+        hairline_of_view(state, view).splice(placed_cubic, 1);
+        placed_cubic = null;
+        draw_overlay_layer(state, view);
+      }
     }
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -412,8 +493,20 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     const delta = { x: after.centroid.x - before.centroid.x, y: after.centroid.y - before.centroid.y };
     if (Math.hypot(delta.x, delta.y) > 0) moved_since_pointer_down = true;
     const image_delta = { x: delta.x / view.transform.image_pixels_to_canvas_scale, y: delta.y / view.transform.image_pixels_to_canvas_scale };
-    if (drawing_hairline) {
-      hairline_of_view().push(image_pixel_at_canvas_point(view, after.centroid));
+    if (placed_cubic !== null) {
+      const cubic = hairline_of_view(state, view)[placed_cubic];
+      hairline_of_view(state, view)[placed_cubic] = straight_cubic(cubic.p0, image_pixel_at_canvas_point(view, after.centroid));
+      draw_overlay_layer(state, view);
+      return;
+    }
+    if (dragged_handle !== null) {
+      if (!handle_drag_is_remembered) {
+        state.editor.remember_for_undo();
+        handle_drag_is_remembered = true;
+      }
+      const point = hairline_of_view(state, view)[dragged_handle.index][dragged_handle.key];
+      point.x += image_delta.x;
+      point.y += image_delta.y;
       draw_overlay_layer(state, view);
       return;
     }
@@ -436,18 +529,39 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   const end_pointer = (e: PointerEvent): void => {
     if (!pointer_positions.delete(e.pointerId)) return;
     if (pointer_positions.size > 0) return;
-    if (drawing_hairline && !moved_since_pointer_down) {
-      // A tap in hairline mode leaves a one-point hairline behind: drop it (the tap
-      // cleared the hairline that was there, which undo brings back).
-      if (view.is_front_view) state.editor.file.front_hairline = [];
-      else state.editor.file.profile_hairline = [];
+    let hairline_edited = false;
+    // The end let go: the far end of a cubic being placed, or the dragged handle.
+    let released_end: CubicHandle | null = null;
+    if (placed_cubic !== null) {
+      // A tap leaves a cubic of no length behind: drop it (its undo entry stays, harmless).
+      if (moved_since_pointer_down) {
+        hairline_edited = true;
+        released_end = { index: placed_cubic, key: "p3" };
+      } else hairline_of_view(state, view).splice(placed_cubic, 1);
+    }
+    if (dragged_handle !== null && moved_since_pointer_down) {
+      hairline_edited = true;
+      if (dragged_handle.key === "p0" || dragged_handle.key === "p3") released_end = dragged_handle;
+    }
+    // An end let go on another cubic's end joins it.
+    if (released_end !== null) {
+      const point = hairline_of_view(state, view)[released_end.index][released_end.key];
+      const other = cubic_handle_near(state, view, canvas_point(e), HANDLE_SNAP_RADIUS_CSS_PIXELS, released_end, true);
+      if (other !== null) {
+        const target = hairline_of_view(state, view)[other.index][other.key];
+        point.x = target.x;
+        point.y = target.y;
+      }
     }
     // The edit is done: save and draw (the head model's dots for a mark drag, too).
-    if ((dragged_mark !== null && moved_since_pointer_down) || drawing_hairline) state.editor.landmarks_edited();
-    const was_plain_tap = e.type === "pointerup" && !moved_since_pointer_down && dragged_mark === null && !drawing_hairline;
+    if ((dragged_mark !== null && moved_since_pointer_down) || hairline_edited) state.editor.landmarks_edited();
+    else if (drawing_hairline()) draw_overlay_layer(state, view);
+    const was_plain_tap = e.type === "pointerup" && !moved_since_pointer_down && dragged_mark === null && !drawing_hairline();
     dragged_mark = null;
     mark_drag_is_remembered = false;
-    drawing_hairline = false;
+    placed_cubic = null;
+    dragged_handle = null;
+    handle_drag_is_remembered = false;
     if (was_plain_tap) {
       if (e.timeStamp - last_tap_milliseconds < 350) {
         fit_view_to_plate(view);
@@ -549,7 +663,7 @@ async function lift_hairline(state: PageState): Promise<void> {
     return;
   }
   const file = state.editor.file;
-  if (file.front_hairline.length < 2 && file.profile_hairline.length < 2) {
+  if (file.front_hairline.length === 0 && file.profile_hairline.length === 0) {
     show_status("draw a hairline on a plate first", true);
     return;
   }
@@ -706,6 +820,7 @@ async function start(): Promise<void> {
     radio.addEventListener("change", () => {
       if (radio.checked) state.mode = radio.value as Mode;
       for (const view of state.views) view.overlay_canvas.style.cursor = state.mode === "hairline" ? "crosshair" : "grab";
+      draw_all_views(state); // the hairline handles show in hairline mode only
     });
   }
   opacity_slider.addEventListener("input", () => {
@@ -729,8 +844,7 @@ async function start(): Promise<void> {
   document.getElementById("remove_lifted")!.addEventListener("click", () => void remove_lifted(state));
   const clear_hairline = (is_front_view: boolean): void => {
     state.editor.remember_for_undo();
-    if (is_front_view) state.editor.file.front_hairline = [];
-    else state.editor.file.profile_hairline = [];
+    set_hairline_of_view(state, state.views.find((view) => view.is_front_view === is_front_view)!, []);
     state.editor.landmarks_edited();
   };
   document.getElementById("clear_front_hairline")!.addEventListener("click", () => clear_hairline(true));

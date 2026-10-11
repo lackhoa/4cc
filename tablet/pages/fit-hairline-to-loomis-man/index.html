@@ -71,12 +71,12 @@
       <label><input type="checkbox" id="plate_skull_visible"> skull</label>
       <span id="plate_missing_note" hidden>plate images missing: copy them from Drive into tablet/public/</span>
     </div>
-    <p class="hint">In a plate view: drag to move (in "move" mode; the other modes drag a mark or draw), wheel or pinch to zoom, double tap to fit the plate again. On the head model: drag to orbit, wheel to zoom. Undo (or Ctrl+Z) takes back mark drags, adds, removes, renames, hairline drags and clears; not a lift.</p>
+    <p class="hint">In a plate view: drag to move (in "move" mode; the other modes drag a mark or draw), wheel or pinch to zoom, double tap to fit the plate again. On the head model: drag to orbit, wheel to zoom. Undo (or Ctrl+Z) takes back mark drags, adds, removes, renames, hairline curves, handle drags and clears; not a lift.</p>
   </section>
 
   <section>
     <h2>2. Draw and lift the hairline</h2>
-    <p>In "draw hairline" mode, one drag per view draws the hairline (a new drag replaces the old one): the arch in front, the forehead-to-ear run in profile. "Lift" casts both drawings onto the skin, drops the grazing hits, merges them by angle around the head, and writes the chain into <code>skull-zanatomy</code> as on-surface strokes, replacing the strokes of the last lift. Teal dots are the merged hits of the last lift.</p>
+    <p>In "draw hairline" mode the hairline is a bunch of bezier curves per view: a drag from empty space places a straight curve; then its four points are handles: drag an end to move it (let it go on another curve's end to join them), drag a hollow handle to bend the curve. Undo takes back the last one. The arch in front, the forehead-to-ear run in profile. "Lift" casts both drawings onto the skin, drops the grazing hits, merges them by angle around the head, and writes the chain into <code>skull-zanatomy</code> as on-surface strokes, replacing the strokes of the last lift. Teal dots are the merged hits of the last lift.</p>
     <div class="controls">
       <button id="lift_button">lift onto the skin</button>
       <button id="clear_front_hairline">clear front hairline</button>
