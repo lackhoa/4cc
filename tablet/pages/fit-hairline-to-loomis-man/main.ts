@@ -153,8 +153,23 @@ function draw_head_layer(state: PageState, view: PlateView): void {
     surface_opacity: SURFACE_OPACITY,
     skin_stroke_color: SKIN_STROKE_COLOR,
     skull_stroke_color: SKULL_STROKE_COLOR,
+    markers: head_landmark_markers(state, view),
   });
   draw_head_meshes(view.head_meshes, camera_orthographic_view_projection(camera, width / height), camera);
+}
+
+// The head's landmarks of a view (the vertices its marks are matched to), as markers on
+// the 3D head. World units are 100 mm (WORLD_PER_MM), so this is a 4 mm marker.
+const HEAD_MARKER_RADIUS = 0.04;
+const HEAD_MARKER_COLOR: Rgb = { r: 1, g: 1, b: 1 };
+function head_landmark_markers(state: PageState, view: PlateView): { position: V3; color: Rgb; radius: number }[] {
+  const markers: { position: V3; color: Rgb; radius: number }[] = [];
+  for (const point of POINT_MARKS) {
+    if (view.is_front_view && !point.in_front_view) continue;
+    const position = named_vertex_world_position(state.tablet_document, point.vertex_name);
+    if (position !== null) markers.push({ position, color: HEAD_MARKER_COLOR, radius: HEAD_MARKER_RADIUS });
+  }
+  return markers;
 }
 
 // The marks of a view in image pixels: the midline is drawn as a line, the others as crosses.

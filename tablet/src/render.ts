@@ -353,7 +353,13 @@ export function draw_mesh_translucent_writing_depth(mesh: TranslucentMesh, view_
   draw_translucent_mesh_triangles(mesh, view_projection, eye, null, true, depth_offset);
 }
 
-function draw_translucent_mesh_triangles(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, clip: ClipPlane | null, writes_depth: boolean, depth_offset: number): void {
+// The same draw with the depth test off: the mesh shows through everything drawn before
+// it (markers that must stay visible inside or behind a surface).
+export function draw_mesh_translucent_on_top(mesh: TranslucentMesh, view_projection: Mat4, eye: V3): void {
+  draw_translucent_mesh_triangles(mesh, view_projection, eye, null, false, 0, false);
+}
+
+function draw_translucent_mesh_triangles(mesh: TranslucentMesh, view_projection: Mat4, eye: V3, clip: ClipPlane | null, writes_depth: boolean, depth_offset: number, depth_tested = true): void {
   const vertex_count = mesh.vertices.length / FLOATS_PER_TRANSLUCENT_VERTEX;
   if (vertex_count === 0) return;
   const eye_moved = mesh.sorted_eye === null
@@ -371,7 +377,8 @@ function draw_translucent_mesh_triangles(mesh: TranslucentMesh, view_projection:
   gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, stride, 0);
   gl.enableVertexAttribArray(a_color);
   gl.vertexAttribPointer(a_color, 4, gl.FLOAT, false, stride, 3 * 4);
-  gl.enable(gl.DEPTH_TEST);
+  if (depth_tested) gl.enable(gl.DEPTH_TEST);
+  else gl.disable(gl.DEPTH_TEST);
   gl.depthMask(writes_depth);
   if (depth_offset > 0) {
     gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -383,4 +390,5 @@ function draw_translucent_mesh_triangles(mesh: TranslucentMesh, view_projection:
   gl.disable(gl.BLEND);
   gl.disable(gl.POLYGON_OFFSET_FILL);
   gl.depthMask(true);
+  gl.enable(gl.DEPTH_TEST);
 }

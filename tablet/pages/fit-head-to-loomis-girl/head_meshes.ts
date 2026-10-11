@@ -7,7 +7,7 @@ import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from
 import { Mat4, V3, v3 } from "../../src/math";
 import { patch_surface_grid } from "../../src/patch";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "../../src/reference";
-import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "../../src/render";
+import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "../../src/render";
 import { TaperWindow, append_bezier_ribbon } from "../../src/ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "../../src/vertex_sink";
 
@@ -19,6 +19,7 @@ const SURFACE_DEPTH_OFFSET = 4;
 export type HeadMeshes = {
   surfaces: TranslucentMesh;
   strokes: TranslucentMesh;
+  markers: TranslucentMesh; // drawn last, on top of everything
   shaded_vertices: VertexSink; // scratch for the shading pass
   surface_triangles: ReferenceMesh | null; // the patches as triangles, shaded per camera
   shaded_for: string; // document, camera and options the uploaded meshes were built for
@@ -32,12 +33,16 @@ export type HeadMeshOptions = {
   surface_opacity: number;
   skin_stroke_color: Rgb;
   skull_stroke_color: Rgb;
+  // Points marked on the head itself (landmarks), drawn as small octahedra on top of the
+  // surfaces and strokes, mirrored with them. World units.
+  markers?: { position: V3; color: Rgb; radius: number }[];
 };
 
 export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
   return {
     surfaces: create_translucent_mesh(gl),
     strokes: create_translucent_mesh(gl),
+    markers: create_translucent_mesh(gl),
     shaded_vertices: create_vertex_sink(1024),
     surface_triangles: null,
     shaded_for: "",
@@ -67,6 +72,30 @@ function surface_triangles_of(tablet_document: TabletDocument, options: HeadMesh
     }
   }
   const triangle_colors = Array.from({ length: positions.length / 3 }, () => SURFACE_COLOR);
+  return reference_mesh_from_positions(positions, positions.map((_, index) => index), triangle_colors);
+}
+
+// The markers as octahedra (six tips along the axes), one or both sides of the head.
+function marker_triangles_of(options: HeadMeshOptions): ReferenceMesh | null {
+  const markers = options.markers ?? [];
+  if (markers.length === 0) return null;
+  const positions: V3[] = [];
+  const triangle_colors: Rgb[] = [];
+  const faces = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
+  for (const marker of markers) {
+    const p = marker.position, r = marker.radius;
+    const tips = [v3(p.x + r, p.y, p.z), v3(p.x - r, p.y, p.z), v3(p.x, p.y + r, p.z), v3(p.x, p.y - r, p.z), v3(p.x, p.y, p.z + r), v3(p.x, p.y, p.z - r)];
+    for (const face of faces) {
+      const triangle = face.map((index) => tips[index]);
+      positions.push(...triangle);
+      triangle_colors.push(marker.color);
+      if (options.mirrored) {
+        // Mirroring flips the winding; reversed so the face still points outward.
+        positions.push(...triangle.map(mirror).reverse());
+        triangle_colors.push(marker.color);
+      }
+    }
+  }
   return reference_mesh_from_positions(positions, positions.map((_, index) => index), triangle_colors);
 }
 
@@ -111,12 +140,19 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
     }
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));
+
+  reset_vertex_sink(meshes.shaded_vertices);
+  const marker_triangles = marker_triangles_of(options);
+  if (marker_triangles !== null) append_reference_mesh(marker_triangles, camera, meshes.shaded_vertices);
+  set_translucent_mesh(meshes.markers, translucent_vertices_of(meshes.shaded_vertices, 1));
   meshes.shaded_for = shaded_for;
 }
 
-// Surfaces first, then the strokes depth-tested against them.
+// Surfaces first, then the strokes depth-tested against them, then the markers on top of
+// both (a landmark vertex sits on or under a surface, so depth-tested it would be hidden).
 export function draw_head_meshes(meshes: HeadMeshes, view_projection: Mat4, camera: OrbitCamera): void {
   const eye = camera_eye(camera);
   draw_mesh_translucent_writing_depth(meshes.surfaces, view_projection, eye, SURFACE_DEPTH_OFFSET);
   draw_mesh_translucent_writing_depth(meshes.strokes, view_projection, eye, 0);
+  draw_mesh_translucent_on_top(meshes.markers, view_projection, eye);
 }
