@@ -8,8 +8,8 @@
 // Walkthrough with pictures: docs/interactive-contour-extraction.html.
 //
 // The extractor takes any scalar field on the surface (`ScalarField`); the
-// silhouette field above is one caller, the hairline's height field
-// (plan-skin-hairline-landmark.md Q12, src/hairline.ts) another.
+// silhouette field above is one caller. (The computed hairline's height field was
+// another until 2026-10-11; the hairline is now drawn by hand, on the surface.)
 //
 // Grid indices are the parameter space: u = i, v = j (no rescaling; the
 // zero set and the tangent directions don't care about the units).
