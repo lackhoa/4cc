@@ -4,11 +4,12 @@
 // (notes/tasks/autodraw_draw_as_data/plan-hairline-reference-plate.md).
 //
 // The head is not deformed. Each plate is registered to the head on its own, by
-// landmarks Khoa clicks on the plate against the head's named vertices: `brow` and
-// `nose_base` give the scale and the vertical offset in both views; the midline column
-// gives the horizontal offset in front, the ear hole (`porion_r`) in profile. Both views
-// are orthographic; the profile faces left, so world z grows to the viewer's left, as on
-// the girl plate (src/loomis_girl_plate.ts).
+// landmarks Khoa clicks on the plate against the head's named vertices: one scale and
+// one offset per view, least squares over all its marks. In front the marks are `brow`,
+// `nasion` and `nose_base` (heights) and the midline column (sideways); in profile
+// `brow`, `nasion`, `nose_base` and the ear hole (`porion_r`), each in both axes. Both
+// views are orthographic; the profile faces left, so world z grows to the viewer's left,
+// as on the girl plate (src/loomis_girl_plate.ts).
 import { TabletDocument, vertex_world_position } from "./document";
 import { V2, V3, v3 } from "./math";
 
@@ -20,12 +21,22 @@ export const PROFILE_PLATE: PlateImage = { url: "/loomis-planes-man-profile.webp
 
 // The named vertices of the template head the landmarks are matched to.
 export const BROW_VERTEX_NAME = "brow";
+export const NASION_VERTEX_NAME = "nasion";
 export const NOSE_BASE_VERTEX_NAME = "nose_base";
 export const PORION_VERTEX_NAME = "porion_r";
 
 // The marks on one plate, in image pixels. `porion` is the ear hole, used in profile
 // only; `midline_column` is the sagittal plane, used in front only.
-export type PlateLandmarks = { brow: V2; nose_base: V2; porion: V2; midline_column: number };
+export type PlateLandmarks = { brow: V2; nasion: V2; nose_base: V2; porion: V2; midline_column: number };
+
+// The point marks and the head vertex each one is matched to (the midline is matched
+// to x = 0 separately).
+export const POINT_MARKS: readonly { mark: "brow" | "nasion" | "nose_base" | "porion"; vertex_name: string; in_front_view: boolean }[] = [
+  { mark: "brow", vertex_name: BROW_VERTEX_NAME, in_front_view: true },
+  { mark: "nasion", vertex_name: NASION_VERTEX_NAME, in_front_view: true },
+  { mark: "nose_base", vertex_name: NOSE_BASE_VERTEX_NAME, in_front_view: true },
+  { mark: "porion", vertex_name: PORION_VERTEX_NAME, in_front_view: false },
+];
 
 // The file tablet/fit-landmarks/loomis-planes-man.json (server route
 // /api/fit-landmarks/<name>). The hairlines are polylines drawn on the plates, image
@@ -45,8 +56,8 @@ export type LoomisPlanesManLandmarksFile = {
 export function starting_landmarks_file(): LoomisPlanesManLandmarksFile {
   return {
     version: 1,
-    front: { brow: { x: 207, y: 255 }, nose_base: { x: 207, y: 370 }, porion: { x: 380, y: 300 }, midline_column: 207 },
-    profile: { brow: { x: 120, y: 210 }, nose_base: { x: 60, y: 365 }, porion: { x: 340, y: 290 }, midline_column: 0 },
+    front: { brow: { x: 207, y: 255 }, nasion: { x: 207, y: 275 }, nose_base: { x: 207, y: 370 }, porion: { x: 380, y: 300 }, midline_column: 207 },
+    profile: { brow: { x: 120, y: 210 }, nasion: { x: 112, y: 232 }, nose_base: { x: 60, y: 365 }, porion: { x: 340, y: 290 }, midline_column: 0 },
     front_hairline: [],
     profile_hairline: [],
     lifted_stroke_ids: [],
@@ -65,18 +76,45 @@ export function named_vertex_world_position(tablet_document: TabletDocument, nam
 }
 
 // Null while the document has no brow / nose base / ear hole (not loaded yet).
+// Least squares over the view's marks for one scale s and one origin (ox, oy):
+// pixel.x = ox + across * s, pixel.y = oy - y * s, where `across` is world x in front
+// and -z in profile. Each point mark gives one equation per axis; in front the point
+// marks sit on the midline, so their columns are dropped and the midline column is the
+// only sideways equation (across = 0). Null when a vertex is missing or the marks
+// don't spread (all at one point).
 export function plate_registration(tablet_document: TabletDocument, landmarks: PlateLandmarks, is_front_view: boolean): PlateRegistration | null {
-  const brow = named_vertex_world_position(tablet_document, BROW_VERTEX_NAME);
-  const nose_base = named_vertex_world_position(tablet_document, NOSE_BASE_VERTEX_NAME);
-  const porion = named_vertex_world_position(tablet_document, PORION_VERTEX_NAME);
-  if (brow === null || nose_base === null || porion === null) return null;
-  const world_height = brow.y - nose_base.y;
-  const pixel_height = landmarks.nose_base.y - landmarks.brow.y;
-  if (Math.abs(world_height) < 1e-6 || Math.abs(pixel_height) < 1e-6) return null;
-  const scale = pixel_height / world_height;
-  const origin_row = landmarks.brow.y + brow.y * scale;
-  const origin_column = is_front_view ? landmarks.midline_column : landmarks.porion.x + porion.z * scale;
-  return { pixels_per_world_unit: scale, pixel_of_world_origin: { x: origin_column, y: origin_row }, is_front_view };
+  // Pairs (pixel coordinate, world coordinate along the same axis, sign): x pairs have
+  // sign +1 (pixel grows with world), y pairs -1 (pixel row grows downward).
+  const x_pairs: { pixel: number; world: number }[] = [];
+  const y_pairs: { pixel: number; world: number }[] = [];
+  for (const { mark, vertex_name, in_front_view } of POINT_MARKS) {
+    if (is_front_view && !in_front_view) continue;
+    const world = named_vertex_world_position(tablet_document, vertex_name);
+    if (world === null) return null;
+    y_pairs.push({ pixel: landmarks[mark].y, world: world.y });
+    if (!is_front_view) x_pairs.push({ pixel: landmarks[mark].x, world: -world.z });
+  }
+  if (is_front_view) x_pairs.push({ pixel: landmarks.midline_column, world: 0 });
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const x_pixel_mean = mean(x_pairs.map((pair) => pair.pixel)), x_world_mean = mean(x_pairs.map((pair) => pair.world));
+  const y_pixel_mean = mean(y_pairs.map((pair) => pair.pixel)), y_world_mean = mean(y_pairs.map((pair) => pair.world));
+  let numerator = 0, denominator = 0;
+  for (const pair of x_pairs) {
+    numerator += (pair.world - x_world_mean) * (pair.pixel - x_pixel_mean);
+    denominator += (pair.world - x_world_mean) ** 2;
+  }
+  for (const pair of y_pairs) {
+    numerator -= (pair.world - y_world_mean) * (pair.pixel - y_pixel_mean);
+    denominator += (pair.world - y_world_mean) ** 2;
+  }
+  if (denominator < 1e-12) return null;
+  const scale = numerator / denominator;
+  if (Math.abs(scale) < 1e-6) return null;
+  return {
+    pixels_per_world_unit: scale,
+    pixel_of_world_origin: { x: x_pixel_mean - x_world_mean * scale, y: y_pixel_mean + y_world_mean * scale },
+    is_front_view,
+  };
 }
 
 export function pixel_from_world(registration: PlateRegistration, p: V3): V2 {
@@ -105,7 +143,12 @@ export async function fetch_landmarks_file(): Promise<LoomisPlanesManLandmarksFi
       console.error(`loading landmarks '${LOOMIS_PLANES_MAN_LANDMARKS_NAME}' failed: status ${response.status}`);
       return null;
     }
-    return (await response.json()) as LoomisPlanesManLandmarksFile;
+    const file = (await response.json()) as LoomisPlanesManLandmarksFile;
+    // Files saved before the nasion mark existed (2026-10-11) get the starting one.
+    const starting = starting_landmarks_file();
+    file.front.nasion ??= starting.front.nasion;
+    file.profile.nasion ??= starting.profile.nasion;
+    return file;
   } catch (error) {
     console.error(`loading landmarks '${LOOMIS_PLANES_MAN_LANDMARKS_NAME}' failed (server unreachable)`, error);
     return null;

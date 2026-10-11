@@ -21,7 +21,7 @@ import { Rgb } from "../../src/vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../fit-head-to-loomis-girl/head_meshes";
 import { PlateRegion, PlateViewTransform, plate_view_transform_showing_region, plate_view_transform_zoomed_at } from "../../src/loomis_girl_plate";
 import {
-  BROW_VERTEX_NAME, FRONT_PLATE, LoomisPlanesManLandmarksFile, PROFILE_PLATE, NOSE_BASE_VERTEX_NAME, PORION_VERTEX_NAME, PlateImage, PlateLandmarks, PlateRegistration,
+  FRONT_PLATE, LoomisPlanesManLandmarksFile, PROFILE_PLATE, POINT_MARKS, PlateImage, PlateLandmarks, PlateRegistration,
   fetch_landmarks_file, named_vertex_world_position, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
 } from "../../src/loomis_planes_man_plate";
 import { LiftedHit, cast_hairline_samples, merge_hits_by_angle, write_hairline_strokes } from "./hairline_lift";
@@ -39,7 +39,7 @@ const SURFACE_OPACITY = 0.35;
 const MARK_GRAB_RADIUS_CSS_PIXELS = 18;
 
 type Mode = "move" | "landmarks" | "hairline";
-type MarkName = "brow" | "nose_base" | "porion" | "midline";
+type MarkName = "brow" | "nasion" | "nose_base" | "porion" | "midline";
 
 type PlateView = {
   container: HTMLElement;
@@ -161,6 +161,7 @@ function draw_head_layer(state: PageState, view: PlateView): void {
 function mark_pixels(landmarks: PlateLandmarks, is_front_view: boolean): { name: MarkName; pixel: V2 }[] {
   const marks: { name: MarkName; pixel: V2 }[] = [
     { name: "brow", pixel: landmarks.brow },
+    { name: "nasion", pixel: landmarks.nasion },
     { name: "nose_base", pixel: landmarks.nose_base },
   ];
   if (is_front_view) marks.push({ name: "midline", pixel: { x: landmarks.midline_column, y: landmarks.brow.y } });
@@ -200,13 +201,13 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
     context.fillText(mark.name, mark.pixel.x + arm, mark.pixel.y - arm);
   }
 
-  // The head's own brow, nose base and ear hole, where the registration puts them.
+  // The head's own brow, nasion, nose base and ear hole, where the registration puts them.
   const registration = view_registration(state, view);
   if (registration !== null) {
     context.fillStyle = HEAD_POINT_COLOR;
     context.strokeStyle = "#000";
     context.lineWidth = 0.8 / canvas_scale;
-    for (const name of [BROW_VERTEX_NAME, NOSE_BASE_VERTEX_NAME, PORION_VERTEX_NAME]) {
+    for (const name of POINT_MARKS.filter((point) => point.in_front_view || !view.is_front_view).map((point) => point.vertex_name)) {
       const world = named_vertex_world_position(state.tablet_document, name);
       if (world === null) continue;
       const pixel = pixel_from_world(registration, world);
