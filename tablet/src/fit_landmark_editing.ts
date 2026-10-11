@@ -22,6 +22,9 @@ export type FitLandmarkEditorListeners<F extends EditableLandmarksFile<EditableL
   on_edited: () => void;
   // After the selection or the "adding" state changed without the file changing: redraw.
   on_view_changed: () => void;
+  // False while another view of the page owns the keyboard (an embedded sketchpad,
+  // fit-hairline-to-loomis-man): the window key listener below does nothing.
+  owns_keyboard?: () => boolean;
 };
 
 export type FitLandmarkEditor<F extends EditableLandmarksFile<EditableLandmark>> = {
@@ -148,6 +151,7 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
   // Ctrl+Z undoes, Delete removes the selected landmark, Escape disarms "add landmark".
   window.addEventListener("keydown", (e) => {
     if (document.activeElement === landmark_name_field) return; // the keys belong to the name being typed
+    if (listeners.owns_keyboard !== undefined && !listeners.owns_keyboard()) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
       editor.undo_landmark_edit();

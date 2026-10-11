@@ -1,17 +1,22 @@
-// The Loomis planes-head plates (a man, front and profile, two separate scans) as a
-// tracing guide behind the template head (document `skull-zanatomy`): the page
-// fit-hairline-to-loomis-man draws the hairline on them and lifts it onto the skin
-// (notes/tasks/autodraw_draw_as_data/plan-hairline-reference-plate.md).
+// The Loomis planes-head plates (a man, front and profile, two separate scans) behind
+// the template head (document `skull-zanatomy`): the page fit-hairline-to-loomis-man
+// shows the head fitted to the plates while the hairline is drawn on the template in an
+// embedded sketchpad (notes/tasks/autodraw_draw_as_data/plan-hairline-reference-plate.md,
+// Q19-Q28).
 //
-// The head is not deformed. Each plate is registered to the head on its own, by
-// landmarks Khoa marks on the plate against points of the head: one scale and one
-// offset per view, least squares over all the landmarks marked in that view, both axes
-// each. The landmarks are a free list (added, removed and renamed on the page); the
-// starting ones are the brow, nasion and nose base in both views and the ear hole
-// (`porion_r`) in profile. Both views are orthographic; the profile faces left, so world
-// z grows to the viewer's left, as on the girl plate (src/loomis_girl_plate.ts).
+// Each plate is registered to the head on its own, by landmarks Khoa marks on the plate
+// against points of the head: one scale and one offset per view, least squares over all
+// the landmarks marked in that view, both axes each. The same marks are then the targets
+// of a thin-plate fit of the head (`man_fit_pairs`, src/landmark_fit.ts), so the plate
+// views can show the head with the plate's proportions. The landmarks are a free list
+// (removed and renamed on the page); the starting ones are the brow, nasion and nose base
+// in both views and the ear hole (`porion_r`) in profile, plus the girl plate's landmarks
+// (fit-landmarks/loomis-school-girl.json) placed by the registration. Both views are
+// orthographic; the profile faces left, so world z grows to the viewer's left, as on the
+// girl plate (src/loomis_girl_plate.ts).
 import { TabletDocument, VertexId } from "./document";
-import { TemplatePoint, template_point_world_position } from "./loomis_girl_plate";
+import { LandmarkPair, mirrored_landmark_pairs } from "./landmark_fit";
+import { TemplatePoint, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
 import { V2, V3, v3 } from "./math";
 
 export const LOOMIS_PLANES_MAN_LANDMARKS_NAME = "loomis-planes-man";
@@ -24,32 +29,17 @@ export const PROFILE_PLATE: PlateImage = { url: "/loomis-planes-man-profile.webp
 // (null = not marked in that view, so the view's registration ignores it).
 export type PlateLandmark = { name: string; template_point: TemplatePoint; front: V2 | null; profile: V2 | null };
 
-// One cubic bezier drawn on a plate, image pixels (plan Q15): a hairline is a bunch of
-// them, joined or not, each with its four points as handles.
-export type PlateCubic = { p0: V2; p1: V2; p2: V2; p3: V2 };
-
-export function plate_cubic_point(cubic: PlateCubic, t: number): V2 {
-  const s = 1 - t;
-  const a = s * s * s, b = 3 * s * s * t, c = 3 * s * t * t, d = t * t * t;
-  return { x: a * cubic.p0.x + b * cubic.p1.x + c * cubic.p2.x + d * cubic.p3.x, y: a * cubic.p0.y + b * cubic.p1.y + c * cubic.p2.y + d * cubic.p3.y };
-}
-
-// `count` points along the cubic, t evenly spaced, both ends included.
-export function plate_cubic_samples(cubic: PlateCubic, count: number): V2[] {
-  return Array.from({ length: count }, (_, k) => plate_cubic_point(cubic, k / (count - 1)));
-}
-
 // The file tablet/fit-landmarks/loomis-planes-man.json (server route
-// /api/fit-landmarks/<name>). The hairlines are the cubics drawn on the plates, image
-// pixels; lifted_stroke_ids are the document strokes the last lift wrote, so the next
-// lift replaces them.
+// /api/fit-landmarks/<name>). stiffness: 0 = every landmark lands exactly on its marks
+// (plan Q22; no UI, edit the file); larger = a smoother warp that lets landmarks miss
+// (src/landmark_fit.ts).
 export type LoomisPlanesManLandmarksFile = {
-  version: 3;
+  version: 4;
   landmarks: PlateLandmark[];
-  front_hairline: PlateCubic[];
-  profile_hairline: PlateCubic[];
-  lifted_stroke_ids: number[];
+  stiffness: number;
 };
+
+export const DEFAULT_STIFFNESS = 0;
 
 // A landmark given by its head vertex, by name or by id, instead of a template point: the
 // starting landmarks (read off the scans by eye, 2026-10-11, for Khoa to drag into
@@ -67,7 +57,20 @@ export const STARTING_MARKS: readonly NamedMark[] = [
 ];
 
 export function starting_landmarks_file(): LoomisPlanesManLandmarksFile {
-  return { version: 3, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: [] };
+  return { version: 4, landmarks: [], stiffness: DEFAULT_STIFFNESS };
+}
+
+// The girl plate's landmarks as marks for the man's plates (plan Q20): their names and
+// template points, no marks of their own; the page places each on the plates where the
+// registration puts its template point. One whose template point some landmark already
+// has (the nasion is a starting mark too) is skipped: two landmarks on one point make
+// the fit singular. Appended, so a saved file that lacks some of them gets them too.
+export type TemplatePointMark = { name: string; template_point: TemplatePoint };
+
+export function template_point_marks_missing_from(landmarks: readonly PlateLandmark[], marks: readonly TemplatePointMark[]): TemplatePointMark[] {
+  const taken = new Set(landmarks.map((landmark) => JSON.stringify(landmark.template_point)));
+  const names = new Set(landmarks.map((landmark) => landmark.name));
+  return marks.filter((mark) => !taken.has(JSON.stringify(mark.template_point)) && !names.has(mark.name));
 }
 
 // Null when the document has none of the marks' vertices (not loaded yet); a mark whose
@@ -90,10 +93,11 @@ export function landmarks_from_named_marks(tablet_document: TabletDocument, mark
 // is dropped: the brow, nasion and nose base sit on the midline, so their front columns
 // already fix it.
 type Version1Marks = { brow: V2; nasion?: V2; nose_base: V2; porion: V2; midline_column: number };
-type Version1File = { version: 1; front: Version1Marks; profile: Version1Marks; front_hairline: V2[]; profile_hairline: V2[]; lifted_stroke_ids: number[] };
-// Version 2 files (2026-10-11) held the hairlines as freehand polylines; those are
-// dropped on load (they were test drawings), the landmarks are kept.
-type Version2File = { version: 2; landmarks: PlateLandmark[]; front_hairline: V2[]; profile_hairline: V2[]; lifted_stroke_ids: number[] };
+type Version1File = { version: 1; front: Version1Marks; profile: Version1Marks };
+// Version 2 and 3 files (2026-10-11) held hairlines drawn on the plates (polylines, then
+// cubics) and the strokes of the last lift; all of that went with the lift (plan Q28),
+// only the landmarks are kept.
+type Version2Or3File = { version: 2 | 3; landmarks: PlateLandmark[] };
 
 function named_marks_from_version_1(file: Version1File): NamedMark[] {
   const starting = (name: string) => STARTING_MARKS.find((mark) => mark.name === name)!;
@@ -171,6 +175,33 @@ export function world_from_pixel(registration: PlateRegistration, pixel: V2): V3
   return registration.is_front_view ? v3(across, y, 0) : v3(0, y, -across);
 }
 
+// ---- the fit ------------------------------------------------------------------------
+
+// The landmark pairs of a thin-plate fit of the head to the plates (plan Q19/Q20): each
+// landmark's template point must land where its marks are. The front mark gives x and y,
+// the profile mark y and z; y is averaged when both are marked; a coordinate no mark
+// gives keeps the template's value, and a midline point's x is 0 either way. Pairs are
+// mirrored as the girl fit's. A landmark the document lacks, or marked in no registered
+// view, gives no pair.
+export function man_fit_pairs(tablet_document: TabletDocument, landmarks: readonly PlateLandmark[], front: PlateRegistration | null, profile: PlateRegistration | null): LandmarkPair[] {
+  const pairs: LandmarkPair[] = [];
+  for (const landmark of landmarks) {
+    const template_position = template_point_world_position(tablet_document, landmark.template_point);
+    if (template_position === null) continue;
+    const from_front = front === null || landmark.front === null ? null : world_from_pixel(front, landmark.front);
+    const from_profile = profile === null || landmark.profile === null ? null : world_from_pixel(profile, landmark.profile);
+    if (from_front === null && from_profile === null) continue;
+    const ys = [from_front, from_profile].filter((p): p is V3 => p !== null).map((p) => p.y);
+    const target_position = v3(
+      template_position_is_on_midline(template_position) ? 0 : (from_front?.x ?? template_position.x),
+      ys.reduce((sum, y) => sum + y, 0) / ys.length,
+      from_profile?.z ?? template_position.z,
+    );
+    pairs.push(...mirrored_landmark_pairs(template_position, target_position));
+  }
+  return pairs;
+}
+
 // ---- file on the server -------------------------------------------------------------
 
 // The file, plus marks by vertex name the page must turn into landmarks once the
@@ -186,16 +217,10 @@ export async function fetch_landmarks_file(): Promise<FetchedLandmarksFile | nul
       console.error(`loading landmarks '${LOOMIS_PLANES_MAN_LANDMARKS_NAME}' failed: status ${response.status}`);
       return null;
     }
-    const json = (await response.json()) as LoomisPlanesManLandmarksFile | Version2File | Version1File;
-    if (json.version === 1) {
-      const file: LoomisPlanesManLandmarksFile = { version: 3, landmarks: [], front_hairline: [], profile_hairline: [], lifted_stroke_ids: json.lifted_stroke_ids };
-      return { file, named_marks_to_add: named_marks_from_version_1(json) };
-    }
-    if (json.version === 2) {
-      const file: LoomisPlanesManLandmarksFile = { version: 3, landmarks: json.landmarks, front_hairline: [], profile_hairline: [], lifted_stroke_ids: json.lifted_stroke_ids };
-      return { file, named_marks_to_add: null };
-    }
-    return { file: json, named_marks_to_add: null };
+    const json = (await response.json()) as LoomisPlanesManLandmarksFile | Version2Or3File | Version1File;
+    if (json.version === 1) return { file: starting_landmarks_file(), named_marks_to_add: named_marks_from_version_1(json) };
+    if (json.version === 4) return { file: json, named_marks_to_add: null };
+    return { file: { version: 4, landmarks: json.landmarks, stiffness: DEFAULT_STIFFNESS }, named_marks_to_add: null };
   } catch (error) {
     console.error(`loading landmarks '${LOOMIS_PLANES_MAN_LANDMARKS_NAME}' failed (server unreachable)`, error);
     return null;

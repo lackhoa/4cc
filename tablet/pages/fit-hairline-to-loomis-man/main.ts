@@ -1,63 +1,63 @@
-// The fit-hairline-to-loomis-man page: the template head (document `skull-zanatomy`)
-// over Loomis's planes-head plates, front and profile, registered by three marks per
-// plate (src/loomis_planes_man_plate.ts); the hairline is drawn on the plates and lifted
-// onto the skin (hairline_lift.ts). Plan: notes/tasks/autodraw_draw_as_data/
-// plan-hairline-reference-plate.md.
+// The fit-hairline-to-loomis-man page: the sketchpad (src/sketchpad.ts, as on skin-draw,
+// document `skull-zanatomy`) with Loomis's planes-head plates beside it, front and
+// profile, showing the head FITTED to the plates (src/loomis_planes_man_plate.ts,
+// src/landmark_fit.ts): the hairline is drawn on the template in the sketchpad, as
+// on-surface skin strokes, and the plate views show where it lands on the plates. Plan:
+// notes/tasks/autodraw_draw_as_data/plan-hairline-reference-plate.md (Q19-Q28).
 //
-// A view is three canvases stacked in one container, as on fit-head-to-loomis-girl: the
-// plate (2D), the head's surfaces and strokes (WebGL, head_meshes.ts) through an
-// orthographic camera that reproduces the plate's registration, and the marks, hairline
-// and lifted hits (2D) on top. The top canvas takes the gestures; what one pointer does
-// depends on the mode (move, drag marks, draw hairline); two fingers always pinch-zoom.
-// The hairline is a bunch of cubics per plate, drawn the tablet's way (plan Q15-Q18): in
-// hairline mode a drag from empty space places a straight cubic, a drag from one of a
-// cubic's four points moves that point (ends move the curve, p1/p2 bend it), and an end
-// let go on another cubic's end snaps onto it.
+// A plate view is three canvases stacked in one container, as on fit-head-to-loomis-girl:
+// the plate (2D), the fitted head's surfaces and strokes (WebGL, head_meshes.ts) through
+// an orthographic camera that reproduces the plate's registration, and the marks and the
+// highlighted skin strokes (2D) on top. The top canvas takes the gestures; one pointer
+// moves the plate or drags a mark by the mode; two fingers always pinch-zoom.
 //
-// The document is read from the server and polled; the lift writes it back. The
-// landmark file is read once and written on every change (this page is its only writer).
+// The marks are landmarks of the fit: each is a point of the template and where it must
+// land on each plate. The registration (scale + offset per view, from the same marks)
+// puts the template's points on the plates; the fit (thin-plate warp, stiffness 0) then
+// moves the head so each landmark lands on its marks exactly. The fitted head is
+// recomputed on every mark edit and every document edit; it is never saved, the
+// document is the template.
 //
-// The landmarks are edited through the shared editor (src/fit_landmark_editing.ts: add by
-// a tap on the head model pane, remove, rename, undo, reset) and the head model pane
-// (src/head_model_pane.ts), as on loomis-girl-fit-landmarks. The file as a whole is the
-// unit of undo, so a mark drag, a hairline drag and a clear are undone too; a lift is not:
-// `lifted_stroke_ids` is carried over any undo so the next lift still replaces the last.
+// The document is the sketchpad's: it loads, edits, polls and saves it, and tells this
+// page after each change (`on_document_edited`). The landmark file is read once and
+// written on every change (this page is its only writer). The landmarks are edited
+// through the shared editor (src/fit_landmark_editing.ts: remove, rename, undo, reset;
+// there is no "add" here, the landmarks come from the starting marks and the girl
+// plate's landmarks, src/loomis_planes_man_plate.ts). The keyboard belongs to whichever
+// of the two (plates, sketchpad) was touched last: Ctrl+Z undoes there.
 import "../../pages.css";
-import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthographic_view_projection, default_camera } from "../../src/camera";
-import { TabletDocument, VertexId, delete_stroke, empty_document, garbage_collect_vertices, unpin_vertices } from "../../src/document";
+import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthographic_view_projection } from "../../src/camera";
+import { TabletDocument } from "../../src/document";
 import { FitLandmarkEditor, create_fit_landmark_editor } from "../../src/fit_landmark_editing";
-import { start_head_model_pane } from "../../src/head_model_pane";
+import { fitted_document_from_landmark_pairs } from "../../src/landmark_fit";
 import { V2, V3 } from "../../src/math";
-import { apply_document_state, list_documents_from_server, serialize_document_state } from "../../src/persistence";
+import { on_surface_stroke_samples } from "../../src/patch";
 import { Rgb } from "../../src/vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "../../src/head_meshes";
-import { PlateRegion, PlateViewTransform, TemplatePoint, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
+import { LOOMIS_GIRL_FIT_LANDMARKS_NAME, PlateRegion, PlateViewTransform, TemplatePoint, fetch_fit_landmarks_file, plate_view_transform_showing_region, plate_view_transform_zoomed_at, template_point_world_position } from "../../src/loomis_girl_plate";
 import {
-  FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateCubic, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS,
-  fetch_landmarks_file, landmark_mark, landmarks_from_named_marks, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file, world_from_pixel,
+  FRONT_PLATE, LoomisPlanesManLandmarksFile, NamedMark, PROFILE_PLATE, PlateImage, PlateLandmark, PlateRegistration, STARTING_MARKS, TemplatePointMark,
+  fetch_landmarks_file, landmark_mark, landmarks_from_named_marks, man_fit_pairs, pixel_from_world, plate_registration, save_landmarks_file, starting_landmarks_file,
+  template_point_marks_missing_from, world_from_pixel,
 } from "../../src/loomis_planes_man_plate";
-import { LiftedHit, cast_hairline_samples, merge_hits_by_angle, write_hairline_strokes } from "./hairline_lift";
+import { ReferenceMesh, reference_mesh_from_positions } from "../../src/reference";
+import { Skull, WORLD_PER_MM, load_eyeball, load_skull } from "../../src/reference_skull_view";
+import { load_skin_reference_mesh } from "../../src/skin_reference_mesh";
+import { start_sketchpad } from "../../src/sketchpad";
+import { v3_scale } from "../../src/math";
 
 const PAGE_NAME = "fit-hairline-to-loomis-man";
-const DOCUMENT_NAME = "skull-zanatomy";
-const POLL_MILLISECONDS = 2000;
 const SKIN_STROKE_COLOR: Rgb = { r: 0.91, g: 0.15, b: 0.16 };
 const SKULL_STROKE_COLOR: Rgb = { r: 0.16, g: 0.38, b: 0.91 };
 const MARK_COLOR = "#0a9a3a";
 const SELECTED_MARK_COLOR = "#ff2fb4";
 const HEAD_POINT_COLOR = "#ffffff";
-const HAIRLINE_COLOR = "#ffa94d";
-const LIFTED_HIT_COLOR = "#4dd4c0";
+const ON_SURFACE_STROKE_HIGHLIGHT_COLOR = "#ffa94d"; // the skin's on-surface strokes (the hairline) over the plate
 const SURFACE_OPACITY = 0.35;
 const MARK_GRAB_RADIUS_CSS_PIXELS = 18;
-const HANDLE_GRAB_RADIUS_CSS_PIXELS = 14;
-const HANDLE_SNAP_RADIUS_CSS_PIXELS = 14; // an end let go this close to another end joins it
 
-type Mode = "move" | "landmarks" | "hairline";
-
-type CubicPointKey = "p0" | "p1" | "p2" | "p3";
-// One of a hairline cubic's four points: `index` into the view's cubics.
-type CubicHandle = { index: number; key: CubicPointKey };
+type Mode = "move" | "landmarks";
+type KeyboardOwner = "plates" | "sketchpad";
 
 type PlateView = {
   container: HTMLElement;
@@ -74,21 +74,24 @@ type PlateView = {
 
 type PageState = {
   views: PlateView[];
-  tablet_document: TabletDocument;
-  revision: string | null; // null = not loaded yet
+  // The sketchpad's document (the template); null until it loaded. Read only here.
+  template_document: TabletDocument | null;
+  // The template fitted to the plates (refit): the template itself while there are no
+  // landmark pairs or the fit failed; null while the template is null.
+  fitted_document: TabletDocument | null;
+  fit_revision: number; // counts refits, the head meshes rebuild when it changes
   editor: FitLandmarkEditor<LoomisPlanesManLandmarksFile>; // holds the landmark file (`editor.file`)
-  // The strokes of the last lift, the page's copy: an undo puts back an older file,
-  // whose `lifted_stroke_ids` may be stale, so this is written over it before a save.
-  lifted_stroke_ids: number[];
   // Marks by vertex name waiting for the document (the starting marks, or a version 1
   // file's): added to the landmarks when it loads, then null.
   named_marks_to_add: readonly NamedMark[] | null;
-  draw_head_model_pane: () => void;
+  // The girl plate's landmarks: added by name, placed by the registration, once the
+  // document is loaded and both views are registered; then null.
+  template_point_marks_to_add: readonly TemplatePointMark[] | null;
   mode: Mode;
+  keyboard_owner: KeyboardOwner;
   plate_opacity: number;
   surfaces_visible: boolean;
   skull_visible: boolean;
-  last_lift_hits: LiftedHit[]; // the merged hits of the last lift, for checking
 };
 
 const status_element = document.getElementById("status")!;
@@ -114,18 +117,20 @@ function image_pixel_at_canvas_point(view: PlateView, canvas_point: V2): V2 {
   };
 }
 
+// The registration is of the TEMPLATE (the marks are template points).
 function view_registration(state: PageState, view: PlateView): PlateRegistration | null {
-  return plate_registration(state.tablet_document, state.editor.file.landmarks, view.is_front_view);
+  return state.template_document === null ? null : plate_registration(state.template_document, state.editor.file.landmarks, view.is_front_view);
 }
 
-// The landmarks marked in a view, with their marks (image pixels) and their head points.
+// The landmarks marked in a view, with their marks (image pixels) and their template points.
 type ViewMark = { index: number; landmark: PlateLandmark; pixel: V2; head_position: V3 | null };
 function view_marks(state: PageState, view: PlateView): ViewMark[] {
   const marks: ViewMark[] = [];
   state.editor.file.landmarks.forEach((landmark, index) => {
     const pixel = landmark_mark(landmark, view.is_front_view);
     if (pixel === null) return;
-    marks.push({ index, landmark, pixel, head_position: template_point_world_position(state.tablet_document, landmark.template_point) });
+    const head_position = state.template_document === null ? null : template_point_world_position(state.template_document, landmark.template_point);
+    marks.push({ index, landmark, pixel, head_position });
   });
   return marks;
 }
@@ -153,6 +158,34 @@ function size_canvas_to_container(view: PlateView, canvas: HTMLCanvasElement): {
   return { width, height, device_pixel_ratio };
 }
 
+// ---- the fit ----------------------------------------------------------------------------
+
+// The template fitted to the current marks (plan Q19/Q22). No pairs (nothing marked
+// yet): the template as it is. A failed fit (two landmarks on one point) is reported and
+// shows the template too.
+function refit(state: PageState): void {
+  state.fit_revision += 1;
+  if (state.template_document === null) {
+    state.fitted_document = null;
+    return;
+  }
+  const front = state.views.find((view) => view.is_front_view)!;
+  const profile = state.views.find((view) => !view.is_front_view)!;
+  const pairs = man_fit_pairs(state.template_document, state.editor.file.landmarks, view_registration(state, front), view_registration(state, profile));
+  if (pairs.length === 0) {
+    state.fitted_document = state.template_document;
+    return;
+  }
+  const fitted = fitted_document_from_landmark_pairs(state.template_document, pairs, state.editor.file.stiffness);
+  if (fitted === null) {
+    show_status(`the fit failed (${pairs.length} pairs; two landmarks on one point?), showing the template`, true);
+    state.fitted_document = state.template_document;
+    return;
+  }
+  state.fitted_document = fitted;
+  show_status(`fitted: ${state.editor.file.landmarks.length} landmarks, ${pairs.length} pairs, stiffness ${state.editor.file.stiffness}`);
+}
+
 // ---- drawing --------------------------------------------------------------------------
 
 function draw_plate_layer(state: PageState, view: PlateView): void {
@@ -168,6 +201,7 @@ function draw_plate_layer(state: PageState, view: PlateView): void {
   context.drawImage(view.plate_image, 0, 0, view.plate.width_pixels, view.plate.height_pixels);
 }
 
+// The FITTED head through the plate's registration.
 function draw_head_layer(state: PageState, view: PlateView): void {
   const gl = view.mesh_gl;
   if (gl === null || view.head_meshes === null) return;
@@ -176,9 +210,9 @@ function draw_head_layer(state: PageState, view: PlateView): void {
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   const registration = view_registration(state, view);
-  if (state.revision === null || registration === null || height === 0) return;
+  if (state.fitted_document === null || registration === null || height === 0) return;
   const camera = plate_view_camera(view, registration);
-  update_head_meshes(view.head_meshes, state.tablet_document, state.revision, camera, {
+  update_head_meshes(view.head_meshes, state.fitted_document, `fit ${state.fit_revision}`, camera, {
     skull_visible: state.skull_visible,
     surfaces_visible: state.surfaces_visible,
     strokes_visible: true,
@@ -191,14 +225,16 @@ function draw_head_layer(state: PageState, view: PlateView): void {
   draw_head_meshes(view.head_meshes, camera_orthographic_view_projection(camera, width / height), camera);
 }
 
-// The head's landmarks of a view (the vertices its marks are matched to), as markers on
-// the 3D head. World units are 100 mm (WORLD_PER_MM), so this is a 4 mm marker.
+// The fitted head's landmarks of a view, as markers on the 3D head: with stiffness 0
+// each sits on its mark. World units are 100 mm (WORLD_PER_MM), so this is a 4 mm marker.
 const HEAD_MARKER_RADIUS = 0.04;
 const HEAD_MARKER_COLOR: Rgb = { r: 1, g: 1, b: 1 };
 function head_landmark_markers(state: PageState, view: PlateView): { position: V3; color: Rgb; radius: number }[] {
   const markers: { position: V3; color: Rgb; radius: number }[] = [];
+  if (state.fitted_document === null) return markers;
   for (const mark of view_marks(state, view)) {
-    if (mark.head_position !== null) markers.push({ position: mark.head_position, color: HEAD_MARKER_COLOR, radius: HEAD_MARKER_RADIUS });
+    const position = template_point_world_position(state.fitted_document, mark.landmark.template_point);
+    if (position !== null) markers.push({ position, color: HEAD_MARKER_COLOR, radius: HEAD_MARKER_RADIUS });
   }
   return markers;
 }
@@ -213,6 +249,29 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
   const scale = canvas_scale * device_pixel_ratio;
   context.setTransform(scale, 0, 0, scale, -view.transform.image_pixel_at_canvas_origin.x * scale, -view.transform.image_pixel_at_canvas_origin.y * scale);
   const marks = view_marks(state, view);
+  const registration = view_registration(state, view);
+
+  // The skin's on-surface strokes of the fitted head (the hairline), highlighted over the
+  // plate: through the registration, both sides in front (the document holds one side).
+  if (registration !== null && state.fitted_document !== null) {
+    context.strokeStyle = ON_SURFACE_STROKE_HIGHLIGHT_COLOR;
+    context.lineWidth = 2.5 / canvas_scale;
+    context.lineJoin = "round";
+    for (const stroke of state.fitted_document.strokes) {
+      if (stroke.layer !== "skin" || stroke.on_surface !== true) continue;
+      const samples = on_surface_stroke_samples(stroke, state.fitted_document);
+      const sides = view.is_front_view ? [1, -1] : [1];
+      for (const side of sides) {
+        context.beginPath();
+        samples.forEach((sample, k) => {
+          const pixel = pixel_from_world(registration, { x: side * sample.x, y: sample.y, z: sample.z });
+          if (k === 0) context.moveTo(pixel.x, pixel.y);
+          else context.lineTo(pixel.x, pixel.y);
+        });
+        context.stroke();
+      }
+    }
+  }
 
   // Marks: crosses with their names, the selected one in its own colour.
   const arm = 6 / canvas_scale;
@@ -231,9 +290,8 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
     context.fillText(mark.landmark.name, mark.pixel.x + arm, mark.pixel.y - arm);
   }
 
-  // The head's own points of the marks, where the registration puts them, and in front
-  // the head's midline.
-  const registration = view_registration(state, view);
+  // The template's own points of the marks, where the registration puts them (the gap to
+  // the green mark is what the fit closes), and in front the head's midline.
   if (registration !== null) {
     context.strokeStyle = HEAD_POINT_COLOR;
     context.lineWidth = 0.8 / canvas_scale;
@@ -252,59 +310,6 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
       context.arc(pixel.x, pixel.y, 3 / canvas_scale, 0, 2 * Math.PI);
       context.fill();
       context.stroke();
-      // Labelled below-right so it doesn't sit on the green mark's label (above-right).
-      context.fillText(`head ${mark.landmark.name}`, pixel.x + arm, pixel.y + arm + 10 / canvas_scale);
-    }
-  }
-
-  // The hairline drawn on this plate: its cubics, and in hairline mode their handles
-  // (filled dots at the ends, hollow dots at p1/p2 with a thin line to their end).
-  const hairline = hairline_of_view(state, view);
-  if (hairline.length > 0) {
-    context.strokeStyle = HAIRLINE_COLOR;
-    context.lineWidth = 2 / canvas_scale;
-    context.beginPath();
-    for (const cubic of hairline) {
-      context.moveTo(cubic.p0.x, cubic.p0.y);
-      context.bezierCurveTo(cubic.p1.x, cubic.p1.y, cubic.p2.x, cubic.p2.y, cubic.p3.x, cubic.p3.y);
-    }
-    context.stroke();
-    if (state.mode === "hairline") {
-      const dot = 4 / canvas_scale;
-      context.fillStyle = HAIRLINE_COLOR;
-      context.lineWidth = 1 / canvas_scale;
-      for (const cubic of hairline) {
-        context.beginPath();
-        context.moveTo(cubic.p0.x, cubic.p0.y);
-        context.lineTo(cubic.p1.x, cubic.p1.y);
-        context.moveTo(cubic.p3.x, cubic.p3.y);
-        context.lineTo(cubic.p2.x, cubic.p2.y);
-        context.stroke();
-        for (const end of [cubic.p0, cubic.p3]) {
-          context.beginPath();
-          context.arc(end.x, end.y, dot, 0, 2 * Math.PI);
-          context.fill();
-        }
-        for (const handle of [cubic.p1, cubic.p2]) {
-          context.beginPath();
-          context.arc(handle.x, handle.y, dot, 0, 2 * Math.PI);
-          context.stroke();
-        }
-      }
-    }
-  }
-
-  // The merged hits of the last lift, seen through this view (both sides in front).
-  if (registration !== null && state.last_lift_hits.length > 0) {
-    context.fillStyle = LIFTED_HIT_COLOR;
-    for (const hit of state.last_lift_hits) {
-      const positions: V3[] = view.is_front_view ? [hit.position, { x: -hit.position.x, y: hit.position.y, z: hit.position.z }] : [hit.position];
-      for (const position of positions) {
-        const pixel = pixel_from_world(registration, position);
-        context.beginPath();
-        context.arc(pixel.x, pixel.y, 2.5 / canvas_scale, 0, 2 * Math.PI);
-        context.fill();
-      }
     }
   }
 }
@@ -319,11 +324,6 @@ function draw_all_views(state: PageState): void {
   for (const view of state.views) draw_view(state, view);
 }
 
-function draw_everything(state: PageState): void {
-  draw_all_views(state);
-  state.draw_head_model_pane();
-}
-
 // ---- landmark file ----------------------------------------------------------------------
 
 let save_in_flight: Promise<void> | null = null;
@@ -331,7 +331,6 @@ let save_again = false;
 
 // Save the landmark file, one request at a time; a change during a save triggers another.
 function save_landmarks(state: PageState): void {
-  state.editor.file.lifted_stroke_ids = state.lifted_stroke_ids;
   if (save_in_flight !== null) {
     save_again = true;
     return;
@@ -347,12 +346,10 @@ function save_landmarks(state: PageState): void {
   })();
 }
 
-// The landmark "add landmark" makes for a point of the head picked on the head model
-// pane: marked in each view where the registration puts that point (no registration in a
-// view: not marked there; it still shows on the head model and can be marked later...
-// by hand there is no way yet, so add it once the view is registered).
+// A landmark for a template point: marked in each view where the registration puts that
+// point (no registration in a view: not marked there).
 function new_plate_landmark(state: PageState, template_point: TemplatePoint, name: string): PlateLandmark | null {
-  const position = template_point_world_position(state.tablet_document, template_point);
+  const position = state.template_document === null ? null : template_point_world_position(state.template_document, template_point);
   if (position === null) return null;
   const mark_in = (view: PlateView): V2 | null => {
     const registration = view_registration(state, view);
@@ -363,10 +360,52 @@ function new_plate_landmark(state: PageState, template_point: TemplatePoint, nam
   return { name, template_point, front: mark_in(front), profile: mark_in(profile) };
 }
 
-// "reset marks": the starting marks again, the hairlines and the last lift kept.
+// "reset marks": the starting marks and the girl's landmarks again, placed afresh.
 function file_with_starting_landmarks(state: PageState): LoomisPlanesManLandmarksFile {
-  const landmarks = landmarks_from_named_marks(state.tablet_document, STARTING_MARKS) ?? [];
-  return { ...state.editor.file, landmarks };
+  const file: LoomisPlanesManLandmarksFile = { ...starting_landmarks_file(), stiffness: state.editor.file.stiffness };
+  if (state.template_document === null) return file;
+  file.landmarks = landmarks_from_named_marks(state.template_document, STARTING_MARKS) ?? [];
+  if (state.template_point_marks_to_add === null) {
+    // The girl's landmarks were added already: take them from the current file, placed
+    // by the starting marks' registration.
+    const before = state.editor.file.landmarks;
+    state.editor.file = file;
+    add_template_point_marks(state, template_point_marks_missing_from(file.landmarks, before));
+  }
+  return state.editor.file;
+}
+
+// Append landmarks for the template points not yet among the landmarks, placed by the
+// current registration. True when any was added.
+function add_template_point_marks(state: PageState, marks: readonly TemplatePointMark[]): boolean {
+  let added = false;
+  for (const mark of template_point_marks_missing_from(state.editor.file.landmarks, marks)) {
+    const landmark = new_plate_landmark(state, mark.template_point, mark.name);
+    if (landmark === null || (landmark.front === null && landmark.profile === null)) continue;
+    state.editor.file.landmarks.push(landmark);
+    added = true;
+  }
+  return added;
+}
+
+// The marks waiting for the document (named marks, then the girl's landmarks, which need
+// the registration the named marks give). Saves when any were added.
+function add_waiting_marks(state: PageState): void {
+  if (state.template_document === null) return;
+  let added = false;
+  if (state.named_marks_to_add !== null) {
+    const landmarks = landmarks_from_named_marks(state.template_document, state.named_marks_to_add);
+    if (landmarks !== null) {
+      state.editor.file.landmarks.push(...landmarks);
+      state.named_marks_to_add = null;
+      added = true;
+    }
+  }
+  if (state.template_point_marks_to_add !== null && state.views.every((view) => view_registration(state, view) !== null)) {
+    added = add_template_point_marks(state, state.template_point_marks_to_add) || added;
+    state.template_point_marks_to_add = null;
+  }
+  if (added) save_landmarks(state);
 }
 
 // ---- gestures ---------------------------------------------------------------------------
@@ -395,42 +434,6 @@ function move_mark(state: PageState, view: PlateView, landmark_index: number, im
   mark.y += image_delta.y;
 }
 
-function hairline_of_view(state: PageState, view: PlateView): PlateCubic[] {
-  return view.is_front_view ? state.editor.file.front_hairline : state.editor.file.profile_hairline;
-}
-
-function set_hairline_of_view(state: PageState, view: PlateView, hairline: PlateCubic[]): void {
-  if (view.is_front_view) state.editor.file.front_hairline = hairline;
-  else state.editor.file.profile_hairline = hairline;
-}
-
-// The hairline point within `reach_css_pixels` of `canvas_point`, nearest first; ends
-// win over p1/p2 at the same distance. `except` is left out (the point being dragged);
-// `ends_only` skips p1/p2 altogether (snapping an end onto another end).
-function cubic_handle_near(state: PageState, view: PlateView, canvas_point: V2, reach_css_pixels: number, except: CubicHandle | null = null, ends_only = false): CubicHandle | null {
-  const image_point = image_pixel_at_canvas_point(view, canvas_point);
-  let best: CubicHandle | null = null;
-  let best_distance = reach_css_pixels / view.transform.image_pixels_to_canvas_scale;
-  const keys = ends_only ? (["p0", "p3"] as const) : (["p0", "p3", "p1", "p2"] as const);
-  hairline_of_view(state, view).forEach((cubic, index) => {
-    for (const key of keys) {
-      if (except !== null && except.index === index && except.key === key) continue;
-      const distance = Math.hypot(image_point.x - cubic[key].x, image_point.y - cubic[key].y);
-      if (distance < best_distance) {
-        best_distance = distance;
-        best = { index, key };
-      }
-    }
-  });
-  return best;
-}
-
-// A straight cubic from `start` to `end`, its handles at the thirds.
-function straight_cubic(start: V2, end: V2): PlateCubic {
-  const third = (t: number): V2 => ({ x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t });
-  return { p0: { ...start }, p1: third(1 / 3), p2: third(2 / 3), p3: { ...end } };
-}
-
 function attach_view_gestures(state: PageState, view: PlateView): void {
   const canvas = view.overlay_canvas;
   const pointer_positions = new Map<number, V2>(); // pointerId -> last position, canvas CSS pixels
@@ -438,11 +441,6 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   let moved_since_pointer_down = false;
   let dragged_mark: number | null = null; // index into the landmarks list
   let mark_drag_is_remembered = false; // the undo entry of this mark drag is taken (at its first move)
-  // Hairline mode, one pointer: a new cubic being placed (index into the view's cubics,
-  // its p0 at the pen-down point) or one point of an existing cubic being dragged.
-  let placed_cubic: number | null = null;
-  let dragged_handle: CubicHandle | null = null;
-  let handle_drag_is_remembered = false;
 
   const canvas_point = (e: PointerEvent | WheelEvent): V2 => {
     const rectangle = canvas.getBoundingClientRect();
@@ -454,7 +452,6 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     const spread = points.reduce((sum, p) => sum + Math.hypot(p.x - centroid.x, p.y - centroid.y), 0) / points.length;
     return { centroid, spread };
   };
-  const drawing_hairline = (): boolean => placed_cubic !== null || dragged_handle !== null;
 
   // Chrome's middle-click autoscroll starts on mousedown, not pointerdown.
   canvas.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });
@@ -470,24 +467,8 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
       if (middle_button) return;
       dragged_mark = state.mode === "landmarks" ? mark_near(state, view, point) : null;
       if (dragged_mark !== null) state.editor.select_landmark(dragged_mark);
-      if (state.mode === "hairline") {
-        dragged_handle = cubic_handle_near(state, view, point, HANDLE_GRAB_RADIUS_CSS_PIXELS);
-        if (dragged_handle === null) {
-          // A new cubic, a point for now; the undo entry is taken here, a tap removes it.
-          state.editor.remember_for_undo();
-          const image_point = image_pixel_at_canvas_point(view, point);
-          placed_cubic = hairline_of_view(state, view).push(straight_cubic(image_point, image_point)) - 1;
-        }
-      }
     } else {
-      // A second finger turns any drag into a pinch; a cubic being placed is dropped.
-      dragged_mark = null;
-      dragged_handle = null;
-      if (placed_cubic !== null) {
-        hairline_of_view(state, view).splice(placed_cubic, 1);
-        placed_cubic = null;
-        draw_overlay_layer(state, view);
-      }
+      dragged_mark = null; // a second finger turns any drag into a pinch
     }
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -498,29 +479,13 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
     const delta = { x: after.centroid.x - before.centroid.x, y: after.centroid.y - before.centroid.y };
     if (Math.hypot(delta.x, delta.y) > 0) moved_since_pointer_down = true;
     const image_delta = { x: delta.x / view.transform.image_pixels_to_canvas_scale, y: delta.y / view.transform.image_pixels_to_canvas_scale };
-    if (placed_cubic !== null) {
-      const cubic = hairline_of_view(state, view)[placed_cubic];
-      hairline_of_view(state, view)[placed_cubic] = straight_cubic(cubic.p0, image_pixel_at_canvas_point(view, after.centroid));
-      draw_overlay_layer(state, view);
-      return;
-    }
-    if (dragged_handle !== null) {
-      if (!handle_drag_is_remembered) {
-        state.editor.remember_for_undo();
-        handle_drag_is_remembered = true;
-      }
-      const point = hairline_of_view(state, view)[dragged_handle.index][dragged_handle.key];
-      point.x += image_delta.x;
-      point.y += image_delta.y;
-      draw_overlay_layer(state, view);
-      return;
-    }
     if (dragged_mark !== null) {
       if (!mark_drag_is_remembered) {
         state.editor.remember_for_undo();
         mark_drag_is_remembered = true;
       }
       move_mark(state, view, dragged_mark, image_delta);
+      // The registration moves with the mark; the fit follows when the drag ends.
       draw_view(state, view);
       return;
     }
@@ -534,39 +499,11 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   const end_pointer = (e: PointerEvent): void => {
     if (!pointer_positions.delete(e.pointerId)) return;
     if (pointer_positions.size > 0) return;
-    let hairline_edited = false;
-    // The end let go: the far end of a cubic being placed, or the dragged handle.
-    let released_end: CubicHandle | null = null;
-    if (placed_cubic !== null) {
-      // A tap leaves a cubic of no length behind: drop it (its undo entry stays, harmless).
-      if (moved_since_pointer_down) {
-        hairline_edited = true;
-        released_end = { index: placed_cubic, key: "p3" };
-      } else hairline_of_view(state, view).splice(placed_cubic, 1);
-    }
-    if (dragged_handle !== null && moved_since_pointer_down) {
-      hairline_edited = true;
-      if (dragged_handle.key === "p0" || dragged_handle.key === "p3") released_end = dragged_handle;
-    }
-    // An end let go on another cubic's end joins it.
-    if (released_end !== null) {
-      const point = hairline_of_view(state, view)[released_end.index][released_end.key];
-      const other = cubic_handle_near(state, view, canvas_point(e), HANDLE_SNAP_RADIUS_CSS_PIXELS, released_end, true);
-      if (other !== null) {
-        const target = hairline_of_view(state, view)[other.index][other.key];
-        point.x = target.x;
-        point.y = target.y;
-      }
-    }
-    // The edit is done: save and draw (the head model's dots for a mark drag, too).
-    if ((dragged_mark !== null && moved_since_pointer_down) || hairline_edited) state.editor.landmarks_edited();
-    else if (drawing_hairline()) draw_overlay_layer(state, view);
-    const was_plain_tap = e.type === "pointerup" && !moved_since_pointer_down && dragged_mark === null && !drawing_hairline();
+    // The edit is done: save, refit, draw.
+    if (dragged_mark !== null && moved_since_pointer_down) state.editor.landmarks_edited();
+    const was_plain_tap = e.type === "pointerup" && !moved_since_pointer_down && dragged_mark === null;
     dragged_mark = null;
     mark_drag_is_remembered = false;
-    placed_cubic = null;
-    dragged_handle = null;
-    handle_drag_is_remembered = false;
     if (was_plain_tap) {
       if (e.timeStamp - last_tap_milliseconds < 350) {
         fit_view_to_plate(view);
@@ -584,136 +521,19 @@ function attach_view_gestures(state: PageState, view: PlateView): void {
   }, { passive: false });
 }
 
-// ---- the document -----------------------------------------------------------------------
+// ---- the sketchpad --------------------------------------------------------------------
 
-// Read the document again when its revision on the server changed.
-async function reload_document_if_changed(state: PageState): Promise<void> {
-  const listed = await list_documents_from_server();
-  const entry = listed?.find((e) => e.name === DOCUMENT_NAME);
-  if (entry === undefined || entry.revision === state.revision) return;
-  const response = await fetch(`/api/documents/${encodeURIComponent(DOCUMENT_NAME)}`, { cache: "no-store" });
-  if (!response.ok) {
-    console.error(`${PAGE_NAME}: loading document '${DOCUMENT_NAME}' failed, status ${response.status}`);
-    return;
-  }
-  // The camera in the file belongs to the sketchpad: read into a throwaway one.
-  apply_document_state(await response.text(), state.tablet_document, default_camera());
-  state.revision = entry.revision;
-  // Marks given by vertex name (starting marks, a version 1 file) become landmarks now
-  // that the head's vertices are known.
-  if (state.named_marks_to_add !== null) {
-    const added = landmarks_from_named_marks(state.tablet_document, state.named_marks_to_add);
-    if (added !== null) {
-      state.editor.file.landmarks.push(...added);
-      state.named_marks_to_add = null;
-      save_landmarks(state);
-    }
-  }
-  draw_everything(state);
+function reference_mesh_from_skull_frame_mesh(mesh: Skull): ReferenceMesh {
+  return reference_mesh_from_positions(mesh.positions.map((p) => v3_scale(p, WORLD_PER_MM)), mesh.triangle_indices);
 }
 
-// Rewrite the document on the server: `edit` changes a fresh copy of the server's
-// version, which is posted back against the revision it was read at.
-async function edit_document_on_server(state: PageState, edit: (tablet_document: TabletDocument) => boolean): Promise<boolean> {
-  const url = `/api/documents/${encodeURIComponent(DOCUMENT_NAME)}`;
-  const camera = default_camera();
-  try {
-    const existing = await fetch(url, { cache: "no-store" });
-    if (!existing.ok) {
-      show_status(`reading ${DOCUMENT_NAME} failed: ${existing.status}`, true);
-      return false;
-    }
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const revision = existing.headers.get("X-Revision");
-    if (revision !== null) headers["X-Base-Revision"] = revision;
-    const edited = empty_document();
-    apply_document_state(await existing.text(), edited, camera);
-    if (!edit(edited)) return false;
-    const written = await fetch(url, { method: "POST", headers, body: serialize_document_state(edited, camera) });
-    if (!written.ok) {
-      show_status(`writing ${DOCUMENT_NAME} failed: ${written.status} ${await written.text()}`, true);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error(`${PAGE_NAME}: editing ${DOCUMENT_NAME} failed`, error);
-    show_status(`editing ${DOCUMENT_NAME} failed (server unreachable?)`, true);
-    return false;
-  }
-}
-
-// The lift's vertices are surface-pinned, and a surface pin keeps a vertex alive
-// through delete_stroke (the document's rule: a pinned vertex is referenced). The
-// vertices are the lift's own, so their pins are dropped first and the garbage
-// collector then removes any the strokes no longer use.
-function remove_lifted_strokes(tablet_document: TabletDocument, stroke_ids: number[]): void {
-  const lifted_vertices: VertexId[] = [];
-  for (const stroke_id of stroke_ids) {
-    const stroke = tablet_document.strokes.find((candidate) => candidate.id === stroke_id);
-    if (stroke === undefined) continue;
-    lifted_vertices.push(stroke.p0_vertex, stroke.p3_vertex);
-    delete_stroke(tablet_document, stroke_id);
-  }
-  unpin_vertices(tablet_document, lifted_vertices);
-  garbage_collect_vertices(tablet_document);
-}
-
-async function lift_hairline(state: PageState): Promise<void> {
-  const front = state.views.find((view) => view.is_front_view)!;
-  const profile = state.views.find((view) => !view.is_front_view)!;
-  const front_registration = view_registration(state, front);
-  const profile_registration = view_registration(state, profile);
-  if (front_registration === null || profile_registration === null) {
-    show_status("no registration (fewer than two marks in a view, or head not loaded)", true);
-    return;
-  }
-  const file = state.editor.file;
-  if (file.front_hairline.length === 0 && file.profile_hairline.length === 0) {
-    show_status("draw a hairline on a plate first", true);
-    return;
-  }
-  show_status("lifting…");
-  let written_ids: number[] = [];
-  let hit_counts = { front: 0, profile: 0, merged: 0 };
-  const written = await edit_document_on_server(state, (tablet_document) => {
-    remove_lifted_strokes(tablet_document, state.lifted_stroke_ids);
-    const front_hits = cast_hairline_samples(tablet_document, front_registration, file.front_hairline);
-    const profile_hits = cast_hairline_samples(tablet_document, profile_registration, file.profile_hairline);
-    const merged = merge_hits_by_angle([...front_hits, ...profile_hits]);
-    hit_counts = { front: front_hits.length, profile: profile_hits.length, merged: merged.length };
-    state.last_lift_hits = merged;
-    if (merged.length < 2) {
-      show_status(`too few hits to lift: ${front_hits.length} front, ${profile_hits.length} profile`, true);
-      return false;
-    }
-    written_ids = write_hairline_strokes(tablet_document, merged);
-    return true;
-  });
-  if (!written) {
-    draw_all_views(state);
-    return;
-  }
-  state.lifted_stroke_ids = written_ids;
-  save_landmarks(state);
-  show_status(`lifted: ${hit_counts.front} front hits, ${hit_counts.profile} profile hits, ${hit_counts.merged} merged, ${written_ids.length} strokes written`);
-  await reload_document_if_changed(state);
-}
-
-async function remove_lifted(state: PageState): Promise<void> {
-  if (state.lifted_stroke_ids.length === 0) {
-    show_status("nothing lifted to remove");
-    return;
-  }
-  const written = await edit_document_on_server(state, (tablet_document) => {
-    remove_lifted_strokes(tablet_document, state.lifted_stroke_ids);
-    return true;
-  });
-  if (!written) return;
-  state.lifted_stroke_ids = [];
-  state.last_lift_hits = [];
-  save_landmarks(state);
-  show_status("lifted strokes removed");
-  await reload_document_if_changed(state);
+// The eyeball mesh has no landmarks of its own: the skull is loaded for its Frankfurt
+// frame only (the frame every document vertex was drawn in). As on skin-draw.
+async function load_skull_frame_mesh(load: (page_name: string, frame: Skull["frame"]) => Promise<Skull | null>): Promise<ReferenceMesh | null> {
+  const skull = await load_skull(PAGE_NAME);
+  if (skull === null) return null;
+  const mesh = await load(PAGE_NAME, skull.frame);
+  return mesh === null ? null : reference_mesh_from_skull_frame_mesh(mesh);
 }
 
 // ---- wiring -----------------------------------------------------------------------------
@@ -722,11 +542,12 @@ async function start(): Promise<void> {
   const opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement;
   const surfaces_checkbox = document.getElementById("plate_surfaces_visible") as HTMLInputElement;
   const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
-  const names_checkbox = document.getElementById("landmark_names_visible") as HTMLInputElement;
   const mode_radios = Array.from(document.querySelectorAll<HTMLInputElement>("input[name=mode]"));
+  const editor_container = document.getElementById("editor")!;
 
-  const fetched = await fetch_landmarks_file();
+  const [fetched, girl_file] = await Promise.all([fetch_landmarks_file(), fetch_fit_landmarks_file(LOOMIS_GIRL_FIT_LANDMARKS_NAME)]);
   if (fetched === null) show_status("loading the landmark file failed; changes will not be saved", true);
+  if (girl_file === null) show_status("loading the girl's landmark file failed; her landmarks are not added", true);
   const landmarks_file = fetched?.file ?? starting_landmarks_file();
 
   // The editor's listeners run on user edits, once `state` below exists.
@@ -735,24 +556,26 @@ async function start(): Promise<void> {
     new_landmark: (template_point, name) => new_plate_landmark(state, template_point, name),
     on_edited: () => {
       save_landmarks(state);
-      draw_everything(state);
+      refit(state);
+      draw_all_views(state);
     },
-    on_view_changed: () => draw_everything(state),
+    on_view_changed: () => draw_all_views(state),
+    owns_keyboard: () => state.keyboard_owner === "plates",
   });
 
   const state: PageState = {
     views: [],
-    tablet_document: empty_document(),
-    revision: null,
+    template_document: null,
+    fitted_document: null,
+    fit_revision: 0,
     editor,
-    lifted_stroke_ids: landmarks_file.lifted_stroke_ids,
     named_marks_to_add: fetched === null ? STARTING_MARKS : fetched.named_marks_to_add,
-    draw_head_model_pane: () => {},
+    template_point_marks_to_add: girl_file === null ? null : girl_file.landmarks.map((landmark) => ({ name: landmark.name, template_point: landmark.template_point })),
     mode: (mode_radios.find((radio) => radio.checked)?.value as Mode | undefined) ?? "move",
+    keyboard_owner: "sketchpad",
     plate_opacity: Number(opacity_slider.value),
     surfaces_visible: surfaces_checkbox.checked,
     skull_visible: skull_checkbox.checked,
-    last_lift_hits: [],
   };
 
   const make_view = (container_id: string, plate: PlateImage, is_front_view: boolean): PlateView => {
@@ -788,21 +611,11 @@ async function start(): Promise<void> {
     attach_view_gestures(state, view);
   }
 
-  state.draw_head_model_pane = start_head_model_pane(
-    PAGE_NAME,
-    { mesh_canvas: "head_model_mesh_canvas", overlay_canvas: "head_model_overlay_canvas", mesh_opacity_slider: "head_model_mesh_opacity" },
-    () => ({
-      template_document: state.tablet_document,
-      document_revision: state.revision ?? "",
-      landmarks: state.editor.file.landmarks,
-      selected_landmark_index: state.editor.selected_landmark_index,
-      landmark_names_visible: names_checkbox.checked,
-      skull_visible: state.skull_visible,
-      is_picking_template_point: state.editor.is_adding_landmark,
-    }),
-    { on_template_point_picked: state.editor.add_landmark_at, on_landmark_tapped: state.editor.select_landmark },
-  );
-  names_checkbox.addEventListener("change", () => state.draw_head_model_pane());
+  // The keyboard goes to whichever was touched last: the sketchpad, or anything else
+  // (the plate views, the bottom bar).
+  window.addEventListener("pointerdown", (e) => {
+    state.keyboard_owner = e.target instanceof Node && editor_container.contains(e.target) ? "sketchpad" : "plates";
+  }, true);
 
   // "bigger" on a view gives it most of the row, until "smaller" or another view's "bigger".
   const enlarge_buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(".enlarge_pane_button"));
@@ -817,15 +630,13 @@ async function start(): Promise<void> {
       figure.classList.toggle("enlarged", is_enlarged);
       if (is_enlarged) button.textContent = "smaller";
       for (const view of state.views) fit_view_to_plate(view);
-      draw_all_views(state); // the head model pane sees its own resize
+      draw_all_views(state);
     });
   }
 
   for (const radio of mode_radios) {
     radio.addEventListener("change", () => {
       if (radio.checked) state.mode = radio.value as Mode;
-      for (const view of state.views) view.overlay_canvas.style.cursor = state.mode === "hairline" ? "crosshair" : "grab";
-      draw_all_views(state); // the hairline handles show in hairline mode only
     });
   }
   opacity_slider.addEventListener("input", () => {
@@ -838,26 +649,34 @@ async function start(): Promise<void> {
   });
   skull_checkbox.addEventListener("change", () => {
     state.skull_visible = skull_checkbox.checked;
-    draw_everything(state);
+    draw_all_views(state);
   });
   window.addEventListener("resize", () => {
     for (const view of state.views) fit_view_to_plate(view);
     draw_all_views(state);
   });
 
-  document.getElementById("lift_button")!.addEventListener("click", () => void lift_hairline(state));
-  document.getElementById("remove_lifted")!.addEventListener("click", () => void remove_lifted(state));
-  const clear_hairline = (is_front_view: boolean): void => {
-    state.editor.remember_for_undo();
-    set_hairline_of_view(state, state.views.find((view) => view.is_front_view === is_front_view)!, []);
-    state.editor.landmarks_edited();
-  };
-  document.getElementById("clear_front_hairline")!.addEventListener("click", () => clear_hairline(true));
-  document.getElementById("clear_profile_hairline")!.addEventListener("click", () => clear_hairline(false));
+  draw_all_views(state);
 
-  draw_everything(state);
-  void reload_document_if_changed(state);
-  setInterval(() => void reload_document_if_changed(state), POLL_MILLISECONDS);
+  // The sketchpad, as on skin-draw but with its own localStorage keys: it owns the
+  // document; this page reads it after each change.
+  start_sketchpad({
+    load_reference_mesh: () => load_skin_reference_mesh(PAGE_NAME),
+    load_eyeball_mesh: () => load_skull_frame_mesh(load_eyeball),
+    default_document_name: "skull-zanatomy",
+    storage_key_prefix: "autodraw_fit_hairline_to_loomis_man",
+    can_switch_documents: false,
+    active_layer: "skin",
+    locked_layers: ["skull"],
+    hidden_layers: [],
+    on_document_edited: (tablet_document) => {
+      state.template_document = tablet_document;
+      add_waiting_marks(state);
+      refit(state);
+      draw_all_views(state);
+    },
+    owns_keyboard: () => state.keyboard_owner === "sketchpad",
+  });
 }
 
 void start();

@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -53,6 +53,14 @@ export type SketchpadSetup = {
   locked_layers: Layer[];
   // Layers this page never draws or picks; the layer bar has no row for them.
   hidden_layers: Layer[];
+  // A page that embeds the sketchpad beside other views (fit-hairline-to-loomis-man,
+  // plan-hairline-reference-plate Q26/Q27): called with the document after it loaded and
+  // after every history step (an edit, undo, redo, a reload from the server), never for
+  // a camera move. The document is the sketchpad's own, read it, don't keep it.
+  on_document_edited?: (tablet_document: TabletDocument) => void;
+  // False while another view of the page owns the keyboard (the one last touched): the
+  // sketchpad's window key listeners (undo, nudge, rock, axis view, reference) do nothing.
+  owns_keyboard?: () => boolean;
 };
 
 // Ported from the desktop app (driver.kc default_line_color = gray 0.03
@@ -217,6 +225,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     return target;
   }
 
+  // The snapshot `setup.on_document_edited` last saw (the loaded document counts as one).
+  let last_reported_history_snapshot: string | null = null;
+  // True unless the page says another of its views has the keyboard.
+  function owns_keyboard(): boolean {
+    return setup.owns_keyboard === undefined || setup.owns_keyboard();
+  }
   // The history entry the document equals; null before the first edit.
   function current_history_snapshot(): string | null {
     return history.position >= 0 ? history.entries[history.position].snapshot : null;
@@ -249,6 +263,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_width_panel();
     persistence.history_snapshot = current_history_snapshot();
     schedule_autosave(persistence, tablet_document, camera);
+    if (setup.on_document_edited !== undefined && persistence.history_snapshot !== last_reported_history_snapshot) {
+      last_reported_history_snapshot = persistence.history_snapshot;
+      setup.on_document_edited(tablet_document);
+    }
     if (frame_requested) return;
     frame_requested = true;
     requestAnimationFrame(() => {
@@ -331,6 +349,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     render_now();
   }
   window.addEventListener("keydown", (event) => {
+    if (!owns_keyboard()) return;
     if (event.key.toLowerCase() !== "r" || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     if (document.activeElement instanceof HTMLInputElement) return;
     if (camera_rock_start_ms !== null) return;
@@ -377,7 +396,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const selection_readout_style = document.createElement("style");
   selection_readout_style.textContent = `
     #selection_readout {
-      position: fixed; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom));
+      position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom));
       z-index: 20; padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #222228cc;
       font: 13px monospace; color: #ccc; white-space: pre; cursor: copy;
     }
@@ -387,7 +406,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const selection_readout = document.createElement("div");
   selection_readout.id = "selection_readout";
   selection_readout.title = "click to copy";
-  document.body.append(selection_readout);
+  // In the canvas's offset parent (the body on a full-page sketchpad, the embedding box on
+  // fit-hairline-to-loomis-man), absolute: the same place as the mirror frame.
+  (canvas.offsetParent ?? document.body).append(selection_readout);
   function selection_readout_text(): string {
     return describe_selection(tablet_document, {
       stroke: edit_state === null ? null : edit_state.stroke_id,
@@ -1242,6 +1263,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   }
   window.addEventListener("keydown", (event) => {
+    if (!owns_keyboard()) return;
     // The only modifier chord the sketchpad takes: Ctrl/cmd + a nudge key while a
     // handle is selected = nudge inside the line's plane (a bare nudge swings).
     // Every other chord is the browser's.
@@ -1569,12 +1591,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const mirror_button = document.getElementById("mirror_button") as HTMLButtonElement;
   const mirror_storage_key = `${setup.storage_key_prefix}_mirror`;
   const mirror_frame = document.createElement("div");
-  mirror_frame.style.cssText = "position: fixed; box-sizing: border-box; border: 1px solid #aaa; touch-action: none;";
+  // Absolute in the canvas's offset parent: the page (a full-page sketchpad) or the
+  // positioned container an embedding page puts the canvas in.
+  mirror_frame.style.cssText = "position: absolute; box-sizing: border-box; border: 1px solid #aaa; touch-action: none;";
   canvas.after(mirror_frame);
   function place_mirror_frame(): void {
     const rectangle = mirror_rectangle(canvas.clientWidth, canvas.clientHeight);
-    mirror_frame.style.left = `${rectangle.left}px`;
-    mirror_frame.style.top = `${rectangle.top}px`;
+    mirror_frame.style.left = `${canvas.offsetLeft + rectangle.left}px`;
+    mirror_frame.style.top = `${canvas.offsetTop + rectangle.top}px`;
     mirror_frame.style.width = `${rectangle.size}px`;
     mirror_frame.style.height = `${rectangle.size}px`;
     mirror_frame.style.display = mirror_visible ? "block" : "none";
@@ -1607,6 +1631,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     request_render();
   });
   window.addEventListener("keydown", (event) => {
+    if (!owns_keyboard()) return;
     if (event.key === "a" && !event.repeat && !event.ctrlKey && !event.metaKey) {
       camera_snap_to_axis_view(camera, camera_snap_state);
       request_render();
@@ -1654,6 +1679,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     current_row!.scrollIntoView({ block: "nearest" });
   }
   window.addEventListener("keydown", (event) => {
+    if (!owns_keyboard()) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
       if (event.shiftKey) perform_redo();
@@ -1671,6 +1697,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   reference_button.addEventListener("click", toggle_reference_visible);
   reference_button.classList.toggle("armed", reference_visible);
   window.addEventListener("keydown", (event) => {
+    if (!owns_keyboard()) return;
     if (event.key === "q" && !event.repeat && !event.ctrlKey && !event.metaKey) toggle_reference_visible();
   });
   // Eyeballs with the reference (Q9): the mesh is fetched on the first arm only.
@@ -2002,6 +2029,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   resize_canvas_to_display();
   void load_current_document_on_startup(persistence, tablet_document, camera).then(() => {
     request_render();
+    // The loaded document has no history step yet, so request_render reported nothing.
+    setup.on_document_edited?.(tablet_document);
   });
   void setup.load_reference_mesh().then((mesh) => {
     reference_mesh = mesh;

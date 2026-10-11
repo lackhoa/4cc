@@ -17,7 +17,10 @@ import { update_pinned_vertex_positions } from "./patch";
 import { FitLandmarksFile, fit_landmark_mark_world_position, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
-type LandmarkPair = { template_position: V3; target_position: V3 };
+// One landmark of a fit: a point of the template and where it must land, both world
+// positions. The pages build these (plan-hairline-reference-plate Q19: the man page
+// from its plate marks, the girl page through fitted_document_from_landmarks).
+export type LandmarkPair = { template_position: V3; target_position: V3 };
 
 // Solves a * x = b in place by Gaussian elimination with partial pivoting; b holds one
 // column per right-hand side. Null when the system has no single solution.
@@ -159,29 +162,41 @@ function warped_stroke_control_points(warp: ThinPlateWarp, template_points: Stro
   return { p0, p1, p2, p3 };
 }
 
-// The template warped so its landmarks land on their marks: a new document with the
-// template's vertex and stroke ids. The template is only read. A landmark whose template
-// point is not in the template is left out. Null when no warp exists: two landmarks on
-// the same template point, or fewer than four landmarks that are not in one plane.
+// The pairs of one landmark, mirrored: a midline point (drawn a hair off x = 0, put on
+// it) gives one pair with x = 0, so the warp stays mirror-symmetric; any other point gives
+// its pair and the mirror image of both positions.
+export function mirrored_landmark_pairs(template_position: V3, target_position: V3): LandmarkPair[] {
+  if (template_position_is_on_midline(template_position)) {
+    return [{ template_position: v3(0, template_position.y, template_position.z), target_position: v3(0, target_position.y, target_position.z) }];
+  }
+  return [
+    { template_position, target_position },
+    {
+      template_position: v3(-template_position.x, template_position.y, template_position.z),
+      target_position: v3(-target_position.x, target_position.y, target_position.z),
+    },
+  ];
+}
+
+// The template warped so its landmarks land on their marks (the girl plate's landmark
+// file): the pairs are built here, the fit is fitted_document_from_landmark_pairs.
 export function fitted_document_from_landmarks(template_document: TabletDocument, landmarks_file: FitLandmarksFile): TabletDocument | null {
   const pairs: LandmarkPair[] = [];
   for (const landmark of landmarks_file.landmarks) {
     const template_position = template_point_world_position(template_document, landmark.template_point);
     if (template_position === null) continue;
-    const is_on_midline = template_position_is_on_midline(template_position);
-    const target_position = fit_landmark_mark_world_position(landmark, is_on_midline);
-    if (is_on_midline) {
-      // A midline point drawn a hair off x = 0 is put on it, so the warp stays mirror-symmetric.
-      pairs.push({ template_position: v3(0, template_position.y, template_position.z), target_position });
-      continue;
-    }
-    pairs.push({ template_position, target_position });
-    pairs.push({
-      template_position: v3(-template_position.x, template_position.y, template_position.z),
-      target_position: v3(-target_position.x, target_position.y, target_position.z),
-    });
+    const target_position = fit_landmark_mark_world_position(landmark, template_position_is_on_midline(template_position));
+    pairs.push(...mirrored_landmark_pairs(template_position, target_position));
   }
-  const warp = thin_plate_warp_from_landmarks(pairs, landmarks_file.stiffness);
+  return fitted_document_from_landmark_pairs(template_document, pairs, landmarks_file.stiffness);
+}
+
+// The template warped so every pair's template position lands on its target: a new
+// document with the template's vertex and stroke ids. The template is only read. Null
+// when no warp exists: two pairs on the same template position, or fewer than four
+// positions that are not in one plane.
+export function fitted_document_from_landmark_pairs(template_document: TabletDocument, pairs: LandmarkPair[], stiffness: number): TabletDocument | null {
+  const warp = thin_plate_warp_from_landmarks(pairs, stiffness);
   if (warp === null) {
     console.error(`landmark fit: no warp exists for these ${pairs.length} landmark positions (two on the same template point, or all in one plane)`);
     return null;
