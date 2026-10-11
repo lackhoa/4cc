@@ -215,6 +215,10 @@ function draw_overlay_layer(state: PageState, view: PlateView): void {
       context.arc(pixel.x, pixel.y, 3 / canvas_scale, 0, 2 * Math.PI);
       context.fill();
       context.stroke();
+      // Labelled with the head's vertex name, below-right so it doesn't sit on the
+      // green mark's label (above-right).
+      context.fillText(`head ${name}`, pixel.x + arm, pixel.y + arm + 10 / canvas_scale);
+      context.fillStyle = HEAD_POINT_COLOR;
     }
   }
 
