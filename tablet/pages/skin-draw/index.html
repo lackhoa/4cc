@@ -15,7 +15,9 @@
     #toolbar { position: fixed; top: max(12px, env(safe-area-inset-top));
                right: max(12px, env(safe-area-inset-right)); display: flex; gap: 8px;
                flex-wrap: wrap; justify-content: flex-end;
-               max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+               max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));
+               pointer-events: none; } /* the wrapped rows span the window; only the buttons take the pen */
+    #toolbar > * { pointer-events: auto; }
     #toolbar button { padding: 10px 16px; font-size: 15px; color: #ccc;
                       background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
     #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
