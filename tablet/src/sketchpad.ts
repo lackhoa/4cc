@@ -2078,6 +2078,26 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { debug_render_now: unknown }).debug_render_now = render_now;
   (window as unknown as { debug_selection_text: unknown }).debug_selection_text = selection_readout_text;
   (window as unknown as { debug_pull_document_changes_if_any: unknown }).debug_pull_document_changes_if_any = pull_document_changes_if_any;
+  // Dev-server only (2026-11-07): drive the editor from the browser console or a
+  // scripted tab without clicking — select a stroke and a handle, read the
+  // selection, nudge it the way the keyboard does. `edit_state` is reassigned, so
+  // it is read through a function, not stored.
+  if (import.meta.env.DEV) {
+    const debug_hooks = {
+      debug_edit_state: () => edit_state,
+      debug_select_stroke: (stroke_id: StrokeId, handle: "p1" | "p2" | null = null) => {
+        edit_state = begin_edit_state(stroke_id);
+        edit_state.selected_handle = handle;
+        extra_selection = [];
+        selected_vertex = null;
+        extra_vertex = null;
+        request_render();
+      },
+      debug_nudge_selected_handle: nudge_selected_handle,
+      debug_request_render: request_render,
+    };
+    Object.assign(window, debug_hooks);
+  }
   // Read by the page-reload script of the build (vite.config.ts reload_on_rebuild_plugin).
   (window as unknown as { tablet_has_unsaved_edits: unknown }).tablet_has_unsaved_edits = () => has_unsaved_edits(persistence);
   console.log("autodraw tablet: Sketchpad rework — line tool + vertex-connected single-cubic strokes");
