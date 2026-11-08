@@ -574,25 +574,37 @@ export function patch_by_id(tablet_document: TabletDocument, patch_id: PatchId):
   return tablet_document.patches.find((patch) => patch.id === patch_id) ?? null;
 }
 
+// World units under which a recomputed pin position counts as unmoved.
+const UNMOVED_PIN_EPSILON = 1e-9;
+
 // Re-derive every pinned vertex's position. Called once per frame before
 // tessellation, so any host reshape (handle/vertex drags, undo/redo, merges)
 // carries its riders along — and, through move_vertex, the strokes ending on
 // those riders. Stroke pins first: bezier_point(host, t), moved onto the
 // surface when the host is an on-surface stroke (plan-hairline-drawn-on-surface
 // Q12). Then surface pins: patch_point(patch, u, v) (Q5).
+// A pin whose recomputed position equals the stored one is skipped: move_vertex
+// re-aims the smooth knots around it with stroke_a leading, and doing that every
+// frame for unmoved pins silently undid edits of the other stroke
+// (plan-smooth-knot-wrong-handle.md Q3). Not an exact compare: the vertex is
+// stored in its bone's space, so reading it back after a move is off by rounding.
 export function update_pinned_vertex_positions(tablet_document: TabletDocument): void {
+  const move_if_changed = (vertex: VertexId, point: V3): void => {
+    if (v3_length(v3_sub(vertex_position(tablet_document, vertex), point)) < UNMOVED_PIN_EPSILON) return;
+    move_vertex(tablet_document, vertex, point);
+  };
   for (const pin of tablet_document.vertex_pins) {
     const host = stroke_by_id(tablet_document, pin.host_stroke);
     const point = bezier_point(stroke_control_points(host, tablet_document), pin.t);
-    move_vertex(
-      tablet_document, pin.vertex,
+    move_if_changed(
+      pin.vertex,
       host.on_surface === true ? project_onto_surface(tablet_document, [point], host.layer, host.id)[0] : point,
     );
   }
   for (const pin of tablet_document.vertex_surface_pins) {
     const patch = patch_by_id(tablet_document, pin.patch);
     const point = patch === null ? null : patch_point(patch, tablet_document, pin.u, pin.v);
-    if (point !== null) move_vertex(tablet_document, pin.vertex, point);
+    if (point !== null) move_if_changed(pin.vertex, point);
   }
 }
 

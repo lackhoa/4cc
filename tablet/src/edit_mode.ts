@@ -13,7 +13,7 @@
 // consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Layer, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
+import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { drag_surface_pin, stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
@@ -265,20 +265,28 @@ export function edit_pen_move(
 }
 
 // Run `move_handle` (which moves the dragged handle, p1 or p2), then make the
-// smooth knots at that end follow.
+// smooth knots at both ends of the stroke follow, this stroke leading.
 function move_dragged_handle_leading_smooth_knots(
   state: EditState, stroke: Stroke, tablet_document: TabletDocument, move_handle: () => void,
 ): void {
   // A handle drag at a smooth knot leads the neighbour: same direction, both
   // lengths scaled by the same factor (Q2) — so remember the length before.
   const knot_vertex = state.dragging === "p1" ? stroke.p0_vertex : stroke.p3_vertex;
-  const knots = smooth_knots_at_vertex(tablet_document, knot_vertex)
+  const other_vertex = state.dragging === "p1" ? stroke.p3_vertex : stroke.p0_vertex;
+  const knots_of_stroke_at = (vertex: VertexId): SmoothKnot[] => smooth_knots_at_vertex(tablet_document, vertex)
     .filter((knot) => knot.stroke_a === stroke.id || knot.stroke_b === stroke.id);
+  const knots = knots_of_stroke_at(knot_vertex);
+  const other_end_knots = knots_of_stroke_at(other_vertex);
   const old_length = dragged_handle_length(state, stroke, tablet_document);
   move_handle();
   const new_length = dragged_handle_length(state, stroke, tablet_document);
   const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
   for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
+  // A swing also turns the handle at the other end (into the new plane): the
+  // edited stroke leads there too, lengths kept, and only the direct neighbour
+  // turns (plan-smooth-knot-wrong-handle.md Q2, Q4). In plane mode the other
+  // handle did not move and this is a no-op on a smooth knot.
+  for (const knot of other_end_knots) enforce_smooth_knot(tablet_document, knot, stroke.id);
 }
 
 // Keyboard move of a handle (p1/p2) of the edited stroke, through the same

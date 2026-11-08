@@ -435,6 +435,14 @@ function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: Str
   return [a.p0_vertex, a.p3_vertex].find((vertex) => vertex === b.p0_vertex || vertex === b.p3_vertex) ?? null;
 }
 
+// Re-aim the follower's handle at the knot opposite the leader's.
+// The knot itself is a stateless rule (the two handles are opposite), but which
+// stroke leads depends on the edit: the stroke the user edited leads. So every
+// edit leaves its knots smooth before it returns; no later pass can repair them
+// right, because by then the edit is gone and it would have to fall back to
+// stroke_a. A later pass only repairs knots broken by something other than the
+// user's edit (a pin whose host moved), where stroke_a leading is right
+// (plan-smooth-knot-wrong-handle.md Q6).
 export function enforce_smooth_knot(
   tablet_document: TabletDocument, knot: SmoothKnot, leader_stroke: StrokeId, length_factor: number = 1,
 ): void {
