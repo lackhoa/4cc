@@ -258,16 +258,16 @@ export function edit_pen_move(
     return;
   }
   if (state.dragging === "p1" || state.dragging === "p2") {
-    move_dragged_handle_leading_smooth_knots(state, stroke, tablet_document, () => {
+    move_handle(state, stroke, tablet_document, () => {
       drag_handle(state, stroke, tablet_document, camera, screen, canvas, handle_mode, world_delta);
     });
   }
 }
 
-// Run `move_handle` (which moves the dragged handle, p1 or p2), then make the
+// Run `apply_move` (which moves the dragged handle, p1 or p2), then make the
 // smooth knots at both ends of the stroke follow, this stroke leading.
-function move_dragged_handle_leading_smooth_knots(
-  state: EditState, stroke: Stroke, tablet_document: TabletDocument, move_handle: () => void,
+function move_handle(
+  state: EditState, stroke: Stroke, tablet_document: TabletDocument, apply_move: () => void,
 ): void {
   // A handle drag at a smooth knot leads the neighbour: same direction, both
   // lengths scaled by the same factor (Q2) — so remember the length before.
@@ -278,7 +278,7 @@ function move_dragged_handle_leading_smooth_knots(
   const knots = knots_of_stroke_at(knot_vertex);
   const other_end_knots = knots_of_stroke_at(other_vertex);
   const old_length = dragged_handle_length(state, stroke, tablet_document);
-  move_handle();
+  apply_move();
   const new_length = dragged_handle_length(state, stroke, tablet_document);
   const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
   for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
@@ -313,7 +313,7 @@ export function edit_nudge_handle(
   }
   if (forward_distance !== 0) {
     const forward = camera_basis(camera).forward;
-    move_dragged_handle_leading_smooth_knots(state, stroke, tablet_document, () => {
+    move_handle(state, stroke, tablet_document, () => {
       const world_delta = v3_scale(forward, forward_distance);
       if (handle_mode === "swing") {
         swing_dragged_handle(state, stroke, tablet_document, world_delta);
