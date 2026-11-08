@@ -394,9 +394,6 @@ function set_handle_point_at_vertex(stroke: Stroke, tablet_document: TabletDocum
   stroke[other_key] = swing_offset_into_plane(chord_direction(p0, p3), stroke[key], stroke[other_key]);
 }
 
-// Re-aim the knot's follower handle opposite the leader's tangent. The
-// follower's handle length is kept, times `length_factor` (a leader handle
-// drag passes its own length ratio so the split ratio survives, Q2).
 // Make two strokes that share an endpoint vertex smooth there: a knot record
 // with `stroke_a` leading, and stroke_b's tangent re-aimed once to match.
 // Returns the knot vertex, or null if they share no endpoint (a stroke's own
@@ -435,7 +432,9 @@ function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: Str
   return [a.p0_vertex, a.p3_vertex].find((vertex) => vertex === b.p0_vertex || vertex === b.p3_vertex) ?? null;
 }
 
-// Re-aim the follower's handle at the knot opposite the leader's.
+// Re-aim the follower's handle at the knot opposite the leader's. The
+// follower's handle length is kept, times `length_factor` (a leader handle
+// drag passes its own length ratio so the split ratio survives, Q2).
 // The knot itself is a stateless rule (the two handles are opposite), but which
 // stroke leads depends on the edit: the stroke the user edited leads. So every
 // edit leaves its knots smooth before it returns; no later pass can repair them
