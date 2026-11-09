@@ -18,7 +18,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin } from "./patch";
+import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
@@ -679,8 +679,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Plain tap on a stroke: it becomes the sole selection. Ctrl-tap: toggles it
   // in the selection — on the primary, the first extra is promoted (Q4).
   function select_stroke_by_tap(picked: StrokeId, multi: boolean): void {
-    selected_patch = null;
     if (!multi) {
+      selected_patch = null;
       selected_vertex = null;
       extra_vertex = null;
       extra_selection = [];
@@ -701,8 +701,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   // The one place a tap changes the selection (plan-sketchpad-selection-revamp.md
   // Q8): a plain tap replaces the selection; a ctrl-tap toggles the tapped line
-  // or vertex and keeps the rest, the other kind included
-  // (plan-sketchpad-pin-vertex-to-selected-line.md Q1). Vertices: two at most.
+  // or vertex and keeps the rest, the other kinds included
+  // (plan-sketchpad-pin-vertex-to-selected-line.md Q1, and the patch since
+  // plan-sketchpad-pin-vertex-to-selected-surface.md Q1). Vertices: two at most;
+  // patches: one.
   function select_tap_target(target: TapTarget, multi: boolean): void {
     switch (target.kind) {
       case "handle":
@@ -711,7 +713,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         break;
       case "vertex":
         if (multi) {
-          selected_patch = null;
           if (selected_vertex === null) {
             selected_vertex = target.vertex;
           } else if (target.vertex === selected_vertex) {
@@ -740,12 +741,24 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         select_stroke_by_tap(target.stroke_id, multi);
         break;
       case "patch":
+        if (multi) {
+          // Ctrl-tap on a patch's fill sets / clears the patch, the lines and
+          // vertices stay (surface plan Q1).
+          selected_patch = selected_patch === target.patch ? null : target.patch;
+          break;
+        }
+        edit_state = null;
+        extra_selection = [];
+        selected_vertex = null;
+        extra_vertex = null;
+        selected_patch = target.patch;
+        break;
       case "nothing":
         edit_state = null;
         extra_selection = [];
         selected_vertex = null;
         extra_vertex = null;
-        selected_patch = target.kind === "patch" ? target.patch : null;
+        selected_patch = null;
         break;
     }
   }
@@ -1050,6 +1063,32 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     begin_history_step(history, tablet_document);
     pin_vertex_to_stroke(tablet_document, pair.vertex, pair.stroke_id);
     end_history_step(history, tablet_document, `pin vertex ${pair.vertex} to line ${pair.stroke_id}`);
+    request_render();
+  });
+
+  // Pin to surface (plan-sketchpad-pin-vertex-to-selected-surface.md): with
+  // exactly one vertex and one patch selected (lines or not), pins the vertex to
+  // the nearest point of the patch's surface (Q4); a vertex pinned elsewhere
+  // moves its pin. Hidden when the pair is refused (Q5). Both stay selected (Q6).
+  const pin_to_surface_button = document.getElementById("pin_to_surface_button") as HTMLButtonElement;
+  function selected_pin_to_surface_pair(): { vertex: VertexId; patch_index: number } | null {
+    if (selected_patch === null || selected_vertex === null || extra_vertex !== null) return null;
+    const patch = tablet_document.patches[selected_patch];
+    if (patch === undefined || !vertex_can_pin_to_selected_surface(tablet_document, selected_vertex, patch)) return null;
+    // A patch's sub-curve ends at its current line pin.
+    if (pin_by_vertex(tablet_document, selected_vertex) !== null && pin_is_locked(tablet_document, selected_vertex)) return null;
+    return { vertex: selected_vertex, patch_index: selected_patch };
+  }
+  pin_to_surface_button.addEventListener("click", () => {
+    const pair = selected_pin_to_surface_pair();
+    if (pair === null) return;
+    const patch = tablet_document.patches[pair.patch_index];
+    const nearest = nearest_point_on_patch(tablet_document, patch, vertex_position(tablet_document, pair.vertex));
+    if (nearest === null) return;
+    begin_history_step(history, tablet_document);
+    pin_vertex_to_surface(tablet_document, pair.vertex, patch, nearest.u, nearest.v);
+    // The label says the patch's list position, as the selection readout does.
+    end_history_step(history, tablet_document, `pin vertex ${pair.vertex} to surface ${pair.patch_index}`);
     request_render();
   });
 
@@ -1514,10 +1553,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (selected_patch === null && selected_vertex !== null && pin_is_locked(tablet_document, selected_vertex)) {
       delete_lock_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
     }
-    // del does nothing while a vertex and a line are selected together (Q2).
+    // del does nothing while two kinds are selected together: a vertex and a
+    // line (line plan Q2), or a patch with either (surface plan Q2).
     const vertex_and_line_selected = edit_state !== null && selected_vertex !== null;
-    set_button_availability(delete_button, selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected), delete_lock_reason);
+    const patch_and_other_selected = selected_patch !== null && line_or_vertex_selected;
+    set_button_availability(
+      delete_button, !patch_and_other_selected && (selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected)), delete_lock_reason,
+    );
     set_button_availability(pin_to_line_button, selected_pin_to_line_pair() !== null, null);
+    set_button_availability(pin_to_surface_button, selected_pin_to_surface_pair() !== null, null);
     set_button_availability(weld_button, selected_weld_pair() !== null, null);
     const detach_end_pair = selected_detach_end_pair();
     set_button_availability(
@@ -1539,6 +1583,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_button_availability(name_button, line_or_vertex_selected, null);
   }
   delete_button.addEventListener("click", () => {
+    if (selected_patch !== null && (edit_state !== null || selected_vertex !== null)) return; // which is meant is unclear (surface plan Q2)
     if (selected_patch !== null) {
       begin_history_step(history, tablet_document);
       const deleted = tablet_document.patches[selected_patch];

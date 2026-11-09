@@ -629,6 +629,32 @@ export function pin_vertex_to_surface(tablet_document: TabletDocument, vertex: V
   if (point !== null) move_vertex(tablet_document, vertex, point);
 }
 
+// The nearest point of one patch's surface to a world point, at any distance
+// (plan-sketchpad-pin-vertex-to-selected-surface.md Q4: where `pin to surface`
+// puts the vertex); on the rim when the target is off the patch. Null when the
+// patch has no fill.
+export function nearest_point_on_patch(tablet_document: TabletDocument, patch: Patch, target: V3): { u: number; v: number; position: V3 } | null {
+  const fill = resolve_patch_fill(patch, tablet_document);
+  const grid = patch_surface_grid(patch, tablet_document);
+  if (fill === null || grid === null) return null;
+  return nearest_on_surface(fill_surface_function(fill, tablet_document), grid, target);
+}
+
+// Whether the `pin to surface` button may pin this vertex to this patch
+// (plan-sketchpad-pin-vertex-to-selected-surface.md Q5). Refused: the vertex
+// bounds the patch (vertex_can_pin_to_surface), it already rides this patch, a
+// midline stroke holds it on the midline, or the patch has no fill to land on.
+// A vertex or patch on a locked layer cannot be selected, so that refusal needs
+// no check here.
+export function vertex_can_pin_to_selected_surface(tablet_document: TabletDocument, vertex: VertexId, patch: Patch): boolean {
+  if (!vertex_can_pin_to_surface(tablet_document, vertex, patch)) return false;
+  if (surface_pin_by_vertex(tablet_document, vertex)?.patch === patch.id) return false;
+  if (resolve_patch_fill(patch, tablet_document) === null) return false;
+  return !tablet_document.strokes.some(
+    (stroke) => stroke.midline === true && (stroke.p0_vertex === vertex || stroke.p3_vertex === vertex),
+  );
+}
+
 // Drag of a surface-pinned vertex: (patch, u, v) follows the surface under the
 // pen on the pin's layer, switching patch at a seam; a miss, or a patch the
 // vertex may not sit on, leaves it where it was (Q5).
