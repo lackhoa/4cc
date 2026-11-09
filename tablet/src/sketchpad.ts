@@ -59,7 +59,7 @@ export type SketchpadSetup = {
   // a camera move. The document is the sketchpad's own, read it, don't keep it.
   on_document_edited?: (tablet_document: TabletDocument) => void;
   // False while another view of the page owns the keyboard (the one last touched): the
-  // sketchpad's window key listeners (undo, nudge, rock, axis view, reference) do nothing.
+  // sketchpad's window key listeners (undo, nudge, axis view, reference) do nothing.
   owns_keyboard?: () => boolean;
 };
 
@@ -101,7 +101,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let mirror_visible = false;
   let mirror_camera: OrbitCamera | null = null; // null until the mirror first draws, then steered by the user only
   let pen_ray_screen: V2 | null = null; // where the pen last was, down or hovering
-  let camera_rock_start_ms: number | null = null; // non-null while the rock key is held
   const tablet_document = empty_document();
   const renderer = create_line_renderer(gl);
   const persistence = create_persistence_state(setup.default_document_name, setup.storage_key_prefix);
@@ -277,8 +276,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // One frame, synchronously. Also the debug hook `window.debug_render_now` for
   // automated tests in a hidden tab, where requestAnimationFrame never fires.
   function render_now(): void {
-    const unrocked_yaw = camera.yaw;
-    camera.yaw += camera_rock_yaw_offset();
     mesh_viewport_height_pixels = canvas.clientHeight;
     hot_item = resolve_hot_item();
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
@@ -294,7 +291,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (mirror_visible) render_mirror(clip);
     rebuild_stroke_labels();
     refresh_selection_readout();
-    camera.yaw = unrocked_yaw;
   }
 
   // The mirror (see mirror_view.ts): the same scene again, into a corner of the
@@ -327,39 +323,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     mesh_camera = camera;
     mesh_viewport_height_pixels = canvas.clientHeight;
   }
-
-  // Camera rock: while `r` is held the main view swings left and right around
-  // its yaw, so depth shows as motion. The swing exists inside render_now only:
-  // the yaw that autosave and the pen read never changes.
-  function camera_rock_yaw_offset(): number {
-    if (camera_rock_start_ms === null) return 0;
-    const swing_radians = (8 * Math.PI) / 180;
-    const period_seconds = 1;
-    const seconds = (performance.now() - camera_rock_start_ms) / 1000;
-    return swing_radians * Math.sin((2 * Math.PI * seconds) / period_seconds);
-  }
-  function camera_rock_frame(): void {
-    if (camera_rock_start_ms === null) return;
-    render_now();
-    requestAnimationFrame(camera_rock_frame);
-  }
-  function stop_camera_rock(): void {
-    if (camera_rock_start_ms === null) return;
-    camera_rock_start_ms = null;
-    render_now();
-  }
-  window.addEventListener("keydown", (event) => {
-    if (!owns_keyboard()) return;
-    if (event.key.toLowerCase() !== "r" || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (document.activeElement instanceof HTMLInputElement) return;
-    if (camera_rock_start_ms !== null) return;
-    camera_rock_start_ms = performance.now();
-    requestAnimationFrame(camera_rock_frame);
-  });
-  window.addEventListener("keyup", (event) => {
-    if (event.key.toLowerCase() === "r") stop_camera_rock();
-  });
-  window.addEventListener("blur", stop_camera_rock);
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
   // stroke's name shows, placed at the curve's midpoint each frame; a named vertex
@@ -1732,7 +1695,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
   });
 
-  // Reference mesh on/off: the "ref" button, or the q key (same key as the desktop app).
+  // Reference mesh on/off: the "ref" button, or the r key (q too, the desktop app's key).
   const reference_button = document.getElementById("reference_button") as HTMLButtonElement;
   function toggle_reference_visible(): void {
     reference_visible = !reference_visible;
@@ -1743,7 +1706,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   reference_button.classList.toggle("armed", reference_visible);
   window.addEventListener("keydown", (event) => {
     if (!owns_keyboard()) return;
-    if (event.key === "q" && !event.repeat && !event.ctrlKey && !event.metaKey) toggle_reference_visible();
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (document.activeElement instanceof HTMLInputElement) return;
+    if (event.key === "r" || event.key === "q") toggle_reference_visible();
   });
   // Eyeballs with the reference (Q9): the mesh is fetched on the first arm only.
   const eyeball_button = document.getElementById("eyeball_button") as HTMLButtonElement | null;
