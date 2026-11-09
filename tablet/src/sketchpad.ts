@@ -1709,6 +1709,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     if (document.activeElement instanceof HTMLInputElement) return;
     if (event.key === "r" || event.key === "q") toggle_reference_visible();
+    if (event.key === "s") toggle_surface_drawn();
   });
   // Eyeballs with the reference (Q9): the mesh is fetched on the first arm only.
   const eyeball_button = document.getElementById("eyeball_button") as HTMLButtonElement | null;
@@ -1747,16 +1748,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     });
   }
 
+  // Surfaces on/off: the "surf" button, or the s key.
   const surface_button = document.getElementById("surface_button") as HTMLButtonElement;
   function refresh_surface_button(): void {
     surface_button.classList.toggle("armed", surface_drawn);
-    surface_button.textContent = surface_drawn ? "surf" : "no surf";
+    surface_button.textContent = surface_drawn ? "surf (S)" : "no surf (S)";
   }
-  surface_button.addEventListener("click", () => {
+  function toggle_surface_drawn(): void {
     surface_drawn = !surface_drawn;
     refresh_surface_button();
     request_render();
-  });
+  }
+  surface_button.addEventListener("click", toggle_surface_drawn);
   refresh_surface_button();
 
   // Layer bar (plan-skin-over-skull-study.md): per layer a name button (tap =
