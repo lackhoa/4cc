@@ -667,8 +667,8 @@ async function start(): Promise<void> {
     storage_key_prefix: "autodraw_fit_hairline_to_loomis_man",
     can_switch_documents: false,
     active_layer: "skin",
-    locked_layers: ["skull"],
-    hidden_layers: [],
+    locked_layers: [],
+    hidden_layers: ["skull"],
     on_document_edited: (tablet_document) => {
       state.template_document = tablet_document;
       add_waiting_marks(state);

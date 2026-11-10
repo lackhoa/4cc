@@ -71,12 +71,21 @@ export function attach_gestures(
   // null when idle. Decided at pen-down, so releasing alt mid-drag keeps panning.
   let alt_pan_last_position: V2 | null = null;
 
+  // Every position handed out is in CSS pixels from the canvas's top left corner,
+  // the same origin the caller projects into (camera_world_to_screen). The
+  // rectangle is read per event: an embedding page scrolls, so the canvas moves
+  // in the window. On a full-window page the corner is (0, 0).
+  function canvas_local_position(e: PointerEvent): V2 {
+    const rectangle = canvas.getBoundingClientRect();
+    return { x: e.clientX - rectangle.left, y: e.clientY - rectangle.top };
+  }
+
   canvas.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     // NOTE: throws NotFoundError for synthetic events (no active pointer) —
     // guard so dispatched test strokes still reach the handlers below.
     try { canvas.setPointerCapture(e.pointerId); } catch {}
-    const position = { x: e.clientX, y: e.clientY };
+    const position = canvas_local_position(e);
     if (is_pen_pointer(e)) {
       if (e.altKey || e.button === 1) {
         alt_pan_last_position = position;
@@ -98,7 +107,7 @@ export function attach_gestures(
 
   canvas.addEventListener("pointermove", (e) => {
     e.preventDefault();
-    const position = { x: e.clientX, y: e.clientY };
+    const position = canvas_local_position(e);
     if (is_pen_pointer(e)) {
       if (alt_pan_last_position !== null) {
         const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
@@ -192,7 +201,7 @@ export function attach_gestures(
   for (const type of ["pointerup", "pointercancel"] as const) {
     canvas.addEventListener(type, (e) => {
       e.preventDefault();
-      const position = { x: e.clientX, y: e.clientY };
+      const position = canvas_local_position(e);
       if (is_pen_pointer(e)) {
         if (alt_pan_last_position !== null) {
           alt_pan_last_position = null;
