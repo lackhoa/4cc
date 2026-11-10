@@ -821,8 +821,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // The pin button also lights up while a pinned vertex is selected — in that
   // state tapping it unpins (Q11). Re-checked every frame since the selection
   // changes on pen gestures, not just button presses.
+  // With a vertex and a line (or a patch) selected and the pair allowed, the
+  // button pins the vertex there instead, and its label says so.
   function refresh_pin_button_armed(): void {
-    pin_button.classList.toggle("armed", armed_tool === "pin" || selected_pinned_vertex() !== null);
+    const pins_selected_pair = selected_pin_to_line_pair() !== null || selected_pin_to_surface_pair() !== null;
+    pin_button.classList.toggle("armed", armed_tool === "pin" || (!pins_selected_pair && selected_pinned_vertex() !== null));
+    const label = selected_pin_to_line_pair() !== null ? "pin to line" : selected_pin_to_surface_pair() !== null ? "pin to surface" : "pin";
+    if (pin_button.textContent !== label) pin_button.textContent = label;
   }
   function set_armed_tool(tool: ArmedTool | null): void {
     armed_tool = tool;
@@ -974,7 +979,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Pin: with a pinned vertex selected, unpin it (frozen in place as a free
   // vertex, still selected); otherwise, with a stroke selected, arm pin creation
   // — the next tap on the selected stroke's curve drops a vertex constrained there.
+  // First of all, with a vertex and a line (or a patch) selected and the pair
+  // allowed, pins the vertex there (Khoa 2026-11-10: the separate "pin to line" /
+  // "pin to surface" buttons folded into this one). A line wins over a patch.
   pin_button.addEventListener("click", () => {
+    if (selected_pin_to_line_pair() !== null) { pin_selected_vertex_to_line(); return; }
+    if (selected_pin_to_surface_pair() !== null) { pin_selected_vertex_to_surface(); return; }
     const unpinned_vertex = selected_pinned_vertex();
     if (unpinned_vertex !== null) {
       if (unpin_is_locked()) return; // a patch's sub-curve ends here (Q3)
@@ -1010,9 +1020,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   // Pin to line (plan-sketchpad-pin-vertex-to-selected-line.md): with exactly one
   // vertex and one stroke selected, pins the vertex to the nearest point of the
-  // stroke; a vertex pinned elsewhere moves its pin (Q7). Hidden when the pair is
-  // refused. Both stay selected (Q6).
-  const pin_to_line_button = document.getElementById("pin_to_line_button") as HTMLButtonElement;
+  // stroke; a vertex pinned elsewhere moves its pin (Q7). Done by the pin button,
+  // which falls back to its other jobs when the pair is refused. Both stay
+  // selected (Q6).
   function selected_pin_to_line_pair(): { vertex: VertexId; stroke_id: StrokeId } | null {
     if (edit_state === null || extra_selection.length > 0 || selected_vertex === null || extra_vertex !== null) return null;
     if (!vertex_can_pin_to_stroke(tablet_document, selected_vertex, edit_state.stroke_id)) return null;
@@ -1020,20 +1030,20 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (pin_by_vertex(tablet_document, selected_vertex) !== null && pin_is_locked(tablet_document, selected_vertex)) return null;
     return { vertex: selected_vertex, stroke_id: edit_state.stroke_id };
   }
-  pin_to_line_button.addEventListener("click", () => {
+  function pin_selected_vertex_to_line(): void {
     const pair = selected_pin_to_line_pair();
     if (pair === null) return;
     begin_history_step(history, tablet_document);
     pin_vertex_to_stroke(tablet_document, pair.vertex, pair.stroke_id);
     end_history_step(history, tablet_document, `pin vertex ${pair.vertex} to line ${pair.stroke_id}`);
     request_render();
-  });
+  }
 
   // Pin to surface (plan-sketchpad-pin-vertex-to-selected-surface.md): with
   // exactly one vertex and one patch selected (lines or not), pins the vertex to
   // the nearest point of the patch's surface (Q4); a vertex pinned elsewhere
-  // moves its pin. Hidden when the pair is refused (Q5). Both stay selected (Q6).
-  const pin_to_surface_button = document.getElementById("pin_to_surface_button") as HTMLButtonElement;
+  // moves its pin. Done by the pin button, not when the pair is refused (Q5).
+  // Both stay selected (Q6).
   function selected_pin_to_surface_pair(): { vertex: VertexId; patch_index: number } | null {
     if (selected_patch === null || selected_vertex === null || extra_vertex !== null) return null;
     const patch = tablet_document.patches[selected_patch];
@@ -1042,7 +1052,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (pin_by_vertex(tablet_document, selected_vertex) !== null && pin_is_locked(tablet_document, selected_vertex)) return null;
     return { vertex: selected_vertex, patch_index: selected_patch };
   }
-  pin_to_surface_button.addEventListener("click", () => {
+  function pin_selected_vertex_to_surface(): void {
     const pair = selected_pin_to_surface_pair();
     if (pair === null) return;
     const patch = tablet_document.patches[pair.patch_index];
@@ -1053,7 +1063,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // The label says the patch's list position, as the selection readout does.
     end_history_step(history, tablet_document, `pin vertex ${pair.vertex} to surface ${pair.patch_index}`);
     request_render();
-  });
+  }
 
   // Midline (plan-sketchpad-midline.md Q72): toggles the midline flag on the
   // selected vertex or stroke; enforce_midline in request_render snaps it to
@@ -1523,8 +1533,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_button_availability(
       delete_button, !patch_and_other_selected && (selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected)), delete_lock_reason,
     );
-    set_button_availability(pin_to_line_button, selected_pin_to_line_pair() !== null, null);
-    set_button_availability(pin_to_surface_button, selected_pin_to_surface_pair() !== null, null);
     set_button_availability(weld_button, selected_weld_pair() !== null, null);
     const detach_end_pair = selected_detach_end_pair();
     set_button_availability(
@@ -1535,8 +1543,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_button_availability(
       join_button, two_lines_selected, selected_join_refusal_reason(),
     );
+    // The pin button pins the selected vertex + line / patch pair when there is one;
+    // the unpin lock only matters when it would unpin.
+    const pins_selected_pair = selected_pin_to_line_pair() !== null || selected_pin_to_surface_pair() !== null;
     set_button_availability(
-      pin_button, line_selected || selected_pinned_vertex() !== null, unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
+      pin_button, pins_selected_pair || line_selected || selected_pinned_vertex() !== null,
+      !pins_selected_pair && unpin_is_locked() ? `this vertex bounds a patch, ${DELETE_PATCH_FIRST}` : null,
     );
     set_button_availability(split_button, line_selected, null);
     set_button_availability(smooth_button, two_lines_selected, null);
