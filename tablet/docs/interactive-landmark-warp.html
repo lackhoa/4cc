@@ -62,7 +62,8 @@
 
   <section>
     <h2>3 · The rule has two parts</h2>
-    <p>Press "move landmarks to a teenage girl", then switch between the two modes.</p>
+    <p>Press this button, then switch between the two modes in section 1.</p>
+    <div class="controls"><button class="preset_girl_button">move landmarks to a teenage girl</button></div>
     <p><strong>Affine part.</strong> Affine = a linear transform plus a shift. A linear
       transform alone keeps the origin fixed, so it cannot slide the head.
       One scale, stretch, shear and shift for the whole head,
@@ -86,6 +87,7 @@
     <h2>4 · Computing the affine part</h2>
     <p>The affine part is six numbers: a, b, c, d, e, f. They move any point (x, y) like this:</p>
     <div class="formula">new x = a + b·x + c·y<br>new y = d + e·x + f·y</div>
+    <div class="controls"><button class="preset_girl_button">move landmarks to a teenage girl</button></div>
     <p>With the landmarks as they are now in section 1, the six numbers are:</p>
     <div class="formula" id="affine_formula"></div>
     <p><strong>How the six numbers are chosen.</strong> It is the trend line of a spreadsheet,
@@ -95,6 +97,33 @@
     <p><strong>No search is needed to find the lowest score.</strong> Each miss is the six
       numbers times known values, added up. So the score is a bowl with one lowest point. At
       the bottom of a bowl the slope is zero in every direction.</p>
+    <p><strong>See the score and the bowl.</strong> The top picture shows the head moved by the affine part alone. The white
+      dot is where a landmark lands, the yellow dot is its target, the red line is the miss.
+      On each miss stands a red square with the miss as its side, so its area is the squared
+      miss. <strong>The score is the total red area.</strong></p>
+    <p>Now pick one of the six numbers and drag the slider to push it away from its best
+      value. The head shifts or stretches, the squares grow, the score goes up. The bottom
+      picture plots the score against that number: a parabola with one bottom. The computed
+      value sits exactly at the bottom. That holds for all six numbers at once, which is what
+      "bottom of the bowl" means.</p>
+    <div class="controls">
+      <label>number
+        <select id="bowl_number">
+          <option value="a">a: shift in x</option>
+          <option value="b">b: x from x (width)</option>
+          <option value="c">c: x from y (shear)</option>
+          <option value="d">d: shift in y</option>
+          <option value="e">e: y from x (shear)</option>
+          <option value="f" selected>f: y from y (height)</option>
+        </select>
+      </label>
+      <label>push away from best <input type="range" id="bowl_offset" min="-1" max="1" step="0.01" value="0"></label>
+      <button id="bowl_back_to_best">back to best</button>
+      <button class="preset_girl_button">move landmarks to a teenage girl</button>
+    </div>
+    <canvas id="bowl_scene_canvas" height="380"></canvas>
+    <canvas id="bowl_plot_canvas" height="190"></canvas>
+    <div class="readout" id="bowl_readout"></div>
     <p><strong>The score splits into two separate problems.</strong> A squared miss distance
       is (miss in x)² + (miss in y)². The miss in x is a + b·xᵢ + c·yᵢ − Xᵢ: it contains only
       a, b, c and the target x. The miss in y is d + e·xᵢ + f·yᵢ − Yᵢ: it contains only d, e, f
@@ -114,20 +143,52 @@
       split.</p>
     <p>The result, per landmark, in px:</p>
     <table class="numbers" id="affine_table"></table>
-    <p>The <strong>leftover</strong> column is what the affine part could not reach. It is the
-      red lines in "affine part only" mode. It is also the whole input of the local part.</p>
+    <p><strong>What "leftover" means.</strong> The affine part is one rule for the whole head,
+      with only six numbers. It cannot put all 10 landmarks exactly on their targets. Each
+      landmark ends up a little off. The leftover of a landmark is the step still missing:
+      from where the affine part put it, to where it must be.</p>
+    <div class="formula">leftover = target − affine result</div>
+    <p>Example, the nose tip with the teenage girl landmarks. Its target is (198.0, 284.0).
+      The affine part puts it at (188.5, 279.4). So its leftover is (9.5, 4.6): it still has
+      to go 9.5 px right and 4.6 px down. A leftover of (0, 0) would mean the affine part
+      already hit the target.</p>
+    <p>The leftovers are the red lines in "affine part only" mode in section 1. They are
+      also the whole input of the local part: its only job is to move each landmark by its
+      leftover.</p>
   </section>
 
   <section>
     <h2>5 · Computing the local part</h2>
     <p>The job: find a rule that moves each landmark by exactly its leftover, and moves the
       points in between smoothly.</p>
-    <p><strong>The building block.</strong> Each landmark i gets one function of distance,
-      U(r) = r² · ln r, where r is the distance from a point to landmark i on the template.
-      Each landmark also gets a <strong>weight</strong> wᵢ, which is a small arrow. The local
-      move of a point p is every landmark's weight times its U, added up:</p>
+    <p>The local part answers one question: given a point p on the template, how far does it
+      move? p can be any point: a control point of a curve, or the teal probe in section 1.
+      The answer is built from three things.</p>
+    <p><strong>1. r, a distance.</strong> r is the straight-line distance between p and one
+      landmark, measured with a ruler on the template. It is one plain number. Example: p is
+      at (340, 260) and the landmark sits at (300, 230) on the template. They are 40 apart in
+      x and 30 apart in y, so r = √(40² + 30²) = 50. There is one r per landmark: r₁ is the
+      distance from p to landmark 1, r₂ from p to landmark 2, and so on. With 10 landmarks, p
+      has 10 distances. The targets play no part in r.</p>
+    <p><strong>2. U, a fixed formula.</strong> U turns a distance into another number:
+      U(r) = r² · ln r. It is the same formula for every landmark and it has nothing to
+      solve for. Why this formula is explained at the end of the section.</p>
+    <p><strong>3. w, a weight per landmark.</strong> Each landmark i has a weight wᵢ. A
+      weight is a small arrow: an x amount and a y amount. The weights are the only unknowns.
+      How they are found comes next.</p>
+    <p><strong>Putting them together.</strong> For each landmark, scale its arrow wᵢ by the
+      number U(rᵢ). Add up the scaled arrows. That sum, plus a correction, is how far p
+      moves:</p>
     <div class="formula">local(p) = w₁·U(r₁) + w₂·U(r₂) + … + wₙ·U(rₙ) + correction(p)</div>
-    <p>The correction is a second affine move. The reason for it comes below.</p>
+    <p>The table "One point, worked out" below shows exactly this sum for the probe: one row
+      per landmark with its r, its U(r), its weight and the scaled arrow.</p>
+    <p>The correction is a second affine move. Written out, with p = (x, y):</p>
+    <div class="formula">correction in x = a′ + b′·x + c′·y<br>correction in y = d′ + e′·x + f′·y</div>
+    <p>That is the same kind of formula as the affine part in section 4, with six numbers
+      of its own, marked with ′ to keep them apart: a fixed shift (a′ and d′) plus an
+      amount that grows evenly with x and with y. No U, no distances, no landmarks in it.
+      In the sheet picture it is a flat board, shifted and tilted, and the sheet's bumps
+      sit on top of it. Its six numbers are unknowns, solved together with the weights. The reason it is needed comes below.</p>
     <p><strong>Finding the weights.</strong> The weights are the unknowns. What we know: at
       each landmark, the local move must equal that landmark's leftover. That is one equation
       per landmark:</p>
@@ -136,15 +197,250 @@
       is again a set of linear equations. Three more equations go with the three numbers of
       the correction:</p>
     <div class="formula">sum of wᵢ = 0 &nbsp;&nbsp;&nbsp; sum of wᵢ·xᵢ = 0 &nbsp;&nbsp;&nbsp; sum of wᵢ·yᵢ = 0</div>
-    <p>They say: the weights hold no net push and no net tilt. Any shift, scale or shear is
-      left to an affine move. With n landmarks that is n + 3 equations and n + 3 unknowns.
-      Here n = 10, so 13 equations, solved by the same elimination.</p>
+    <p><strong>Why a steel sheet at all.</strong> The problem to solve: the moves are known
+      at 10 landmarks, and a move is needed for every other point. Infinitely many rules
+      agree at the 10 landmarks. Something must pick one. The wish is "as smooth as
+      possible in between", but that is not yet a rule a computer can follow. Three simple
+      attempts and what goes wrong:</p>
+    <ul>
+      <li><strong>Copy the move of the nearest landmark.</strong> The drawing tears on the
+        line halfway between two landmarks.</li>
+      <li><strong>Average the landmark moves, nearer ones count more.</strong> A move no
+        landmark asks for can never come out. If all landmarks say "scale by 1.2", points
+        outside them should move further than any landmark, but an average cannot exceed
+        its inputs.</li>
+      <li><strong>A round bump around each landmark.</strong> The bump needs a width, and
+        nothing says what it should be. Too narrow gives dents, too wide smears
+        everything.</li>
+    </ul>
+    <p>The steel sheet is a fourth rule, and it makes "smooth" exact. A springy sheet forced
+      through given heights settles into the shape with the least total bending. Nature
+      solves "smoothest surface through these points" for free. So the method says: use
+      that shape. It has no width to choose, it does not tear, and a move that needs no
+      bending at all, any affine move, costs nothing and comes out exactly. The rest of this
+      section is only how to compute that shape.</p>
+    <p><strong>What "total bending" means, exactly.</strong> Call the sheet's height h(x, y).
+      Its slope in x is how fast h changes as x grows. Bending is how fast the
+      <em>slope</em> changes. There are three such rates at every spot:</p>
+    <ul>
+      <li><strong>h_xx:</strong> how fast the slope in x changes as x grows.</li>
+      <li><strong>h_yy:</strong> the same for y.</li>
+      <li><strong>h_xy:</strong> how fast the slope in x changes as y grows. This is
+        twist.</li>
+    </ul>
+    <div class="formula">total bending = sum over the whole plane of ( h_xx² + 2·h_xy² + h_yy² )</div>
+    <p>Three examples:</p>
+    <table class="numbers">
+      <tr><th>h(x, y)</th><th>h_xx</th><th>h_xy</th><th>h_yy</th><th>bending at each spot</th></tr>
+      <tr><td>5 + 2·x − 3·y, a tilted flat board</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>x², a gutter</td><td>2</td><td>0</td><td>0</td><td>4</td></tr>
+      <tr><td>x·y, a saddle</td><td>0</td><td>1</td><td>0</td><td>2</td></tr>
+    </table>
+    <p>"Bends as little as possible" means: of all the sheets that pass through every peg,
+      take the one whose total bending is the smallest number. That is a precise
+      mathematical problem, and its answer is proven to be exactly the formula of this
+      section: weights times U(r), plus a correction, with the three extra equations.
+      Squaring makes one sharp crease cost more than the same turn spread out, so the
+      winner spreads its turning widely.</p>
+    <p><strong>What is exact and what is only a picture.</strong> The definition above and
+      the formula are exact. The steel, the fingers and the "force" are a way to picture
+      them. Real thin plates do follow this rule for small bending, but nothing in the
+      warp depends on that.</p>
+    <p><strong>See the sheet.</strong> Press the button under the list. Drag the picture to
+      turn it.</p>
+    <ul>
+      <li><strong>The floor</strong> is the template, lying flat like a drawing on a
+        table.</li>
+      <li><strong>A peg</strong> stands at each landmark. Its height is that landmark's
+        leftover in x: how far the local part must still move it sideways. A peg going up
+        means "move right", a peg going down through the floor means "move left".</li>
+      <li><strong>The sheet</strong> starts flat on the floor. Flat means no point gets any
+        local move. Then it is fixed to the top of every peg. Only the 10 peg tops are
+        given. Everywhere else the steel finds its own shape.</li>
+      <li><strong>The height of the sheet over any point</strong> is the local move in x of
+        that point. The teal post is the probe: its height is the probe's local move.</li>
+      <li>The move in y has its own pegs and its own sheet. Switch with the buttons.</li>
+    </ul>
+    <div class="controls">
+      <button id="sheet_play">fix the sheet to the pegs</button>
+      <label>flat <input type="range" id="sheet_pressed" min="0" max="1" step="0.01" value="1"> on the pegs</label>
+      <label><input type="radio" name="sheet_axis" value="x" checked> move in x</label>
+      <label><input type="radio" name="sheet_axis" value="y"> move in y</label>
+    </div>
+    <canvas id="sheet_canvas" height="460"></canvas>
+    <p class="hint">
+      <span class="dot" style="background:#ffd166"></span>peg top: the height the sheet must have there
+      <span class="dot" style="background:#4dd4c0; margin-left:14px"></span>probe
+      <span class="swatch" style="background:#ffa94d; margin-left:14px"></span>sheet above the floor
+      <span class="swatch" style="background:#4dabf7; margin-left:14px"></span>sheet below the floor
+    </p>
+    <div class="readout" id="sheet_readout"></div>
+    <p><strong>Where "force" comes from.</strong> The sheet is thin springy steel. That is
+      the "thin plate" in the name. The picture is this:</p>
+    <ul>
+      <li>Lay a flat steel sheet over the template. Look only at the x part of the local
+        move for now.</li>
+      <li>Let the <em>height</em> of the sheet above a point stand for how far that point
+        moves in x. Flat sheet at height 0 means nothing moves.</li>
+      <li>Each landmark must move by its leftover. So at each landmark the sheet must be at
+        a given height. Example: leftover in x of +4 px means the sheet is 4 high there.</li>
+      <li>To get the sheet to those heights, press on it at the landmarks with a finger,
+        up at some and down at others. Between the landmarks the steel bends smoothly by
+        itself. That smooth shape is the local move of every other point.</li>
+    </ul>
+    <p>The steel itself does not stretch or expand in this picture. It only bends up and
+      down, like a ruler pressed in the middle. The height is a stand-in: it is not a real
+      distance above the drawing, it is the number "how far this point moves in x". The
+      drawing does stretch, and the slope of the sheet says where. Example: height 0 at
+      x = 100 and height 4 at x = 110. The first point stays, the second moves 4 px right,
+      so the 10 px between them become 14 px. Where the sheet is level, even if high, the
+      drawing only slides and keeps its size.</p>
+    <p>Now the link to the formula. Physics gives the shape of a large thin sheet pressed at
+      one single point: its height at distance r from the finger is the pressing strength
+      times r²·ln r. That is U(r). So U was not picked by taste. And the weight wᵢ is how
+      hard the finger presses at landmark i, with the sign for up or down. That pressing
+      strength is the "force". Several fingers add up, which is the sum of wᵢ·U(rᵢ). A
+      second sheet does the same for the y part, with its own weights.</p>
+    <p><strong>Yes, U(r) gets bigger with distance, and that looks backward.</strong> With r
+      in px:</p>
+    <table class="numbers">
+      <tr><th>r</th><th>U(r) = r²·ln r</th></tr>
+      <tr><td>1</td><td>0</td></tr>
+      <tr><td>10</td><td>230</td></tr>
+      <tr><td>100</td><td>46,052</td></tr>
+      <tr><td>1000</td><td>6,907,755</td></tr>
+    </table>
+    <p>A bump that fades with distance is what one expects. U is not that. U alone is never
+      used as a result. It is one ingredient, and the clamped plate below shows what it
+      looks like once the other ingredients are added.</p>
+    <p><strong>What U is, exactly.</strong> U is a function of one number. A distance goes
+      in, a number comes out: U(r) = r²·ln r. Nothing else. It has no landmarks and no
+      leftovers in it. It is the fixed building block. Each landmark contributes one copy of
+      it, centred on that landmark and multiplied by that landmark's weight. All the fitting
+      is in the weights.</p>
+    <p><strong>Is it real physics?</strong> Yes. It is the textbook theory of thin plates
+      for small bending (Timoshenko, "Theory of Plates and Shells"). The case that looks the
+      way one expects is a round plate clamped at its rim, radius a, pushed at the centre.
+      Its height at distance r from the centre is</p>
+    <div class="formula">height = strength × ( r²·ln(r / a) + (a² − r²) / 2 )</div>
+    <p>With a = 100 and strength 1:</p>
+    <table class="numbers">
+      <tr><th>r</th><th>r²·ln(r / a)</th><th>(a² − r²) / 2</th><th>height</th></tr>
+      <tr><td>0</td><td>0</td><td>5,000</td><td>5,000</td></tr>
+      <tr><td>50</td><td>−1,733</td><td>3,750</td><td>2,017</td></tr>
+      <tr><td>100</td><td>0</td><td>0</td><td>0</td></tr>
+    </table>
+    <p>Highest at the finger, zero at the rim. That is the expected bump. The first column
+      is U with r counted in rim radii: r²·ln(r / a) = a²·U(r / a). The second column is a
+      smooth bowl, one of the shapes with no finger in it. The bump is the two added
+      together.</p>
+    <p>In the warp nothing is steel. The physics is only where the formula comes from. What
+      holds our sheet is not a rim but the other landmarks and the correction, and the
+      equations work out how.</p>
+    <p><strong>What the logarithm is doing there.</strong> It is not a choice. It falls out
+      of two demands: the sheet bends as little as possible, and the sheet is a 2D surface.
+      "Bends as little as possible, pressed at one point only" allows just four round
+      shapes in 2D:</p>
+    <ul>
+      <li><strong>a constant.</strong> A flat sheet. No finger at all.</li>
+      <li><strong>r².</strong> A smooth bowl. Also no finger. It is bent by its edges.</li>
+      <li><strong>ln r.</strong> Minus infinity at the finger. A hole, not a sheet.</li>
+      <li><strong>r²·ln r.</strong> Finite at the finger, and pressed exactly there. The
+        only one of the four that is a finger on a sheet.</li>
+    </ul>
+    <p>The same demand in other dimensions gives other formulas, with no logarithm:</p>
+    <table class="numbers">
+      <tr><th>what bends</th><th>U(r)</th></tr>
+      <tr><td>a wire (1D)</td><td>r³</td></tr>
+      <tr><td>a sheet (2D)</td><td>r²·ln r</td></tr>
+      <tr><td>a block of space (3D)</td><td>r</td></tr>
+    </table>
+    <p>The wire row is the ordinary cubic spline: pieces of degree 3 joined smoothly. The
+      block row is what the app will use, since its warp is 3D. So the logarithm belongs to
+      this 2D page only.</p>
+    <p><strong>Can U be replaced?</strong> Yes. The equations work with many other U, and
+      the landmarks still land exactly on their targets. Only the behaviour between and
+      beyond the landmarks changes:</p>
+    <ul>
+      <li><strong>r</strong> or <strong>r³</strong> in 2D. Works. No longer the least
+        bending shape. r makes a small sharp point at each landmark.</li>
+      <li><strong>a round bump, exp(−(r / width)²).</strong> Works, and it fades with
+        distance, which is the shape one expects. But the width has to be picked by hand.
+        Too narrow and each landmark moves only its own spot. Too wide and the equations
+        become hard to solve accurately.</li>
+    </ul>
+    <p>r²·ln r is used here because it needs no width and gives the least bending.</p>
+    <p>The fading comes from adding several of them. Forces that cancel, which is what the
+      three equations below demand, make the growing parts cancel too. The table further
+      down shows it: one finger gives 6,907,755 at 1000 px, three balanced fingers give
+      1,679.</p>
+    <p>A sheet that is pressed but held by nothing does two things before it bends: it
+      flies off if the forces do not cancel, and it spins if they are off balance. Only
+      forces that cancel both ways leave pure bending. The three equations say exactly
+      that:</p>
+    <ul>
+      <li><strong>sum of wᵢ = 0 means no net push.</strong> The forces add up to zero.
+        Example: +3 at one landmark and −3 at another. If they did not add up to zero, the
+        whole sheet would be pushed one way.</li>
+      <li><strong>sum of wᵢ·xᵢ = 0 and sum of wᵢ·yᵢ = 0 mean no net tilt.</strong> The first
+        equation alone does not give this. Example: +1 at x = 0 and −1 at x = 10. The sum of
+        wᵢ is 0, but the sum of wᵢ·xᵢ is −10. One end is pressed up and the other down, so
+        the sheet turns like a seesaw. The two extra equations forbid that.</li>
+    </ul>
+    <p><strong>See it.</strong> The picture is the sheet seen from the side, cut along x.
+      The grey line is the flat sheet. The orange line is the sum of wᵢ·U(rᵢ). Each arrow is
+      one finger: up for a positive weight, down for a negative weight, longer for −2.
+      Each case is stretched to fill the picture, so compare the shapes here and the sizes
+      in the readout.</p>
+    <div class="controls">
+      <label><input type="radio" name="finger_set" value="push" checked> one finger: +1</label>
+      <label><input type="radio" name="finger_set" value="tilt"> two fingers: +1, −1</label>
+      <label><input type="radio" name="finger_set" value="balanced"> three fingers: +1, −2, +1</label>
+    </div>
+    <canvas id="finger_canvas" height="300"></canvas>
+    <div class="readout" id="finger_readout"></div>
+    <ul>
+      <li><strong>One finger.</strong> Both sides go up without limit. That is the net
+        push.</li>
+      <li><strong>Two fingers.</strong> The left side goes down and the right side goes up,
+        and both keep going. That is the seesaw, the net tilt.</li>
+      <li><strong>Three fingers.</strong> Push and tilt both cancel. What is left is a dent
+        at the fingers and a sheet that rises only very slowly far away. The readout shows
+        how small it is next to the other two.</li>
+    </ul>
+    <p>What it buys, in numbers. Take a point 1000 px away along x and add up wᵢ·U(rᵢ):</p>
+    <table class="numbers">
+      <tr><th>weights</th><th>push</th><th>tilt</th><th>sum 1000 px away</th></tr>
+      <tr><td>+1 at x = 0</td><td>yes</td><td>yes</td><td>6,907,755</td></tr>
+      <tr><td>+1 at x = 0, −1 at x = 10</td><td>no</td><td>yes</td><td>147,314</td></tr>
+      <tr><td>+1 at x = 0, −2 at x = 10, +1 at x = 20</td><td>no</td><td>no</td><td>1,679</td></tr>
+    </table>
+    <p>With a push or a tilt left in, the local part grows without limit far from the
+      landmarks, faster than any affine move. With all three equations the far terms cancel
+      almost completely. There is a second reason. Pushing or tilting the whole sheet is
+      exactly what an affine move does. Without the three equations the same move could be
+      written either in the weights or in the correction, and the solution would not be
+      unique. With n landmarks that is n + 3 equations and n + 3 unknowns. Here n = 10, so
+      13 equations, solved by the same elimination.</p>
     <p><strong>Why the weight is not just the leftover.</strong> The terms overlap. A landmark
       is moved by the terms of all the other landmarks. The equations untangle that. Compare
       the two columns:</p>
     <table class="numbers" id="weight_table"></table>
-    <p><strong>One point, worked out.</strong> This table follows the teal probe. Drag the
-      probe in section 1 and watch the rows. The last row is the pink arrow.</p>
+    <div class="controls"><button class="preset_girl_button">move landmarks to a teenage girl</button></div>
+    <p><strong>One point, worked out as a picture.</strong> The point is the teal probe. You
+      can drag it here too.</p>
+    <p>Top picture, the distances. It shows the template, not the warped head, because r is
+      measured on the template. One colored line runs from the probe to each landmark. The
+      number at the landmark is r, in units of 100 px.</p>
+    <canvas id="terms_scene_canvas" height="400"></canvas>
+    <p>Bottom picture, the sum. Each landmark's scaled arrow wᵢ·U(rᵢ) is drawn in that
+      landmark's color. The arrows are laid tip to tail, which is how arrows are added. The
+      grey arrow is the correction. The pink arrow runs from the start to the end of the
+      chain: it is the local move of the probe, the same pink arrow as in section 1. The
+      picture is magnified to fit. The bar shows the scale.</p>
+    <canvas id="terms_chain_canvas" height="340"></canvas>
+    <p><strong>The same thing in numbers.</strong> One row per arrow of the chain. The last
+      row is the pink arrow.</p>
     <table class="numbers" id="probe_table"></table>
     <p>Look at which rows are big. The far landmarks have the biggest rows, because U grows
       with distance. The correction row is big too, in the opposite direction. They cancel,
@@ -260,6 +556,8 @@ function solve_linear_system(A, B) {
   return B;
 }
 const thin_plate_kernel = (r) => (r === 0 ? 0 : r * r * Math.log(r));
+// An affine move as 3 rows: constant, x, y. Each row has 2 columns: output x, output y.
+const apply_affine_rows = (rows, x, y) => pt(rows[0][0] + rows[1][0] * x + rows[2][0] * y, rows[0][1] + rows[1][1] * x + rows[2][1] * y);
 
 // Returns the warp as functions of a point in px, plus the numbers behind it for the tables of sections 4 and 5.
 function build_warp() {
@@ -278,9 +576,7 @@ function build_warp() {
       right_side[a][1] += basis[a] * targets[i].y;
     }
   }
-  // rows: constant, x, y. columns: output x, output y
   const affine_coefficients = solve_linear_system(normal, right_side);
-  const apply_affine_rows = (rows, x, y) => pt(rows[0][0] + rows[1][0] * x + rows[2][0] * y, rows[0][1] + rows[1][1] * x + rows[2][1] * y);
   const affine = (p) => {
     const moved = apply_affine_rows(affine_coefficients, p.x / UNIT, p.y / UNIT);
     return pt(moved.x * UNIT, moved.y * UNIT);
@@ -363,7 +659,231 @@ const readout = document.getElementById("readout");
 const ui = EX.bind_controls(["show_grid", "show_template", "show_skull"], draw_all);
 const mode_inputs = [...document.querySelectorAll("input[name=mode]")];
 for (const input of mode_inputs) input.addEventListener("input", draw_all);
-let canvas_from_scene = { k: 1, ox: 0, oy: 0 };
+const bowl_scene_canvas = document.getElementById("bowl_scene_canvas");
+const bowl_plot_canvas = document.getElementById("bowl_plot_canvas");
+const bowl_readout = document.getElementById("bowl_readout");
+const bowl_ui = EX.bind_controls(["bowl_number", "bowl_offset"], draw_all);
+const terms_scene_canvas = document.getElementById("terms_scene_canvas");
+const terms_chain_canvas = document.getElementById("terms_chain_canvas");
+const LANDMARK_COLORS = ["#ff6b6b", "#ffa94d", "#ffd166", "#a9e34b", "#51cf66", "#e8590c", "#4dabf7", "#748ffc", "#b197fc", "#f783ac"];
+const scene_transforms = new Map(); // canvas -> { k, ox, oy }, device pixels from scene units
+
+// Clears the canvas and sets it up to draw in scene units (W x H, centered).
+function fit_scene(target_canvas) {
+  const { ctx } = EX.fit_canvas(target_canvas);
+  const k = Math.min(target_canvas.width / W, target_canvas.height / H);
+  const scene_transform = { k, ox: (target_canvas.width - W * k) / 2, oy: (target_canvas.height - H * k) / 2 };
+  scene_transforms.set(target_canvas, scene_transform);
+  ctx.setTransform(k, 0, 0, k, scene_transform.ox, scene_transform.oy);
+  return ctx;
+}
+// Clears the canvas and sets it up to draw in CSS pixels.
+function fit_css_pixels(target_canvas) {
+  const { ctx, dpr } = EX.fit_canvas(target_canvas);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, width: target_canvas.clientWidth, height: Number(target_canvas.dataset.cssHeight) };
+}
+
+// ---------- section 4 picture: the score as squares, and as a parabola ----------
+// Where each of the six numbers sits in the affine rows, and how far the slider pushes it (solver units).
+const BOWL_NUMBERS = {
+  a: { row: 0, column: 0, range: 0.3 },
+  b: { row: 1, column: 0, range: 0.1 },
+  c: { row: 2, column: 0, range: 0.1 },
+  d: { row: 0, column: 1, range: 0.3 },
+  e: { row: 1, column: 1, range: 0.1 },
+  f: { row: 2, column: 1, range: 0.1 },
+};
+function draw_bowl(warp) {
+  const name = bowl_ui.bowl_number.value;
+  const chosen = BOWL_NUMBERS[name];
+  const rows_pushed_by = (push) => {
+    const rows = warp.affine_coefficients.map((row) => [...row]);
+    rows[chosen.row][chosen.column] += push;
+    return rows;
+  };
+  const move_by = (rows) => (p) => {
+    const moved = apply_affine_rows(rows, p.x / UNIT, p.y / UNIT);
+    return pt(moved.x * UNIT, moved.y * UNIT);
+  };
+  const score_of = (rows) => {
+    const move = move_by(rows);
+    let score = 0;
+    for (const landmark of LANDMARKS) {
+      const moved = move(landmark.source);
+      score += (moved.x - landmark.target.x) ** 2 + (moved.y - landmark.target.y) ** 2;
+    }
+    return score;
+  };
+  const slider = Number(bowl_ui.bowl_offset.value); // -1 .. 1
+  const rows = rows_pushed_by(slider * chosen.range);
+  const move = move_by(rows);
+
+  const ctx = fit_scene(bowl_scene_canvas);
+  for (const curve of SKIN_CURVES) EX.stroke_polyline(ctx, curve.map(move), "#e6e6ef", 2);
+  for (const landmark of LANDMARKS) {
+    const moved = move(landmark.source), target = landmark.target;
+    const side = pt(-(target.y - moved.y), target.x - moved.x); // the miss turned a quarter turn
+    EX.fill_polygon(ctx, [moved, target, pt(target.x + side.x, target.y + side.y), pt(moved.x + side.x, moved.y + side.y)], "#ff6b6b40", "#ff6b6b");
+    EX.stroke_polyline(ctx, [moved, target], "#ff6b6b", 2.5);
+    EX.fill_dot(ctx, target, 4.5, "#ffd166");
+    EX.fill_dot(ctx, moved, 3, "#ffffff");
+  }
+
+  const { ctx: plot, width, height } = fit_css_pixels(bowl_plot_canvas);
+  const left = 16, right = 16, top = 22, bottom = 30;
+  const samples = [];
+  for (let s = -1; s <= 1.0001; s += 0.02) samples.push({ s, score: score_of(rows_pushed_by(s * chosen.range)) });
+  const highest = Math.max(...samples.map((sample) => sample.score));
+  const plot_point = (s, score) => pt(left + (s + 1) / 2 * (width - left - right), height - bottom - score / highest * (height - top - bottom));
+  EX.stroke_polyline(plot, [pt(left, height - bottom), pt(width - right, height - bottom)], "#6b7186", 1);
+  plot.setLineDash([4, 5]);
+  EX.stroke_polyline(plot, [plot_point(0, 0), plot_point(0, highest)], "#6b7186", 1);
+  plot.setLineDash([]);
+  EX.stroke_polyline(plot, samples.map((sample) => plot_point(sample.s, sample.score)), "#ff6b6b", 2);
+  const score_now = score_of(rows);
+  EX.fill_dot(plot, plot_point(slider, score_now), 6, "#ffd166");
+  plot.font = "12px ui-monospace, Consolas, monospace";
+  plot.fillStyle = "#9aa0b4";
+  plot.fillText("score (total red area)", left, 14);
+  plot.textAlign = "center";
+  plot.fillText("best " + name, plot_point(0, 0).x, height - 10);
+  plot.textAlign = "right";
+  plot.fillText("bigger " + name, width - right, height - 10);
+  plot.textAlign = "left";
+  plot.fillText("smaller " + name, left, height - 10);
+
+  const is_shift = chosen.row === 0;
+  const shown = (value) => (is_shift ? (value * UNIT).toFixed(1) + " px" : value.toFixed(3));
+  const best_value = warp.affine_coefficients[chosen.row][chosen.column];
+  bowl_readout.textContent =
+    `${name}: best ${shown(best_value)}, now ${shown(rows[chosen.row][chosen.column])}\n` +
+    `score: now ${score_now.toFixed(0)} px², lowest possible ${score_of(warp.affine_coefficients).toFixed(0)} px²`;
+}
+
+// ---------- section 5 picture: the probe's distances, and its terms laid tip to tail ----------
+function draw_terms(warp) {
+  const terms = warp.local_terms(probe);
+  const ctx = fit_scene(terms_scene_canvas);
+  for (const curve of SKIN_CURVES) EX.stroke_polyline(ctx, curve, "#6b7186", 1.2);
+  ctx.font = "11px ui-monospace, Consolas, monospace";
+  LANDMARKS.forEach((landmark, i) => {
+    EX.stroke_polyline(ctx, [probe, landmark.source], LANDMARK_COLORS[i], 1.5);
+    EX.fill_dot(ctx, landmark.source, 4.5, LANDMARK_COLORS[i]);
+    ctx.fillStyle = LANDMARK_COLORS[i];
+    ctx.fillText(`${landmark.name}  r = ${terms[i].distance.toFixed(2)}`, landmark.source.x + 9, landmark.source.y - 7);
+  });
+  EX.fill_dot(ctx, probe, 5.5, "#4dd4c0");
+
+  const { ctx: chain, width, height } = fit_css_pixels(terms_chain_canvas);
+  const arrows = LANDMARKS.map((landmark, i) => ({ label: landmark.name, color: LANDMARK_COLORS[i], move: terms[i].move }));
+  arrows.push({ label: "correction", color: "#9aa0b4", move: warp.correction(probe) });
+  const corners = [pt(0, 0)]; // the chain in px, starting at the probe
+  for (const arrow of arrows) { const last = corners[corners.length - 1]; corners.push(pt(last.x + arrow.move.x, last.y + arrow.move.y)); }
+  const min_x = Math.min(...corners.map((p) => p.x)), max_x = Math.max(...corners.map((p) => p.x));
+  const min_y = Math.min(...corners.map((p) => p.y)), max_y = Math.max(...corners.map((p) => p.y));
+  chain.font = "11px ui-monospace, Consolas, monospace";
+  if (Math.max(max_x - min_x, max_y - min_y) < 0.05) {
+    chain.fillStyle = "#9aa0b4";
+    chain.fillText("Every arrow has zero length: the landmarks sit on their targets.", 16, 28);
+    chain.fillText("Press \"move landmarks to a teenage girl\" above.", 16, 46);
+    return;
+  }
+  const margin = 44;
+  const magnification = Math.min((width - 2 * margin) / Math.max(max_x - min_x, 1e-6), (height - 2 * margin) / Math.max(max_y - min_y, 1e-6));
+  const on_canvas = (p) => pt(
+    (width - (max_x - min_x) * magnification) / 2 + (p.x - min_x) * magnification,
+    (height - (max_y - min_y) * magnification) / 2 + (p.y - min_y) * magnification);
+  arrows.forEach((arrow, i) => {
+    const from = on_canvas(corners[i]), to = on_canvas(corners[i + 1]);
+    draw_arrow(chain, from, to, arrow.color);
+    chain.fillStyle = arrow.color;
+    chain.fillText(arrow.label, (from.x + to.x) / 2 + 7, (from.y + to.y) / 2 - 5);
+  });
+  const start = on_canvas(corners[0]), end = on_canvas(corners[corners.length - 1]);
+  draw_arrow(chain, start, end, "#ef6b9a");
+  EX.fill_dot(chain, start, 5.5, "#4dd4c0");
+  chain.fillStyle = "#ef6b9a";
+  chain.fillText("local move", end.x + 8, end.y + 14);
+  chain.fillStyle = "#4dd4c0";
+  chain.fillText("start", start.x + 8, start.y + 14);
+
+  const bar_px = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500].find((length) => length * magnification >= 40) ?? 1000;
+  EX.stroke_polyline(chain, [pt(16, height - 14), pt(16 + bar_px * magnification, height - 14)], "#e6e6ef", 2);
+  chain.fillStyle = "#e6e6ef";
+  chain.fillText(`${bar_px} px`, 16, height - 20);
+}
+
+// ---------- section 5 picture: the local move in one axis as a sheet over the template ----------
+const sheet_canvas = document.getElementById("sheet_canvas");
+const sheet_readout = document.getElementById("sheet_readout");
+const sheet_ui = EX.bind_controls(["sheet_pressed"], draw_all);
+const sheet_axis_inputs = [...document.querySelectorAll("input[name=sheet_axis]")];
+for (const input of sheet_axis_inputs) input.addEventListener("input", draw_all);
+const sheet_camera = EX.orbit_camera(0.5, 0.45, 10.5);
+EX.attach_orbit([sheet_canvas], sheet_camera, draw_all);
+document.getElementById("sheet_play").addEventListener("click", () => {
+  // With every landmark on its target there are no pegs to show, so the button brings the girl landmarks itself.
+  const is_untouched = LANDMARKS.every((landmark) => landmark.target.x === landmark.source.x && landmark.target.y === landmark.source.y);
+  if (is_untouched) move_landmarks_to_girl();
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / 1800);
+    sheet_ui.sheet_pressed.value = t * t * (3 - 2 * t);
+    draw_all();
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+});
+function draw_sheet(warp) {
+  const { ctx, dpr } = EX.fit_canvas(sheet_canvas);
+  const view = EX.viewer(sheet_camera, sheet_canvas);
+  const axis = sheet_axis_inputs.find((input) => input.checked).value;
+  const pressed = Number(sheet_ui.sheet_pressed.value);
+  const tallest_peg = Math.max(...warp.leftovers.map((leftover) => Math.max(Math.abs(leftover.x), Math.abs(leftover.y))));
+  ctx.font = `${11 * dpr}px ui-monospace, Consolas, monospace`;
+  if (tallest_peg < 0.05) {
+    ctx.fillStyle = "#9aa0b4";
+    ctx.fillText("Every peg has zero height: the landmarks sit on their targets.", 16 * dpr, 28 * dpr);
+    ctx.fillText("Press \"fix the sheet to the pegs\" above.", 16 * dpr, 46 * dpr);
+    sheet_readout.textContent = "";
+    return;
+  }
+  const TALLEST_PEG_UNITS = 1.2; // the tallest peg is drawn this tall, in units of 100 px of floor
+  const units_per_px_of_move = TALLEST_PEG_UNITS / tallest_peg;
+  // The template lies on the floor (image x to the right, image y toward the viewer); a move in px goes up.
+  const above_floor = (p, move_px) => EX.v3((p.x - W / 2) / UNIT, move_px * units_per_px_of_move, (p.y - H / 2) / UNIT);
+  const on_screen = (p, move_px = 0) => view.project(above_floor(p, move_px));
+  const sheet_height = (p) => warp.local(p)[axis] * pressed;
+
+  EX.fill_polygon(ctx, [pt(100, 20), pt(600, 20), pt(600, 480), pt(100, 480)].map((p) => on_screen(p)), "rgba(255,255,255,0.03)", "#3a3f52");
+  for (const curve of SKIN_CURVES) EX.stroke_polyline(ctx, curve.map((p) => on_screen(p)), "#9aa0b4", 1.5 * dpr);
+
+  const sheet_point = (u, v) => { const p = pt(100 + 500 * u, 20 + 460 * v); return above_floor(p, sheet_height(p)); };
+  EX.draw_surface(ctx, view, sheet_point, 22, (quad) => {
+    const height = quad.corners.reduce((sum, corner) => sum + corner.y, 0) / 4 / TALLEST_PEG_UNITS; // -1 .. 1 near the pegs
+    const amount = Math.min(1, Math.abs(height));
+    const tint = height > 0 ? [255, 169, 77] : [77, 171, 247];
+    const flat = [150, 155, 175];
+    return { fill: EX.rgba(flat.map((channel, k) => channel + (tint[k] - channel) * amount), 0.45), stroke: "rgba(230,230,239,0.22)" };
+  });
+
+  LANDMARKS.forEach((landmark, i) => {
+    const foot = on_screen(landmark.source), top = on_screen(landmark.source, warp.leftovers[i][axis]);
+    EX.stroke_polyline(ctx, [foot, top], "#ffd166", 2 * dpr);
+    EX.fill_dot(ctx, foot, 2.5 * dpr, "#9aa0b4");
+    EX.fill_dot(ctx, top, 4.5 * dpr, "#ffd166");
+    ctx.fillStyle = "#e6e6ef";
+    ctx.fillText(landmark.name, top.x + 7 * dpr, top.y - 6 * dpr);
+  });
+  const probe_height = sheet_height(probe);
+  EX.stroke_polyline(ctx, [on_screen(probe), on_screen(probe, probe_height)], "#4dd4c0", 2 * dpr);
+  EX.fill_dot(ctx, on_screen(probe, probe_height), 4.5 * dpr, "#4dd4c0");
+
+  sheet_readout.textContent =
+    `probe: sheet height = local move in ${axis} = ${probe_height.toFixed(1)} px\n` +
+    `heights are exaggerated: 1 px of move is drawn as tall as ${(units_per_px_of_move * UNIT).toFixed(0)} px of floor`;
+}
 
 function draw_arrow(ctx, from, to, color) {
   const length = Math.hypot(to.x - from.x, to.y - from.y);
@@ -376,17 +896,57 @@ function draw_arrow(ctx, from, to, color) {
     pt(to.x - head * Math.cos(angle + 0.45), to.y - head * Math.sin(angle + 0.45))], color, null);
 }
 
+const finger_canvas = document.getElementById("finger_canvas");
+const finger_readout = document.getElementById("finger_readout");
+const finger_set_inputs = [...document.querySelectorAll("input[name=finger_set]")];
+for (const input of finger_set_inputs) input.addEventListener("input", draw_fingers);
+const FINGER_SETS = {
+  push: [{ x: 0, weight: 1 }],
+  tilt: [{ x: 0, weight: 1 }, { x: 10, weight: -1 }],
+  balanced: [{ x: 0, weight: 1 }, { x: 10, weight: -2 }, { x: 20, weight: 1 }],
+};
+// Side view of the sheet along x for a few fingers on the x axis.
+function draw_fingers() {
+  const { ctx, width, height } = fit_css_pixels(finger_canvas);
+  const fingers = FINGER_SETS[finger_set_inputs.find((input) => input.checked).value];
+  const X_MIN = -150, X_MAX = 170;
+  const sheet_height = (x) => fingers.reduce((sum, finger) => {
+    const r = Math.abs(x - finger.x);
+    return sum + (r === 0 ? 0 : finger.weight * r * r * Math.log(r));
+  }, 0);
+  const samples = [];
+  for (let x = X_MIN; x <= X_MAX; x += 1) samples.push({ x, h: sheet_height(x) });
+  const tallest = Math.max(...samples.map((sample) => Math.abs(sample.h)));
+  const to_screen = (x, h) => ({ x: (x - X_MIN) / (X_MAX - X_MIN) * width, y: height / 2 - h / tallest * (height / 2 - 24) });
+
+  EX.stroke_polyline(ctx, [to_screen(X_MIN, 0), to_screen(X_MAX, 0)], "rgba(230,230,239,0.35)", 1);
+  EX.stroke_polyline(ctx, samples.map((sample) => to_screen(sample.x, sample.h)), "#ffa94d", 2.5);
+  ctx.font = "12px ui-monospace, Consolas, monospace";
+  ctx.fillStyle = "#ffd166";
+  ctx.textAlign = "center";
+  for (const finger of fingers) {
+    const base = to_screen(finger.x, 0);
+    const tip_y = base.y - 30 * finger.weight;
+    const head = 6 * Math.sign(finger.weight);
+    EX.stroke_polyline(ctx, [base, { x: base.x, y: tip_y }], "#ffd166", 2);
+    EX.stroke_polyline(ctx, [{ x: base.x - 5, y: tip_y + head }, { x: base.x, y: tip_y }, { x: base.x + 5, y: tip_y + head }], "#ffd166", 2);
+    ctx.fillText((finger.weight > 0 ? "+" : "−") + Math.abs(finger.weight), base.x, tip_y - 8 * Math.sign(finger.weight) + 4);
+  }
+  const format = (value) => Math.round(value).toLocaleString("en-US");
+  finger_readout.textContent = `height at x = ${X_MIN}: ${format(sheet_height(X_MIN))}    height at x = ${X_MAX}: ${format(sheet_height(X_MAX))}`;
+}
+
 function draw_all() {
-  const { ctx } = EX.fit_canvas(canvas);
-  const k = Math.min(canvas.width / W, canvas.height / H);
-  const ox = (canvas.width - W * k) / 2, oy = (canvas.height - H * k) / 2;
-  canvas_from_scene = { k, ox, oy };
-  ctx.setTransform(k, 0, 0, k, ox, oy);
+  draw_fingers();
+  const ctx = fit_scene(canvas);
 
   const warp = build_warp();
   const is_full = mode_inputs.find((input) => input.checked).value === "full";
   const move = is_full ? warp.full : warp.affine;
   render_tables(warp);
+  draw_bowl(warp);
+  draw_terms(warp);
+  draw_sheet(warp);
 
   if (ui.show_grid.checked) {
     for (let x = 100; x <= 600; x += 50) {
@@ -437,35 +997,47 @@ function draw_all() {
 }
 
 // ---------- dragging ----------
-function scene_point(event) {
+function scene_point(scene_canvas, event) {
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const { k, ox, oy } = canvas_from_scene;
+  const rect = scene_canvas.getBoundingClientRect();
+  const { k, ox, oy } = scene_transforms.get(scene_canvas);
   return pt(((event.clientX - rect.left) * dpr - ox) / k, ((event.clientY - rect.top) * dpr - oy) / k);
 }
-let dragged = null; // the point object being dragged: a landmark target or the probe
-canvas.addEventListener("pointerdown", (event) => {
-  const p = scene_point(event);
-  let nearest_distance = 18;
-  dragged = null;
-  for (const candidate of [...LANDMARKS.map((l) => l.target), probe]) {
-    const distance = Math.hypot(candidate.x - p.x, candidate.y - p.y);
-    if (distance < nearest_distance) { nearest_distance = distance; dragged = candidate; }
-  }
-  if (dragged !== null) canvas.setPointerCapture(event.pointerId);
-});
-canvas.addEventListener("pointermove", (event) => {
-  if (dragged === null) return;
-  const p = scene_point(event);
-  dragged.x = p.x; dragged.y = p.y;
+// Lets the pointer drag the nearest of `draggable_points()` on a canvas drawn with fit_scene.
+function attach_point_drag(scene_canvas, draggable_points) {
+  let dragged = null;
+  scene_canvas.addEventListener("pointerdown", (event) => {
+    const p = scene_point(scene_canvas, event);
+    let nearest_distance = 18;
+    dragged = null;
+    for (const candidate of draggable_points()) {
+      const distance = Math.hypot(candidate.x - p.x, candidate.y - p.y);
+      if (distance < nearest_distance) { nearest_distance = distance; dragged = candidate; }
+    }
+    if (dragged !== null) scene_canvas.setPointerCapture(event.pointerId);
+  });
+  scene_canvas.addEventListener("pointermove", (event) => {
+    if (dragged === null) return;
+    const p = scene_point(scene_canvas, event);
+    dragged.x = p.x; dragged.y = p.y;
+    draw_all();
+  });
+  scene_canvas.addEventListener("pointerup", () => { dragged = null; });
+}
+attach_point_drag(canvas, () => [...LANDMARKS.map((l) => l.target), probe]);
+attach_point_drag(terms_scene_canvas, () => [probe]);
+document.getElementById("bowl_back_to_best").addEventListener("click", () => {
+  bowl_ui.bowl_offset.value = 0;
   draw_all();
 });
-canvas.addEventListener("pointerup", () => { dragged = null; });
 
-document.getElementById("preset_girl").addEventListener("click", () => {
+function move_landmarks_to_girl() {
   for (const landmark of LANDMARKS) landmark.target = { ...landmark.girl };
   draw_all();
-});
+}
+for (const button of [document.getElementById("preset_girl"), ...document.querySelectorAll(".preset_girl_button")]) {
+  button.addEventListener("click", move_landmarks_to_girl);
+}
 document.getElementById("preset_reset").addEventListener("click", () => {
   for (const landmark of LANDMARKS) landmark.target = { ...landmark.source };
   draw_all();
