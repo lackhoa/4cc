@@ -119,8 +119,8 @@
     "vertex": 81
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 670,
-   "profile_column_pixels": 705,
+   "row_pixels": 665.1332288401254,
+   "profile_column_pixels": 680.666144200627,
    "read_from_front": true,
    "read_from_profile": true
   },
@@ -187,17 +187,6 @@
    "front_half_width_pixels": 70,
    "row_pixels": 556,
    "profile_column_pixels": 722,
-   "read_from_front": true,
-   "read_from_profile": true
-  },
-  {
-   "name": "chin bottom side",
-   "template_point": {
-    "vertex": 154
-   },
-   "front_half_width_pixels": 55,
-   "row_pixels": 665,
-   "profile_column_pixels": 740,
    "read_from_front": true,
    "read_from_profile": true
   },
