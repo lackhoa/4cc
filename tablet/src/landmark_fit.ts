@@ -18,8 +18,7 @@ import { FitLandmarksFile, fit_landmark_mark_world_position, template_point_worl
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 
 // One landmark of a fit: a point of the template and where it must land, both world
-// positions. The pages build these (plan-hairline-reference-plate Q19: the man page
-// from its plate marks, the girl page through fitted_document_from_landmarks).
+// positions. The girl pages build these through fitted_document_from_landmarks.
 export type LandmarkPair = { template_position: V3; target_position: V3 };
 
 // Solves a * x = b in place by Gaussian elimination with partial pivoting; b holds one

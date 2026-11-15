@@ -696,8 +696,8 @@ export function pick_surface_point(
 
 // pick_surface_point under any projection: `project` maps world to the 2D space
 // `screen` is given in (null = not projectable), `eye` orders the candidate triangles
-// (nearest wins). The plate pages cast through an orthographic view this way
-// (pages/fit-hairline-to-loomis-man), where the sketchpad's perspective projector would
+// (nearest wins). A page with an orthographic view can cast through it this way
+// (no page does now), where the sketchpad's perspective projector would
 // land the pick elsewhere.
 export function pick_surface_point_projected(
   tablet_document: TabletDocument, project: (world: V3) => V2 | null, eye: V3, screen: V2, layers: ReadonlySet<Layer>,

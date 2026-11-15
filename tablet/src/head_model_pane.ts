@@ -1,5 +1,5 @@
-// The head model pane of the landmark pages (loomis-girl-fit-landmarks,
-// fit-hairline-to-loomis-man): the template drawing (document `skull-zanatomy`) as its
+// The head model pane of a page that fits the template to a plate
+// (fit-head-to-loomis-girl): the template drawing (document `skull-zanatomy`) as its
 // surfaces and strokes with depth (head_meshes.ts, plan-hairline-reference-plate Q13),
 // with a marker at every landmark's template point, hidden when the head is in front of
 // it (Q14). Drag orbits (middle button pans, wheel zooms); a tap picks: a landmark, or,

@@ -53,7 +53,7 @@ export type SketchpadSetup = {
   locked_layers: Layer[];
   // Layers this page never draws or picks; the layer bar has no row for them.
   hidden_layers: Layer[];
-  // A page that embeds the sketchpad beside other views (fit-hairline-to-loomis-man,
+  // A page that embeds the sketchpad beside other views (fit-hairline-to-loomis-girl,
   // plan-hairline-reference-plate Q26/Q27): called with the document after it loaded and
   // after every history step (an edit, undo, redo, a reload from the server), never for
   // a camera move. The document is the sketchpad's own, read it, don't keep it.
@@ -370,7 +370,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   selection_readout.id = "selection_readout";
   selection_readout.title = "click to copy";
   // In the canvas's offset parent (the body on a full-page sketchpad, the embedding box on
-  // fit-hairline-to-loomis-man), absolute: the same place as the mirror frame.
+  // fit-hairline-to-loomis-girl), absolute: the same place as the mirror frame.
   (canvas.offsetParent ?? document.body).append(selection_readout);
   function selection_readout_text(): string {
     return describe_selection(tablet_document, {
