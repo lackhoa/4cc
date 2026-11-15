@@ -23,25 +23,62 @@ export type { Rgb };
 // Appends interleaved [x,y,z, r,g,b] triangle vertices to out.
 // An on-surface stroke (plan-hairline-drawn-on-surface Q4) draws its projected
 // samples, tangents by finite differences between them.
+// `lightness_additions` (the stroke's own, or null for a flat color) changes the color along
+// the line. With `is_mirrored_side` the ribbon is the stroke's mirror image across the
+// midline (x negated), built for the same camera.
 export function append_stroke_ribbon(
-  stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb, out: VertexSink,
+  stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, color: Rgb,
+  lightness_additions: StrokeRadii | null, is_mirrored_side: boolean, out: VertexSink,
 ): void {
   if (stroke.on_surface === true) {
-    append_sampled_ribbon(on_surface_stroke_samples(stroke, tablet_document), stroke_radii(stroke), camera, color, out);
+    let centers = on_surface_stroke_samples(stroke, tablet_document);
+    if (is_mirrored_side) centers = centers.map(mirrored_across_midline);
+    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions);
     return;
   }
-  append_bezier_ribbon(
-    stroke_control_points(stroke, tablet_document), stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out,
-  );
+  let points = stroke_control_points(stroke, tablet_document);
+  if (is_mirrored_side) {
+    points = {
+      p0: mirrored_across_midline(points.p0), p1: mirrored_across_midline(points.p1),
+      p2: mirrored_across_midline(points.p2), p3: mirrored_across_midline(points.p3),
+    };
+  }
+  append_bezier_ribbon(points, stroke_radii(stroke), { start: 0, end: 1 }, camera, color, out, lightness_additions);
+}
+
+function mirrored_across_midline(point: V3): V3 {
+  return { x: -point.x, y: point.y, z: point.z };
 }
 
 // A ribbon through sample points already on the curve (an on-surface stroke's projected
 // samples), tangents by finite differences between them.
-export function append_sampled_ribbon(centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink): void {
+export function append_sampled_ribbon(
+  centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink, lightness_additions: StrokeRadii | null = null,
+): void {
   if (centers.length < 2) return;
   const last = centers.length - 1;
   const tangents = centers.map((_, i) => v3_sub(centers[Math.min(i + 1, last)], centers[Math.max(i - 1, 0)]));
-  append_polyline_ribbon(centers, tangents, radii, { start: 0, end: 1 }, camera, color, out);
+  append_polyline_ribbon(centers, tangents, radii, { start: 0, end: 1 }, camera, color, lightness_additions, out);
+}
+
+function linear_from_srgb(value: number): number {
+  if (value <= 0.04045) return value / 12.92;
+  return Math.pow((value + 0.055) / 1.055, 2.4);
+}
+
+function srgb_from_linear(value: number): number {
+  if (value <= 0.0031308) return value * 12.92;
+  return Math.pow(value, 1 / 2.4) * 1.055 - 0.055;
+}
+
+// The sRGB color with its linear light multiplied by 1 + addition, as the desktop
+// renderer does with `Curve.lightness_additions`.
+function lightened_color(color: Rgb, addition: number): Rgb {
+  const lightened = (channel: number): number => {
+    const linear = linear_from_srgb(channel) * (1 + addition);
+    return srgb_from_linear(Math.max(0, Math.min(1, linear)));
+  };
+  return { r: lightened(color.r), g: lightened(color.g), b: lightened(color.b) };
 }
 
 // Where this cubic sits in the taper of the whole curve it belongs to, as a
@@ -51,6 +88,7 @@ export type TaperWindow = { start: number; end: number };
 
 export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
+  lightness_additions: StrokeRadii | null = null,
 ): void {
   const centers: V3[] = [];
   const tangents: V3[] = [];
@@ -59,15 +97,19 @@ export function append_bezier_ribbon(
     centers.push(bezier_point(points, t));
     tangents.push(bezier_tangent(points, t));
   }
-  append_polyline_ribbon(centers, tangents, radii, taper_window, camera, color, out);
+  append_polyline_ribbon(centers, tangents, radii, taper_window, camera, color, lightness_additions, out);
 }
 
-// Samples evenly spaced in the curve parameter; the taper runs over them by index.
+// Samples evenly spaced in the curve parameter; the taper and the lightness run over
+// them by index. The part of the line whose width is zero or below is not drawn.
 function append_polyline_ribbon(
-  centers: V3[], tangents: V3[], radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
+  centers: V3[], tangents: V3[], radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb,
+  lightness_additions: StrokeRadii | null, out: VertexSink,
 ): void {
   const basis = camera_basis(camera);
   const offsets: V3[] = [];
+  const sample_radii: number[] = [];
+  const colors: Rgb[] = [];
   for (let i = 0; i < centers.length; i++) {
     const t = i / (centers.length - 1);
     const tangent = tangents[i];
@@ -75,7 +117,10 @@ function append_polyline_ribbon(
     const screen_x = v3_dot(tangent, basis.right);
     const screen_y = v3_dot(tangent, basis.up);
     const len = Math.hypot(screen_x, screen_y);
-    const radius = RIBBON_RADIUS * stroke_radii_at(radii, taper_window.start + (taper_window.end - taper_window.start) * t);
+    const radius = Math.max(0, RIBBON_RADIUS * stroke_radii_at(radii, taper_window.start + (taper_window.end - taper_window.start) * t));
+    sample_radii.push(radius);
+    if (lightness_additions === null) colors.push(color);
+    else colors.push(lightened_color(color, stroke_radii_at(lightness_additions, t)));
     if (len < 1e-9) {
       // Tangent points straight at the camera; fall back to screen-right.
       offsets.push(v3_scale(basis.right, radius));
@@ -86,16 +131,17 @@ function append_polyline_ribbon(
     }
   }
   for (let i = 0; i + 1 < centers.length; i++) {
+    if (sample_radii[i] === 0 && sample_radii[i + 1] === 0) continue;
     const a0 = v3_add(centers[i], offsets[i]);
     const b0 = v3_add(centers[i], v3_scale(offsets[i], -1));
     const a1 = v3_add(centers[i + 1], offsets[i + 1]);
     const b1 = v3_add(centers[i + 1], v3_scale(offsets[i + 1], -1));
-    push_vertex(out, a0, color);
-    push_vertex(out, b0, color);
-    push_vertex(out, a1, color);
-    push_vertex(out, a1, color);
-    push_vertex(out, b0, color);
-    push_vertex(out, b1, color);
+    push_vertex(out, a0, colors[i]);
+    push_vertex(out, b0, colors[i]);
+    push_vertex(out, a1, colors[i + 1]);
+    push_vertex(out, a1, colors[i + 1]);
+    push_vertex(out, b0, colors[i]);
+    push_vertex(out, b1, colors[i + 1]);
   }
 }
 

@@ -26,6 +26,7 @@
 // for everything drawn so far.
 
 import { Mat4, V3, mat4_identity, mat4_invert, mat4_multiply, mat4_transform_point, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_rotate_between_directions, v3_scale, v3_sub } from "./math";
+import type { Rgb } from "./vertex_sink";
 
 export type StrokeId = number;
 export type VertexId = number;
@@ -71,6 +72,14 @@ export type Stroke = {
   // stored as usual, the ribbon and picking use its samples projected onto the
   // nearest patch surface (on_surface_stroke_samples). Absent = an ordinary stroke.
   on_surface?: boolean;
+  // Not drawn and not pickable; it still bounds its patches. Absent = drawn.
+  is_hidden?: boolean;
+  line_color?: Rgb; // sRGB; absent = the app's stroke color
+  // Lightness along the line, same as the C++ `Curve.lightness_additions`: four scalar
+  // bezier control values sampled along t; the line color is multiplied by (1 + value)
+  // in linear light. Absent = no change.
+  lightness_additions?: StrokeRadii;
+  is_one_sided?: boolean; // not drawn on the mirrored side of a document mirrored across the midline
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
@@ -106,7 +115,12 @@ function split_stroke_radii(radii: StrokeRadii, t: number): { left: StrokeRadii;
 // `id` is stable (allocated like stroke ids, never reused) so a vertex surface
 // pin can name its patch across deletions (plan-hairline-drawn-on-surface Q6).
 export type PatchId = number;
-export type Patch = { id: PatchId; strokes: StrokeId[] };
+export type Patch = {
+  id: PatchId;
+  strokes: StrokeId[];
+  fill_color?: Rgb; // sRGB, drawn flat (no shading, no contour); absent = the app's shaded surface
+  is_one_sided?: boolean; // not drawn on the mirrored side of a document mirrored across the midline
+};
 
 // A vertex permanently constrained to ride a host stroke's curve
 // (plan-tablet-vertex-insert-and-normal.md Q7/Q10): its position is always
@@ -144,6 +158,9 @@ export type TabletDocument = {
   smooth_knots: SmoothKnot[];
   strokes: Stroke[]; // array order = draw order
   patches: Patch[];
+  // The document stores one side plus the midline; the app draws the other side as the
+  // mirror image across x = 0. Absent = both sides are stored.
+  is_mirrored_across_midline?: boolean;
 };
 
 export function skull_bone(): Bone {
@@ -360,6 +377,14 @@ export function split_stroke(
     const halves = split_stroke_radii(stroke.radii, t);
     stroke.radii = halves.left;
     stroke_by_id(tablet_document, second_stroke).radii = halves.right;
+  }
+  if (stroke.is_hidden === true) stroke_by_id(tablet_document, second_stroke).is_hidden = true;
+  if (stroke.is_one_sided === true) stroke_by_id(tablet_document, second_stroke).is_one_sided = true;
+  if (stroke.line_color !== undefined) stroke_by_id(tablet_document, second_stroke).line_color = { ...stroke.line_color };
+  if (stroke.lightness_additions !== undefined) {
+    const halves = split_stroke_radii(stroke.lightness_additions, t);
+    stroke.lightness_additions = halves.left;
+    stroke_by_id(tablet_document, second_stroke).lightness_additions = halves.right;
   }
   tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
   // A patch bounded by the split stroke is now bounded by both halves.
@@ -762,6 +787,10 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
     if (source.midline === true) copy.midline = true;
     if (source.radii !== undefined) copy.radii = [...source.radii];
     if (source.on_surface === true) copy.on_surface = true;
+    if (source.is_hidden === true) copy.is_hidden = true;
+    if (source.is_one_sided === true) copy.is_one_sided = true;
+    if (source.line_color !== undefined) copy.line_color = { ...source.line_color };
+    if (source.lightness_additions !== undefined) copy.lightness_additions = [...source.lightness_additions];
     copied_stroke.set(source.id, copy_id);
   }
   for (const pin of [...tablet_document.vertex_pins]) {
@@ -777,7 +806,11 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
   const copied_patch = new Map<PatchId, PatchId>();
   for (const patch of [...tablet_document.patches]) {
     if (patch_layer(patch, tablet_document) !== from_layer) continue;
-    copied_patch.set(patch.id, add_patch(tablet_document, patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!)));
+    const copy_id = add_patch(tablet_document, patch.strokes.map((stroke_id) => copied_stroke.get(stroke_id)!));
+    const copy = tablet_document.patches.find((candidate) => candidate.id === copy_id)!;
+    if (patch.fill_color !== undefined) copy.fill_color = { ...patch.fill_color };
+    if (patch.is_one_sided === true) copy.is_one_sided = true;
+    copied_patch.set(patch.id, copy_id);
   }
   for (const pin of [...tablet_document.vertex_surface_pins]) {
     const patch = copied_patch.get(pin.patch);

@@ -18,7 +18,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { append_patch_mesh, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
@@ -418,10 +418,26 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     reset_vertex_sink(vertices);
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
+      if (stroke.is_hidden === true) continue;
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
-      const color = hot ? HOT_COLOR : highlighted ? HIGHLIGHT_COLOR : locked_layers.has(stroke.layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
-      append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, vertices);
+      // The stroke's own color and lightness show only while it is neither hot nor selected.
+      let color = STROKE_COLOR;
+      let lightness_additions = stroke.lightness_additions ?? null;
+      if (hot) {
+        color = HOT_COLOR;
+        lightness_additions = null;
+      } else if (highlighted) {
+        color = HIGHLIGHT_COLOR;
+        lightness_additions = null;
+      } else if (stroke.line_color !== undefined) {
+        color = stroke.line_color;
+      } else if (locked_layers.has(stroke.layer)) {
+        color = LOCKED_LAYER_STROKE_COLOR;
+      }
+      append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, lightness_additions, /* is_mirrored_side */ false, vertices);
+      const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
+      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, lightness_additions, /* is_mirrored_side */ true, vertices);
     }
     append_contour_ribbons(vertices);
     set_stroke_mesh(renderer, vertex_sink_view(vertices));
@@ -434,10 +450,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     for (const patch of tablet_document.patches) {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) continue;
+      // A flat fill has no shape to turn away from the eye: no contour line.
+      if (patch.fill_color !== undefined) continue;
       const grid = patch_surface_grid(patch, tablet_document);
       if (grid === null) continue;
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, mesh_camera, color, vertices);
+      if (tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true) {
+        for (const chain of extract_contour_chains(mirrored_surface_grid(grid), eye)) append_chain_ribbon(chain, mesh_camera, color, vertices);
+      }
     }
   }
 
@@ -449,9 +470,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (hidden_layers.has(layer)) return;
       // The selected patch is drawn even with no fill, so the selection stays visible.
       if (!surface_drawn && index !== selected_patch) return;
+      const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
+      // A patch with its own fill color is drawn flat in it, unless it is the selected one.
+      if (patch.fill_color !== undefined && index !== selected_patch) {
+        append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ false, vertices);
+        if (is_drawn_on_mirrored_side) append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ true, vertices);
+        return;
+      }
       const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
         : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
       append_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
+      if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
     });
     set_surface_mesh(renderer, vertex_sink_view(vertices));
   }

@@ -306,6 +306,7 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     const surface_pinned_vertices = new Set(shown.tablet_document.vertex_surface_pins.map((pin) => pin.vertex));
     for (const stroke of shown.tablet_document.strokes) {
       if (stroke.layer !== "skin") continue;
+      if (stroke.is_hidden === true) continue;
       const is_hairline_stroke = stroke.on_surface === true || surface_pinned_vertices.has(stroke.p0_vertex) || surface_pinned_vertices.has(stroke.p3_vertex);
       if (!is_hairline_stroke) continue;
       const samples = stroke_drawn_polyline(stroke, shown.tablet_document, HAIRLINE_PLANAR_STROKE_SAMPLES);

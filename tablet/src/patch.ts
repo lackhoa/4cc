@@ -14,7 +14,7 @@
 
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
 import { Layer, Patch, PatchId, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, move_vertex, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_position } from "./document";
-import { V2, V3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
+import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
@@ -519,6 +519,36 @@ export function append_patch_mesh(patch: Patch, tablet_document: TabletDocument,
   // The loft keeps its analytic-partial shading; Coons shades per triangle.
   if (fill.kind === "loft") append_loft_mesh(fill.side_a, fill.side_b, tablet_document, camera, color, out);
   else append_grid_mesh(coons_surface_grid(fill.sides, tablet_document), camera, color, out);
+}
+
+// The grid's mirror image across the midline (x negated).
+export function mirrored_surface_grid(grid: SurfaceGrid): SurfaceGrid {
+  const positions = grid.positions.map((column) => column.map((position) => v3(-position.x, position.y, position.z)));
+  return { columns: grid.columns, rows: grid.rows, positions };
+}
+
+// The patch's fill in one flat color: no headlight shading (a patch with `fill_color`).
+// With `is_mirrored_side` it is the fill's mirror image across the midline.
+export function append_flat_patch_mesh(patch: Patch, tablet_document: TabletDocument, color: Color, is_mirrored_side: boolean, out: VertexSink): void {
+  let grid = patch_surface_grid(patch, tablet_document);
+  if (grid === null) return;
+  if (is_mirrored_side) grid = mirrored_surface_grid(grid);
+  for (let j = 0; j < grid.rows; j++) {
+    for (let i = 0; i < grid.columns; i++) {
+      const point_00 = grid.positions[i][j];
+      const point_10 = grid.positions[i + 1][j];
+      const point_11 = grid.positions[i + 1][j + 1];
+      const point_01 = grid.positions[i][j + 1];
+      for (const point of [point_00, point_10, point_11, point_00, point_11, point_01]) push_vertex(out, point, color);
+    }
+  }
+}
+
+// The shaded fill's mirror image across the midline, shaded per triangle.
+export function append_mirrored_patch_mesh(patch: Patch, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: VertexSink): void {
+  const grid = patch_surface_grid(patch, tablet_document);
+  if (grid === null) return;
+  append_grid_mesh(mirrored_surface_grid(grid), camera, color, out);
 }
 
 // Locks (plan-patch-subcurve-boundary.md Q3/Q7): a patch owns its boundary.

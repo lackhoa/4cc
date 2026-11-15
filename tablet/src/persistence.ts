@@ -127,6 +127,7 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.smooth_knots.length = 0;
   tablet_document.strokes.length = 0;
   tablet_document.patches.length = 0;
+  delete tablet_document.is_mirrored_across_midline;
 }
 
 // v1 stroke: d0 a free V3 defining the plane, d3 in the (u2 = p3 - p1, v)
@@ -244,6 +245,7 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
     if (patch.id === undefined) add_patch(tablet_document, patch.strokes);
     else tablet_document.patches.push(patch);
   }
+  if (parsed.document.is_mirrored_across_midline === true) tablet_document.is_mirrored_across_midline = true;
   for (const loft of parsed.document.lofts ?? []) add_patch(tablet_document, [loft.stroke_a, loft.stroke_b]);
   for (const coons of parsed.document.coons ?? []) add_patch(tablet_document, [...coons.strokes]);
   const repaired_patch_count = drop_unused_patch_strokes(tablet_document);

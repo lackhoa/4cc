@@ -54,6 +54,7 @@ function restore_document_in_place(tablet_document: TabletDocument, snapshot: st
   tablet_document.smooth_knots.push(...parsed.smooth_knots);
   tablet_document.strokes.push(...parsed.strokes);
   tablet_document.patches.push(...parsed.patches);
+  if (parsed.is_mirrored_across_midline === true) tablet_document.is_mirrored_across_midline = true;
 }
 
 export function begin_history_step(history: HistoryState, tablet_document: TabletDocument): void {

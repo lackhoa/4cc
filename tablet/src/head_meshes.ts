@@ -136,6 +136,7 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
   if (options.strokes_visible) {
     for (const stroke of tablet_document.strokes) {
       if (stroke.layer === "skull" && !options.skull_visible) continue;
+      if (stroke.is_hidden === true) continue;
       const color = stroke.layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
       const radii = stroke_radii(stroke);
       if (stroke.on_surface === true) {

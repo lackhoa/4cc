@@ -73,6 +73,7 @@ export function pick_stroke(
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   for (const stroke of tablet_document.strokes) {
     if (!layers.has(stroke.layer)) continue;
+    if (stroke.is_hidden === true) continue;
     let previous: V2 | null = null;
     for (const world of stroke_drawn_polyline(stroke, tablet_document, PICK_SAMPLES_PER_STROKE)) {
       const projected = project(world);
