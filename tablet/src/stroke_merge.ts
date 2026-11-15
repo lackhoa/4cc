@@ -2,12 +2,12 @@
 // endpoints: a single cubic, least-squares-fitted to the combined sampled
 // shape and forced through the shared vertex (a sharp corner there gets
 // smoothed, that's the point). The shared vertex is never deleted: it stays
-// as a pin on the joined stroke, so the other strokes ending on it and the
+// as a pin on the joined stroke (replacing its surface pin, if it had one), so the other strokes ending on it and the
 // patches cornered on it keep their junction. Patches, pins and far-end
 // smooth knots of stroke B carry over to the joined stroke
 // (plan-join-lines-through-patches.html).
 
-import { StrokeId, StrokeRadii, TabletDocument, VertexId, bezier_point, delete_stroke, drop_surface_pins_of_missing_patches, enforce_smooth_knots_of_stroke, nearest_point_on_stroke_world, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_handles_from_control_points, stroke_radii, stroke_radii_at, surface_pin_by_vertex, vertex_by_id, vertex_position } from "./document";
+import { StrokeId, StrokeRadii, TabletDocument, VertexId, bezier_point, delete_stroke, drop_surface_pins_of_missing_patches, enforce_smooth_knots_of_stroke, nearest_point_on_stroke_world, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_handles_from_control_points, stroke_radii, stroke_radii_at, vertex_by_id, vertex_position } from "./document";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { resolve_patch_fill, update_pinned_vertex_positions } from "./patch";
 
@@ -150,7 +150,7 @@ function shared_vertex_pin_refusal_reason(
   // A vertex is pinned at most once.
   const existing_pin = pin_by_vertex(tablet_document, shared_vertex);
   if (existing_pin !== null) return `the point where these lines meet is pinned to line ${existing_pin.host_stroke}, unpin it first`;
-  if (surface_pin_by_vertex(tablet_document, shared_vertex) !== null) return "the point where these lines meet is pinned on the surface, unpin it first";
+  // A surface pin there does not refuse: the join drops it (merge_adjacent_strokes).
   // A midline stroke ending on the vertex holds it on the midline; the pin would pull it off.
   const joined_is_midline = stroke_by_id(tablet_document, stroke_a_id).midline === true && stroke_by_id(tablet_document, stroke_b_id).midline === true;
   const held_on_midline = tablet_document.strokes.some(
@@ -228,6 +228,10 @@ export function merge_adjacent_strokes(
   // The shared vertex rides the joined stroke where the fit passes through it
   // (its own midline flag goes: the pin wins the position, as in pin_vertex_to_stroke).
   delete vertex_by_id(tablet_document, shared_vertex).midline;
+  // A vertex is pinned at most once: its surface pin goes, so it follows the joined
+  // stroke and no longer the surface (Khoa, 2026-11-15: joining a hairline drawn as
+  // strokes between surface-pinned points was refused at every point).
+  tablet_document.vertex_surface_pins = tablet_document.vertex_surface_pins.filter((pin) => pin.vertex !== shared_vertex);
   tablet_document.vertex_pins.push({ vertex: shared_vertex, host_stroke: stroke_a_id, t: fit.through_t });
 
   // Smooth knots: the joined stroke passes straight through the shared vertex,

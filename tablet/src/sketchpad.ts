@@ -1507,12 +1507,32 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // A button with nothing to act on in the current selection is hidden. A button
   // whose action a patch blocks stays, greyed out, with the reason as its tooltip;
   // the button's own tooltip from the page comes back once it is usable.
+  // The reason is not the browser's `title` tooltip: that one comes after a delay, and
+  // not at all on a disabled button in some browsers. It is a box drawn by CSS under the
+  // button the moment the pointer is over it (the style is added here so every page
+  // that embeds the sketchpad has it).
   const own_button_titles = new Map<HTMLButtonElement, string>();
+  const lock_reason_style = document.createElement("style");
+  lock_reason_style.textContent = `
+    button[data-lock-reason] { position: relative; }
+    button[data-lock-reason]:hover::after {
+      content: attr(data-lock-reason); position: absolute; top: calc(100% + 6px); right: 0; z-index: 100;
+      width: max-content; max-width: 280px; white-space: normal; text-align: left; padding: 6px 10px;
+      font-size: 13px; line-height: 1.3; color: #eee; background: #1b1b20; border: 1px solid #888; border-radius: 6px;
+      pointer-events: none;
+    }`;
+  document.head.append(lock_reason_style);
   function set_button_availability(button: HTMLButtonElement, selection_fits: boolean, lock_reason: string | null): void {
     if (!own_button_titles.has(button)) own_button_titles.set(button, button.title);
     button.hidden = !selection_fits;
     button.disabled = lock_reason !== null;
-    button.title = lock_reason ?? own_button_titles.get(button)!;
+    if (lock_reason !== null) {
+      button.dataset.lockReason = lock_reason;
+      button.title = "";
+    } else {
+      delete button.dataset.lockReason;
+      button.title = own_button_titles.get(button)!;
+    }
   }
   function refresh_lock_buttons(): void {
     const line_selected = edit_state !== null;
