@@ -4,24 +4,13 @@
  "stiffness": 0,
  "landmarks": [
   {
-   "name": "top of head",
-   "template_point": {
-    "vertex": 70
-   },
-   "front_half_width_pixels": 0,
-   "row_pixels": 62,
-   "profile_column_pixels": 923,
-   "read_from_front": false,
-   "read_from_profile": false
-  },
-  {
    "name": "upper forehead",
    "template_point": {
     "vertex": 69
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 196,
-   "profile_column_pixels": 675,
+   "row_pixels": 227.14834876672302,
+   "profile_column_pixels": 676.2089973727323,
    "read_from_front": false,
    "read_from_profile": true
   },
@@ -31,8 +20,8 @@
     "vertex": 113
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 322,
-   "profile_column_pixels": 659,
+   "row_pixels": 328.56933616394787,
+   "profile_column_pixels": 662.2846680819739,
    "read_from_front": false,
    "read_from_profile": true
   },
@@ -48,13 +37,35 @@
    "read_from_profile": true
   },
   {
+   "name": "nose tip",
+   "template_point": {
+    "vertex": 74
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 463.20190174600407,
+   "profile_column_pixels": 618.2019017460041,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
    "name": "under nose tip",
    "template_point": {
     "vertex": 101
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 487.37613312020073,
-   "profile_column_pixels": 637.3761331202007,
+   "row_pixels": 490.4259905287221,
+   "profile_column_pixels": 643.09688329762,
+   "read_from_front": false,
+   "read_from_profile": true
+  },
+  {
+   "name": "subnasale",
+   "template_point": {
+    "vertex": 78
+   },
+   "front_half_width_pixels": 0,
+   "row_pixels": 492.27342843023666,
+   "profile_column_pixels": 660.9316428924408,
    "read_from_front": false,
    "read_from_profile": true
   },
@@ -64,8 +75,8 @@
     "vertex": 136
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 531,
-   "profile_column_pixels": 652,
+   "row_pixels": 533.8842625025503,
+   "profile_column_pixels": 655.4250617217785,
    "read_from_front": false,
    "read_from_profile": true
   },
@@ -75,8 +86,8 @@
     "vertex": 139
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 552,
-   "profile_column_pixels": 668,
+   "row_pixels": 553.0683571075592,
+   "profile_column_pixels": 672.0063391533469,
    "read_from_front": true,
    "read_from_profile": true
   },
@@ -86,9 +97,9 @@
     "vertex": 141
    },
    "front_half_width_pixels": 0,
-   "row_pixels": 585.9396275620302,
-   "profile_column_pixels": 671.9611587851136,
-   "read_from_front": true,
+   "row_pixels": 580.8159843845638,
+   "profile_column_pixels": 673.4079921922819,
+   "read_from_front": false,
    "read_from_profile": true
   },
   {
@@ -125,35 +136,13 @@
    "read_from_profile": false
   },
   {
-   "name": "inner eye corner",
-   "template_point": {
-    "vertex": 116
-   },
-   "front_half_width_pixels": 49,
-   "row_pixels": 374,
-   "profile_column_pixels": 730,
-   "read_from_front": true,
-   "read_from_profile": false
-  },
-  {
    "name": "outer eye corner",
    "template_point": {
     "vertex": 112
    },
    "front_half_width_pixels": 143,
-   "row_pixels": 373,
-   "profile_column_pixels": 770,
-   "read_from_front": true,
-   "read_from_profile": true
-  },
-  {
-   "name": "upper lid top",
-   "template_point": {
-    "vertex": 117
-   },
-   "front_half_width_pixels": 93,
-   "row_pixels": 356,
-   "profile_column_pixels": 722,
+   "row_pixels": 376.65001294602695,
+   "profile_column_pixels": 759.5366295547227,
    "read_from_front": true,
    "read_from_profile": true
   },
@@ -185,8 +174,8 @@
     "vertex": 137
    },
    "front_half_width_pixels": 33,
-   "row_pixels": 528,
-   "profile_column_pixels": 654,
+   "row_pixels": 529.7360802997837,
+   "profile_column_pixels": 668.2892763136038,
    "read_from_front": true,
    "read_from_profile": true
   },
@@ -202,6 +191,17 @@
    "read_from_profile": true
   },
   {
+   "name": "chin bottom side",
+   "template_point": {
+    "vertex": 154
+   },
+   "front_half_width_pixels": 55,
+   "row_pixels": 665,
+   "profile_column_pixels": 740,
+   "read_from_front": true,
+   "read_from_profile": true
+  },
+  {
    "name": "jaw angle",
    "template_point": {
     "vertex": 84
@@ -211,6 +211,28 @@
    "profile_column_pixels": 920,
    "read_from_front": true,
    "read_from_profile": true
+  },
+  {
+   "name": "cheek outline, mouth height",
+   "template_point": {
+    "vertex": 91
+   },
+   "front_half_width_pixels": 170,
+   "row_pixels": 542,
+   "profile_column_pixels": 813,
+   "read_from_front": true,
+   "read_from_profile": false
+  },
+  {
+   "name": "cheekbone, widest",
+   "template_point": {
+    "vertex": 92
+   },
+   "front_half_width_pixels": 200,
+   "row_pixels": 445,
+   "profile_column_pixels": 843,
+   "read_from_front": true,
+   "read_from_profile": false
   },
   {
    "name": "ear canal",
@@ -244,29 +266,6 @@
    "row_pixels": 626,
    "profile_column_pixels": 669,
    "read_from_front": false,
-   "read_from_profile": true
-  },
-  {
-   "name": "brow in",
-   "template_point": {
-    "vertex": 162
-   },
-   "front_half_width_pixels": 44.410006911971834,
-   "row_pixels": 324.6015366876753,
-   "profile_column_pixels": 676.8833969075735,
-   "read_from_front": true,
-   "read_from_profile": true
-  },
-  {
-   "name": "brow out",
-   "template_point": {
-    "stroke": 125,
-    "position_along_stroke": 0.45
-   },
-   "front_half_width_pixels": 152.77618046109353,
-   "row_pixels": 330.783177695892,
-   "profile_column_pixels": 769.9747976183104,
-   "read_from_front": true,
    "read_from_profile": true
   }
  ]
