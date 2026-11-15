@@ -257,6 +257,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_split_here_button();
     refresh_lock_buttons();
     refresh_midline_button_armed();
+    refresh_on_surface_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
@@ -796,10 +797,31 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   swing_button.addEventListener("click", () => set_handle_mode("swing"));
   // Sticky: the line tool draws on the active layer's surface (plan-hairline-drawn-on-surface Q8).
   const on_surface_button = document.getElementById("on_surface_button") as HTMLButtonElement;
+  // With lines selected the button acts on them instead (Khoa, 2026-11-15): it flips the
+  // on_surface flag of the selected lines (all to the opposite of the primary's) and is
+  // lit by the primary's flag. Their ends keep their pins: only the curve between the
+  // ends is drawn on the surface.
   let line_on_surface = false;
+  function refresh_on_surface_button_armed(): void {
+    const armed = edit_state !== null ? stroke_by_id(tablet_document, edit_state.stroke_id).on_surface === true : line_on_surface;
+    on_surface_button.classList.toggle("armed", armed);
+  }
   on_surface_button.addEventListener("click", () => {
-    line_on_surface = !line_on_surface;
-    on_surface_button.classList.toggle("armed", line_on_surface);
+    if (edit_state === null) {
+      line_on_surface = !line_on_surface;
+      refresh_on_surface_button_armed();
+      return;
+    }
+    const strokes = selected_strokes();
+    const turn_on = stroke_by_id(tablet_document, edit_state.stroke_id).on_surface !== true;
+    begin_history_step(history, tablet_document);
+    for (const id of strokes) {
+      const stroke = stroke_by_id(tablet_document, id);
+      if (turn_on) stroke.on_surface = true;
+      else delete stroke.on_surface;
+    }
+    end_history_step(history, tablet_document, `${turn_on ? "set" : "clear"} on surface strokes ${strokes.join(" ")}`);
+    request_render();
   });
   // The pin of the selected vertex, or null: the target of unpin and split here.
   // The selected vertex when no stroke is selected with it. With a stroke
