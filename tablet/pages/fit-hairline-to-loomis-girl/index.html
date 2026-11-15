@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draw the hairline on Loomis's school girl</title>
+<style>
+  .views { display: flex; gap: 10px; }
+  .views figure { margin: 0; min-width: 0; }
+  /* Each view has the shape of its half of the plate (505 x 690 and 630 x 690 image pixels). */
+  figure.front { flex: 505; }
+  figure.profile { flex: 630; }
+  figure.front .plate_view { aspect-ratio: 505 / 690; }
+  figure.profile .plate_view { aspect-ratio: 630 / 690; }
+  /* A plate view: the plate on one canvas, the fitted head's surfaces and strokes on a
+     WebGL canvas over it, the highlighted hairline on a third canvas on top. */
+  .plate_view { position: relative; margin: 10px 0; }
+  .plate_view canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; background: transparent; }
+  .plate_view canvas:first-child { position: static; }
+  #plate_missing_note { color: #e05a5a; }
+  #status { font-size: 13px; color: var(--yellow); }
+
+  /* The embedded sketchpad (src/sketchpad.ts): skin-draw's page inside one box. The ids
+     and classes are the sketchpad's (pages/skin-draw/index.html); the panels are
+     positioned inside #editor instead of the viewport. */
+  #editor { position: relative; height: 70vh; margin: 10px 0; overflow: hidden; background: #111;
+            touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+  #editor canvas { display: block; width: 100%; height: 100%; margin: 0; border-radius: 0; cursor: default; } /* undoes pages.css's canvas rule */
+  #toolbar { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px;
+             flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 24px);
+             pointer-events: none; } /* the wrapped rows span the view; only the buttons take the pen */
+  #toolbar > * { pointer-events: auto; }
+  #toolbar button { padding: 10px 16px; font-size: 15px; color: #ccc;
+                    background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
+  #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
+  #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+  #toolbar input[type=range] { width: 110px; align-self: center; }
+  #docs_panel { position: absolute; top: 64px; right: 12px; display: none;
+                flex-direction: column; gap: 6px; padding: 10px;
+                background: #222228; border: 1px solid #444; border-radius: 8px; }
+  #docs_panel.open { display: flex; }
+  #docs_panel button { padding: 8px 14px; font-size: 15px; color: #ccc; text-align: left;
+                       background: #2a2a30; border: 1px solid #444; border-radius: 6px; }
+  #docs_panel button.current { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+  #toolbar button:disabled { color: #666; border-color: #333; }
+  #save_status { align-self: center; font-size: 13px; color: #888; }
+  #save_status.pending { color: #c9a227; }
+  #save_status.saving { color: #6a9ad0; }
+  #save_status.saved { color: #6c9f5a; }
+  #save_status.failed, #save_status.off { color: #e05a5a; font-weight: bold; }
+  #history_panel { position: absolute; top: 64px; left: 12px; display: none;
+                   flex-direction: column; gap: 2px; padding: 10px; max-height: 60%; overflow-y: auto;
+                   background: #222228; border: 1px solid #444; border-radius: 8px;
+                   font-family: monospace; }
+  #history_panel.open { display: flex; }
+  #history_panel button { padding: 4px 10px; font-size: 14px; color: #ccc; text-align: left;
+                          white-space: pre; font-family: inherit;
+                          background: transparent; border: 1px solid transparent; border-radius: 4px; }
+  #history_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
+  #history_panel button.current { color: #fff; background: #3a5a8a; }
+  #history_panel button.undone { color: #666; }
+  #history_panel .empty { color: #666; font-size: 14px; }
+  #width_panel { position: absolute; bottom: 12px; right: 12px; display: none;
+                 flex-direction: column; gap: 8px; padding: 10px; color: #ccc; font-size: 14px;
+                 background: #222228; border: 1px solid #444; border-radius: 8px; }
+  #width_panel.open { display: flex; }
+  #width_panel .controls { display: flex; flex-direction: column; gap: 8px; }
+  #width_panel label { display: flex; align-items: center; gap: 8px; }
+  #width_panel input[type=range] { width: 180px; }
+  #width_panel input[type=number] { width: 56px; }
+  #width_panel .empty { color: #666; }
+  #stroke_labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  #stroke_labels div { position: absolute; transform: translate(-50%, -50%);
+                       padding: 2px 6px; font-size: 13px; color: #eee; white-space: nowrap;
+                       background: rgba(20, 20, 26, 0.75); border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Draw the hairline on Loomis's school girl</h1>
+  <p class="sub">Draw the hairline on the template head in the sketchpad below until the orange line lies on the girl's hair edge in the plate views. <a href="/">main menu</a></p>
+
+  <section>
+    <h2>1. The fitted head on the plate</h2>
+    <p><strong>Where the fitted head comes from:</strong> it is the template <code>skull-zanatomy</code>, the document you draw on below, warped so that the landmarks of the page <a href="/pages/fit-head-to-loomis-girl/">fit-head-to-loomis-girl</a> land on their marks on this plate. It is computed here, after every edit below, and saved nowhere. The landmarks are read once, when this page opens: to <a href="/pages/fit-head-to-loomis-girl/">change the fit</a>, move the marks there, then reload this page.</p>
+    <div class="controls">
+      <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
+      <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
+      <label><input type="checkbox" id="plate_skull_visible"> skull</label>
+      <span id="plate_missing_note" hidden>the plate image is missing (public/loomis-girl-front-and-profile.webp)</span>
+      <span id="status"></span>
+    </div>
+    <div class="views">
+      <figure class="front"><div class="plate_view" id="front_view"></div></figure>
+      <figure class="profile"><div class="plate_view" id="profile_view"></div></figure>
+    </div>
+    <p class="hint">The orange lines are the hairline: the skin strokes drawn on the surface, or ending at a point pinned to it. The landmarks' marks are not drawn here, so they do not cover it. Double-tap a view to fit the plate again.</p>
+  </section>
+
+  <section>
+    <h2>2. Draw the hairline</h2>
+    <p>The sketchpad of skin-draw, on the same document. Draw with the line tool in "on surface" mode on the skin layer, or pin a line's ends to the surface. The plate views above follow as you draw. Ctrl+Z undoes here when the sketchpad was touched last.</p>
+    <div id="editor">
+      <canvas id="canvas"></canvas>
+      <div id="toolbar">
+        <button id="line_button" title="no vertex selected: drag a straight line; one vertex: drag a straight line from it; two (tap one, ctrl-tap the other): straight line between them">line</button>
+        <button id="on_surface_button" title="sticky: the line tool draws on the surface of the active layer (ends snap to vertices or land on the surface, the line is drawn projected onto it)">on surface</button>
+        <button id="weld_button" hidden title="two vertices selected (tap A, ctrl-tap B): weld A into B, B stays where it is">weld</button>
+        <button id="patch_button">patch</button>
+        <button id="join_button">join</button>
+        <button id="split_button">split</button>
+        <button id="split_here_button" hidden title="cut the selected line at the selected pinned vertex (smooth knot)">split here</button>
+        <button id="smooth_button">smooth</button>
+        <button id="straighten_button" title="make the selected line(s) straight between their endpoints">straight</button>
+        <button id="pin_button" title="a line selected: tap the line to drop a pinned vertex; a pinned vertex selected: unpin it; a vertex and a line or a surface selected (tap one, ctrl-tap the other): pin the vertex there, at the nearest point">pin</button>
+        <button id="detach_end_button" hidden title="give this end of the selected line its own vertex, detaching it from the other lines welded at the selected vertex">detach end</button>
+        <button id="swing_button" title="sticky swing mode; or hold ctrl while dragging a handle">swing</button>
+        <button id="mirror_button" title="small second view from the right side, shows depth">mirror</button>
+        <button id="midline_button" title="hold the selected vertex / line on the midline (x = 0)">mid</button>
+        <button id="width_button" title="width / taper of the selected line">width</button>
+        <button id="name_button">name</button>
+        <button id="undo_button">undo</button>
+        <button id="redo_button">redo</button>
+        <button id="history_button" title="edit history: tap a row to jump to it">hist</button>
+        <button id="delete_button">del</button>
+        <button id="view_button">view</button>
+        <button id="reference_button" title="reference mesh on/off">ref (R)</button>
+        <button id="eyeball_button" title="show the eyeballs with the reference">eyes</button>
+        <input type="range" id="reference_alpha" min="0.05" max="1" step="0.05" value="1" title="reference opacity">
+        <input type="range" id="clip_offset" min="-1" max="1" step="0.01" value="1" title="sagittal clip: cuts away the far side of the plane; all the way right = off">
+        <button id="surface_button" title="surfaces on/off">surf (S)</button>
+        <button id="docs_button">docs</button>
+        <span id="save_status" title="autosave status"></span>
+        <button id="pages_button" title="back to the main menu">menu</button>
+      </div>
+      <div id="stroke_labels"></div>
+      <div id="docs_panel"></div>
+      <div id="history_panel"></div>
+      <div id="width_panel"></div>
+    </div>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

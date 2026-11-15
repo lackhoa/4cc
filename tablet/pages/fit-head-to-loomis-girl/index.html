@@ -3,106 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>fit-head-to-loomis-girl</title>
+<title>Fit the head to Loomis's school girl</title>
 <style>
   .views { display: flex; gap: 10px; }
   .views figure { margin: 0; min-width: 0; }
-  .views figcaption { text-align: center; font-size: 13px; color: var(--muted); }
-  /* Each plate canvas has the shape of the part of the plate it shows (505 x 690 and
-     630 x 690 image pixels), so the two views of a pair come out the same height. */
-  .views figure.front { flex: 505; }
-  .views figure.profile { flex: 630; }
-  .views figure.front .plate_view { aspect-ratio: 505 / 690; }
-  .views figure.profile .plate_view { aspect-ratio: 630 / 690; }
-  /* A plate view: the plate on one canvas, the document's surfaces and strokes on a WebGL
-     canvas over it, the landmarks on a third canvas on top. */
+  figure.front { flex: 505; }
+  figure.profile { flex: 630; }
+  figure.front .plate_view { aspect-ratio: 505 / 690; }
+  figure.profile .plate_view { aspect-ratio: 630 / 690; }
   .plate_view { position: relative; margin: 10px 0; }
   .plate_view canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; background: transparent; }
   .plate_view canvas:first-child { position: static; }
   #turned_canvas { height: 560px; }
   #plate_missing_note { color: #e05a5a; }
-  table.numbers { border-collapse: collapse; font-size: 14px; width: 100%; }
-  table.numbers th, table.numbers td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--faded); color: var(--muted); }
-  table.numbers th { color: var(--ink); }
-  table.numbers td:first-child, table.numbers th:first-child { text-align: left; }
-  table.numbers td:nth-child(2), table.numbers th:nth-child(2) { text-align: left; }
+  #bottom_bar button:disabled { opacity: 0.4; cursor: default; }
+  #bottom_bar button.armed { background: #3a5a8a; border-color: var(--accent); }
+  #landmark_name_field { font: inherit; font-size: 14px; width: 210px; color: var(--ink); background: var(--bg); border: 1px solid var(--muted); border-radius: 6px; padding: 2px 8px; user-select: text; }
+  #fit_status { font-size: 13px; color: var(--yellow); }
+  #head_model_box { position: relative; height: 520px; margin: 10px 0; }
+  #head_model_box canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; }
+  #head_model_overlay_canvas { background: transparent; }
+  table.numbers { border-collapse: collapse; font-size: 14px; }
+  table.numbers th, table.numbers td { text-align: left; padding: 2px 14px 2px 0; }
+  table.numbers th { color: var(--muted); font-weight: normal; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Fitting the head to Loomis's school girl</h1>
-  <p class="sub">The template is the head we drew on the Z-Anatomy model: document <code>skull-zanatomy</code>, skull and skin. The target is Loomis's plate of a school girl, a front view and a profile. The fit moves the template's curves until they match the plate, and writes the result to document <code>loomis-school-girl</code>. This page only shows the fit: nothing here can be edited. <a href="/">main menu</a></p>
+<h1>Fit the head to Loomis's school girl</h1>
+<p class="sub">
+  The template head (document <code>skull-zanatomy</code>: skull and skin drawing) warped so that its
+  landmarks land on their marks on Loomis's plate. This page is where the fit is tuned: drag a mark and
+  the fitted head follows. The fitted head is computed here from the template and the landmarks, every
+  time either changes; it is saved nowhere. The landmarks are saved on every edit.
+  <a href="/pages/fit-hairline-to-loomis-girl/">Draw the hairline</a> on the fitted head.
+</p>
 
-  <section>
-    <h2>1. The template on the plate, before the fit</h2>
-    <p>The template drawn over the plate at the plate's scale, chin bottom on chin bottom. Each green cross is a landmark marked on the plate. Each green dot is the template vertex that belongs to it, and the green line between them is the move the fit has to make.</p>
-    <div class="views">
-      <figure class="front">
-        <div id="template_front_view" class="plate_view"></div>
-        <figcaption>front</figcaption>
-      </figure>
-      <figure class="profile">
-        <div id="template_profile_view" class="plate_view"></div>
-        <figcaption>profile</figcaption>
-      </figure>
-    </div>
-    <div class="controls">
-      <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
-      <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
-      <label><input type="checkbox" id="plate_skull_visible"> skull</label>
-      <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
-      <span id="plate_missing_note" hidden>plate image missing: copy the scan into tablet/public/</span>
-    </div>
-    <p class="hint">These three controls act on all four plate views of this page. In a view: drag to move, wheel or pinch to zoom, double tap to fit the head again. <span style="color: #e8262a">red</span> = skin, <span style="color: #2a62e8">blue</span> = skull.</p>
-  </section>
+<h2>1. The fitted head on the plate</h2>
+<p class="hint">
+  A cross is a mark read from this view, a circle a guessed one; the line runs from the mark to where
+  the fitted landmark is. Drag a mark to move it, drag the dashed midline to move the front view's
+  centre. The orange lines are the hairline: the skin strokes drawn on the surface or ending at a point pinned to it.
+  Double-tap an empty spot to refit the view.
+</p>
+<div class="controls">
+  <label>plate <input type="range" id="plate_opacity" min="0" max="1" step="0.05" value="0.75"></label>
+  <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
+  <label><input type="checkbox" id="plate_skull_visible"> skull</label>
+  <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
+  <span id="plate_missing_note" hidden>the plate image is missing (public/loomis-girl-front-and-profile.webp)</span>
+</div>
+<div class="views">
+  <figure class="front"><div class="plate_view" id="fitted_front_view"></div></figure>
+  <figure class="profile"><div class="plate_view" id="fitted_profile_view"></div></figure>
+</div>
 
-  <section>
-    <h2>2. The fitted head on the plate</h2>
-    <p>One smooth warp of space carries every template landmark to its cross, and every curve of the drawing goes through the same warp. A dot that is not on its cross is a landmark the fit missed; the green line shows by how much.</p>
-    <div class="views">
-      <figure class="front">
-        <div id="fitted_front_view" class="plate_view"></div>
-        <figcaption>front</figcaption>
-      </figure>
-      <figure class="profile">
-        <div id="fitted_profile_view" class="plate_view"></div>
-        <figcaption>profile</figcaption>
-      </figure>
-    </div>
-  </section>
+<h2>2. Landmarks</h2>
+<p class="hint">
+  "Add landmark", then tap a point on the head model below: the new landmark's marks start where that
+  point is, so it pulls nothing until you drag them. Tap a landmark (here or on the plate) to select it.
+</p>
+<div class="controls" id="bottom_bar">
+  <button id="add_landmark_button">add landmark</button>
+  <input type="text" id="landmark_name_field" placeholder="no landmark selected" autocomplete="off">
+  <button id="remove_landmark_button">remove</button>
+  <button id="undo_landmark_edit_button">undo</button>
+  <button id="reset_landmarks_button">reset</button>
+  <label><input type="checkbox" id="landmark_names_visible"> names</label>
+  <label>stiffness <input type="range" id="fit_stiffness" min="0" max="1" step="0.01"> <span id="fit_stiffness_value"></span></label>
+  <label>skin <input type="range" id="head_model_mesh_opacity" min="0" max="1" step="0.05" value="0.5"></label>
+  <span id="fit_status"></span>
+</div>
+<div id="head_model_box">
+  <canvas id="head_model_mesh_canvas"></canvas>
+  <canvas id="head_model_overlay_canvas"></canvas>
+</div>
 
-  <section>
-    <h2>3. The fitted head, turned</h2>
-    <p>The same document seen from any side, with its surfaces. The surfaces hide the lines behind them; untick them and the far side of the head shows through the near side.</p>
-    <canvas id="turned_canvas"></canvas>
-    <div class="controls">
-      <label><input type="checkbox" id="turned_surfaces_visible" checked> surfaces</label>
-      <label><input type="checkbox" id="turned_lines_visible" checked> lines</label>
-      <label><input type="checkbox" id="turned_skull_visible"> skull</label>
-    </div>
-    <p class="hint">drag to orbit, wheel to zoom.</p>
-  </section>
+<h2>3. The fitted head, turned</h2>
+<p class="hint">Drag to turn. The second half is the mirror of the drawn one.</p>
+<div class="controls">
+  <label><input type="checkbox" id="turned_surfaces_visible" checked> surfaces</label>
+  <label><input type="checkbox" id="turned_lines_visible" checked> lines</label>
+  <label><input type="checkbox" id="turned_skull_visible"> skull</label>
+</div>
+<canvas id="turned_canvas"></canvas>
 
-  <section>
-    <h2>4. Landmarks</h2>
-    <p>How far each fitted vertex is from its mark, in plate pixels (the head is about 610 pixels tall). "Read from" says which views the mark was read off; the rest of a mark's position is a guess, because hair or the face hides the point there.</p>
-    <table class="numbers" id="landmark_table">
-      <thead><tr><th>landmark</th><th>read from</th><th>front miss, px</th><th>profile miss, px</th></tr></thead>
-      <tbody><tr><td colspan="4">loading…</td></tr></tbody>
-    </table>
-  </section>
+<h2>4. The template before the fit</h2>
+<p class="hint">The template as drawn, un-warped, on the same plate: the lines show how far each landmark has to move.</p>
+<div class="views">
+  <figure class="front"><div class="plate_view" id="template_front_view"></div></figure>
+  <figure class="profile"><div class="plate_view" id="template_profile_view"></div></figure>
+</div>
 
-  <section>
-    <h2>5. What is off (as of 2026-10-04)</h2>
-    <ul>
-      <li><strong>Landmarks that miss.</strong> A landmark on a vertex that is pinned to a stroke rides that stroke, so it cannot be put on its cross exactly. These misses run along the curve; the curves themselves sit on the drawn lines.</li>
-      <li><strong>Nose bridge.</strong> The fitted bridge is straight, the drawn one is slightly scooped. No landmark sits there.</li>
-      <li><strong>Lips.</strong> The plate's front and profile disagree by about 10 pixels on lip heights. The profile is used.</li>
-      <li><strong>Under the hair.</strong> Top of head, back of head and the widest point of the cranium are guesses.</li>
-      <li><strong>The skull.</strong> Only the skin can be checked against the plate. The fitted skull is a guess carried by the warp.</li>
-    </ul>
-    <p>Sources: the marks in <code>tablet/fit-landmarks/loomis-school-girl.json</code> (edited on the page <a href="/pages/loomis-girl-fit-landmarks/">loomis-girl-fit-landmarks</a>; starting values in <code>tablet/src/loomis_girl_plate.ts</code>), the fit in <code>tablet/src/landmark_fit.ts</code>; decisions in <code>notes/tasks/autodraw_draw_as_data/plan-loomis-girl-elaboration.md</code>.</p>
-  </section>
+<h2>5. How far each landmark is from its mark</h2>
+<p>In plate pixels (the head is about 610 pixels tall). "Read from" says which views the mark was read off; the rest of a mark's position is a guess, because hair or the face hides the point there.</p>
+<table class="numbers" id="landmark_table">
+  <thead><tr><th>landmark</th><th>read from</th><th>front miss, px</th><th>profile miss, px</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>6. What is off (as of 2026-10-04)</h2>
+<ul>
+  <li><strong>Landmarks that miss.</strong> A landmark on a vertex that is pinned to a stroke rides that stroke, so it cannot be put on its cross exactly. These misses run along the curve; the curves themselves sit on the drawn lines.</li>
+  <li><strong>Nose bridge.</strong> The fitted bridge is straight, the drawn one is slightly scooped. No landmark sits there.</li>
+  <li><strong>Lips.</strong> The plate's front and profile disagree by about 10 pixels on lip heights. The profile is used.</li>
+  <li><strong>Under the hair.</strong> Top of head, back of head and the widest point of the cranium are guesses.</li>
+  <li><strong>The skull.</strong> Only the skin can be checked against the plate. The fitted skull is a guess carried by the warp.</li>
+</ul>
+<p>Sources: the marks in <code>tablet/fit-landmarks/loomis-school-girl.json</code> (edited on this page; starting values in <code>tablet/src/loomis_girl_plate.ts</code>), the fit in <code>tablet/src/landmark_fit.ts</code>; decisions in <code>notes/tasks/autodraw_draw_as_data/plan-loomis-girl-elaboration.md</code> and <code>plan-hairline-on-loomis-girl.md</code>.</p>
 </main>
 <script type="module" src="./main.ts"></script>
 </body>

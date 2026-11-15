@@ -1,7 +1,8 @@
 // The Loomis school girl plate as a fit target: where the two views sit in the image, and
 // the landmarks that tie the template head (document `skull-zanatomy`) to it. Shared by
-// the pages fit-head-to-loomis-girl (shows the fit) and loomis-girl-fit-landmarks (edits
-// the landmarks and computes the fit).
+// the pages fit-head-to-loomis-girl (edits the landmarks, computes and shows the fit) and
+// fit-hairline-to-loomis-girl (computes the same fit under its sketchpad; reads the
+// landmarks only).
 //
 // Both views are orthographic and share heights (Loomis's grid lines run across both).
 // Front view: the head's sagittal plane is one image column, kept in the landmark file
