@@ -12,7 +12,7 @@
 // the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -22,7 +22,7 @@ import { append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, 
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
-import { V2, V3, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
@@ -634,14 +634,65 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_preview_line(renderer, new Float32Array(vertices));
   }
 
+  // How close a pen end of the line tool must come to the centre plane, on screen, to
+  // land on it (the native line tool's line_tool_midline_px).
+  const LINE_TOOL_MIDLINE_SNAP_RADIUS_PIXELS = 8;
+
+  // A new end vertex of the line tool that the pen put within
+  // LINE_TOOL_MIDLINE_SNAP_RADIUS_PIXELS of the centre plane lands on it: x = 0 in its
+  // bone's space, held there by the vertex's `midline` flag. Measured as the native
+  // line tool does: on screen, from the end to its foot on the plane. Returns whether
+  // it landed.
+  function land_new_line_end_on_midline(vertex_id: VertexId): boolean {
+    const vertex = vertex_by_id(tablet_document, vertex_id);
+    const bone_to_world = world_from_bone(tablet_document, vertex.bone_id);
+    const foot_on_midline = mat4_transform_point(bone_to_world, v3(0, vertex.position.y, vertex.position.z));
+    const end_screen = camera_world_to_screen(camera, vertex_world_position(tablet_document, vertex), canvas.clientWidth, canvas.clientHeight);
+    const foot_screen = camera_world_to_screen(camera, foot_on_midline, canvas.clientWidth, canvas.clientHeight);
+    if (end_screen === null || foot_screen === null) return false;
+    const distance_pixels = Math.hypot(end_screen.x - foot_screen.x, end_screen.y - foot_screen.y);
+    if (distance_pixels >= LINE_TOOL_MIDLINE_SNAP_RADIUS_PIXELS) return false;
+    move_vertex(tablet_document, vertex_id, foot_on_midline);
+    vertex.midline = true;
+    return true;
+  }
+
+  // A new line in a document mirrored across the midline. Its new ends near the centre
+  // plane land on it (Q4); the line is a midline stroke when both ends are on the plane
+  // (an existing start vertex counts when it is at x = 0, as in the native tool). Then
+  // a line with no end on the stored side and one on the mirrored side is stored
+  // reflected onto the stored side (Q3, Q5), but only when both ends are new vertices:
+  // an existing start vertex is never moved.
+  function settle_new_line_in_mirrored_document(stroke_id: StrokeId, start_is_new_vertex: boolean): void {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    let start_is_on_midline: boolean;
+    if (start_is_new_vertex) {
+      start_is_on_midline = land_new_line_end_on_midline(stroke.p0_vertex);
+    } else {
+      start_is_on_midline = vertex_by_id(tablet_document, stroke.p0_vertex).position.x === 0;
+    }
+    const end_is_on_midline = land_new_line_end_on_midline(stroke.p3_vertex);
+    if (start_is_on_midline && end_is_on_midline) stroke.midline = true;
+    if (!start_is_new_vertex) return;
+    const end_x_values = [stroke.p0_vertex, stroke.p3_vertex].map((vertex_id) => vertex_position(tablet_document, vertex_id).x);
+    const has_end_on_stored_side = end_x_values.some((x) => x > 0);
+    const has_end_on_mirrored_side = end_x_values.some((x) => x < 0);
+    if (has_end_on_stored_side || !has_end_on_mirrored_side) return;
+    reflect_new_stroke_onto_stored_side(tablet_document, stroke_id);
+  }
+
   // Line-tool pen-up: a drag commits a straight stroke and
   // auto-selects it; a tap exits the tool (Q27). Either way the tool disarms, so
   // the very next drag adjusts the fresh stroke instead of creating another.
   function line_mode_pen_up(): void {
     const was_tap = pen_max_displacement_pixels < pen_tap_max_movement_pixels;
     if (!was_tap && line_state !== null) {
+      const start_is_new_vertex = line_state.start_vertex === null;
       // Every layer's vertices live on the skull bone until a mandible exists (Q15).
       const stroke_id = line_pen_up(line_state, tablet_document, active_layer, SKULL_BONE_ID);
+      if (tablet_document.is_mirrored_across_midline === true) {
+        settle_new_line_in_mirrored_document(stroke_id, start_is_new_vertex);
+      }
       select_stroke_by_tap(stroke_id, false);
       pen_history_label = `add line ${stroke_id}`;
     }

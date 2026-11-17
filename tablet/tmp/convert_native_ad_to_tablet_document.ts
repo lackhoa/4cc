@@ -8,7 +8,7 @@ import { default_camera } from "../src/camera";
 import {
   Patch, Stroke, StrokeId, StrokeRadii, TabletDocument, VertexId, SKULL_BONE_ID,
   add_patch, add_stroke, add_vertex, bezier_point, empty_document, split_stroke, stroke_by_id,
-  stroke_control_points, vertex_position,
+  stroke_control_points, vertex_is_on_midline, vertex_position,
 } from "../src/document";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "../src/math";
 import { patch_surface_grid, resolve_patch_fill } from "../src/patch";
@@ -504,6 +504,41 @@ function split_native_curve_at_middle(converter: Converter, primitive_index: num
     + `the two halves are at most ${millimeters(largest_move)} from the native curve`);
 }
 
+const MIDLINE_PLANE_TOLERANCE = 1e-6;
+
+// A stroke whose two ends and two handles are at x = 0 lies in the centre plane: it
+// becomes a `midline` stroke, so its ends are held on the plane and it is drawn once.
+// The native file does not always flag these.
+function flag_strokes_lying_in_midline_plane(converter: Converter): void {
+  const tablet_document = converter.tablet_document;
+  const flagged_strokes: StrokeId[] = [];
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.midline === true) continue;
+    const points = stroke_control_points(stroke, tablet_document);
+    const lies_in_midline_plane = [points.p0, points.p1, points.p2, points.p3].every(
+      (point) => Math.abs(point.x) < MIDLINE_PLANE_TOLERANCE);
+    if (!lies_in_midline_plane) continue;
+    stroke.midline = true;
+    flagged_strokes.push(stroke.id);
+  }
+  converter.report_lines.push(`strokes lying in the centre plane, flagged midline: ${flagged_strokes.join(", ")}`);
+}
+
+// A stroke drawn on both sides with an end on the centre plane: that end must be held
+// there, or dragging it opens a gap between the two sides.
+function check_mirrored_stroke_ends_on_midline_plane_are_held(tablet_document: TabletDocument): void {
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.midline === true || stroke.is_one_sided === true) continue;
+    for (const vertex_id of [stroke.p0_vertex, stroke.p3_vertex]) {
+      if (Math.abs(vertex_position(tablet_document, vertex_id).x) >= MIDLINE_PLANE_TOLERANCE) continue;
+      assert.ok(
+        vertex_is_on_midline(tablet_document, vertex_id),
+        `mirrored stroke ${stroke.id} ends on the centre plane at vertex ${vertex_id}, which is not held there`);
+    }
+  }
+  console.log("ok   every mirrored stroke end on the centre plane is held there");
+}
+
 
 function convert_native_document(native: NativeDocument): Converter {
   assert.deepStrictEqual(
@@ -554,11 +589,12 @@ function convert_native_document(native: NativeDocument): Converter {
   });
   split_native_curve_at_middle(converter, 16);
   split_native_curve_at_middle(converter, 74);
+  flag_strokes_lying_in_midline_plane(converter);
 
   for (const stroke of tablet_document.strokes) {
     if (stroke.midline !== true) continue;
     for (const vertex_id of [stroke.p0_vertex, stroke.p3_vertex]) {
-      assert.ok(Math.abs(vertex_position(tablet_document, vertex_id).x) < 1e-6, `midline stroke ${stroke.id} has an end off x = 0`);
+      assert.ok(Math.abs(vertex_position(tablet_document, vertex_id).x) < MIDLINE_PLANE_TOLERANCE, `midline stroke ${stroke.id} has an end off x = 0`);
     }
   }
 
@@ -630,6 +666,7 @@ const native_head_text = serialize_document_state(converter.tablet_document, def
 const reloaded = check_roundtrip_is_unchanged("native-head.json", native_head_text);
 check_every_patch_builds_a_fill(reloaded);
 check_fans_collapse_at_their_point(converter, reloaded);
+check_mirrored_stroke_ends_on_midline_plane_are_held(reloaded);
 check_roundtrip_is_unchanged("skull-zanatomy.json", readFileSync(new URL("../documents/skull-zanatomy.json", import.meta.url), "utf8"));
 
 writeFileSync(new URL("../documents/native-head.json", import.meta.url), native_head_text);

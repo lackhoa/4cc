@@ -550,6 +550,21 @@ export function enforce_midline(tablet_document: TabletDocument): void {
   }
 }
 
+// A new stroke drawn on the mirrored side of a document mirrored across the midline
+// (negative x) is stored as its mirror image, on the stored side: x of both end
+// vertices and of both handles is negated (world x = 0 is the mirror plane, the same
+// plane draw time mirrors across). An end on the plane stays where it is. Call only for
+// a stroke whose two end vertices are new, so no other geometry moves.
+export function reflect_new_stroke_onto_stored_side(tablet_document: TabletDocument, stroke_id: StrokeId): void {
+  const stroke = stroke_by_id(tablet_document, stroke_id);
+  for (const vertex_id of [stroke.p0_vertex, stroke.p3_vertex]) {
+    const position = vertex_position(tablet_document, vertex_id);
+    set_vertex_world_position(tablet_document, vertex_id, v3(-position.x, position.y, position.z));
+  }
+  stroke.d0 = v3(-stroke.d0.x, stroke.d0.y, stroke.d0.z);
+  stroke.d3 = v3(-stroke.d3.x, stroke.d3.y, stroke.d3.z);
+}
+
 // Nearest point of a stroke's curve to a world point: coarse t sweep, then a
 // local ternary refinement around the best sample.
 const CURVE_DISTANCE_SAMPLES = 128;
