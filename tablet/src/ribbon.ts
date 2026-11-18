@@ -17,6 +17,12 @@ import { Rgb, VertexSink, push_vertex } from "./vertex_sink";
 
 const RIBBON_RADIUS = 0.01; // world units; grid cell = 1
 const RIBBON_SAMPLES = 24;
+const ROUND_CAP_SEGMENTS = 12; // triangles in the disc at each capped ribbon end
+
+// Which ends of a ribbon get a round cap. A drawn stroke caps both; a contour chain
+// caps only the start of its first cubic and the end of its last.
+export type RibbonEndCaps = { at_start: boolean; at_end: boolean };
+export const BOTH_ENDS_CAPPED: RibbonEndCaps = { at_start: true, at_end: true };
 
 export type { Rgb };
 
@@ -54,11 +60,12 @@ function mirrored_across_midline(point: V3): V3 {
 // samples), tangents by finite differences between them.
 export function append_sampled_ribbon(
   centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink, lightness_additions: StrokeRadii | null = null,
+  end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED,
 ): void {
   if (centers.length < 2) return;
   const last = centers.length - 1;
   const tangents = centers.map((_, i) => v3_sub(centers[Math.min(i + 1, last)], centers[Math.max(i - 1, 0)]));
-  append_polyline_ribbon(centers, tangents, radii, { start: 0, end: 1 }, camera, color, lightness_additions, out);
+  append_polyline_ribbon(centers, tangents, radii, { start: 0, end: 1 }, camera, color, lightness_additions, end_caps, out);
 }
 
 function linear_from_srgb(value: number): number {
@@ -88,7 +95,7 @@ export type TaperWindow = { start: number; end: number };
 
 export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
-  lightness_additions: StrokeRadii | null = null,
+  lightness_additions: StrokeRadii | null = null, end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED,
 ): void {
   const centers: V3[] = [];
   const tangents: V3[] = [];
@@ -97,14 +104,18 @@ export function append_bezier_ribbon(
     centers.push(bezier_point(points, t));
     tangents.push(bezier_tangent(points, t));
   }
-  append_polyline_ribbon(centers, tangents, radii, taper_window, camera, color, lightness_additions, out);
+  append_polyline_ribbon(centers, tangents, radii, taper_window, camera, color, lightness_additions, end_caps, out);
 }
 
 // Samples evenly spaced in the curve parameter; the taper and the lightness run over
 // them by index. The part of the line whose width is zero or below is not drawn.
+// Each end named in `end_caps` gets a round cap: a filled disc in the camera's screen
+// plane, centred on the end sample with that sample's radius and color, so two strokes
+// meeting at an angle leave no wedge gap at the corner. An end whose radius is zero
+// (a tapered point) gets no cap.
 function append_polyline_ribbon(
   centers: V3[], tangents: V3[], radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb,
-  lightness_additions: StrokeRadii | null, out: VertexSink,
+  lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, out: VertexSink,
 ): void {
   const basis = camera_basis(camera);
   const offsets: V3[] = [];
@@ -143,6 +154,26 @@ function append_polyline_ribbon(
     push_vertex(out, b0, colors[i]);
     push_vertex(out, b1, colors[i + 1]);
   }
+  const last = centers.length - 1;
+  if (end_caps.at_start) append_round_cap(centers[0], sample_radii[0], colors[0], basis.right, basis.up, out);
+  if (end_caps.at_end) append_round_cap(centers[last], sample_radii[last], colors[last], basis.right, basis.up, out);
+}
+
+// A filled disc around `center` in the plane spanned by `screen_right` and `screen_up`,
+// as a triangle fan pushed as a triangle list. Nothing for a zero radius.
+function append_round_cap(center: V3, radius: number, color: Rgb, screen_right: V3, screen_up: V3, out: VertexSink): void {
+  if (radius <= 0) return;
+  const rim_point = (segment: number): V3 => {
+    const angle = (segment / ROUND_CAP_SEGMENTS) * 2 * Math.PI;
+    const along_right = v3_scale(screen_right, Math.cos(angle) * radius);
+    const along_up = v3_scale(screen_up, Math.sin(angle) * radius);
+    return v3_add(center, v3_add(along_right, along_up));
+  };
+  for (let segment = 0; segment < ROUND_CAP_SEGMENTS; segment++) {
+    push_vertex(out, center, color);
+    push_vertex(out, rim_point(segment), color);
+    push_vertex(out, rim_point(segment + 1), color);
+  }
 }
 
 // A chain of cubics rendered as one stroke: a single flat profile (default
@@ -155,9 +186,12 @@ export function append_chain_ribbon(
   const total = chords.reduce((sum, chord) => sum + chord, 0);
   if (total < 1e-9) return;
   let covered = 0;
+  const last_index = chain.length - 1;
   chain.forEach((points, index) => {
     const start = covered / total;
     covered += chords[index];
-    append_bezier_ribbon(points, radii, { start, end: covered / total }, camera, color, out);
+    // Caps only at the two ends of the whole chain, not at the seams between cubics.
+    const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
+    append_bezier_ribbon(points, radii, { start, end: covered / total }, camera, color, out, null, end_caps);
   });
 }
