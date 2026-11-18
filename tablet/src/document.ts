@@ -47,6 +47,15 @@ export const SKULL_BONE_ID: BoneId = "skull";
 export type Layer = "skull" | "skin";
 export const ALL_LAYERS: readonly Layer[] = ["skull", "skin"];
 
+// The first layer, in ALL_LAYERS order, that has at least one stroke; the first of
+// ALL_LAYERS when the document has no strokes at all.
+export function first_layer_with_strokes(tablet_document: TabletDocument): Layer {
+  for (const layer of ALL_LAYERS) {
+    if (tablet_document.strokes.some((stroke) => stroke.layer === layer)) return layer;
+  }
+  return ALL_LAYERS[0];
+}
+
 export type Vertex = {
   id: VertexId;
   bone_id: BoneId;

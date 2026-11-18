@@ -12,5 +12,5 @@
     "incremental": true,
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo"
   },
-  "include": ["src", "pages"]
+  "include": ["src", "pages", "draw"]
 }

@@ -7,12 +7,12 @@
 //
 // The whole editor is `start_sketchpad(setup)`: one page calls it with its own
 // reference mesh, document name and localStorage keys (plan-sketchpad-landmarks.md
-// Q66/Q67) — `draw/main.ts` is the plain sketchpad, `pages/skull-draw/main.ts` the
-// same editor over the Z-Anatomy skull. The page's HTML supplies the canvas and
-// the toolbar buttons by id.
+// Q66/Q67) — `draw/main.ts` is the plain sketchpad and, with `?page=<name>`, every
+// drawing page of `src/drawing_pages.ts` (skull-draw: the same editor over the
+// Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -49,7 +49,9 @@ export type SketchpadSetup = {
   // Layers (plan-skin-over-skull-study.md Q4/Q10): new strokes go to
   // `active_layer`; `locked_layers` are locked for good (the page's optional
   // `#layer_bar` shows them locked but cannot unlock them or draw on them).
-  active_layer: Layer;
+  // "first_layer_with_strokes": decided once the document has loaded
+  // (`first_layer_with_strokes`, src/document.ts); a link that names only a document.
+  active_layer: Layer | "first_layer_with_strokes";
   locked_layers: Layer[];
   // Layers this page never draws or picks; the layer bar has no row for them.
   hidden_layers: Layer[];
@@ -124,7 +126,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // active_layer; locked layers are ignored by every pick and snap; hidden
   // layers are not drawn (and not picked either). A vertex is on the layers of
   // its strokes (vertex_is_on_layers), a patch on its first stroke's.
-  let active_layer: Layer = setup.active_layer;
+  // Until the document has loaded, a page that lets the document decide draws on the first layer.
+  let active_layer: Layer = ALL_LAYERS[0];
+  if (setup.active_layer !== "first_layer_with_strokes") active_layer = setup.active_layer;
   const locked_layers = new Set<Layer>(setup.locked_layers);
   const hidden_layers = new Set<Layer>(setup.hidden_layers);
   function visible_layers(): Set<Layer> {
@@ -2168,6 +2172,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   resize_canvas_to_display();
   void load_current_document_on_startup(persistence, tablet_document, camera).then(() => {
+    if (setup.active_layer === "first_layer_with_strokes") active_layer = first_layer_with_strokes(tablet_document);
     request_render();
     // The loaded document has no history step yet, so request_render reported nothing.
     setup.on_document_edited?.(tablet_document);

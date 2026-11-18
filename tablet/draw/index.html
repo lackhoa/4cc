@@ -22,6 +22,7 @@
                       background: #2a2a30; border: 1px solid #444; border-radius: 8px; }
     #toolbar button:hover, #docs_panel button:hover { color: #fff; border-color: #888; background: #3a3a42; }
     #toolbar button.armed { color: #fff; background: #3a5a8a; border-color: #6a9ad0; }
+    #toolbar input[type=range] { width: 110px; align-self: center; }
     #docs_panel { position: fixed; top: max(64px, calc(env(safe-area-inset-top) + 52px));
                   right: max(12px, env(safe-area-inset-right)); display: none;
                   flex-direction: column; gap: 6px; padding: 10px;
@@ -90,6 +91,10 @@
     <button id="delete_button">del</button>
     <button id="view_button">view</button>
     <button id="reference_button" title="reference mesh on/off">ref (R)</button>
+    <!-- Shown by main.ts only for a drawing page that has them (src/drawing_pages.ts: skin-draw). -->
+    <button id="eyeball_button" hidden title="show the eyeballs with the reference">eyes</button>
+    <input type="range" id="reference_alpha" hidden min="0.05" max="1" step="0.05" value="1" title="reference opacity">
+    <input type="range" id="clip_offset" hidden min="-1" max="1" step="0.01" value="1" title="sagittal clip: cuts away the far side of the plane; all the way right = off">
     <button id="surface_button" title="surfaces on/off">surf (S)</button>
         <button id="docs_button">docs</button>
     <span id="save_status" title="autosave status"></span>
