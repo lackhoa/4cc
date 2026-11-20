@@ -1372,9 +1372,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       case "k": nudge(0, 1, 0); break;
       case "i": nudge(0, 0, 1); break;
       case "o": nudge(0, 0, -1); break;
-      // Delete / Backspace (a Mac keyboard's "delete") = the del button, lock
+      // Delete / Backspace (a Mac keyboard's "delete") / d = the del button, lock
       // included (plan-patch-subcurve-boundary.md Q12). Not while typing a name
       // or a width.
+      case "d":
       case "delete":
       case "backspace":
         if (modifier_held || document.activeElement instanceof HTMLInputElement) return;

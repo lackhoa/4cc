@@ -1,11 +1,10 @@
-// Raw-WebGL line renderer. Step 2 draws a ground grid + axis triad so camera
-// motion is visible; stroke ribbons and loft surfaces come in later steps.
+// Raw-WebGL renderer: reference model, stroke ribbons, fills and the edit overlay.
 
 import { Mat4, V3 } from "./math";
 
 // One clipping plane (plan-skin-over-skull-study.md Q5): fragments with
 // dot(world, normal) > offset are discarded, in every program that draws geometry
-// (not the grid, not the edit overlay). WebGL 1 has no gl_ClipDistance, hence the
+// (not the edit overlay). WebGL 1 has no gl_ClipDistance, hence the
 // fragment-shader discard.
 export type ClipPlane = { normal: V3; offset: number; enabled: boolean };
 
@@ -51,8 +50,6 @@ export type LineRenderer = {
   u_view_projection: WebGLUniformLocation;
   u_clip_plane: WebGLUniformLocation;
   u_clip_enabled: WebGLUniformLocation;
-  grid_buffer: WebGLBuffer;
-  grid_vertex_count: number;
   reference_buffer: WebGLBuffer; // reference model, triangle list, drawn first (depth writes on)
   reference_vertex_count: number;
   stroke_buffer: WebGLBuffer; // committed stroke ribbons, triangle list
@@ -77,22 +74,6 @@ function compile_shader(gl: WebGLRenderingContext, type: number, source: string)
   return shader;
 }
 
-// Interleaved [x,y,z, r,g,b] per vertex, two vertices per line segment.
-function build_grid_vertices(): Float32Array {
-  const lines: number[] = [];
-  const extent = 5;
-  const grid_gray = [0.3, 0.3, 0.32];
-  for (let i = -extent; i <= extent; i++) {
-    lines.push(i, 0, -extent, ...grid_gray, i, 0, extent, ...grid_gray);
-    lines.push(-extent, 0, i, ...grid_gray, extent, 0, i, ...grid_gray);
-  }
-  const lift = 0.005; // keep axes off the grid plane so they don't z-fight the gridlines
-  lines.push(0, lift, 0, 0.9, 0.25, 0.25, 1.5, lift, 0, 0.9, 0.25, 0.25); // x axis, red
-  lines.push(0, lift, 0, 0.3, 0.9, 0.3, 0, 1.5, 0, 0.3, 0.9, 0.3); // y axis, green
-  lines.push(0, lift, 0, 0.35, 0.5, 1.0, 0, lift, 1.5, 0.35, 0.5, 1.0); // z axis, blue
-  return new Float32Array(lines);
-}
-
 export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
   const program = gl.createProgram()!;
   gl.attachShader(program, compile_shader(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
@@ -102,19 +83,12 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     throw new Error(`program link failed: ${gl.getProgramInfoLog(program)}`);
   }
 
-  const grid_vertices = build_grid_vertices();
-  const grid_buffer = gl.createBuffer()!;
-  gl.bindBuffer(gl.ARRAY_BUFFER, grid_buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, grid_vertices, gl.STATIC_DRAW);
-
   return {
     gl,
     program,
     u_view_projection: gl.getUniformLocation(program, "u_view_projection")!,
     u_clip_plane: gl.getUniformLocation(program, "u_clip_plane")!,
     u_clip_enabled: gl.getUniformLocation(program, "u_clip_enabled")!,
-    grid_buffer,
-    grid_vertex_count: grid_vertices.length / 6,
     reference_buffer: gl.createBuffer()!,
     reference_vertex_count: 0,
     stroke_buffer: gl.createBuffer()!,
@@ -204,9 +178,6 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4, clip
   gl.useProgram(renderer.program);
   gl.uniformMatrix4fv(renderer.u_view_projection, false, view_projection);
 
-  set_clip_plane_uniforms(gl, renderer.u_clip_plane, renderer.u_clip_enabled, null); // the grid is never clipped
-  bind_interleaved_buffer(renderer, renderer.grid_buffer);
-  gl.drawArrays(gl.LINES, 0, renderer.grid_vertex_count);
   set_clip_plane_uniforms(gl, renderer.u_clip_plane, renderer.u_clip_enabled, clip);
 
   if (renderer.reference_vertex_count > 0) {
