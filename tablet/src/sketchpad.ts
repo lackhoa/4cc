@@ -204,17 +204,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     // A vertex behind a drawn fill can't be seen, so it isn't picked
     // (plan-tablet-pick-ignores-hidden-vertices Q1); with "surf" off nothing hides (Q4).
-    // The fills' grids are built on the first vertex in range, once per pick.
+    // The same holds for a line, judged at its point nearest the pen.
+    // The fills' grids are built on the first vertex or line in range, once per pick.
     const eye = camera_eye(camera);
     let occluding_grids: SurfaceGrid[] | null = null;
-    const is_vertex_visible = (world_position: V3): boolean => {
+    const is_point_visible = (world_position: V3): boolean => {
       if (occluding_grids === null) occluding_grids = drawn_surface_grids();
       return point_is_visible_past_surfaces(occluding_grids, eye, world_position);
     };
-    const visibility_filter = surface_drawn ? is_vertex_visible : undefined;
+    const visibility_filter = surface_drawn ? is_point_visible : undefined;
     const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
     if (vertex !== null) return { kind: "vertex", vertex };
-    const stroke_id = pick_stroke(tablet_document, camera, screen, canvas, pickable_layers());
+    const stroke_id = pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
     const patch = pick_patch(tablet_document, camera, screen, canvas, pickable_layers()); // fill = last resort (Q10)
     return patch === null ? { kind: "nothing" } : { kind: "patch", patch };

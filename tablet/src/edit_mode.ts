@@ -14,7 +14,7 @@
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
 import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
-import { V2, V3, v3_add, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
+import { V2, V3, v3_add, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { drag_surface_pin, stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
 // NOTE: tap = max displacement from the pen-down point, NOT accumulated path
@@ -53,20 +53,26 @@ export function begin_edit_state(stroke_id: StrokeId): EditState {
   };
 }
 
-function distance_point_to_segment(point: V2, a: V2, b: V2): number {
+// The point of segment a→b nearest `point`: its parameter t in [0, 1] (0 at a)
+// and its distance to `point`.
+function nearest_point_on_segment(point: V2, a: V2, b: V2): { t: number; distance: number } {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const length_squared = abx * abx + aby * aby;
   const t = length_squared < 1e-12 ? 0 : Math.max(0, Math.min(1, ((point.x - a.x) * abx + (point.y - a.y) * aby) / length_squared));
-  return Math.hypot(point.x - (a.x + abx * t), point.y - (a.y + aby * t));
+  return { t, distance: Math.hypot(point.x - (a.x + abx * t), point.y - (a.y + aby * t)) };
 }
 
 // Nearest stroke within pick range of a screen tap, or null. Distance is to
 // the projected polyline's segments, not its sample points, so a long or
 // zoomed-in stroke has no dead zones between samples. Only strokes on `layers`
 // count (the sketchpad passes the layers neither locked nor hidden).
+// With `is_point_visible`, a stroke whose point nearest the pen it rejects is
+// skipped and the next nearest wins; it is asked only for strokes within range
+// and nearer than the best so far, once per stroke.
 export function pick_stroke(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+  is_point_visible?: (world_position: V3) => boolean,
 ): StrokeId | null {
   let best_id: StrokeId | null = null;
   let best_distance = STROKE_PICK_RADIUS_PIXELS;
@@ -74,22 +80,38 @@ export function pick_stroke(
   for (const stroke of tablet_document.strokes) {
     if (!layers.has(stroke.layer)) continue;
     if (stroke.is_hidden === true) continue;
-    let previous: V2 | null = null;
+    // This stroke's point nearest the pen on screen, in world space.
+    let stroke_distance = Infinity;
+    let stroke_nearest_world: V3 | null = null;
+    let previous: { screen: V2; world: V3 } | null = null;
     for (const world of stroke_drawn_polyline(stroke, tablet_document, PICK_SAMPLES_PER_STROKE)) {
       const projected = project(world);
       if (projected === null) {
         previous = null;
         continue;
       }
-      const distance = previous === null
-        ? Math.hypot(projected.x - screen.x, projected.y - screen.y)
-        : distance_point_to_segment(screen, previous, projected);
-      if (distance < best_distance) {
-        best_distance = distance;
-        best_id = stroke.id;
+      let distance: number;
+      let nearest_world: V3;
+      if (previous === null) {
+        distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
+        nearest_world = world;
+      } else {
+        // NOTE: t is a screen-space parameter, so lerping the world samples
+        // with it is only approximate under perspective; fine at pick scale.
+        const nearest = nearest_point_on_segment(screen, previous.screen, projected);
+        distance = nearest.distance;
+        nearest_world = v3_lerp(previous.world, world, nearest.t);
       }
-      previous = projected;
+      if (distance < stroke_distance) {
+        stroke_distance = distance;
+        stroke_nearest_world = nearest_world;
+      }
+      previous = { screen: projected, world };
     }
+    if (stroke_nearest_world === null || stroke_distance >= best_distance) continue;
+    if (is_point_visible !== undefined && !is_point_visible(stroke_nearest_world)) continue;
+    best_distance = stroke_distance;
+    best_id = stroke.id;
   }
   return best_id;
 }
