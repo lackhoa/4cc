@@ -11,7 +11,7 @@
 // drawing page of `src/drawing_pages.ts` (skull-draw: the same editor over the
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
-import { CameraSnapState, OrbitCamera, camera_basis, camera_eye, camera_orbit, camera_orthographic_view_projection, camera_pen_ray, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
+import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
 import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
@@ -21,7 +21,6 @@ import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
-import { attach_mirror_gestures, mirror_camera_from_main_camera, mirror_rectangle } from "./mirror_view";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
@@ -71,7 +70,6 @@ const STROKE_COLOR = { r: 0.196, g: 0.196, b: 0.196 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
 const PATCH_HIGHLIGHT_COLOR = { r: 0.75, g: 0.5, b: 0.2 }; // the selected patch's fill (plan-patch-subcurve-boundary.md Q11)
 const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
-const PEN_RAY_COLOR = { r: 1.0, g: 0.55, b: 0.2 }; // the pen's line of sight, in the mirror
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
@@ -95,14 +93,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
 
   const camera = default_camera();
-  // The camera the per-frame meshes (ribbons, shading, overlay markers) are built
-  // for, and the height in CSS pixels of the view they draw into: the main view,
-  // except during the mirror's pass (render_mirror).
-  let mesh_camera: OrbitCamera = camera;
-  let mesh_viewport_height_pixels = canvas.clientHeight;
-  let mirror_visible = false;
-  let mirror_camera: OrbitCamera | null = null; // null until the mirror first draws, then steered by the user only
-  let pen_ray_screen: V2 | null = null; // where the pen last was, down or hovering
   const tablet_document = empty_document();
   const renderer = create_line_renderer(gl);
   const persistence = create_persistence_state(setup.default_document_name, setup.storage_key_prefix);
@@ -281,7 +271,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // One frame, synchronously. Also the debug hook `window.debug_render_now` for
   // automated tests in a hidden tab, where requestAnimationFrame never fires.
   function render_now(): void {
-    mesh_viewport_height_pixels = canvas.clientHeight;
     hot_item = resolve_hot_item();
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
     rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id);
@@ -293,40 +282,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     render_frame(renderer, view_projection, clip, () => {
       draw_mesh_translucent(reference_translucent, view_projection, camera_eye(camera), clip);
     });
-    if (mirror_visible) render_mirror(clip);
     rebuild_stroke_labels();
     refresh_selection_readout();
-  }
-
-  // The mirror (see mirror_view.ts): the same scene again, into a corner of the
-  // canvas, through the mirror's own camera and without perspective. The
-  // camera-facing meshes are rebuilt for the mirror's camera; the next frame
-  // rebuilds them for the main view.
-  function render_mirror(clip: ClipPlane | null): void {
-    const rectangle = mirror_rectangle(canvas.clientWidth, canvas.clientHeight);
-    if (mirror_camera === null) mirror_camera = mirror_camera_from_main_camera(camera);
-    mesh_camera = mirror_camera;
-    mesh_viewport_height_pixels = rectangle.size;
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id);
-    rebuild_surface_mesh();
-    rebuild_reference_mesh();
-    rebuild_edit_overlay();
-    const pixel_ratio = canvas.width / canvas.clientWidth;
-    const x = Math.round(rectangle.left * pixel_ratio);
-    const y = Math.round((canvas.clientHeight - rectangle.top - rectangle.size) * pixel_ratio); // GL counts from the bottom
-    const size = Math.round(rectangle.size * pixel_ratio);
-    gl!.enable(gl!.SCISSOR_TEST); // render_frame clears: keep that inside the mirror
-    gl!.scissor(x, y, size, size);
-    gl!.viewport(x, y, size, size);
-    const view_projection = camera_orthographic_view_projection(mesh_camera, 1);
-    const mirror_eye = camera_eye(mesh_camera);
-    render_frame(renderer, view_projection, clip, () => {
-      draw_mesh_translucent(reference_translucent, view_projection, mirror_eye, clip);
-    });
-    gl!.disable(gl!.SCISSOR_TEST);
-    gl!.viewport(0, 0, canvas.width, canvas.height);
-    mesh_camera = camera;
-    mesh_viewport_height_pixels = canvas.clientHeight;
   }
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
@@ -375,7 +332,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   selection_readout.id = "selection_readout";
   selection_readout.title = "click to copy";
   // In the canvas's offset parent (the body on a full-page sketchpad, the embedding box on
-  // fit-hairline-to-loomis-girl), absolute: the same place as the mirror frame.
+  // fit-hairline-to-loomis-girl), absolute.
   (canvas.offsetParent ?? document.body).append(selection_readout);
   function selection_readout_text(): string {
     return describe_selection(tablet_document, {
@@ -439,9 +396,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (locked_layers.has(stroke.layer)) {
         color = LOCKED_LAYER_STROKE_COLOR;
       }
-      append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, lightness_additions, /* is_mirrored_side */ false, vertices);
+      append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ false, vertices);
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
-      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, mesh_camera, color, lightness_additions, /* is_mirrored_side */ true, vertices);
+      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ true, vertices);
     }
     append_contour_ribbons(vertices);
     set_stroke_mesh(renderer, vertex_sink_view(vertices));
@@ -450,7 +407,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Computed contours share the stroke mesh so they get the same depth bias
   // and draw order as drawn strokes; they are derived per frame, never stored.
   function append_contour_ribbons(vertices: VertexSink): void {
-    const eye = camera_eye(mesh_camera);
+    const eye = camera_eye(camera);
     for (const patch of tablet_document.patches) {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) continue;
@@ -459,9 +416,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const grid = patch_surface_grid(patch, tablet_document);
       if (grid === null) continue;
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
-      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, mesh_camera, color, vertices);
+      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, color, vertices);
       if (tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true) {
-        for (const chain of extract_contour_chains(mirrored_surface_grid(grid), eye)) append_chain_ribbon(chain, mesh_camera, color, vertices);
+        for (const chain of extract_contour_chains(mirrored_surface_grid(grid), eye)) append_chain_ribbon(chain, camera, color, vertices);
       }
     }
   }
@@ -483,8 +440,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
         : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
-      append_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
-      if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, mesh_camera, color, vertices);
+      append_patch_mesh(patch, tablet_document, camera, color, vertices);
+      if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
     set_surface_mesh(renderer, vertex_sink_view(vertices));
   }
@@ -516,8 +473,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     const vertices = reference_sink;
     reset_vertex_sink(vertices);
-    append_reference_mesh(reference_mesh, mesh_camera, vertices);
-    if (eyeball_visible && eyeball_mesh !== null) append_reference_mesh(eyeball_mesh, mesh_camera, vertices);
+    append_reference_mesh(reference_mesh, camera, vertices);
+    if (eyeball_visible && eyeball_mesh !== null) append_reference_mesh(eyeball_mesh, camera, vertices);
     if (reference_alpha >= 1) {
       set_reference_mesh(renderer, vertex_sink_view(vertices));
       set_translucent_mesh(reference_translucent, new Float32Array(0));
@@ -543,19 +500,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     return out.subarray(0, float_count);
   }
 
-  // Mirror pass only: the line of sight under the pen, as the main view casts
-  // it. In the mirror it shows every depth the pen's position could mean.
-  function append_pen_ray_overlay(line_vertices: number[]): void {
-    if (mesh_camera === camera || pen_ray_screen === null) return;
-    const ray = camera_pen_ray(camera, pen_ray_screen, canvas.clientWidth, canvas.clientHeight);
-    const far_end = v3_add(ray.origin, v3_scale(ray.direction, camera.distance * 2));
-    line_vertices.push(ray.origin.x, ray.origin.y, ray.origin.z, PEN_RAY_COLOR.r, PEN_RAY_COLOR.g, PEN_RAY_COLOR.b);
-    line_vertices.push(far_end.x, far_end.y, far_end.z, PEN_RAY_COLOR.r, PEN_RAY_COLOR.g, PEN_RAY_COLOR.b);
-  }
-
   function rebuild_edit_overlay(): void {
-    const basis = camera_basis(mesh_camera);
-    const units_per_pixel = camera_world_units_per_pixel(mesh_camera, mesh_viewport_height_pixels);
+    const basis = camera_basis(camera);
+    const units_per_pixel = camera_world_units_per_pixel(camera, canvas.clientHeight);
     const anchor_half = (ANCHOR_SIZE_PIXELS / 2) * units_per_pixel;
     const handle_half = (HANDLE_SIZE_PIXELS / 2) * units_per_pixel;
     const line_vertices: number[] = [];
@@ -574,20 +521,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         append_billboard_disc(world_position, handle_half * HOT_SIZE_SCALE, basis.right, basis.up, HOT_COLOR, triangle_vertices);
       }
     }
-    if (mesh_camera !== camera) {
-      // The mirror draws the vertex highlights above and the pen ray, but no
-      // handles, endpoint markers or weld warning: the highlighted curve is
-      // enough there.
-      const pen_ray_vertices: number[] = [];
-      append_pen_ray_overlay(pen_ray_vertices);
-      set_overlay_lines(renderer, new Float32Array(pen_ray_vertices));
-      set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
-      return;
-    }
     if (edit_state === null) {
-      const pen_ray_vertices: number[] = [];
-      append_pen_ray_overlay(pen_ray_vertices);
-      set_overlay_lines(renderer, new Float32Array(pen_ray_vertices));
+      set_overlay_lines(renderer, new Float32Array(0));
       set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
       return;
     }
@@ -620,7 +555,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     };
     push_marker(points.p0, anchor_half, anchor_color(selected_stroke.p0_vertex), is_hot_vertex(selected_stroke.p0_vertex));
     push_marker(points.p3, anchor_half, anchor_color(selected_stroke.p3_vertex), is_hot_vertex(selected_stroke.p3_vertex));
-    append_pen_ray_overlay(line_vertices);
     set_overlay_lines(renderer, new Float32Array(line_vertices));
     set_overlay_triangles(renderer, new Float32Array(triangle_vertices));
   }
@@ -1460,7 +1394,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_max_displacement_pixels = 0;
       pen_orbit_last_screen = null;
       hover_screen = null; // nothing is hot while the pen is down
-      pen_ray_screen = position;
       if (armed_tool === "line") {
         line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
         update_preview_line();
@@ -1484,7 +1417,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       request_render();
     },
     on_pen_move: (position, event) => {
-      pen_ray_screen = position;
       if (pen_down_screen !== null) {
         pen_max_displacement_pixels = Math.max(
           pen_max_displacement_pixels,
@@ -1546,7 +1478,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     },
     on_pen_hover: (position) => {
       hover_screen = position;
-      pen_ray_screen = position;
       request_render();
     },
     on_undo_tap: perform_undo,
@@ -1724,45 +1655,6 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // snapping again toggles back to the previous view. previous starts at
   // profile so the very first snap from frontal has somewhere to toggle to.
   const camera_snap_state: CameraSnapState = { previous_snap_yaw: Math.PI / 2, current_snap_yaw: 0 };
-  // Mirror toggle and the mirror's camera, both remembered per page. The frame
-  // is the mirror's border; it sits over that corner of the canvas and takes
-  // the pointer: drags there steer the mirror's camera and edit nothing.
-  const mirror_button = document.getElementById("mirror_button") as HTMLButtonElement;
-  const mirror_storage_key = `${setup.storage_key_prefix}_mirror`;
-  const mirror_frame = document.createElement("div");
-  // Absolute in the canvas's offset parent: the page (a full-page sketchpad) or the
-  // positioned container an embedding page puts the canvas in.
-  mirror_frame.style.cssText = "position: absolute; box-sizing: border-box; border: 1px solid #aaa; touch-action: none;";
-  canvas.after(mirror_frame);
-  function place_mirror_frame(): void {
-    const rectangle = mirror_rectangle(canvas.clientWidth, canvas.clientHeight);
-    mirror_frame.style.left = `${canvas.offsetLeft + rectangle.left}px`;
-    mirror_frame.style.top = `${canvas.offsetTop + rectangle.top}px`;
-    mirror_frame.style.width = `${rectangle.size}px`;
-    mirror_frame.style.height = `${rectangle.size}px`;
-    mirror_frame.style.display = mirror_visible ? "block" : "none";
-    mirror_button.classList.toggle("armed", mirror_visible);
-  }
-  mirror_visible = localStorage.getItem(mirror_storage_key) === "1";
-  const mirror_camera_storage_key = `${setup.storage_key_prefix}_mirror_camera`;
-  const stored_mirror_camera = localStorage.getItem(mirror_camera_storage_key);
-  if (stored_mirror_camera !== null) mirror_camera = JSON.parse(stored_mirror_camera) as OrbitCamera;
-  const on_mirror_camera_change = () => {
-    localStorage.setItem(mirror_camera_storage_key, JSON.stringify(mirror_camera));
-    request_render();
-  };
-  attach_mirror_gestures(mirror_frame, () => mirror_camera, on_mirror_camera_change, () => {
-    mirror_camera = mirror_camera_from_main_camera(camera);
-    on_mirror_camera_change();
-  });
-  place_mirror_frame();
-  window.addEventListener("resize", place_mirror_frame);
-  mirror_button.addEventListener("click", () => {
-    mirror_visible = !mirror_visible;
-    localStorage.setItem(mirror_storage_key, mirror_visible ? "1" : "0");
-    place_mirror_frame();
-    request_render();
-  });
 
   const view_button = document.getElementById("view_button") as HTMLButtonElement;
   view_button.addEventListener("click", () => {

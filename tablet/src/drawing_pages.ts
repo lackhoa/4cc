@@ -83,7 +83,7 @@ export function find_drawing_page(page_name: string): DrawingPage | null {
 }
 
 // `autodraw_<page name with - as _>`: each page keeps its own remembered document, camera,
-// crash buffer and mirror state. These are the keys the pages had as their own folders
+// and crash buffer. These are the keys the pages had as their own folders
 // (`autodraw_skull_draw`, `autodraw_skin_draw`, `autodraw_native_head_draw`).
 export function drawing_page_storage_key_prefix(page: DrawingPage): string {
   return `autodraw_${page.page_name.replace(/-/g, "_")}`;
