@@ -15,6 +15,7 @@ export type SelectionSnapshot = {
     | { kind: "stroke"; stroke_id: StrokeId }
     | { kind: "handle"; key: "p1" | "p2" }
     | { kind: "vertex"; vertex: VertexId }
+    | { kind: "patch"; patch: number } // index into tablet_document.patches
     | null;
 };
 
@@ -78,7 +79,16 @@ export function describe_selection(tablet_document: TabletDocument, selection: S
   if (lines.length === 0) lines.push("nothing selected");
   const hot = selection.hot;
   if (hot !== null) {
-    const hot_text = hot.kind === "stroke" ? `line ${hot.stroke_id}` : hot.kind === "vertex" ? short_vertex_text(tablet_document, hot.vertex) : `handle ${hot.key}`;
+    let hot_text: string;
+    if (hot.kind === "stroke") {
+      hot_text = `line ${hot.stroke_id}`;
+    } else if (hot.kind === "vertex") {
+      hot_text = short_vertex_text(tablet_document, hot.vertex);
+    } else if (hot.kind === "patch") {
+      hot_text = `patch ${hot.patch}`;
+    } else {
+      hot_text = `handle ${hot.key}`;
+    }
     lines.push(`hover: ${hot_text}`);
   }
   return lines.join("\n");

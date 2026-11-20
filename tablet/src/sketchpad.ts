@@ -69,6 +69,9 @@ export type SketchpadSetup = {
 const STROKE_COLOR = { r: 0.196, g: 0.196, b: 0.196 };
 const HIGHLIGHT_COLOR = { r: 1.0, g: 0.65, b: 0.2 };
 const PATCH_HIGHLIGHT_COLOR = { r: 0.75, g: 0.5, b: 0.2 }; // the selected patch's fill (plan-patch-subcurve-boundary.md Q11)
+// The hot patch's fill: SURFACE_COLOR halfway toward HOT_COLOR, a pale yellow-green
+// that stands out from the blue-gray surface but stays quieter than the selected orange.
+const PATCH_HOT_COLOR = { r: 0.72, g: 0.78, b: 0.55 };
 const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
@@ -179,7 +182,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   type HotItem =
     | { kind: "stroke"; stroke_id: StrokeId }
     | { kind: "handle"; key: "p1" | "p2" } // handle of the selected stroke
-    | { kind: "vertex"; vertex: VertexId }; // any document vertex (endpoints, landmarks, pins)
+    | { kind: "vertex"; vertex: VertexId } // any document vertex (endpoints, landmarks, pins)
+    | { kind: "patch"; patch: number }; // index into tablet_document.patches, drawn in PATCH_HOT_COLOR
   let hover_screen: V2 | null = null; // null while the pen is down or off the canvas
   let hot_item: HotItem | null = null;
 
@@ -214,7 +218,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return picked === null ? null : { kind: "stroke", stroke_id: picked };
     }
     const target = pick_tap_target(hover_screen);
-    if (target.kind === "patch" || target.kind === "nothing") return null;
+    if (target.kind === "nothing") return null;
     return target;
   }
 
@@ -426,20 +430,30 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function rebuild_surface_mesh(): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
+    const hot_patch = hot_item !== null && hot_item.kind === "patch" ? hot_item.patch : null;
     tablet_document.patches.forEach((patch, index) => {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
+      // The selected and hot patches are treated alike below; selected wins the color.
+      const is_selected_or_hot = index === selected_patch || index === hot_patch;
       // The selected patch is drawn even with no fill, so the selection stays visible.
-      if (!surface_drawn && index !== selected_patch) return;
+      // The hot one too, so the pen shows what a tap would select.
+      if (!surface_drawn && !is_selected_or_hot) return;
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
-      // A patch with its own fill color is drawn flat in it, unless it is the selected one.
-      if (patch.fill_color !== undefined && index !== selected_patch) {
+      // A patch with its own fill color is drawn flat in it, unless it is the selected (or hot) one.
+      if (patch.fill_color !== undefined && !is_selected_or_hot) {
         append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ false, vertices);
         if (is_drawn_on_mirrored_side) append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ true, vertices);
         return;
       }
-      const color = index === selected_patch ? PATCH_HIGHLIGHT_COLOR
-        : locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
+      let color = SURFACE_COLOR;
+      if (index === selected_patch) {
+        color = PATCH_HIGHLIGHT_COLOR;
+      } else if (index === hot_patch) {
+        color = PATCH_HOT_COLOR;
+      } else if (locked_layers.has(layer)) {
+        color = LOCKED_LAYER_SURFACE_COLOR;
+      }
       append_patch_mesh(patch, tablet_document, camera, color, vertices);
       if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
