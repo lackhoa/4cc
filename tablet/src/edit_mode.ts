@@ -225,7 +225,7 @@ export function edit_pen_down(
 // wins; it is asked only for vertices within range and nearer than the best so far.
 export function pick_vertex(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
-  is_vertex_visible?: (world_position: V3) => boolean,
+  is_vertex_visible?: (world_position: V3, vertex_id: VertexId) => boolean,
 ): VertexId | null {
   let best: VertexId | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
@@ -237,7 +237,7 @@ export function pick_vertex(
     if (projected === null) continue;
     const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
     if (distance >= best_distance) continue;
-    if (is_vertex_visible !== undefined && !is_vertex_visible(world_position)) continue;
+    if (is_vertex_visible !== undefined && !is_vertex_visible(world_position, vertex.id)) continue;
     best_distance = distance;
     best = vertex.id;
   }

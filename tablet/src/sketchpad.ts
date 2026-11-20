@@ -213,7 +213,19 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return point_is_visible_past_surfaces(occluding_grids, eye, world_position);
     };
     const visibility_filter = surface_drawn ? is_point_visible : undefined;
-    const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
+    // The p0 and p3 ends of the active line are drawn on top like its handles, so
+    // they stay pickable behind a fill; they still compete on distance.
+    const active_line_end_vertices: VertexId[] = [];
+    if (edit_state !== null) {
+      const active_stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+      active_line_end_vertices.push(active_stroke.p0_vertex, active_stroke.p3_vertex);
+    }
+    const is_vertex_pickable = (world_position: V3, vertex_id: VertexId): boolean => {
+      if (active_line_end_vertices.includes(vertex_id)) return true;
+      return is_point_visible(world_position);
+    };
+    const vertex_visibility_filter = surface_drawn ? is_vertex_pickable : undefined;
+    const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), vertex_visibility_filter);
     if (vertex !== null) return { kind: "vertex", vertex };
     const stroke_id = pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
@@ -1437,7 +1449,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       pen_orbit_last_screen = null;
       hover_screen = null; // nothing is hot while the pen is down
       if (armed_tool === "line") {
-        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex);
+        // The fills a tap would pick catch the pen's ends, only while "surf" is on.
+        const line_surface_layers = surface_drawn ? pickable_layers() : null;
+        line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex, line_surface_layers);
         update_preview_line();
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on a control point or pin of the selection; otherwise orbit.
@@ -1467,7 +1481,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       if (armed_tool === "line") {
         if (line_state !== null) {
-          line_pen_move(line_state, camera, position, canvas);
+          line_pen_move(line_state, tablet_document, camera, position, canvas);
           update_preview_line();
         }
       } else if (pen_orbit_last_screen !== null) {
