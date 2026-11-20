@@ -15,6 +15,7 @@
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
 import { Layer, Patch, PatchId, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, move_vertex, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_position } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
+import { ray_triangle_distance } from "./reference_skull_view";
 import { VertexSink, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
@@ -780,4 +781,39 @@ function pick_patch_grid_triangle(
     }
   });
   return best;
+}
+
+// World units (2 mm at WORLD_PER_MM = 0.01): how much nearer to the eye than a
+// point a fill must be to hide it (plan-tablet-pick-ignores-hidden-vertices Q3).
+// A vertex on a fill's rim, or on the fill itself, lies on the fill, and the flat
+// grid triangles sit off the true surface by a little. 2 mm on a head about
+// 200 mm tall, so a visible rim vertex seen at a grazing angle stays visible.
+export const HIDDEN_BEHIND_SURFACE_DEPTH_MARGIN = 0.02;
+
+// True when no grid triangle of `surface_grids` lies on the segment from the eye
+// to `point` nearer to the eye than the point by more than the margin. The
+// caller passes the fills that are drawn (both mirror halves), built once per
+// pick, so the grids are not rebuilt for every point tested.
+export function point_is_visible_past_surfaces(surface_grids: readonly SurfaceGrid[], eye: V3, point: V3): boolean {
+  const eye_to_point = v3_sub(point, eye);
+  const point_distance = v3_length(eye_to_point);
+  // ray_triangle_distance measures t in lengths of `eye_to_point`: t = 1 is the point.
+  const hiding_t_limit = 1 - HIDDEN_BEHIND_SURFACE_DEPTH_MARGIN / point_distance;
+  const hides = (a: V3, b: V3, c: V3): boolean => {
+    const t = ray_triangle_distance(eye, eye_to_point, a, b, c);
+    return t !== null && t < hiding_t_limit;
+  };
+  for (const grid of surface_grids) {
+    for (let j = 0; j < grid.rows; j++) {
+      for (let i = 0; i < grid.columns; i++) {
+        const point_00 = grid.positions[i][j];
+        const point_10 = grid.positions[i + 1][j];
+        const point_11 = grid.positions[i + 1][j + 1];
+        const point_01 = grid.positions[i][j + 1];
+        if (hides(point_00, point_10, point_11)) return false;
+        if (hides(point_00, point_11, point_01)) return false;
+      }
+    }
+  }
+  return true;
 }

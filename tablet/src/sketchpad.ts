@@ -18,7 +18,7 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SurfaceGrid, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -202,7 +202,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const key = pick_stroke_point(stroke, tablet_document, camera, screen, canvas);
       if (key === "p1" || key === "p2") return { kind: "handle", key };
     }
-    const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers());
+    // A vertex behind a drawn fill can't be seen, so it isn't picked
+    // (plan-tablet-pick-ignores-hidden-vertices Q1); with "surf" off nothing hides (Q4).
+    // The fills' grids are built on the first vertex in range, once per pick.
+    const eye = camera_eye(camera);
+    let occluding_grids: SurfaceGrid[] | null = null;
+    const is_vertex_visible = (world_position: V3): boolean => {
+      if (occluding_grids === null) occluding_grids = drawn_surface_grids();
+      return point_is_visible_past_surfaces(occluding_grids, eye, world_position);
+    };
+    const visibility_filter = surface_drawn ? is_vertex_visible : undefined;
+    const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
     if (vertex !== null) return { kind: "vertex", vertex };
     const stroke_id = pick_stroke(tablet_document, camera, screen, canvas, pickable_layers());
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
@@ -458,6 +468,22 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
     set_surface_mesh(renderer, vertex_sink_view(vertices));
+  }
+
+  // The grids of every fill rebuild_surface_mesh draws while "surf" is on: patches
+  // on visible layers (locked ones too) and their mirrored halves
+  // (plan-tablet-pick-ignores-hidden-vertices Q5). The fills hide vertices from picking.
+  function drawn_surface_grids(): SurfaceGrid[] {
+    const grids: SurfaceGrid[] = [];
+    for (const patch of tablet_document.patches) {
+      if (hidden_layers.has(patch_layer(patch, tablet_document))) continue;
+      const grid = patch_surface_grid(patch, tablet_document);
+      if (grid === null) continue;
+      grids.push(grid);
+      const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
+      if (is_drawn_on_mirrored_side) grids.push(mirrored_surface_grid(grid));
+    }
+    return grids;
   }
 
   // Camera-facing round marker.

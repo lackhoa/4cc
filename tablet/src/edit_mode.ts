@@ -199,21 +199,25 @@ export function edit_pen_down(
 // Nearest document vertex within control-point pick range, or null. Any vertex
 // (a stroke endpoint or a landmark) — sketchpad.ts checks it before the strokes so
 // a tap on a vertex selects the vertex. Only vertices on `layers` count.
+// With `is_vertex_visible`, a vertex it rejects is skipped and the next nearest
+// wins; it is asked only for vertices within range and nearer than the best so far.
 export function pick_vertex(
   tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+  is_vertex_visible?: (world_position: V3) => boolean,
 ): VertexId | null {
   let best: VertexId | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
   for (const vertex of tablet_document.vertices) {
     if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
-    const projected = project(vertex_world_position(tablet_document, vertex));
+    const world_position = vertex_world_position(tablet_document, vertex);
+    const projected = project(world_position);
     if (projected === null) continue;
     const distance = Math.hypot(projected.x - screen.x, projected.y - screen.y);
-    if (distance < best_distance) {
-      best_distance = distance;
-      best = vertex.id;
-    }
+    if (distance >= best_distance) continue;
+    if (is_vertex_visible !== undefined && !is_vertex_visible(world_position)) continue;
+    best_distance = distance;
+    best = vertex.id;
   }
   return best;
 }
