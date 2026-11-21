@@ -270,7 +270,7 @@ function loft_surface_grid(side_a: Side, side_b: Side, tablet_document: TabletDo
   return { columns: LOFT_SAMPLES_ALONG_RAILS, rows: LOFT_ROWS_ACROSS, positions: grid_positions };
 }
 
-function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: Color, out: VertexSink): void {
+export function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: Color, out: VertexSink): void {
   const camera_forward = camera_basis(camera).forward;
   const push_triangle = (a: V3, b: V3, c: V3) => {
     const brightness = brightness_of_normal(v3_cross(v3_sub(b, a), v3_sub(c, a)), camera_forward);

@@ -157,6 +157,19 @@ export type VertexSurfacePin = { vertex: VertexId; patch: PatchId; u: number; v:
 // lengths at a knot are independent (G1: same tangent, nothing more). A welded
 // crossing holds two independent knots at one vertex (Q4). Deleting either
 // stroke, or joining across the knot, drops the record (Q7).
+// A ball: drawn as a surface (sphere.ts), with no strokes and no patch. Its centre is an
+// ordinary vertex, so moving it, its bone and the mirror need nothing of their own.
+// Nothing in the app makes, resizes or deletes one: a script writes it, and the radius
+// is edited in the file.
+export type SphereId = number;
+export type Sphere = {
+  id: SphereId;
+  center_vertex: VertexId;
+  radius: number; // world units
+  layer: Layer;
+  name?: string;
+};
+
 export type SmoothKnot = { vertex: VertexId; stroke_a: StrokeId; stroke_b: StrokeId };
 
 export type TabletDocument = {
@@ -170,6 +183,7 @@ export type TabletDocument = {
   smooth_knots: SmoothKnot[];
   strokes: Stroke[]; // array order = draw order
   patches: Patch[];
+  spheres: Sphere[];
   // The document stores one side plus the midline; the app draws the other side as the
   // mirror image across x = 0. Absent = both sides are stored.
   is_mirrored_across_midline?: boolean;
@@ -181,7 +195,7 @@ export function skull_bone(): Bone {
 
 export function empty_document(): TabletDocument {
   return {
-    next_vertex_id: 0, next_stroke_id: 0, next_patch_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], vertex_surface_pins: [], smooth_knots: [], strokes: [], patches: [],
+    next_vertex_id: 0, next_stroke_id: 0, next_patch_id: 0, bones: [skull_bone()], vertices: [], vertex_pins: [], vertex_surface_pins: [], smooth_knots: [], strokes: [], patches: [], spheres: [],
   };
 }
 
@@ -584,7 +598,7 @@ export function straighten_strokes(tablet_document: TabletDocument, stroke_ids: 
   for (const stroke_id of stroke_ids) enforce_smooth_knots_of_stroke(tablet_document, stroke_id);
 }
 
-// Drop vertices that no stroke endpoint and no pin references. Named vertices (landmarks) stay.
+// Drop vertices that no stroke endpoint, no pin and no sphere references. Named vertices (landmarks) stay.
 export function garbage_collect_vertices(tablet_document: TabletDocument): void {
   const used_vertices = new Set<VertexId>();
   for (const stroke of tablet_document.strokes) {
@@ -596,6 +610,9 @@ export function garbage_collect_vertices(tablet_document: TabletDocument): void 
   }
   for (const pin of tablet_document.vertex_surface_pins) {
     used_vertices.add(pin.vertex);
+  }
+  for (const sphere of tablet_document.spheres) {
+    used_vertices.add(sphere.center_vertex);
   }
   tablet_document.vertices = tablet_document.vertices.filter((vertex) => used_vertices.has(vertex.id) || vertex.name !== undefined);
 }

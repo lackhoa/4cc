@@ -18,7 +18,8 @@ import { begin_history_step, clear_history, create_history_state, end_history_st
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
-import { SurfaceGrid, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
+import { SurfaceGrid, append_grid_mesh, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -481,14 +482,29 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       append_patch_mesh(patch, tablet_document, camera, color, vertices);
       if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, camera, color, vertices);
     });
+    if (surface_drawn) {
+      for (const grid of drawn_sphere_grids()) append_grid_mesh(grid, camera, SPHERE_COLOR, vertices);
+    }
     set_surface_mesh(renderer, vertex_sink_view(vertices));
+  }
+
+  // The spheres on visible layers as grids, with their mirror images when the document
+  // is mirrored across the midline.
+  function drawn_sphere_grids(): SurfaceGrid[] {
+    const grids: SurfaceGrid[] = [];
+    for (const sphere of tablet_document.spheres) {
+      if (hidden_layers.has(sphere.layer)) continue;
+      grids.push(...sphere_drawn_grids(sphere, tablet_document, tablet_document.is_mirrored_across_midline === true));
+    }
+    return grids;
   }
 
   // The grids of every fill rebuild_surface_mesh draws while "surf" is on: patches
   // on visible layers (locked ones too) and their mirrored halves
-  // (plan-tablet-pick-ignores-hidden-vertices Q5). The fills hide vertices from picking.
+  // (plan-tablet-pick-ignores-hidden-vertices Q5), and the spheres. The fills hide
+  // vertices from picking.
   function drawn_surface_grids(): SurfaceGrid[] {
-    const grids: SurfaceGrid[] = [];
+    const grids: SurfaceGrid[] = drawn_sphere_grids();
     for (const patch of tablet_document.patches) {
       if (hidden_layers.has(patch_layer(patch, tablet_document))) continue;
       const grid = patch_surface_grid(patch, tablet_document);

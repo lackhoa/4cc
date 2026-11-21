@@ -126,6 +126,7 @@ export function clear_document_in_place(tablet_document: TabletDocument): void {
   tablet_document.vertex_surface_pins.length = 0;
   tablet_document.smooth_knots.length = 0;
   tablet_document.strokes.length = 0;
+  tablet_document.spheres.length = 0;
   tablet_document.patches.length = 0;
   delete tablet_document.is_mirrored_across_midline;
 }
@@ -246,6 +247,8 @@ export function apply_document_state(json: string, tablet_document: TabletDocume
     else tablet_document.patches.push(patch);
   }
   if (parsed.document.is_mirrored_across_midline === true) tablet_document.is_mirrored_across_midline = true;
+  // Files saved before spheres carry no `spheres` key: no spheres.
+  tablet_document.spheres.push(...(parsed.document.spheres ?? []));
   for (const loft of parsed.document.lofts ?? []) add_patch(tablet_document, [loft.stroke_a, loft.stroke_b]);
   for (const coons of parsed.document.coons ?? []) add_patch(tablet_document, [...coons.strokes]);
   const repaired_patch_count = drop_unused_patch_strokes(tablet_document);

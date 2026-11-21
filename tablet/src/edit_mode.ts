@@ -451,6 +451,8 @@ export function weld_vertex_into(tablet_document: TabletDocument, vertex: Vertex
   }
   // A knot at the vertex rides along (a crossing = two knots, Q4).
   for (const knot of tablet_document.smooth_knots) knot.vertex = remap(knot.vertex);
+  // A sphere centred on the vertex moves to the target with it.
+  for (const sphere of tablet_document.spheres) sphere.center_vertex = remap(sphere.center_vertex);
   // The survivor is on the midline if either was (plan-sketchpad-midline.md Q75).
   if (vertex_by_id(tablet_document, vertex).midline === true) {
     vertex_by_id(tablet_document, target_vertex).midline = true;

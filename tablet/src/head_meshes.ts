@@ -9,6 +9,7 @@ import { on_surface_stroke_samples, patch_surface_grid } from "./patch";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
+import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
 import { TaperWindow, append_bezier_ribbon, append_sampled_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
@@ -79,6 +80,21 @@ function surface_triangles_of(tablet_document: TabletDocument, options: HeadMesh
     }
   }
   const triangle_colors = Array.from({ length: positions.length / 3 }, () => SURFACE_COLOR);
+  for (const sphere of tablet_document.spheres) {
+    if (sphere.layer === "skull" && !options.skull_visible) continue;
+    for (const grid of sphere_drawn_grids(sphere, tablet_document, options.mirrored)) {
+      for (let j = 0; j < grid.rows; j++) {
+        for (let i = 0; i < grid.columns; i++) {
+          const point_00 = grid.positions[i][j];
+          const point_10 = grid.positions[i + 1][j];
+          const point_11 = grid.positions[i + 1][j + 1];
+          const point_01 = grid.positions[i][j + 1];
+          positions.push(point_00, point_10, point_11, point_00, point_11, point_01);
+          triangle_colors.push(SPHERE_COLOR, SPHERE_COLOR);
+        }
+      }
+    }
+  }
   return reference_mesh_from_positions(positions, positions.map((_, index) => index), triangle_colors);
 }
 
