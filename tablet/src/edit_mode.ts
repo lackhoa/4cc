@@ -13,7 +13,7 @@
 // consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, stroke_by_id, stroke_control_points, stroke_plane_normal, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
+import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, set_stroke_single_handle_point, stroke_by_id, stroke_control_points, stroke_plane_normal, stroke_single_handle_point, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { drag_surface_pin, stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
@@ -121,12 +121,22 @@ export function pick_stroke_point(
   stroke: Stroke, tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement,
 ): StrokePointKey | null {
   const points = stroke_control_points(stroke, tablet_document);
-  const candidates: { key: StrokePointKey; world: V3 }[] = [
-    { key: "p0", world: points.p0 },
-    { key: "p1", world: points.p1 },
-    { key: "p2", world: points.p2 },
-    { key: "p3", world: points.p3 },
-  ];
+  let candidates: { key: StrokePointKey; world: V3 }[];
+  if (stroke.has_one_handle === true) {
+    // The single handle answers to "p1"; there is no "p2" to pick.
+    candidates = [
+      { key: "p0", world: points.p0 },
+      { key: "p1", world: stroke_single_handle_point(stroke, tablet_document) },
+      { key: "p3", world: points.p3 },
+    ];
+  } else {
+    candidates = [
+      { key: "p0", world: points.p0 },
+      { key: "p1", world: points.p1 },
+      { key: "p2", world: points.p2 },
+      { key: "p3", world: points.p3 },
+    ];
+  }
   let best: StrokePointKey | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
   for (const { key, world } of candidates) {
@@ -324,7 +334,8 @@ export function edit_nudge_handle(
   handle: "p1" | "p2", screen_step: V2, forward_distance: number, handle_mode: HandleMode,
 ): void {
   const stroke = stroke_by_id(tablet_document, state.stroke_id);
-  const handle_world = stroke_control_points(stroke, tablet_document)[handle];
+  let handle_world = stroke_control_points(stroke, tablet_document)[handle];
+  if (stroke.has_one_handle === true) handle_world = stroke_single_handle_point(stroke, tablet_document);
   const handle_screen = camera_world_to_screen(camera, handle_world, canvas.clientWidth, canvas.clientHeight);
   if (handle_screen === null) return; // behind the eye: no screen position to step from
   state.dragging = handle;
@@ -344,6 +355,11 @@ export function edit_nudge_handle(
         return;
       }
       const normal = stroke_plane_normal(stroke, tablet_document, forward);
+      if (stroke.has_one_handle === true) {
+        const in_plane_delta = v3_sub(world_delta, v3_scale(normal, v3_dot(world_delta, normal)));
+        set_stroke_single_handle_point(stroke, tablet_document, v3_add(stroke_single_handle_point(stroke, tablet_document), in_plane_delta));
+        return;
+      }
       const dragged_key = handle === "p1" ? "d0" : "d3";
       stroke[dragged_key] = v3_add(stroke[dragged_key], v3_sub(world_delta, v3_scale(normal, v3_dot(world_delta, normal))));
     });
@@ -375,6 +391,10 @@ function drag_handle(
     const distance_along_ray = v3_dot(v3_sub(p0, ray.origin), normal) / cosine;
     if (distance_along_ray <= 0) return; // plane behind the eye
     const hit = v3_add(ray.origin, v3_scale(ray.direction, distance_along_ray));
+    if (stroke.has_one_handle === true) {
+      set_stroke_single_handle_point(stroke, tablet_document, hit);
+      return;
+    }
     const third_point = state.dragging === "p1"
       ? v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3)
       : v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
@@ -385,6 +405,11 @@ function drag_handle(
 // Swing mode: the dragged handle moves freely by `world_delta`; the other one
 // swings into the plane the dragged handle now spans with the chord (Q2).
 function swing_dragged_handle(state: EditState, stroke: Stroke, tablet_document: TabletDocument, world_delta: V3): void {
+  if (stroke.has_one_handle === true) {
+    // One handle: it moves freely, and the plane is wherever it is now.
+    set_stroke_single_handle_point(stroke, tablet_document, v3_add(stroke_single_handle_point(stroke, tablet_document), world_delta));
+    return;
+  }
   const dragged_key = state.dragging === "p1" ? "d0" : "d3";
   const other_key = state.dragging === "p1" ? "d3" : "d0";
   stroke[dragged_key] = v3_add(stroke[dragged_key], world_delta);

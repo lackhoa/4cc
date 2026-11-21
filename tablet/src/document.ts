@@ -89,6 +89,9 @@ export type Stroke = {
   // in linear light. Absent = no change.
   lightness_additions?: StrokeRadii;
   is_one_sided?: boolean; // not drawn on the mirrored side of a document mirrored across the midline
+  // Edited through one handle, like a parabola (stroke_single_handle_point): the cubic
+  // is stored as usual, with d0 equal to d3. Absent = two handles.
+  has_one_handle?: boolean;
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
@@ -370,6 +373,14 @@ export function split_stroke(
   stroke.d3 = first_half.d3;
   const second_half = stroke_handles_from_control_points(knot_position, p123, p23, p3);
   const second_stroke = add_stroke(tablet_document, knot_vertex, far_vertex, second_half.d0, second_half.d3, stroke.layer);
+  if (stroke.has_one_handle === true) {
+    // Both halves of a one-handle stroke are one-handle strokes; the average only
+    // removes the rounding of the cut.
+    const second = stroke_by_id(tablet_document, second_stroke);
+    second.has_one_handle = true;
+    average_stroke_handle_offsets(stroke);
+    average_stroke_handle_offsets(second);
+  }
   for (const pin of tablet_document.vertex_pins) {
     if (pin.host_stroke !== stroke_id) continue;
     if (pin.t <= t) {
@@ -425,7 +436,56 @@ function set_handle_point_at_vertex(stroke: Stroke, tablet_document: TabletDocum
     : v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3);
   stroke[key] = v3_sub(handle_point, third_point);
   const other_key = key === "d0" ? "d3" : "d0";
+  if (stroke.has_one_handle === true) {
+    // The one handle moved: the offset at the other end is the same offset.
+    stroke[other_key] = { ...stroke[key] };
+    return;
+  }
   stroke[other_key] = swing_offset_into_plane(chord_direction(p0, p3), stroke[key], stroke[other_key]);
+}
+
+// The single handle of a one-handle stroke, in world space: the point both end
+// tangents aim at (the control point of the parabola). The stored cubic has
+// p1 = p0 + 2/3 (handle - p0) and p2 = p3 + 2/3 (handle - p3), which in offset form
+// is d0 = d3 = 2/3 (handle - chord midpoint).
+export function stroke_single_handle_point(stroke: Stroke, tablet_document: TabletDocument): V3 {
+  const p0 = vertex_position(tablet_document, stroke.p0_vertex);
+  const p3 = vertex_position(tablet_document, stroke.p3_vertex);
+  return v3_add(v3_lerp(p0, p3, 0.5), v3_scale(stroke.d0, 1.5));
+}
+
+// Place the single handle of a one-handle stroke at a world point.
+export function set_stroke_single_handle_point(stroke: Stroke, tablet_document: TabletDocument, handle_point: V3): void {
+  const p0 = vertex_position(tablet_document, stroke.p0_vertex);
+  const p3 = vertex_position(tablet_document, stroke.p3_vertex);
+  const offset = v3_scale(v3_sub(handle_point, v3_lerp(p0, p3, 0.5)), 2 / 3);
+  stroke.d0 = offset;
+  stroke.d3 = { ...offset };
+}
+
+// Both handle offsets become their average: the one-handle stroke nearest a
+// two-handle one (its single handle lands halfway between the two points the end
+// tangents aim at).
+export function average_stroke_handle_offsets(stroke: Stroke): void {
+  const offset = v3_scale(v3_add(stroke.d0, stroke.d3), 0.5);
+  stroke.d0 = offset;
+  stroke.d3 = { ...offset };
+}
+
+// Switch strokes between one handle and two (the "1 handle" button). Turning it on
+// reshapes the stroke (average_stroke_handle_offsets) and its smooth neighbours
+// follow; turning it off changes no shape, the two handles are just free again.
+export function set_strokes_have_one_handle(tablet_document: TabletDocument, stroke_ids: StrokeId[], has_one_handle: boolean): void {
+  for (const stroke_id of stroke_ids) {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    if (!has_one_handle) {
+      delete stroke.has_one_handle;
+      continue;
+    }
+    stroke.has_one_handle = true;
+    average_stroke_handle_offsets(stroke);
+    enforce_smooth_knots_of_stroke(tablet_document, stroke_id);
+  }
 }
 
 // Make two strokes that share an endpoint vertex smooth there: a knot record
@@ -475,9 +535,15 @@ function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: Str
 // stroke_a. A later pass only repairs knots broken by something other than the
 // user's edit (a pin whose host moved), where stroke_a leading is right
 // (plan-smooth-knot-wrong-handle.md Q6).
+// A one-handle follower has the same handle at its other end, so its tangent there
+// turned too: it leads the knots at that end, and so on down a chain of one-handle
+// strokes. `strokes_already_leading` stops a closed ring of them, which cannot be
+// smooth at every knot; callers leave it out.
 export function enforce_smooth_knot(
   tablet_document: TabletDocument, knot: SmoothKnot, leader_stroke: StrokeId,
+  strokes_already_leading: Set<StrokeId> = new Set<StrokeId>(),
 ): void {
+  strokes_already_leading.add(leader_stroke);
   const leader = stroke_by_id(tablet_document, leader_stroke);
   const follower = stroke_by_id(tablet_document, leader_stroke === knot.stroke_a ? knot.stroke_b : knot.stroke_a);
   const knot_position = vertex_position(tablet_document, knot.vertex);
@@ -486,6 +552,12 @@ export function enforce_smooth_knot(
   const follower_length = v3_length(v3_sub(handle_point_at_vertex(follower, tablet_document, knot.vertex), knot_position));
   const follower_outward = v3_scale(v3_normalize(leader_outward), -follower_length);
   set_handle_point_at_vertex(follower, tablet_document, knot.vertex, v3_add(knot_position, follower_outward));
+  if (follower.has_one_handle !== true || strokes_already_leading.has(follower.id)) return;
+  const follower_other_vertex = follower.p0_vertex === knot.vertex ? follower.p3_vertex : follower.p0_vertex;
+  for (const other_knot of smooth_knots_at_vertex(tablet_document, follower_other_vertex)) {
+    if (other_knot.stroke_a !== follower.id && other_knot.stroke_b !== follower.id) continue;
+    enforce_smooth_knot(tablet_document, other_knot, follower.id, strokes_already_leading);
+  }
 }
 
 // Re-aim every knot the stroke takes part in, with the stroke as leader —
@@ -812,6 +884,7 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
     if (source.on_surface === true) copy.on_surface = true;
     if (source.is_hidden === true) copy.is_hidden = true;
     if (source.is_one_sided === true) copy.is_one_sided = true;
+    if (source.has_one_handle === true) copy.has_one_handle = true;
     if (source.line_color !== undefined) copy.line_color = { ...source.line_color };
     if (source.lightness_additions !== undefined) copy.lightness_additions = [...source.lightness_additions];
     copied_stroke.set(source.id, copy_id);

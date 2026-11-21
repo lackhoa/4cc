@@ -38,6 +38,7 @@ function stroke_text(tablet_document: TabletDocument, stroke_id: StrokeId): stri
   if (pinned.length > 0) parts.push(`pins ${pinned.join(" ")}`);
   if (stroke.midline === true) parts.push("midline");
   if (stroke.on_surface === true) parts.push("on surface");
+  if (stroke.has_one_handle === true) parts.push("one handle");
   return parts.join("  ");
 }
 

@@ -220,6 +220,8 @@ export function merge_adjacent_strokes(
   if (stroke_a.midline === true && stroke_b.midline !== true) delete stroke_a.midline;
   // Likewise on the surface (plan-hairline-drawn-on-surface Q4).
   if (stroke_a.on_surface === true && stroke_b.on_surface !== true) delete stroke_a.on_surface;
+  // The fit is a full cubic: the merged stroke has two handles, whatever the parts had.
+  delete stroke_a.has_one_handle;
 
   for (const { pin, world_position } of riding_pins) {
     pin.host_stroke = stroke_a_id;

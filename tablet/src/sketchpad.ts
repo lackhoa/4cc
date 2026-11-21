@@ -12,7 +12,7 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -279,6 +279,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_lock_buttons();
     refresh_midline_button_armed();
     refresh_on_surface_button_armed();
+    refresh_one_handle_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
@@ -585,8 +586,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       line_vertices.push(a.x, a.y, a.z, color.r, color.g, color.b);
       line_vertices.push(b.x, b.y, b.z, color.r, color.g, color.b);
     };
-    push_line(points.p0, points.p1);
-    push_line(points.p3, points.p2);
+    const has_one_handle = selected_stroke.has_one_handle === true;
+    const single_handle_point = stroke_single_handle_point(selected_stroke, tablet_document);
+    if (has_one_handle) {
+      push_line(points.p0, single_handle_point);
+      push_line(points.p3, single_handle_point);
+    } else {
+      push_line(points.p0, points.p1);
+      push_line(points.p3, points.p2);
+    }
     // The hot handle / endpoint / pin draws bigger and in HOT_COLOR.
     const is_hot_handle = (key: "p1" | "p2") => hot_item !== null && hot_item.kind === "handle" && hot_item.key === key;
     const is_hot_vertex = (vertex: VertexId) => hot_item !== null && hot_item.kind === "vertex" && hot_item.vertex === vertex;
@@ -598,8 +606,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     };
     // The selected handle (the nudge keys' target) draws anchor-sized.
     const selected_handle = edit_state.selected_handle;
-    push_marker(points.p1, selected_handle === "p1" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p1"));
-    push_marker(points.p2, selected_handle === "p2" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p2"));
+    if (has_one_handle) {
+      // The single handle answers to "p1" when picked; any selected handle is this one.
+      push_marker(single_handle_point, selected_handle !== null ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p1"));
+    } else {
+      push_marker(points.p1, selected_handle === "p1" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p1"));
+      push_marker(points.p2, selected_handle === "p2" ? anchor_half : handle_half, HANDLE_COLOR, is_hot_handle("p2"));
+    }
     // Endpoints that are smooth knots show in the knot color so it is clear the
     // neighbour handle will follow. Pinned vertices get no color of their own.
     const anchor_color = (vertex: VertexId) => {
@@ -885,6 +898,22 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       else delete stroke.on_surface;
     }
     end_history_step(history, tablet_document, `${turn_on ? "set" : "clear"} on surface strokes ${strokes.join(" ")}`);
+    request_render();
+  });
+  const one_handle_button = document.getElementById("one_handle_button") as HTMLButtonElement;
+  // Like the on surface button: it switches the selected lines between one handle and
+  // two (all to the opposite of the primary's) and is lit by the primary's flag.
+  function refresh_one_handle_button_armed(): void {
+    const armed = edit_state !== null && stroke_by_id(tablet_document, edit_state.stroke_id).has_one_handle === true;
+    one_handle_button.classList.toggle("armed", armed);
+  }
+  one_handle_button.addEventListener("click", () => {
+    if (edit_state === null) return;
+    const strokes = selected_strokes();
+    const turn_on = stroke_by_id(tablet_document, edit_state.stroke_id).has_one_handle !== true;
+    begin_history_step(history, tablet_document);
+    set_strokes_have_one_handle(tablet_document, strokes, turn_on);
+    end_history_step(history, tablet_document, `${turn_on ? "one handle" : "two handles"} on strokes ${strokes.join(" ")}`);
     request_render();
   });
   // The pin of the selected vertex, or null: the target of unpin and split here.
@@ -1672,6 +1701,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_button_availability(patch_button, edit_state !== null && extra_selection.length > 0, null);
     set_button_availability(midline_button, line_or_vertex_selected, null);
     set_button_availability(on_surface_button, edit_state !== null, null);
+    set_button_availability(one_handle_button, edit_state !== null, null);
     set_button_availability(name_button, line_or_vertex_selected, null);
   }
   delete_button.addEventListener("click", () => {

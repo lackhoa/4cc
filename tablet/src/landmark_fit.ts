@@ -11,7 +11,7 @@
 // The warp is applied to every vertex; every stroke becomes the cubic closest to its warped
 // self (warped_stroke_control_points).
 import {
-  StrokeControlPoints, TabletDocument, bezier_point, enforce_midline, stroke_control_points, stroke_handles_from_control_points,
+  StrokeControlPoints, TabletDocument, average_stroke_handle_offsets, bezier_point, enforce_midline, stroke_control_points, stroke_handles_from_control_points,
 } from "./document";
 import { update_pinned_vertex_positions } from "./patch";
 import { FitLandmarksFile, fit_landmark_mark_world_position, template_point_world_position, template_position_is_on_midline } from "./loomis_girl_plate";
@@ -212,6 +212,8 @@ export function fitted_document_from_landmark_pairs(template_document: TabletDoc
     const handles = stroke_handles_from_control_points(fitted.p0, fitted.p1, fitted.p2, fitted.p3);
     stroke.d0 = handles.d0;
     stroke.d3 = handles.d3;
+    // The warp moves the two control points separately; a one-handle stroke stays one.
+    if (stroke.has_one_handle === true) average_stroke_handle_offsets(stroke);
   }
   // Twice: a pinned vertex can be the endpoint of a stroke that hosts another pin.
   update_pinned_vertex_positions(fitted_document);
