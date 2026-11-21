@@ -1371,19 +1371,30 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (modifier_held && !(handle_selected && in_plane)) return;
     const nudge = (right_steps: number, up_steps: number, forward_steps: number) => {
       if (handle_selected) {
-        event.preventDefault(); // Ctrl + h/l/j/k/o are browser shortcuts
+        event.preventDefault(); // Ctrl + arrows / i / o are browser shortcuts
         nudge_selected_handle(right_steps, up_steps, forward_steps, event.shiftKey, in_plane);
       } else {
+        event.preventDefault(); // the arrows scroll the page
         nudge_selected_vertex(right_steps, up_steps, forward_steps, event.shiftKey);
       }
     };
+    const typing = document.activeElement instanceof HTMLInputElement;
     switch (event.key.toLowerCase()) {
-      case "h": nudge(-1, 0, 0); break;
-      case "l": nudge(1, 0, 0); break;
-      case "j": nudge(0, -1, 0); break;
-      case "k": nudge(0, 1, 0); break;
+      case "arrowleft": if (!typing) nudge(-1, 0, 0); break;
+      case "arrowright": if (!typing) nudge(1, 0, 0); break;
+      case "arrowdown": if (!typing) nudge(0, -1, 0); break;
+      case "arrowup": if (!typing) nudge(0, 1, 0); break;
       case "i": nudge(0, 0, 1); break;
       case "o": nudge(0, 0, -1); break;
+      // l = the line button, p = the patch button. Not while typing a name or a width.
+      case "l":
+        if (modifier_held || event.repeat || typing) return;
+        line_button.click();
+        break;
+      case "p":
+        if (modifier_held || event.repeat || typing) return;
+        patch_button.click();
+        break;
       // Delete / Backspace (a Mac keyboard's "delete") / d = the del button, lock
       // included (plan-patch-subcurve-boundary.md Q12). Not while typing a name
       // or a width.
