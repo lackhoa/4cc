@@ -296,19 +296,16 @@ export function edit_pen_move(
 function move_handle(
   state: EditState, stroke: Stroke, tablet_document: TabletDocument, apply_move: () => void,
 ): void {
-  // A handle drag at a smooth knot leads the neighbour: same direction, both
-  // lengths scaled by the same factor (Q2) — so remember the length before.
+  // A handle drag at a smooth knot leads the neighbour: its handle is re-aimed
+  // opposite the dragged one and keeps its own length.
   const knot_vertex = state.dragging === "p1" ? stroke.p0_vertex : stroke.p3_vertex;
   const other_vertex = state.dragging === "p1" ? stroke.p3_vertex : stroke.p0_vertex;
   const knots_of_stroke_at = (vertex: VertexId): SmoothKnot[] => smooth_knots_at_vertex(tablet_document, vertex)
     .filter((knot) => knot.stroke_a === stroke.id || knot.stroke_b === stroke.id);
   const knots = knots_of_stroke_at(knot_vertex);
   const other_end_knots = knots_of_stroke_at(other_vertex);
-  const old_length = dragged_handle_length(state, stroke, tablet_document);
   apply_move();
-  const new_length = dragged_handle_length(state, stroke, tablet_document);
-  const length_factor = old_length > 1e-9 ? new_length / old_length : 1;
-  for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id, length_factor);
+  for (const knot of knots) enforce_smooth_knot(tablet_document, knot, stroke.id);
   // A swing also turns the handle at the other end (into the new plane): the
   // edited stroke leads there too, lengths kept, and only the direct neighbour
   // turns (plan-smooth-knot-wrong-handle.md Q2, Q4). In plane mode the other
@@ -353,12 +350,6 @@ export function edit_nudge_handle(
   }
   state.dragging = null;
   state.last_screen = null;
-}
-
-// Distance from the dragged handle (p1 or p2) to its own vertex.
-function dragged_handle_length(state: EditState, stroke: Stroke, tablet_document: TabletDocument): number {
-  const points = stroke_control_points(stroke, tablet_document);
-  return state.dragging === "p1" ? v3_length(v3_sub(points.p1, points.p0)) : v3_length(v3_sub(points.p2, points.p3));
 }
 
 // Move the dragged interior handle with the pen — see the header comment for

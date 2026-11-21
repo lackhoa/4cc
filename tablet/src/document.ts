@@ -148,10 +148,10 @@ export type VertexSurfacePin = { vertex: VertexId; patch: PatchId; u: number; v:
 
 // Smooth knot (plan-tablet-partial-boundary-patches.md): a vertex where two
 // strokes meet end-to-end with their tangents locked, so a chain of strokes
-// reads as one curve. Made by split_stroke (exact de Casteljau) and kept by
+// reads as one curve. Made by smooth_strokes and kept by
 // enforce_smooth_knot at the edit choke points (Q3): the follower's handle at
-// the knot is re-aimed opposite the leader's, its length kept (or scaled with
-// the leader's on a handle drag — G1 with a locked ratio, Q2). A welded
+// the knot is re-aimed opposite the leader's, its length kept. The two handle
+// lengths at a knot are independent (G1: same tangent, nothing more). A welded
 // crossing holds two independent knots at one vertex (Q4). Deleting either
 // stroke, or joining across the knot, drops the record (Q7).
 export type SmoothKnot = { vertex: VertexId; stroke_a: StrokeId; stroke_b: StrokeId };
@@ -467,8 +467,7 @@ function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: Str
 }
 
 // Re-aim the follower's handle at the knot opposite the leader's. The
-// follower's handle length is kept, times `length_factor` (a leader handle
-// drag passes its own length ratio so the split ratio survives, Q2).
+// follower's handle length is kept, whatever the leader's length does.
 // The knot itself is a stateless rule (the two handles are opposite), but which
 // stroke leads depends on the edit: the stroke the user edited leads. So every
 // edit leaves its knots smooth before it returns; no later pass can repair them
@@ -477,7 +476,7 @@ function shared_vertex_of_strokes(tablet_document: TabletDocument, stroke_a: Str
 // user's edit (a pin whose host moved), where stroke_a leading is right
 // (plan-smooth-knot-wrong-handle.md Q6).
 export function enforce_smooth_knot(
-  tablet_document: TabletDocument, knot: SmoothKnot, leader_stroke: StrokeId, length_factor: number = 1,
+  tablet_document: TabletDocument, knot: SmoothKnot, leader_stroke: StrokeId,
 ): void {
   const leader = stroke_by_id(tablet_document, leader_stroke);
   const follower = stroke_by_id(tablet_document, leader_stroke === knot.stroke_a ? knot.stroke_b : knot.stroke_a);
@@ -485,7 +484,7 @@ export function enforce_smooth_knot(
   const leader_outward = v3_sub(handle_point_at_vertex(leader, tablet_document, knot.vertex), knot_position);
   if (v3_length(leader_outward) < COLLINEAR_EPSILON) return; // no tangent to follow
   const follower_length = v3_length(v3_sub(handle_point_at_vertex(follower, tablet_document, knot.vertex), knot_position));
-  const follower_outward = v3_scale(v3_normalize(leader_outward), -follower_length * length_factor);
+  const follower_outward = v3_scale(v3_normalize(leader_outward), -follower_length);
   set_handle_point_at_vertex(follower, tablet_document, knot.vertex, v3_add(knot_position, follower_outward));
 }
 
