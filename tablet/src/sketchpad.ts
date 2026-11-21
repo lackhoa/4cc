@@ -157,8 +157,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let selected_vertex_drag_last_screen: V2 | null = null; // non-null while the pen drags the selected vertex
   // Armed tools: "line" creates strokes. "pin" waits for a tap on the selected
   // stroke's curve and creates a vertex pinned there. "split" waits for a tap on
-  // the selected curve and splits it there into two strokes joined by a smooth
-  // knot.
+  // the selected curve and splits it there into two strokes joined at a plain
+  // junction.
   type ArmedTool = "line" | "pin" | "split";
   let armed_tool: ArmedTool | null = null;
   // Swing is a sticky mode, not a tap tool: a handle drag tilts the plane by
@@ -833,7 +833,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     if (armed_tool === "split") {
       // Split (Q4): the selected stroke is cut at the tapped point into two
-      // strokes joined by a smooth knot; the [0, t] half stays selected. Only
+      // strokes joined at a plain junction; the [0, t] half stays selected. Only
       // the selection is a candidate so a tap at a junction is unambiguous. A
       // tap on a vertex pinned to the selection cuts exactly there, reusing it.
       const selected_id = edit_state.stroke_id;
@@ -1001,7 +1001,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   });
 
   // Split: the next tap on the selected curve cuts it there into two strokes
-  // joined by a smooth knot.
+  // joined at a plain junction.
   split_button.addEventListener("click", () => {
     if (edit_state === null) return;
     set_armed_tool(armed_tool === "split" ? null : "split");
@@ -1042,8 +1042,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   });
 
   // Split here (plan-sketchpad-split-at-vertex.md): with a pinned vertex selected,
-  // this button cuts its host stroke exactly there, the vertex becoming the smooth
-  // knot (and staying selected). Shown only while such a vertex is selected -- the
+  // this button cuts its host stroke exactly there, the vertex becoming the plain
+  // junction (and staying selected). Shown only while such a vertex is selected -- the
   // same state the pin button reads for "unpin".
   const split_here_button = document.getElementById("split_here_button") as HTMLButtonElement;
   function refresh_split_here_button(): void {

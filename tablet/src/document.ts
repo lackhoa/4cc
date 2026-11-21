@@ -334,8 +334,9 @@ export function delete_stroke(tablet_document: TabletDocument, stroke_id: Stroke
 // A cut this close to an end would leave a near-zero-length half.
 const SPLIT_MIN_T_FROM_ENDS = 0.02;
 
-// Split a stroke at t into two strokes meeting at a smooth knot. Exact:
-// de Casteljau subdivision reproduces the original curve. The original
+// Split a stroke at t into two strokes meeting at a plain junction (the
+// "knot" below; no smooth knot is made, so each half's handle there is free).
+// Exact: de Casteljau subdivision reproduces the original curve. The original
 // stroke keeps the [0, t] half; patches bounded by it gain the other half;
 // the new stroke takes [t, 1]. Pins on the original re-parameterize to
 // whichever half they land on. The knot is a new vertex, unless the cut is
@@ -395,7 +396,6 @@ export function split_stroke(
     stroke.lightness_additions = halves.left;
     stroke_by_id(tablet_document, second_stroke).lightness_additions = halves.right;
   }
-  tablet_document.smooth_knots.push({ vertex: knot_vertex, stroke_a: stroke_id, stroke_b: second_stroke });
   // A patch bounded by the split stroke is now bounded by both halves.
   for (const patch of tablet_document.patches) {
     if (patch.strokes.includes(stroke_id)) patch.strokes.push(second_stroke);
