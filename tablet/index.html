@@ -25,7 +25,7 @@
     <h2>Construction</h2>
     <ul>
       <li><a href="./pages/loomis-head/"><strong>loomis-head</strong></a> — the Loomis ball-and-plane head built step by step, a slider per ratio, the book's numbers as presets.</li>
-      <li><a href="./pages/compare-two-heads/"><strong>compare-two-heads</strong></a> — two documents with one camera, swapped with Space: the corrected-head trial against the native head.</li>
+      <li><a href="./pages/compare-two-heads/"><strong>compare-two-heads</strong></a> — two documents with one camera, swapped with Space: the corrected head <code>head-corrected</code> against the native head (<code>?first=</code>, <code>?second=</code> for others).</li>
       <li><a href="./pages/skull-ball/"><strong>skull-ball</strong></a> — where the ball sits in a real skull: three fits (Frankfurt sphere, cranium sphere, cranium ellipsoid) with heat maps and numbers.</li>
       <li><a href="./pages/skull-side-cuts/"><strong>skull-side-cuts</strong></a> — Loomis's side slices measured on the skull: the cranium sphere clipped by two mirrored planes, one half_width fitted to the flats, before/after heat maps.</li>
       <li><a href="./pages/skull-brow-line/"><strong>skull-brow-line</strong></a> — Loomis's brow line (the ball's equator) on that ball: how far the glabella, the eye socket and the ear hole sit from it, in mm and radii.</li>
@@ -41,7 +41,7 @@
     <ul>
       <li><a href="./pages/fit-head-to-loomis-girl/"><strong>fit-head-to-loomis-girl</strong></a> — the template <code>skull-zanatomy</code> (skull and skin drawing) fitted to Loomis's school girl plate by landmarks. Drag marks on the plate, add, rename and remove landmarks; the fitted head follows live and is saved nowhere. Also the fitted head turned, the template before the fit, and each landmark's miss.</li>
       <li><a href="./pages/fit-hairline-to-loomis-girl/"><strong>fit-hairline-to-loomis-girl</strong></a> — draw the hairline: that fitted head on the girl plate with the hairline in orange, and below it the sketchpad on <code>skull-zanatomy</code>; the plate views follow as you draw.</li>
-      <li><a href="./pages/fit-head-to-native-head/"><strong>fit-head-to-native-head</strong></a> — the scan head <code>skull-zanatomy</code> fitted onto <code>native-head</code> by the landmarks of <code>fit-landmarks/native-head.json</code>. Drag targets in front and profile, add, rename and remove landmarks; the fitted head follows live; "write head-corrected-trial" writes it as the document <code>head-corrected-trial</code> (as <code>tmp/make_corrected_head_document.ts</code> does), shown on compare-two-heads.</li>
+      <li><a href="./pages/fit-head-to-native-head/"><strong>fit-head-to-native-head</strong></a> — the scan head <code>skull-zanatomy</code> fitted onto <code>native-head</code> by the landmarks of <code>fit-landmarks/native-head.json</code>. Drag targets in front and profile, add, rename and remove landmarks; the fitted head follows live; "write head-corrected-trial" writes it as the document <code>head-corrected-trial</code> (as <code>tmp/make_corrected_head_document.ts</code> does), shown on <a href="./pages/compare-two-heads/?first=head-corrected-trial">compare-two-heads with <code>?first=head-corrected-trial</code></a>. The trial is not kept: the corrected head you draw on is <code>head-corrected</code>.</li>
     </ul>
   </section>
 

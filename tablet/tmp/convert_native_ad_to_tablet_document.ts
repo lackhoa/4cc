@@ -1,7 +1,10 @@
 // One-time import of the native head (game/driver/documents/main-01.ad) into a tablet
 // document, documents/native-head.json. Prints a report of what was left out or changed,
 // checks the result, then writes the file.
-// Run: npx tsx tmp/convert_native_ad_to_tablet_document.ts
+// Run: npx tsx tmp/convert_native_ad_to_tablet_document.ts [--stroke-groups-only]
+//   --stroke-groups-only: documents/native-head.json is NOT written (it has hand edits since);
+//   only tmp/native-head-stroke-groups.json is, the native group and vis tag of every stroke
+//   id the conversion hands out (read by tmp/copy_native_features_into_corrected_head.ts).
 import assert from "node:assert";
 import { readFileSync, writeFileSync } from "node:fs";
 import { default_camera } from "../src/camera";
@@ -230,6 +233,9 @@ type Converter = {
   vertex_id_of_native_vertex: Map<number, VertexId>;
   stroke_id_of_native_curve: Map<number, StrokeId>;
   hidden_straight_stroke_of_vertex_pair: Map<string, StrokeId>;
+  // The native primitive each stroke was made for: its curve, or the fill whose edge it is
+  // (the first fill, for an edge shared by several).
+  native_primitive_of_stroke: Map<StrokeId, number>;
   report_lines: string[];
 };
 
@@ -316,12 +322,14 @@ function stroke_from_native_curve(converter: Converter, primitive_index: number)
   if (has_no_width || group_line_is_invisible || group_is_left_out) stroke.is_hidden = true;
 
   converter.stroke_id_of_native_curve.set(primitive_index, stroke.id);
+  converter.native_primitive_of_stroke.set(stroke.id, primitive_index);
   return stroke.id;
 }
 
 // The edge of a flat fill: one hidden straight stroke per pair of vertices, shared by
 // every fill that has the edge. A new one runs from `from_vertex` to `to_vertex`.
-function hidden_straight_stroke_between(converter: Converter, from_vertex: VertexId, to_vertex: VertexId): StrokeId {
+// fill_primitive_index: the fill asking for the edge.
+function hidden_straight_stroke_between(converter: Converter, fill_primitive_index: number, from_vertex: VertexId, to_vertex: VertexId): StrokeId {
   const pair_key = `${Math.min(from_vertex, to_vertex)}-${Math.max(from_vertex, to_vertex)}`;
   const existing = converter.hidden_straight_stroke_of_vertex_pair.get(pair_key);
   if (existing !== undefined) return existing;
@@ -329,6 +337,7 @@ function hidden_straight_stroke_between(converter: Converter, from_vertex: Verte
   const stroke_id = add_stroke(converter.tablet_document, from_vertex, to_vertex, zero, zero, "skin");
   stroke_by_id(converter.tablet_document, stroke_id).is_hidden = true;
   converter.hidden_straight_stroke_of_vertex_pair.set(pair_key, stroke_id);
+  converter.native_primitive_of_stroke.set(stroke_id, fill_primitive_index);
   return stroke_id;
 }
 
@@ -377,9 +386,10 @@ function stroke_of_dual_bezier_rail(
   }
   const d0 = v3_sub(stored_p1, v3_scale(v3_add(v3_scale(p0, 2), p3), 1 / 3));
   const d3 = v3_sub(stored_p2, v3_scale(v3_add(p0, v3_scale(p3, 2)), 1 / 3));
-  if (v3_length(d0) < 1e-6 && v3_length(d3) < 1e-6) return hidden_straight_stroke_between(converter, start_vertex, end_vertex);
+  if (v3_length(d0) < 1e-6 && v3_length(d3) < 1e-6) return hidden_straight_stroke_between(converter, primitive_index, start_vertex, end_vertex);
   const stroke_id = add_stroke(tablet_document, start_vertex, end_vertex, d0, d3, "skin");
   stroke_by_id(tablet_document, stroke_id).is_hidden = true;
+  converter.native_primitive_of_stroke.set(stroke_id, primitive_index);
   return stroke_id;
 }
 
@@ -437,8 +447,8 @@ function convert_dual_bezier(converter: Converter, primitive_index: number): voi
   // in the point vertex.
   const point_vertex = tablet_vertex(converter, vertex_index[0], group);
   const stroke_q = stroke_of_dual_bezier_rail(converter, primitive_index, "Q", dual_bezier.Q, vertex_index[2], vertex_index[3]);
-  const edge_from_start = hidden_straight_stroke_between(converter, tablet_vertex(converter, vertex_index[2], group), point_vertex);
-  const edge_from_end = hidden_straight_stroke_between(converter, tablet_vertex(converter, vertex_index[3], group), point_vertex);
+  const edge_from_start = hidden_straight_stroke_between(converter, primitive_index, tablet_vertex(converter, vertex_index[2], group), point_vertex);
+  const edge_from_end = hidden_straight_stroke_between(converter, primitive_index, tablet_vertex(converter, vertex_index[3], group), point_vertex);
   let strokes = [edge_from_start, edge_from_end, stroke_q];
   if (stroke_by_id(tablet_document, edge_from_start).p3_vertex !== point_vertex) strokes = [edge_from_end, edge_from_start, stroke_q];
   assert.strictEqual(
@@ -452,9 +462,9 @@ function convert_poly3(converter: Converter, primitive_index: number): void {
   const group = converter.native.groups[primitive.group_index];
   const corners = [0, 1, 2].map((corner) => tablet_vertex(converter, primitive.vertex_index[corner], group));
   const strokes = [
-    hidden_straight_stroke_between(converter, corners[0], corners[1]),
-    hidden_straight_stroke_between(converter, corners[1], corners[2]),
-    hidden_straight_stroke_between(converter, corners[2], corners[0]),
+    hidden_straight_stroke_between(converter, primitive_index, corners[0], corners[1]),
+    hidden_straight_stroke_between(converter, primitive_index, corners[1], corners[2]),
+    hidden_straight_stroke_between(converter, primitive_index, corners[2], corners[0]),
   ];
   add_fill_patch(converter, primitive, strokes);
 }
@@ -487,6 +497,7 @@ function split_native_curve_at_middle(converter: Converter, primitive_index: num
   const knot_vertex = split_stroke(tablet_document, first_half_id, 0.5);
   assert.notStrictEqual(knot_vertex, null, `curve ${primitive_index} was not split`);
   const second_half = tablet_document.strokes[stroke_count_before];
+  converter.native_primitive_of_stroke.set(second_half.id, primitive_index);
   const first_half = stroke_by_id(tablet_document, first_half_id);
   const first_half_points = stroke_control_points(first_half, tablet_document);
   const second_half_points = stroke_control_points(second_half, tablet_document);
@@ -565,7 +576,7 @@ function convert_native_document(native: NativeDocument): Converter {
   const converter: Converter = {
     native, tablet_document, group_is_included,
     vertex_id_of_native_vertex: new Map(), stroke_id_of_native_curve: new Map(),
-    hidden_straight_stroke_of_vertex_pair: new Map(), report_lines: [],
+    hidden_straight_stroke_of_vertex_pair: new Map(), native_primitive_of_stroke: new Map(), report_lines: [],
   };
 
   const left_out_curves: number[] = [];
@@ -656,11 +667,55 @@ function check_fans_collapse_at_their_point(converter: Converter, reloaded: Tabl
   });
 }
 
+// The native group of every stroke, by the stroke id this conversion handed out. The ends
+// are written too, so a reader can tell the id still means the same stroke in a
+// native-head.json edited by hand since.
+type NativeHeadStrokeGroup = {
+  stroke_id: StrokeId;
+  p0_vertex: VertexId;
+  p3_vertex: VertexId;
+  is_hidden: boolean;
+  native_primitive_index: number;
+  native_group_index: number;
+  vis_tag: string;
+};
+
+function native_head_stroke_groups(converter: Converter): NativeHeadStrokeGroup[] {
+  return converter.tablet_document.strokes.map((stroke) => {
+    const native_primitive_index = converter.native_primitive_of_stroke.get(stroke.id);
+    assert.notStrictEqual(native_primitive_index, undefined, `stroke ${stroke.id} has no native primitive`);
+    const native_group_index = converter.native.primitives[native_primitive_index!].group_index;
+    return {
+      stroke_id: stroke.id,
+      p0_vertex: stroke.p0_vertex,
+      p3_vertex: stroke.p3_vertex,
+      is_hidden: stroke.is_hidden === true,
+      native_primitive_index: native_primitive_index!,
+      native_group_index: native_group_index,
+      vis_tag: converter.native.groups[native_group_index].vis_tag,
+    };
+  });
+}
+
+function write_native_head_stroke_groups(converter: Converter): void {
+  const stroke_groups = native_head_stroke_groups(converter);
+  const stroke_count_of_vis_tag = new Map<string, number>();
+  for (const stroke_group of stroke_groups) {
+    stroke_count_of_vis_tag.set(stroke_group.vis_tag, (stroke_count_of_vis_tag.get(stroke_group.vis_tag) ?? 0) + 1);
+  }
+  console.log(`strokes by vis tag: ${[...stroke_count_of_vis_tag].map(([vis_tag, count]) => `${vis_tag} ${count}`).join(", ")}`);
+  writeFileSync(new URL("./native-head-stroke-groups.json", import.meta.url), JSON.stringify(stroke_groups, null, 1) + "\n");
+  console.log(`wrote tmp/native-head-stroke-groups.json (${stroke_groups.length} strokes)`);
+}
+
 const native = read_ad_file(new URL("../../game/driver/documents/main-01.ad", import.meta.url)) as NativeDocument;
 console.log("read main-01.ad");
 const converter = convert_native_document(native);
 console.log("converted; report:");
 for (const line of converter.report_lines) console.log(`  ${line}`);
+
+// The groups do not depend on the checks of the document below, so they are written first.
+write_native_head_stroke_groups(converter);
 
 const native_head_text = serialize_document_state(converter.tablet_document, default_camera());
 const reloaded = check_roundtrip_is_unchanged("native-head.json", native_head_text);
@@ -669,5 +724,9 @@ check_fans_collapse_at_their_point(converter, reloaded);
 check_mirrored_stroke_ends_on_midline_plane_are_held(reloaded);
 check_roundtrip_is_unchanged("skull-zanatomy.json", readFileSync(new URL("../documents/skull-zanatomy.json", import.meta.url), "utf8"));
 
-writeFileSync(new URL("../documents/native-head.json", import.meta.url), native_head_text);
-console.log("wrote documents/native-head.json");
+if (process.argv.includes("--stroke-groups-only")) {
+  console.log("--stroke-groups-only: documents/native-head.json not written");
+} else {
+  writeFileSync(new URL("../documents/native-head.json", import.meta.url), native_head_text);
+  console.log("wrote documents/native-head.json");
+}

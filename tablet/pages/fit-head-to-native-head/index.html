@@ -109,9 +109,11 @@
   native head the document <code>native-head</code>. The landmarks are saved to
   <code>tablet/fit-landmarks/native-head.json</code> on every edit; the fit (<code>tablet/src/native_head_fit.ts</code>,
   <code>tablet/src/landmark_fit.ts</code>) is live here. The document <code>head-corrected-trial</code>
-  (what <a href="/pages/compare-two-heads/">compare-two-heads</a> shows) is written from the landmarks as they are on
+  (shown by <a href="/pages/compare-two-heads/?first=head-corrected-trial">compare-two-heads with <code>?first=head-corrected-trial</code></a>) is written from the landmarks as they are on
   this page by "write head-corrected-trial", or by <code>npx tsx tmp/make_corrected_head_document.ts head-corrected-trial</code>;
   both build it with <code>tablet/src/corrected_head_document.ts</code>.
+  The trial is not kept, and is missing until it is written again. The corrected head that is drawn on,
+  <code>head-corrected</code> (page <a href="/draw/?page=head-corrected-draw">head-corrected-draw</a>), is not touched by the button.
   The plan is <code>plan-native-head-topology.md</code>, step 3.
 </p>
 </main>

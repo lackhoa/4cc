@@ -75,6 +75,23 @@ export const DRAWING_PAGES: DrawingPage[] = [
     shows_opacity_and_clip_sliders: false,
     description_html: "the same drawing view on document <code>native-head</code>: the head from the native editor, one side stored and the other mirrored.",
   },
+  // Document `head-corrected` (plan-native-head-topology.md, step 5): the scan head
+  // `skull-zanatomy` copied, mirrored, its centre plane closed and warped to the native
+  // head's proportions (tmp/make_corrected_head_document.ts), with the native features
+  // copied in as loose skin strokes (tmp/copy_native_features_into_corrected_head.ts).
+  // The skin is drawn here; the skull came along unchanged and is not edited (Q2, Q3).
+  // No scan mesh: the scan's skin no longer matches the warped head.
+  {
+    page_name: "head-corrected-draw",
+    document_name: "head-corrected",
+    active_layer: "skin",
+    locked_layers: ["skull"],
+    hidden_layers: [],
+    load_reference_mesh: null,
+    load_eyeball_mesh: null,
+    shows_opacity_and_clip_sliders: false,
+    description_html: "the corrected head, document <code>head-corrected</code>: the scan head warped to the native head's proportions, one side stored and the other mirrored, the skull layer locked, no reference mesh.",
+  },
 ];
 
 // The record of `page_name`; null when there is none.

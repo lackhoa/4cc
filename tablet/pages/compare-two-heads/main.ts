@@ -2,7 +2,9 @@
 // at the same place with the same camera, one at a time, to compare their proportions
 // by swapping back and forth; or both at once as lines only, each in its own color.
 // The documents are only read, once, when the page loads. Which two: the query
-// parameters `first` and `second`; without them the corrected-head trial and the native head.
+// parameters `first` and `second`; without them the corrected head and the native head.
+// (The trial `head-corrected-trial` is shown with `?first=head-corrected-trial`, once
+// "write head-corrected-trial" on fit-head-to-native-head has written it again.)
 import "../../pages.css";
 import { OrbitCamera, camera_view_projection, default_camera } from "../../src/camera";
 import { TabletDocument, empty_document } from "../../src/document";
@@ -24,7 +26,7 @@ type ComparedHead = {
 type ShownHeads = "first" | "second" | "both";
 
 const query = new URLSearchParams(window.location.search);
-const first_document_name = query.get("first") ?? "head-corrected-trial";
+const first_document_name = query.get("first") ?? "head-corrected";
 const second_document_name = query.get("second") ?? "native-head";
 
 const camera: OrbitCamera = { pivot: v3(0, -0.25, 0), yaw: 0, pitch: 0, distance: 4.6 };
