@@ -8,8 +8,7 @@
 // with the targets to drag (a new landmark's template point is picked there, on the red
 // lines; a target let go near a blue vertex is pinned to it) and the legend under them;
 // then, in the closed "More views" fold, the stiffness and skin sliders, the head model,
-// the fitted head turned, the scan head before the fit, and how far each landmark is from
-// its target. The views in the fold are drawn when it opens.
+// the fitted head turned, and how far each landmark is from its target. The views in the fold are drawn when it opens.
 // The fit is the one of tmp/make_corrected_head_document.ts (src/native_head_fit.ts),
 // computed here every time the landmarks or either document change. The button "write
 // head-corrected-trial" in the landmark bar writes the document head-corrected-trial from
@@ -358,11 +357,6 @@ const plate_views = start_plate_views(
   NATIVE_HEAD_VIEWS_LAYOUT,
   [
     { front_view_id: "fitted_front_view", profile_view_id: "fitted_profile_view", shown: () => fitted, marks: "editable", on_surface_skin_strokes_highlighted: false },
-    {
-      front_view_id: "template_front_view", profile_view_id: "template_profile_view",
-      shown: () => (template_revision === "" ? null : { tablet_document: template_document, revision: template_revision }),
-      marks: "shown", on_surface_skin_strokes_highlighted: false,
-    },
   ],
   native_head_views_adapter,
   {
