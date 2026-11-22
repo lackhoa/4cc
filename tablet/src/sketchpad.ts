@@ -19,17 +19,17 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
 import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
-import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
+import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
-import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_camera_forward, set_surface_mesh, set_translucent_mesh } from "./render";
+import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, FloatRange, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_camera_forward, set_surface_mesh, set_surface_mesh_ranges, set_translucent_mesh } from "./render";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
 type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
@@ -545,11 +545,47 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // camera-only frame keeps the uploaded mesh when it was built with no hot patch.
   let surface_mesh_built_without_hot_patch = false;
 
+  // One drawn patch's run of floats in the surface mesh and what it was written from: the
+  // same geometry object (a cached geometry is never changed in place), color, flat or
+  // shaded, and mirrored side give the same floats, so a frame keeps the run as it is.
+  type SurfaceSlice = { geometry: PatchGeometry; color: Rgb; is_flat: boolean; is_drawn_on_mirrored_side: boolean; start: number; end: number };
+  // The slices the surface buffer holds now, in mesh order (the sink holds the same
+  // floats: only rebuild_surface_mesh writes it); null while the buffer holds no known
+  // slices (nothing uploaded yet), so the next upload is whole.
+  let uploaded_surface_slices: SurfaceSlice[] | null = null;
+
   function rebuild_surface_mesh(): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
     const hot_patch = hot_item !== null && hot_item.kind === "patch" ? hot_item.patch : null;
     surface_mesh_built_without_hot_patch = hot_patch === null;
+    const previous_slices = uploaded_surface_slices;
+    const slices: SurfaceSlice[] = [];
+    const changed_ranges: FloatRange[] = [];
+    const mark_changed = (start: number, end: number): void => {
+      const last = changed_ranges[changed_ranges.length - 1];
+      if (last !== undefined && last.end === start) last.end = end;
+      else changed_ranges.push({ start, end });
+    };
+    // Writes the patch's floats unless the slice at the same place last frame was written
+    // from the same inputs: then its floats are still in the sink and in the buffer.
+    const write_slice = (geometry: PatchGeometry, color: Rgb, is_flat: boolean, is_drawn_on_mirrored_side: boolean, write: () => void): void => {
+      const start = vertices.length;
+      const previous = previous_slices === null ? undefined : previous_slices[slices.length];
+      const is_unchanged = previous !== undefined
+        && previous.start === start
+        && previous.geometry === geometry
+        && previous.color.r === color.r && previous.color.g === color.g && previous.color.b === color.b
+        && previous.is_flat === is_flat
+        && previous.is_drawn_on_mirrored_side === is_drawn_on_mirrored_side;
+      if (is_unchanged) {
+        vertices.length = previous.end;
+      } else {
+        write();
+        mark_changed(start, vertices.length);
+      }
+      slices.push({ geometry, color: { r: color.r, g: color.g, b: color.b }, is_flat, is_drawn_on_mirrored_side, start, end: vertices.length });
+    };
     tablet_document.patches.forEach((patch, index) => {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
@@ -563,8 +599,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const geometry = cached_patch_geometry(patch_geometry_cache, patch, tablet_document);
       if (geometry === null) return;
       if (patch.fill_color !== undefined && !is_selected_or_hot) {
-        append_flat_grid_mesh_with_normals(geometry.grid, patch.fill_color, vertices);
-        if (is_drawn_on_mirrored_side) append_flat_grid_mesh_with_normals(cached_mirrored_grid(geometry), patch.fill_color, vertices);
+        const fill_color = patch.fill_color;
+        write_slice(geometry, fill_color, /* is_flat */ true, is_drawn_on_mirrored_side, () => {
+          append_flat_grid_mesh_with_normals(geometry.grid, fill_color, vertices);
+          if (is_drawn_on_mirrored_side) append_flat_grid_mesh_with_normals(cached_mirrored_grid(geometry), fill_color, vertices);
+        });
         return;
       }
       let color = SURFACE_COLOR;
@@ -575,13 +614,20 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (locked_layers.has(layer)) {
         color = LOCKED_LAYER_SURFACE_COLOR;
       }
-      append_patch_geometry_mesh_with_normals(geometry, color, vertices);
-      if (is_drawn_on_mirrored_side) append_grid_mesh_with_normals(cached_mirrored_grid(geometry), color, vertices);
+      write_slice(geometry, color, /* is_flat */ false, is_drawn_on_mirrored_side, () => {
+        append_patch_geometry_mesh_with_normals(geometry, color, vertices);
+        if (is_drawn_on_mirrored_side) append_grid_mesh_with_normals(cached_mirrored_grid(geometry), color, vertices);
+      });
     });
+    // The spheres are rebuilt from the document each frame: always written.
+    const spheres_start = vertices.length;
     if (surface_drawn) {
       for (const grid of drawn_sphere_grids()) append_grid_mesh_with_normals(grid, SPHERE_COLOR, vertices);
     }
-    timed("frame.upload", () => set_surface_mesh(renderer, vertex_sink_view(vertices)));
+    mark_changed(spheres_start, vertices.length);
+    uploaded_surface_slices = slices;
+    if (previous_slices === null) timed("frame.upload", () => set_surface_mesh(renderer, vertex_sink_view(vertices)));
+    else timed("frame.upload", () => set_surface_mesh_ranges(renderer, vertex_sink_view(vertices), changed_ranges));
   }
 
   // The spheres on visible layers as grids, with their mirror images when the document
@@ -2386,6 +2432,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       surfaces: vertex_sink_hash(surface_sink),
       reference: vertex_sink_hash(reference_sink),
     }),
+    // The next surface mesh goes up whole (so a check can compare a frame drawn from the
+    // buffer kept slice by slice with one drawn from a whole upload).
+    debug_forget_uploaded_surface_slices: () => {
+      uploaded_surface_slices = null;
+    },
   });
   (window as unknown as { debug_selection_text: unknown }).debug_selection_text = selection_readout_text;
   (window as unknown as { debug_pull_document_changes_if_any: unknown }).debug_pull_document_changes_if_any = pull_document_changes_if_any;

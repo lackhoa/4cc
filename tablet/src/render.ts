@@ -197,6 +197,26 @@ export function set_surface_mesh(renderer: LineRenderer, vertices: Float32Array)
   renderer.surface_vertex_count = vertices.length / FLOATS_PER_SHADED_VERTEX;
 }
 
+// A run of floats [start, end) of a mesh, by float index.
+export type FloatRange = { start: number; end: number };
+
+// set_surface_mesh when only `changed_ranges` of `vertices` differ from what the last
+// upload (full or by ranges) put in the buffer: those ranges go in with bufferSubData, the
+// rest of the buffer is kept. A mesh bigger than the buffer is uploaded whole.
+export function set_surface_mesh_ranges(renderer: LineRenderer, vertices: Float32Array, changed_ranges: readonly FloatRange[]): void {
+  if (vertices.byteLength > renderer.surface_buffer_capacity_bytes) {
+    set_surface_mesh(renderer, vertices);
+    return;
+  }
+  const gl = renderer.gl;
+  gl.bindBuffer(gl.ARRAY_BUFFER, renderer.surface_buffer);
+  for (const range of changed_ranges) {
+    if (range.end <= range.start) continue;
+    gl.bufferSubData(gl.ARRAY_BUFFER, range.start * Float32Array.BYTES_PER_ELEMENT, vertices.subarray(range.start, range.end));
+  }
+  renderer.surface_vertex_count = vertices.length / FLOATS_PER_SHADED_VERTEX;
+}
+
 // The camera forward the fills are lit from in the next render_frame.
 export function set_surface_camera_forward(renderer: LineRenderer, camera_forward: V3): void {
   renderer.surface_camera_forward = camera_forward;
