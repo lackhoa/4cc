@@ -27,8 +27,7 @@
 //
 // Gestures, per view: a drag on a mark moves it (pairs with `marks: "editable"`), a drag
 // on the midline handle moves the midline, a drag elsewhere moves the picture, two fingers
-// pinch-zoom, Ctrl + wheel zooms at the cursor (a plain wheel scrolls the page, as on a map
-// embedded in a page), a double tap on nothing fits the head again.
+// pinch-zoom, the wheel zooms at the cursor, a double tap on nothing fits the head again.
 //
 // Two gestures only a page's adapter and editing turn on (fit-head-to-native-head):
 //  - adding: while the page has "add landmark" armed, a ring sits on the point of the shown
@@ -889,8 +888,8 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
     draw_overlay_layer(state, view);
   });
   canvas.addEventListener("wheel", (e) => {
-    // A plain wheel scrolls the page; Ctrl + wheel zooms (a trackpad pinch arrives as one).
-    if (!e.ctrlKey) return;
+    // The wheel over a view zooms it (a trackpad pinch arrives as Ctrl + wheel); the page
+    // is scrolled beside the views.
     e.preventDefault();
     zoom_view_at(view, canvas_point_of(e), Math.exp(-e.deltaY * 0.0015));
     draw_view(state, view);
