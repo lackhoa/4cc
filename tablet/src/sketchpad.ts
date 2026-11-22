@@ -19,7 +19,7 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { SurfaceGrid, append_grid_mesh, append_flat_grid_mesh, append_patch_geometry_mesh, cached_mirrored_grid, cached_patch_geometry, create_patch_geometry_cache, invalidate_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, cached_mirrored_grid, cached_patch_geometry, create_patch_geometry_cache, invalidate_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -29,7 +29,7 @@ import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
-import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_mesh, set_translucent_mesh } from "./render";
+import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_camera_forward, set_surface_mesh, set_translucent_mesh } from "./render";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
 type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
@@ -359,7 +359,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     else hot_item = timed("frame.hot_item", resolve_hot_item);
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
     timed("frame.stroke_mesh", () => rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id));
-    timed("frame.surface_mesh", rebuild_surface_mesh);
+    // See surface_mesh_built_without_hot_patch: a camera-only frame usually keeps the fills.
+    if (!frame_is_camera_only || !surface_mesh_built_without_hot_patch) timed("frame.surface_mesh", rebuild_surface_mesh);
+    set_surface_camera_forward(renderer, camera_basis(camera).forward);
     timed("frame.reference_mesh", rebuild_reference_mesh);
     timed("frame.edit_overlay", rebuild_edit_overlay);
     const view_projection = camera_view_projection(camera, canvas.width / canvas.height);
@@ -522,10 +524,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     return partials;
   }
 
+  // The fills carry base colors and normals and the shader lights them from the camera,
+  // so the uploaded mesh depends on the document, the selected and hot patch, the "surf"
+  // button and the layer toggles, never on the camera. Each of those changes goes through
+  // request_render; a camera-only frame changes only the hot patch, to none. So a
+  // camera-only frame keeps the uploaded mesh when it was built with no hot patch.
+  let surface_mesh_built_without_hot_patch = false;
+
   function rebuild_surface_mesh(): void {
     const vertices = surface_sink;
     reset_vertex_sink(vertices);
     const hot_patch = hot_item !== null && hot_item.kind === "patch" ? hot_item.patch : null;
+    surface_mesh_built_without_hot_patch = hot_patch === null;
     tablet_document.patches.forEach((patch, index) => {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
@@ -539,8 +549,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const geometry = cached_patch_geometry(patch_geometry_cache, patch, tablet_document);
       if (geometry === null) return;
       if (patch.fill_color !== undefined && !is_selected_or_hot) {
-        append_flat_grid_mesh(geometry.grid, patch.fill_color, vertices);
-        if (is_drawn_on_mirrored_side) append_flat_grid_mesh(cached_mirrored_grid(geometry), patch.fill_color, vertices);
+        append_flat_grid_mesh_with_normals(geometry.grid, patch.fill_color, vertices);
+        if (is_drawn_on_mirrored_side) append_flat_grid_mesh_with_normals(cached_mirrored_grid(geometry), patch.fill_color, vertices);
         return;
       }
       let color = SURFACE_COLOR;
@@ -551,11 +561,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (locked_layers.has(layer)) {
         color = LOCKED_LAYER_SURFACE_COLOR;
       }
-      append_patch_geometry_mesh(geometry, camera, color, vertices);
-      if (is_drawn_on_mirrored_side) append_grid_mesh(cached_mirrored_grid(geometry), camera, color, vertices);
+      append_patch_geometry_mesh_with_normals(geometry, color, vertices);
+      if (is_drawn_on_mirrored_side) append_grid_mesh_with_normals(cached_mirrored_grid(geometry), color, vertices);
     });
     if (surface_drawn) {
-      for (const grid of drawn_sphere_grids()) append_grid_mesh(grid, camera, SPHERE_COLOR, vertices);
+      for (const grid of drawn_sphere_grids()) append_grid_mesh_with_normals(grid, SPHERE_COLOR, vertices);
     }
     timed("frame.upload", () => set_surface_mesh(renderer, vertex_sink_view(vertices)));
   }

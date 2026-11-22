@@ -8,20 +8,22 @@
 // Coons with the fourth side collapsed to a corner. Two strokes that don't
 // close a loop are the one exception: a plain loft between them.
 // 5+ sides: TODO midpoint subdivision (plan Q7), drawn as nothing now.
-// Shading is baked CPU-side per vertex (headlight: brightness from the
-// surface normal vs the camera forward, two-sided), which fits the existing
-// position+color pipeline.
+// Shading is a headlight: brightness from the surface normal vs the camera
+// forward, two-sided. The sketchpad's fills carry their base color and unit
+// normal per vertex (the `_with_normals` builders) and the shader lights them
+// (render.ts), so a camera move needs no new mesh; the CPU-baked builders
+// (append_patch_mesh, append_grid_mesh, ...) compute the same colors.
 
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
 import { Layer, Patch, PatchId, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, move_vertex, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_position } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { ray_triangle_distance } from "./reference_skull_view";
-import { VertexSink, push_vertex } from "./vertex_sink";
+import { SURFACE_AMBIENT } from "./render";
+import { VertexSink, push_shaded_surface_vertex, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
 const LOFT_ROWS_ACROSS = 4;
 const COONS_GRID = 16; // grid cells per side
-const SURFACE_AMBIENT = 0.35;
 
 // A vertex where the loop may switch from one stroke to another: one of the
 // stroke's endpoints (t = 0 / 1) or a vertex pinned to it
@@ -304,6 +306,72 @@ export function append_grid_mesh(grid: SurfaceGrid, camera: OrbitCamera, color: 
       const point_01 = grid.positions[i][j + 1];
       push_triangle(point_00, point_10, point_11);
       push_triangle(point_00, point_11, point_01);
+    }
+  }
+}
+
+// The normal the shader lights (render.ts SHADED_SURFACE_VERTEX_SHADER): the unit
+// `cross`, or zero (unlit) where brightness_of_normal falls back to brightness 1.
+const UNLIT_NORMAL: V3 = { x: 0, y: 0, z: 0 };
+
+function shading_normal(cross: V3): V3 {
+  if (v3_length(cross) < 1e-9) return UNLIT_NORMAL;
+  return v3_normalize(cross);
+}
+
+// append_loft_mesh_from_rails in the shaded-surface layout: same vertices, the base
+// color and the per-vertex normal in place of the baked color.
+function append_loft_mesh_from_rails_with_normals(rails: LoftRails, color: Color, out: VertexSink): void {
+  const samples_a = rails.samples_a;
+  const samples_b = rails.samples_b;
+  const corner = (u: number, v: number): { position: V3; normal: V3 } => {
+    const a = samples_a[u];
+    const b = samples_b[u];
+    const t = v / LOFT_ROWS_ACROSS;
+    const du = v3_lerp(a.tangent, b.tangent, t);
+    const dv = v3_sub(b.position, a.position);
+    return { position: v3_lerp(a.position, b.position, t), normal: shading_normal(v3_cross(du, dv)) };
+  };
+  for (let v = 0; v < LOFT_ROWS_ACROSS; v++) {
+    for (let u = 0; u < LOFT_SAMPLES_ALONG_RAILS; u++) {
+      const corner_00 = corner(u, v);
+      const corner_10 = corner(u + 1, v);
+      const corner_11 = corner(u + 1, v + 1);
+      const corner_01 = corner(u, v + 1);
+      for (const vertex of [corner_00, corner_10, corner_11, corner_00, corner_11, corner_01]) {
+        push_shaded_surface_vertex(out, vertex.position, color, vertex.normal);
+      }
+    }
+  }
+}
+
+// append_grid_mesh in the shaded-surface layout: one normal per triangle.
+export function append_grid_mesh_with_normals(grid: SurfaceGrid, color: Color, out: VertexSink): void {
+  const push_triangle = (a: V3, b: V3, c: V3) => {
+    const normal = shading_normal(v3_cross(v3_sub(b, a), v3_sub(c, a)));
+    for (const vertex of [a, b, c]) push_shaded_surface_vertex(out, vertex, color, normal);
+  };
+  for (let j = 0; j < grid.rows; j++) {
+    for (let i = 0; i < grid.columns; i++) {
+      const point_00 = grid.positions[i][j];
+      const point_10 = grid.positions[i + 1][j];
+      const point_11 = grid.positions[i + 1][j + 1];
+      const point_01 = grid.positions[i][j + 1];
+      push_triangle(point_00, point_10, point_11);
+      push_triangle(point_00, point_11, point_01);
+    }
+  }
+}
+
+// append_flat_grid_mesh in the shaded-surface layout: zero normals, so the color is drawn as is.
+export function append_flat_grid_mesh_with_normals(grid: SurfaceGrid, color: Color, out: VertexSink): void {
+  for (let j = 0; j < grid.rows; j++) {
+    for (let i = 0; i < grid.columns; i++) {
+      const point_00 = grid.positions[i][j];
+      const point_10 = grid.positions[i + 1][j];
+      const point_11 = grid.positions[i + 1][j + 1];
+      const point_01 = grid.positions[i][j + 1];
+      for (const point of [point_00, point_10, point_11, point_00, point_11, point_01]) push_shaded_surface_vertex(out, point, color, UNLIT_NORMAL);
     }
   }
 }
@@ -626,6 +694,12 @@ export function append_patch_geometry_mesh(geometry: PatchGeometry, camera: Orbi
   // The loft keeps its analytic-partial shading; Coons shades per triangle.
   if (geometry.loft_rails !== null) append_loft_mesh_from_rails(geometry.loft_rails, camera, color, out);
   else append_grid_mesh(geometry.grid, camera, color, out);
+}
+
+// append_patch_geometry_mesh in the shaded-surface layout (no camera: the shader lights it).
+export function append_patch_geometry_mesh_with_normals(geometry: PatchGeometry, color: Color, out: VertexSink): void {
+  if (geometry.loft_rails !== null) append_loft_mesh_from_rails_with_normals(geometry.loft_rails, color, out);
+  else append_grid_mesh_with_normals(geometry.grid, color, out);
 }
 
 // Locks (plan-patch-subcurve-boundary.md Q3/Q7): a patch owns its boundary.

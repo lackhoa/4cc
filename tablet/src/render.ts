@@ -1,6 +1,7 @@
 // Raw-WebGL renderer: reference model, stroke ribbons, fills and the edit overlay.
 
 import { Mat4, V3 } from "./math";
+import { FLOATS_PER_SHADED_VERTEX } from "./vertex_sink";
 
 // One clipping plane (plan-skin-over-skull-study.md Q5): fragments with
 // dot(world, normal) > offset are discarded, in every program that draws geometry
@@ -35,6 +36,31 @@ void main() {${CLIP_SHADER_DISCARD}
   gl_FragColor = vec4(v_color, 1.0);
 }`;
 
+// Headlight on the patch fills and the spheres: brightness
+// SURFACE_AMBIENT + (1 - SURFACE_AMBIENT) * |dot(unit normal, camera forward)|, two-sided
+// through the abs. Lit by SHADED_SURFACE_VERTEX_SHADER; patch.ts brightness_of_normal is
+// the same formula CPU-side. (The reference model is lit CPU-side, reference.ts.)
+export const SURFACE_AMBIENT = 0.35;
+
+// The fill program: per-vertex base color and unit normal (FLOATS_PER_SHADED_VERTEX),
+// lit per vertex against u_camera_forward and the lit color interpolated, as the
+// CPU-baked colors were. A zero normal (degenerate triangle, flat fill) is unlit.
+const SHADED_SURFACE_VERTEX_SHADER = `
+attribute vec3 a_position;
+attribute vec3 a_color;
+attribute vec3 a_normal;
+uniform mat4 u_view_projection;
+uniform vec3 u_camera_forward;
+varying vec3 v_color;
+varying vec3 v_world_position;
+void main() {
+  gl_Position = u_view_projection * vec4(a_position, 1.0);
+  float facing = abs(dot(a_normal, u_camera_forward));
+  float brightness = dot(a_normal, a_normal) > 0.0 ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
+  v_color = a_color * brightness;
+  v_world_position = a_position;
+}`;
+
 function set_clip_plane_uniforms(gl: WebGLRenderingContext, u_clip_plane: WebGLUniformLocation, u_clip_enabled: WebGLUniformLocation, clip: ClipPlane | null): void {
   if (clip === null || !clip.enabled) {
     gl.uniform1f(u_clip_enabled, 0);
@@ -54,7 +80,18 @@ export type LineRenderer = {
   reference_vertex_count: number;
   stroke_buffer: WebGLBuffer; // committed stroke ribbons, triangle list
   stroke_vertex_count: number;
-  surface_buffer: WebGLBuffer; // loft surfaces, triangle list, shading baked into color
+  // Patch fills and spheres, triangle list in the shaded-surface layout, drawn with
+  // surface_program and lit from surface_camera_forward.
+  surface_program: WebGLProgram;
+  surface_u_view_projection: WebGLUniformLocation;
+  surface_u_clip_plane: WebGLUniformLocation;
+  surface_u_clip_enabled: WebGLUniformLocation;
+  surface_u_camera_forward: WebGLUniformLocation;
+  surface_a_position: number;
+  surface_a_color: number;
+  surface_a_normal: number;
+  surface_camera_forward: V3;
+  surface_buffer: WebGLBuffer;
   surface_vertex_count: number;
   preview_buffer: WebGLBuffer; // in-progress pen stroke, line strip
   preview_vertex_count: number;
@@ -74,14 +111,20 @@ function compile_shader(gl: WebGLRenderingContext, type: number, source: string)
   return shader;
 }
 
-export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
+function link_program(gl: WebGLRenderingContext, vertex_source: string, fragment_source: string): WebGLProgram {
   const program = gl.createProgram()!;
-  gl.attachShader(program, compile_shader(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
-  gl.attachShader(program, compile_shader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
+  gl.attachShader(program, compile_shader(gl, gl.VERTEX_SHADER, vertex_source));
+  gl.attachShader(program, compile_shader(gl, gl.FRAGMENT_SHADER, fragment_source));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error(`program link failed: ${gl.getProgramInfoLog(program)}`);
   }
+  return program;
+}
+
+export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
+  const program = link_program(gl, VERTEX_SHADER, FRAGMENT_SHADER);
+  const surface_program = link_program(gl, SHADED_SURFACE_VERTEX_SHADER, FRAGMENT_SHADER);
 
   return {
     gl,
@@ -93,6 +136,15 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     reference_vertex_count: 0,
     stroke_buffer: gl.createBuffer()!,
     stroke_vertex_count: 0,
+    surface_program,
+    surface_u_view_projection: gl.getUniformLocation(surface_program, "u_view_projection")!,
+    surface_u_clip_plane: gl.getUniformLocation(surface_program, "u_clip_plane")!,
+    surface_u_clip_enabled: gl.getUniformLocation(surface_program, "u_clip_enabled")!,
+    surface_u_camera_forward: gl.getUniformLocation(surface_program, "u_camera_forward")!,
+    surface_a_position: gl.getAttribLocation(surface_program, "a_position"),
+    surface_a_color: gl.getAttribLocation(surface_program, "a_color"),
+    surface_a_normal: gl.getAttribLocation(surface_program, "a_normal"),
+    surface_camera_forward: { x: 0, y: 0, z: 1 },
     surface_buffer: gl.createBuffer()!,
     surface_vertex_count: 0,
     preview_buffer: gl.createBuffer()!,
@@ -121,12 +173,18 @@ export function set_stroke_mesh(renderer: LineRenderer, vertices: Float32Array):
   renderer.stroke_vertex_count = vertices.length / 6;
 }
 
-// vertices: interleaved [x,y,z, r,g,b] triangle list of all loft surfaces.
+// vertices: triangle list of all patch fills and spheres in the shaded-surface layout
+// (vertex_sink.ts FLOATS_PER_SHADED_VERTEX: position, base color, unit normal).
 export function set_surface_mesh(renderer: LineRenderer, vertices: Float32Array): void {
   const gl = renderer.gl;
   gl.bindBuffer(gl.ARRAY_BUFFER, renderer.surface_buffer);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
-  renderer.surface_vertex_count = vertices.length / 6;
+  renderer.surface_vertex_count = vertices.length / FLOATS_PER_SHADED_VERTEX;
+}
+
+// The camera forward the fills are lit from in the next render_frame.
+export function set_surface_camera_forward(renderer: LineRenderer, camera_forward: V3): void {
+  renderer.surface_camera_forward = camera_forward;
 }
 
 // vertices: interleaved [x,y,z, r,g,b] line strip; empty array clears the preview.
@@ -165,6 +223,26 @@ function bind_interleaved_buffer(renderer: LineRenderer, buffer: WebGLBuffer): v
   gl.vertexAttribPointer(a_color, 3, gl.FLOAT, false, stride, 3 * 4);
 }
 
+function draw_shaded_surfaces(renderer: LineRenderer, view_projection: Mat4, clip: ClipPlane | null): void {
+  const gl = renderer.gl;
+  const forward = renderer.surface_camera_forward;
+  gl.useProgram(renderer.surface_program);
+  gl.uniformMatrix4fv(renderer.surface_u_view_projection, false, view_projection);
+  gl.uniform3f(renderer.surface_u_camera_forward, forward.x, forward.y, forward.z);
+  set_clip_plane_uniforms(gl, renderer.surface_u_clip_plane, renderer.surface_u_clip_enabled, clip);
+  const stride = FLOATS_PER_SHADED_VERTEX * 4;
+  gl.bindBuffer(gl.ARRAY_BUFFER, renderer.surface_buffer);
+  gl.enableVertexAttribArray(renderer.surface_a_position);
+  gl.vertexAttribPointer(renderer.surface_a_position, 3, gl.FLOAT, false, stride, 0);
+  gl.enableVertexAttribArray(renderer.surface_a_color);
+  gl.vertexAttribPointer(renderer.surface_a_color, 3, gl.FLOAT, false, stride, 3 * 4);
+  gl.enableVertexAttribArray(renderer.surface_a_normal);
+  gl.vertexAttribPointer(renderer.surface_a_normal, 3, gl.FLOAT, false, stride, 6 * 4);
+  gl.drawArrays(gl.TRIANGLES, 0, renderer.surface_vertex_count);
+  // The other programs read two attributes: leave no third array enabled behind them.
+  gl.disableVertexAttribArray(renderer.surface_a_normal);
+}
+
 // `clip`: the clipping plane for the geometry (null = none). `draw_translucent`: the
 // caller's blended pass (the translucent reference), run after the opaque geometry and
 // before the overlay so handles stay on top of it.
@@ -186,8 +264,8 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4, clip
   }
 
   if (renderer.surface_vertex_count > 0) {
-    bind_interleaved_buffer(renderer, renderer.surface_buffer);
-    gl.drawArrays(gl.TRIANGLES, 0, renderer.surface_vertex_count);
+    draw_shaded_surfaces(renderer, view_projection, clip);
+    gl.useProgram(renderer.program);
   }
   if (renderer.stroke_vertex_count > 0) {
     bind_interleaved_buffer(renderer, renderer.stroke_buffer);
