@@ -15,7 +15,7 @@
 // (append_patch_mesh, append_grid_mesh, ...) compute the same colors.
 
 import { OrbitCamera, camera_basis, camera_eye, camera_screen_projector } from "./camera";
-import { Layer, Patch, PatchId, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, move_vertex, patch_layer, pins_on_stroke, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_position } from "./document";
+import { Layer, Patch, PatchId, SmoothKnot, Stroke, StrokeControlPoints, StrokeId, TabletDocument, VertexId, bezier_point, bezier_tangent, enforce_smooth_knot, fallback_perpendicular, move_vertex, patch_layer, pins_on_stroke, set_stroke_single_handle_point, smooth_knots_at_vertex, stroke_by_id, stroke_control_points, surface_pin_by_vertex, unpin_vertices, vertex_by_id, vertex_is_on_midline, vertex_is_pinned, vertex_position } from "./document";
 import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { SURFACE_AMBIENT } from "./render";
@@ -520,13 +520,14 @@ function squared_distance_to_bounds(bounds: GridBounds, point: V3): number {
   return dx * dx + dy * dy + dz * dz;
 }
 
-// Each point moved to the nearest point on the `layer` patches' surfaces
-// (plan-hairline-drawn-on-surface Q4: an on-surface stroke's ribbon). Patches
-// `excluded_stroke` bounds are skipped (Q17: an on-surface stroke used as a side
-// would otherwise project onto its own patch). Points come back unchanged when
-// no patch qualifies.
-export function project_onto_surface(tablet_document: TabletDocument, points: V3[], layer: Layer, excluded_stroke: StrokeId | null): V3[] {
-  const surfaces: { surface: (u: number, v: number) => V3; grid: SurfaceGrid }[] = [];
+// One surface a point can be moved onto: the patch, its fill as a function of
+// (u, v), and its grid.
+type LayerSurface = { patch: Patch; surface: (u: number, v: number) => V3; grid: SurfaceGrid };
+
+// The surfaces project_onto_surface moves points onto: the `layer` patches that
+// have a fill, except the patches `excluded_stroke` bounds.
+function layer_surfaces(tablet_document: TabletDocument, layer: Layer, excluded_stroke: StrokeId | null): LayerSurface[] {
+  const surfaces: LayerSurface[] = [];
   // Called while the pin pass moves vertices: every patch is compared with the document now.
   const geometry_cache = document_patch_geometry_cache(tablet_document);
   for (const patch of tablet_document.patches) {
@@ -534,8 +535,18 @@ export function project_onto_surface(tablet_document: TabletDocument, points: V3
     if (excluded_stroke !== null && patch.strokes.includes(excluded_stroke)) continue;
     const geometry = checked_patch_geometry(geometry_cache, patch, tablet_document);
     if (geometry === null) continue;
-    surfaces.push({ surface: fill_surface_function(geometry.fill, tablet_document), grid: geometry.grid });
+    surfaces.push({ patch, surface: fill_surface_function(geometry.fill, tablet_document), grid: geometry.grid });
   }
+  return surfaces;
+}
+
+// Each point moved to the nearest point on the `layer` patches' surfaces
+// (plan-hairline-drawn-on-surface Q4: an on-surface stroke's ribbon). Patches
+// `excluded_stroke` bounds are skipped (Q17: an on-surface stroke used as a side
+// would otherwise project onto its own patch). Points come back unchanged when
+// no patch qualifies.
+export function project_onto_surface(tablet_document: TabletDocument, points: V3[], layer: Layer, excluded_stroke: StrokeId | null): V3[] {
+  const surfaces = layer_surfaces(tablet_document, layer, excluded_stroke);
   if (surfaces.length === 0) return points;
   const bounds_of_surfaces = surfaces.map((entry) => cached_grid_bounds(entry.grid));
   return points.map((point) => {
@@ -992,6 +1003,381 @@ export function drag_surface_pin(
   pin.u = hit.u;
   pin.v = hit.v;
   move_vertex(tablet_document, vertex, hit.position);
+}
+
+// On-surface stroke refit: after an edit of an on-surface stroke, its stored cubic
+// is fitted to its own projected samples, so the handles sit where the drawn line
+// runs. The ends stay fixed; the fit moves only the handles, keeping d0, d3 and the
+// chord coplanar.
+
+// A handle shorter than this has no direction (matches document.ts COLLINEAR_EPSILON).
+const REFIT_DIRECTION_EPSILON = 1e-9;
+
+// The cubic in offset form is C(t) = (1 - t) p0 + t p3 + weight_d0(t) d0 + weight_d3(t) d3:
+// with d0 = d3 = 0 it runs along the chord at uniform speed, so the handles enter linearly.
+type HandleWeights = { weight_d0: number; weight_d3: number };
+
+function handle_weights(t: number): HandleWeights {
+  const s = 1 - t;
+  return { weight_d0: 3 * s * s * t, weight_d3: 3 * s * t * t };
+}
+
+// What one stroke is fitted to: its ends (vertex positions, fixed), and per sample
+// the projected sample minus the chord point at the same t, with the handle weights there.
+type RefitTarget = {
+  stroke: Stroke;
+  p0: V3;
+  p3: V3;
+  chord_direction: V3; // unit; a fixed axis when the ends coincide
+  residuals: V3[];
+  weights: HandleWeights[];
+};
+
+function refit_target(tablet_document: TabletDocument, stroke: Stroke): RefitTarget {
+  const points = stroke_control_points(stroke, tablet_document);
+  const along: V3[] = [];
+  for (let i = 0; i <= ON_SURFACE_STROKE_SAMPLES; i++) along.push(bezier_point(points, i / ON_SURFACE_STROKE_SAMPLES));
+  const projected = project_onto_surface(tablet_document, along, stroke.layer, stroke.id);
+  const residuals: V3[] = [];
+  const weights: HandleWeights[] = [];
+  for (let i = 0; i <= ON_SURFACE_STROKE_SAMPLES; i++) {
+    const t = i / ON_SURFACE_STROKE_SAMPLES;
+    residuals.push(v3_sub(projected[i], v3_lerp(points.p0, points.p3, t)));
+    weights.push(handle_weights(t));
+  }
+  const chord = v3_sub(points.p3, points.p0);
+  const chord_direction = v3_length(chord) > REFIT_DIRECTION_EPSILON ? v3_normalize(chord) : v3(1, 0, 0);
+  return { stroke, p0: points.p0, p3: points.p3, chord_direction, residuals, weights };
+}
+
+// Fitted handle offsets, plus the unit direction perpendicular to the chord that,
+// with the chord, spans the stroke's plane.
+type HandleFit = { d0: V3; d3: V3; plane_perpendicular: V3 };
+
+// Least-squares d0, d3 in one plane through the chord. The free fit solves per
+// coordinate with the 2x2 Gram matrix G of the weights. The along-chord parts are the
+// free fit's (the least squares decouples per orthonormal direction). In the
+// perpendicular frame (frame_a, frame_b), with Y the free perpendicular solution
+// (rows d0, d3), restricting both to one unit direction n gives y = Y n and lowers
+// the residual by n^T (Y^T G Y) n, so n is the top eigenvector of that 2x2.
+function planar_handle_fit(target: RefitTarget): HandleFit {
+  let gram_d0_d0 = 0;
+  let gram_d0_d3 = 0;
+  let gram_d3_d3 = 0;
+  let moment_d0 = v3(0, 0, 0);
+  let moment_d3 = v3(0, 0, 0);
+  for (let i = 0; i < target.residuals.length; i++) {
+    const weights = target.weights[i];
+    gram_d0_d0 += weights.weight_d0 * weights.weight_d0;
+    gram_d0_d3 += weights.weight_d0 * weights.weight_d3;
+    gram_d3_d3 += weights.weight_d3 * weights.weight_d3;
+    moment_d0 = v3_add(moment_d0, v3_scale(target.residuals[i], weights.weight_d0));
+    moment_d3 = v3_add(moment_d3, v3_scale(target.residuals[i], weights.weight_d3));
+  }
+  const determinant = gram_d0_d0 * gram_d3_d3 - gram_d0_d3 * gram_d0_d3;
+  const free_d0 = v3_scale(v3_sub(v3_scale(moment_d0, gram_d3_d3), v3_scale(moment_d3, gram_d0_d3)), 1 / determinant);
+  const free_d3 = v3_scale(v3_sub(v3_scale(moment_d3, gram_d0_d0), v3_scale(moment_d0, gram_d0_d3)), 1 / determinant);
+  const chord_direction = target.chord_direction;
+  const frame_a = fallback_perpendicular(chord_direction);
+  const frame_b = v3_cross(chord_direction, frame_a);
+  const d0_a = v3_dot(free_d0, frame_a);
+  const d0_b = v3_dot(free_d0, frame_b);
+  const d3_a = v3_dot(free_d3, frame_a);
+  const d3_b = v3_dot(free_d3, frame_b);
+  // Y^T G Y
+  const moment_aa = gram_d0_d0 * d0_a * d0_a + 2 * gram_d0_d3 * d0_a * d3_a + gram_d3_d3 * d3_a * d3_a;
+  const moment_ab = gram_d0_d0 * d0_a * d0_b + gram_d0_d3 * (d0_a * d3_b + d3_a * d0_b) + gram_d3_d3 * d3_a * d3_b;
+  const moment_bb = gram_d0_d0 * d0_b * d0_b + 2 * gram_d0_d3 * d0_b * d3_b + gram_d3_d3 * d3_b * d3_b;
+  // Top eigenvector angle of [[moment_aa, moment_ab], [moment_ab, moment_bb]].
+  const angle = 0.5 * Math.atan2(2 * moment_ab, moment_aa - moment_bb);
+  const plane_perpendicular = v3_add(v3_scale(frame_a, Math.cos(angle)), v3_scale(frame_b, Math.sin(angle)));
+  const d0 = v3_add(v3_scale(chord_direction, v3_dot(free_d0, chord_direction)), v3_scale(plane_perpendicular, v3_dot(free_d0, plane_perpendicular)));
+  const d3 = v3_add(v3_scale(chord_direction, v3_dot(free_d3, chord_direction)), v3_scale(plane_perpendicular, v3_dot(free_d3, plane_perpendicular)));
+  return { d0, d3, plane_perpendicular };
+}
+
+// Least-squares fit of a one-handle stroke: d0 = d3 = d, a single unknown offset,
+// so it is planar by construction.
+function one_handle_fit(target: RefitTarget): HandleFit {
+  let weighted_sum = v3(0, 0, 0);
+  let weight_squares = 0;
+  for (let i = 0; i < target.residuals.length; i++) {
+    const weight = target.weights[i].weight_d0 + target.weights[i].weight_d3;
+    weighted_sum = v3_add(weighted_sum, v3_scale(target.residuals[i], weight));
+    weight_squares += weight * weight;
+  }
+  const offset = v3_scale(weighted_sum, 1 / weight_squares);
+  const perpendicular = v3_sub(offset, v3_scale(target.chord_direction, v3_dot(offset, target.chord_direction)));
+  const plane_perpendicular = v3_length(perpendicular) > REFIT_DIRECTION_EPSILON ? v3_normalize(perpendicular) : fallback_perpendicular(target.chord_direction);
+  return { d0: offset, d3: { ...offset }, plane_perpendicular };
+}
+
+function independent_handle_fit(target: RefitTarget): HandleFit {
+  if (target.stroke.has_one_handle === true) return one_handle_fit(target);
+  return planar_handle_fit(target);
+}
+
+// Coefficients x minimizing the sum over samples of |targets[i] - sum_k x[k] columns[k][i]|²,
+// through the normal equations, solved by Gaussian elimination with partial pivoting
+// (three unknowns at most here).
+function least_squares_coefficients(columns: V3[][], targets: V3[]): number[] {
+  const unknown_count = columns.length;
+  const normal_matrix: number[][] = [];
+  for (let row = 0; row < unknown_count; row++) {
+    const matrix_row: number[] = [];
+    for (let column = 0; column < unknown_count; column++) {
+      let sum = 0;
+      for (let i = 0; i < targets.length; i++) sum += v3_dot(columns[row][i], columns[column][i]);
+      matrix_row.push(sum);
+    }
+    let right_side = 0;
+    for (let i = 0; i < targets.length; i++) right_side += v3_dot(columns[row][i], targets[i]);
+    matrix_row.push(right_side);
+    normal_matrix.push(matrix_row);
+  }
+  for (let pivot = 0; pivot < unknown_count; pivot++) {
+    let best_row = pivot;
+    for (let row = pivot + 1; row < unknown_count; row++) {
+      if (Math.abs(normal_matrix[row][pivot]) > Math.abs(normal_matrix[best_row][pivot])) best_row = row;
+    }
+    [normal_matrix[pivot], normal_matrix[best_row]] = [normal_matrix[best_row], normal_matrix[pivot]];
+    for (let row = pivot + 1; row < unknown_count; row++) {
+      const factor = normal_matrix[row][pivot] / normal_matrix[pivot][pivot];
+      for (let column = pivot; column <= unknown_count; column++) normal_matrix[row][column] -= factor * normal_matrix[pivot][column];
+    }
+  }
+  const solution = new Array<number>(unknown_count).fill(0);
+  for (let row = unknown_count - 1; row >= 0; row--) {
+    let sum = normal_matrix[row][unknown_count];
+    for (let column = row + 1; column < unknown_count; column++) sum -= normal_matrix[row][column] * solution[column];
+    solution[row] = sum / normal_matrix[row][row];
+  }
+  return solution;
+}
+
+// The handle at `knot_vertex` minus the vertex, from fitted offsets: p1 - p0 or p2 - p3.
+function handle_outward_at_vertex(target: RefitTarget, fit: { d0: V3; d3: V3 }, knot_vertex: VertexId): V3 {
+  const chord_third = v3_scale(v3_sub(target.p3, target.p0), 1 / 3);
+  if (target.stroke.p0_vertex === knot_vertex) return v3_add(chord_third, fit.d0);
+  return v3_sub(fit.d3, chord_third);
+}
+
+// Refit with the handle at `knot_vertex` held on the ray from the knot along the unit
+// `direction`; one unknown length. A two-handle stroke's plane is span(chord,
+// direction) (or the independent fit's plane when the direction runs along the chord)
+// and its far handle is free in that plane. A one-handle stroke's single handle lies
+// on that ray. A fitted length at or below zero would flip the handle and break the
+// knot: the handle then keeps its current length and only the far handle is fitted.
+function handle_fit_with_fixed_direction(
+  target: RefitTarget, independent_fit: HandleFit, knot_vertex: VertexId, direction: V3, current_outward_length: number,
+): HandleFit {
+  const knot_at_p0 = target.stroke.p0_vertex === knot_vertex;
+  const knot_position = knot_at_p0 ? target.p0 : target.p3;
+  const chord_direction = target.chord_direction;
+  const along_chord = v3_dot(direction, chord_direction);
+  const direction_perpendicular = v3_sub(direction, v3_scale(chord_direction, along_chord));
+  const plane_perpendicular = v3_length(direction_perpendicular) > REFIT_DIRECTION_EPSILON
+    ? v3_normalize(direction_perpendicular)
+    : independent_fit.plane_perpendicular;
+  if (target.stroke.has_one_handle === true) {
+    // Single handle point H = knot + length * direction, and d = 2/3 (H - chord midpoint).
+    const chord_midpoint = v3_lerp(target.p0, target.p3, 0.5);
+    const fixed_offset = v3_scale(v3_sub(knot_position, chord_midpoint), 2 / 3);
+    const offset_per_length = v3_scale(direction, 2 / 3);
+    const targets: V3[] = [];
+    const length_column: V3[] = [];
+    for (let i = 0; i < target.residuals.length; i++) {
+      const weight = target.weights[i].weight_d0 + target.weights[i].weight_d3;
+      targets.push(v3_sub(target.residuals[i], v3_scale(fixed_offset, weight)));
+      length_column.push(v3_scale(offset_per_length, weight));
+    }
+    let single_handle_length = least_squares_coefficients([length_column], targets)[0];
+    if (single_handle_length <= 0) single_handle_length = current_outward_length * 1.5;
+    const offset = v3_add(fixed_offset, v3_scale(offset_per_length, single_handle_length));
+    return { d0: offset, d3: { ...offset }, plane_perpendicular };
+  }
+  // Knot handle offset = fixed part + length * direction: d0 = length * direction - chord / 3
+  // at p0, d3 = length * direction + chord / 3 at p3.
+  const chord_third = v3_scale(v3_sub(target.p3, target.p0), 1 / 3);
+  const knot_fixed_offset = knot_at_p0 ? v3_scale(chord_third, -1) : chord_third;
+  const targets: V3[] = [];
+  const length_column: V3[] = [];
+  const far_along_column: V3[] = [];
+  const far_perpendicular_column: V3[] = [];
+  for (let i = 0; i < target.residuals.length; i++) {
+    const knot_weight = knot_at_p0 ? target.weights[i].weight_d0 : target.weights[i].weight_d3;
+    const far_weight = knot_at_p0 ? target.weights[i].weight_d3 : target.weights[i].weight_d0;
+    targets.push(v3_sub(target.residuals[i], v3_scale(knot_fixed_offset, knot_weight)));
+    length_column.push(v3_scale(direction, knot_weight));
+    far_along_column.push(v3_scale(chord_direction, far_weight));
+    far_perpendicular_column.push(v3_scale(plane_perpendicular, far_weight));
+  }
+  const coefficients = least_squares_coefficients([length_column, far_along_column, far_perpendicular_column], targets);
+  let knot_handle_length = coefficients[0];
+  let far_along = coefficients[1];
+  let far_perpendicular = coefficients[2];
+  if (knot_handle_length <= 0) {
+    knot_handle_length = current_outward_length;
+    const far_targets = targets.map((residual, i) => v3_sub(residual, v3_scale(length_column[i], knot_handle_length)));
+    const far_coefficients = least_squares_coefficients([far_along_column, far_perpendicular_column], far_targets);
+    far_along = far_coefficients[0];
+    far_perpendicular = far_coefficients[1];
+  }
+  const knot_offset = v3_add(knot_fixed_offset, v3_scale(direction, knot_handle_length));
+  const far_offset = v3_add(v3_scale(chord_direction, far_along), v3_scale(plane_perpendicular, far_perpendicular));
+  return {
+    d0: knot_at_p0 ? knot_offset : far_offset,
+    d3: knot_at_p0 ? far_offset : knot_offset,
+    plane_perpendicular,
+  };
+}
+
+// Unit normal of the nearest of `surfaces` at its point nearest to `point`, from
+// central differences in (u, v) as nearest_on_surface takes them; null when the
+// partials are parallel there.
+function surface_normal_nearest(surfaces: LayerSurface[], point: V3): V3 | null {
+  let best_entry = surfaces[0];
+  let best_nearest = nearest_on_surface(best_entry.surface, best_entry.grid, point);
+  for (const entry of surfaces) {
+    const nearest = nearest_on_surface(entry.surface, entry.grid, point);
+    if (v3_length(v3_sub(nearest.position, point)) < v3_length(v3_sub(best_nearest.position, point))) {
+      best_entry = entry;
+      best_nearest = nearest;
+    }
+  }
+  const h = 1e-4;
+  const clamp = (x: number) => Math.max(0, Math.min(1, x));
+  const u_lo = clamp(best_nearest.u - h), u_hi = clamp(best_nearest.u + h);
+  const v_lo = clamp(best_nearest.v - h), v_hi = clamp(best_nearest.v + h);
+  const du = v3_sub(best_entry.surface(u_hi, best_nearest.v), best_entry.surface(u_lo, best_nearest.v));
+  const dv = v3_sub(best_entry.surface(best_nearest.u, v_hi), best_entry.surface(best_nearest.u, v_lo));
+  const normal = v3_cross(du, dv);
+  if (v3_length(normal) < REFIT_DIRECTION_EPSILON * REFIT_DIRECTION_EPSILON) return null;
+  return v3_normalize(normal);
+}
+
+// Whether the refit may pin this end of an on-surface stroke on `layer` to the
+// surface: it has no pin of any kind, it is not on the midline, and no stroke of
+// that layer bounding a patch (stroke_bounds_a_patch: a patch with a fill) ends on it.
+function stroke_end_may_pin_to_surface(tablet_document: TabletDocument, layer: Layer, vertex: VertexId): boolean {
+  if (vertex_is_pinned(tablet_document, vertex)) return false;
+  if (vertex_is_on_midline(tablet_document, vertex)) return false;
+  return !tablet_document.strokes.some(
+    (stroke) => (stroke.p0_vertex === vertex || stroke.p3_vertex === vertex) && stroke.layer === layer && stroke_bounds_a_patch(tablet_document, stroke.id),
+  );
+}
+
+// Pin the end to the nearest point of the surfaces the stroke projects onto. The
+// vertex moves there, and every stroke ending on it follows (move_vertex).
+function pin_stroke_end_to_nearest_surface(tablet_document: TabletDocument, stroke: Stroke, vertex: VertexId): void {
+  const position = vertex_position(tablet_document, vertex);
+  let best: { patch: Patch; u: number; v: number } | null = null;
+  let best_distance = Infinity;
+  for (const entry of layer_surfaces(tablet_document, stroke.layer, stroke.id)) {
+    const nearest = nearest_on_surface(entry.surface, entry.grid, position);
+    const distance = v3_length(v3_sub(nearest.position, position));
+    if (distance < best_distance) {
+      best_distance = distance;
+      best = { patch: entry.patch, u: nearest.u, v: nearest.v };
+    }
+  }
+  if (best === null) return;
+  pin_vertex_to_surface(tablet_document, vertex, best.patch, best.u, best.v);
+}
+
+function write_handle_fit(tablet_document: TabletDocument, target: RefitTarget, fit: HandleFit): void {
+  if (target.stroke.has_one_handle === true) {
+    const handle_point = v3_add(v3_lerp(target.p0, target.p3, 0.5), v3_scale(fit.d0, 1.5));
+    set_stroke_single_handle_point(target.stroke, tablet_document, handle_point);
+    return;
+  }
+  target.stroke.d0 = fit.d0;
+  target.stroke.d3 = fit.d3;
+}
+
+// Refit the handles of the on-surface strokes among `strokes`, the strokes of one
+// edit, to their projected samples. Strokes not on the surface, or on a layer with
+// no patch to project onto, are left alone. In phases over the whole list, so no
+// step undoes an earlier stroke's fit:
+// 1. Each free end (stroke_end_may_pin_to_surface) is pinned to the nearest surface
+//    point; a midline end is left exactly as it is.
+// 2. Each stroke is sampled at ON_SURFACE_STROKE_SAMPLES + 1 points, projected, and
+//    fitted with its ends fixed: both handles in one plane through the chord, or
+//    the single handle of a one-handle stroke.
+// 3. Two listed strokes sharing a smooth knot are fitted jointly: the shared tangent
+//    is the normalized average of their two fits' tangents there (signs opposite),
+//    moved into the surface's tangent plane at the knot, and each stroke is refitted
+//    with its knot handle on that direction (handle_fit_with_fixed_direction). A
+//    stroke takes part in one joint fit at most, the first of its knots in
+//    smooth_knots order.
+// 4. The fits are written.
+// 5. Every other knot of a refitted stroke is enforced: a knot between two refitted
+//    strokes first, led by the one in a joint fit, else by the one listed first;
+//    then each knot with a stroke not listed, led by the refitted stroke (that stroke
+//    is only re-aimed, never refitted).
+// The projected-sample cache needs nothing: its signature holds the control points.
+export function refit_on_surface_stroke_control_points(tablet_document: TabletDocument, strokes: StrokeId[]): void {
+  const refitted: Stroke[] = [];
+  for (const stroke_id of strokes) {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    if (stroke.on_surface !== true || refitted.includes(stroke)) continue;
+    if (layer_surfaces(tablet_document, stroke.layer, stroke.id).length === 0) continue;
+    refitted.push(stroke);
+  }
+  for (const stroke of refitted) {
+    for (const vertex of [stroke.p0_vertex, stroke.p3_vertex]) {
+      if (stroke_end_may_pin_to_surface(tablet_document, stroke.layer, vertex)) pin_stroke_end_to_nearest_surface(tablet_document, stroke, vertex);
+    }
+  }
+  const targets = refitted.map((stroke) => refit_target(tablet_document, stroke));
+  const fits = targets.map((target) => independent_handle_fit(target));
+  const joint_knots: SmoothKnot[] = [];
+  const strokes_in_joint_fit = new Set<StrokeId>();
+  for (const knot of tablet_document.smooth_knots) {
+    const index_a = refitted.findIndex((stroke) => stroke.id === knot.stroke_a);
+    const index_b = refitted.findIndex((stroke) => stroke.id === knot.stroke_b);
+    if (index_a < 0 || index_b < 0) continue;
+    if (strokes_in_joint_fit.has(knot.stroke_a) || strokes_in_joint_fit.has(knot.stroke_b)) continue;
+    const outward_a = handle_outward_at_vertex(targets[index_a], fits[index_a], knot.vertex);
+    const outward_b = handle_outward_at_vertex(targets[index_b], fits[index_b], knot.vertex);
+    let shared_direction = v3_normalize(v3_sub(v3_normalize(outward_a), v3_normalize(outward_b)));
+    const knot_surfaces = layer_surfaces(tablet_document, refitted[index_a].layer, null)
+      .filter((entry) => !entry.patch.strokes.includes(knot.stroke_a) && !entry.patch.strokes.includes(knot.stroke_b));
+    const knot_position = vertex_position(tablet_document, knot.vertex);
+    const surface_normal = knot_surfaces.length === 0 ? null : surface_normal_nearest(knot_surfaces, knot_position);
+    if (surface_normal !== null) {
+      shared_direction = v3_normalize(v3_sub(shared_direction, v3_scale(surface_normal, v3_dot(shared_direction, surface_normal))));
+    }
+    if (v3_length(shared_direction) < 0.5) continue; // the two fits cancel (or point along the normal): fitted alone
+    const current_length_a = v3_length(handle_outward_at_vertex(targets[index_a], refitted[index_a], knot.vertex));
+    const current_length_b = v3_length(handle_outward_at_vertex(targets[index_b], refitted[index_b], knot.vertex));
+    fits[index_a] = handle_fit_with_fixed_direction(targets[index_a], fits[index_a], knot.vertex, shared_direction, current_length_a);
+    fits[index_b] = handle_fit_with_fixed_direction(targets[index_b], fits[index_b], knot.vertex, v3_scale(shared_direction, -1), current_length_b);
+    joint_knots.push(knot);
+    strokes_in_joint_fit.add(knot.stroke_a);
+    strokes_in_joint_fit.add(knot.stroke_b);
+  }
+  for (let i = 0; i < targets.length; i++) write_handle_fit(tablet_document, targets[i], fits[i]);
+  const refitted_ids = refitted.map((stroke) => stroke.id);
+  for (const knot of tablet_document.smooth_knots) {
+    if (joint_knots.includes(knot)) continue;
+    const index_a = refitted_ids.indexOf(knot.stroke_a);
+    const index_b = refitted_ids.indexOf(knot.stroke_b);
+    if (index_a < 0 || index_b < 0) continue;
+    const a_in_joint_fit = strokes_in_joint_fit.has(knot.stroke_a);
+    const b_in_joint_fit = strokes_in_joint_fit.has(knot.stroke_b);
+    let leader = index_a < index_b ? knot.stroke_a : knot.stroke_b;
+    if (a_in_joint_fit !== b_in_joint_fit) leader = a_in_joint_fit ? knot.stroke_a : knot.stroke_b;
+    enforce_smooth_knot(tablet_document, knot, leader);
+  }
+  for (const stroke of refitted) {
+    for (const knot of tablet_document.smooth_knots) {
+      if (knot.stroke_a !== stroke.id && knot.stroke_b !== stroke.id) continue;
+      const other = knot.stroke_a === stroke.id ? knot.stroke_b : knot.stroke_a;
+      if (refitted_ids.includes(other)) continue;
+      enforce_smooth_knot(tablet_document, knot, stroke.id);
+    }
+  }
 }
 
 // Fill hit test (Q10): the index of the patch whose surface is under the tap,

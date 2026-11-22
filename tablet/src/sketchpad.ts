@@ -19,7 +19,7 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, refit_on_surface_stroke_control_points, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -995,9 +995,19 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
   }
 
+  // The strokes with an end on the vertex.
+  function strokes_ending_on_vertex(vertex: VertexId): StrokeId[] {
+    return tablet_document.strokes
+      .filter((stroke) => stroke.p0_vertex === vertex || stroke.p3_vertex === vertex)
+      .map((stroke) => stroke.id);
+  }
+
   // Selected-stroke pen-up: a drag (control point or orbit)
   // just ends. A tap moved nothing: with a pick tool armed it feeds the tool,
   // otherwise it selects what it hit (select_tap_target).
+  // A drag of a handle refits the stroke if it is on the surface; a drag of an end
+  // or of a pinned vertex refits every on-surface stroke ending on that vertex
+  // (refit_on_surface_stroke_control_points), inside the drag's history step.
   function edit_mode_pen_up(position: V2, multi: boolean): void {
     if (edit_state === null) return;
     const was_tap = pen_max_displacement_pixels < pen_tap_max_movement_pixels;
@@ -1008,6 +1018,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         // into a single history entry (see end_history_step).
         pen_history_label = `move ${edit_state.dragging} of stroke ${edit_state.stroke_id}`;
         pen_history_merge = true;
+      }
+      const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+      if (edit_state.dragging_pin !== null) {
+        refit_on_surface_stroke_control_points(tablet_document, strokes_ending_on_vertex(edit_state.dragging_pin));
+      } else if (edit_state.dragging === "p0" || edit_state.dragging === "p3") {
+        const dragged_vertex = edit_state.dragging === "p0" ? stroke.p0_vertex : stroke.p3_vertex;
+        refit_on_surface_stroke_control_points(tablet_document, strokes_ending_on_vertex(dragged_vertex));
+      } else if (edit_state.dragging !== null) {
+        refit_on_surface_stroke_control_points(tablet_document, [stroke.id]);
       }
     }
     edit_pen_up(edit_state);
@@ -1069,6 +1088,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // on_surface flag of the selected lines (all to the opposite of the primary's) and is
   // lit by the primary's flag. Their ends keep their pins: only the curve between the
   // ends is drawn on the surface.
+  // Turning it on refits the lines it switched (refit_on_surface_stroke_control_points):
+  // an end with no pin is pinned to the nearest surface point (unless it is on the
+  // midline or a stroke bounding a patch ends on it), and the handles are fitted to the drawn line.
   function refresh_on_surface_button_armed(): void {
     const armed = edit_state !== null && stroke_by_id(tablet_document, edit_state.stroke_id).on_surface === true;
     on_surface_button.classList.toggle("armed", armed);
@@ -1078,11 +1100,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const strokes = selected_strokes();
     const turn_on = stroke_by_id(tablet_document, edit_state.stroke_id).on_surface !== true;
     begin_history_step(history, tablet_document);
+    const switched_on: StrokeId[] = [];
     for (const id of strokes) {
       const stroke = stroke_by_id(tablet_document, id);
+      if (turn_on && stroke.on_surface !== true) switched_on.push(id);
       if (turn_on) stroke.on_surface = true;
       else delete stroke.on_surface;
     }
+    refit_on_surface_stroke_control_points(tablet_document, switched_on);
     end_history_step(history, tablet_document, `${turn_on ? "set" : "clear"} on surface strokes ${strokes.join(" ")}`);
     request_render();
   });
@@ -1583,18 +1608,26 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // A nudge swings (tilts the line's plane): a key step is an exact, known move,
   // so it needs no plane to hold it. `in_plane` (Ctrl held) keeps the handle in
   // the line's plane instead. The sticky swing button is for pen drags only. A
-  // run of nudges on one handle is one history entry.
+  // run of nudges on one handle is one history entry. A nudge that moved the handle
+  // of an on-surface line refits that line (refit_on_surface_stroke_control_points).
   function nudge_selected_handle(right_steps: number, up_steps: number, forward_steps: number, shift: boolean, in_plane: boolean): void {
     if (edit_state === null || edit_state.selected_handle === null || pen_down_screen !== null) return;
     const handle = edit_state.selected_handle;
     const step_pixels = NUDGE_STEP_PIXELS * (shift ? NUDGE_SHIFT_MULTIPLIER : 1);
     begin_history_step(history, tablet_document);
+    const nudged_stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    const offsets_before = JSON.stringify([nudged_stroke.d0, nudged_stroke.d3]);
     edit_nudge_handle(
       edit_state, tablet_document, camera, canvas, handle,
       { x: right_steps * step_pixels, y: -up_steps * step_pixels },
       forward_steps * step_pixels * camera_world_units_per_pixel(camera, canvas.clientHeight),
       in_plane ? "plane" : "swing",
     );
+    // edit_nudge_handle can move nothing (handle behind the eye, a forward nudge in a
+    // plane facing the camera); the refit is not idempotent, so it runs only after a move.
+    if (JSON.stringify([nudged_stroke.d0, nudged_stroke.d3]) !== offsets_before) {
+      refit_on_surface_stroke_control_points(tablet_document, [nudged_stroke.id]);
+    }
     end_history_step(history, tablet_document, `nudge handle ${handle} of stroke ${edit_state.stroke_id}`, true);
     request_render();
   }
@@ -1776,6 +1809,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         select_tap_target(pick_tap_target(position), multi);
       } else if (selected_vertex_drag_last_screen !== null) {
         pen_history_label = `move vertex ${selected_vertex}`;
+        // The on-surface lines ending on the dragged vertex are refitted to the surface.
+        if (selected_vertex !== null) refit_on_surface_stroke_control_points(tablet_document, strokes_ending_on_vertex(selected_vertex));
       }
       pen_down_screen = null;
       pen_orbit_last_screen = null;
