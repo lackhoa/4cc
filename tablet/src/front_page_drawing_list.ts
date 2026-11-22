@@ -37,9 +37,12 @@ async function fill_drawing_list(list: HTMLUListElement): Promise<void> {
   const entries = await list_documents_from_server();
   if (entries === null) return;
   const document_names_with_a_page = new Set(DRAWING_PAGES.map((page) => page.document_name));
+  // Documents a page writes over as a whole: not for drawing in, so not listed.
+  // `head-corrected-trial` is rewritten by the button of fit-head-to-native-head.
+  const overwritten_document_names = new Set(["head-corrected-trial"]);
   const document_names = entries
     .map((entry) => entry.name)
-    .filter((name) => !document_names_with_a_page.has(name))
+    .filter((name) => !document_names_with_a_page.has(name) && !overwritten_document_names.has(name))
     .sort();
   for (const name of document_names) list.appendChild(make_document_item(name));
 }
