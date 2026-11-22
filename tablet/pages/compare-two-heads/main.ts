@@ -128,16 +128,17 @@ document.getElementById("view_profile")!.addEventListener("click", () => look_fr
 for (const checkbox of [surfaces_checkbox, lines_checkbox, skull_checkbox]) checkbox.addEventListener("change", draw);
 
 window.addEventListener("keydown", (event) => {
-  if (event.key === " ") {
+  const key = event.key.toLowerCase();
+  if (key === " ") {
     // A focused button would also be clicked by Space.
     event.preventDefault();
     swap_shown_head();
-  } else if (event.key === "1") show_heads("first");
-  else if (event.key === "2") show_heads("second");
-  else if (event.key === "3") show_heads("both");
-  else if (event.key === "f") look_from(0);
-  else if (event.key === "t") look_from(0.6);
-  else if (event.key === "p") look_from(Math.PI / 2);
+  } else if (key === "1") show_heads("first");
+  else if (key === "2") show_heads("second");
+  else if (key === "3") show_heads("both");
+  else if (key === "f") look_from(0);
+  else if (key === "t") look_from(0.6);
+  else if (key === "p") look_from(Math.PI / 2);
 });
 window.addEventListener("keyup", (event) => {
   if (event.key === " ") event.preventDefault();
