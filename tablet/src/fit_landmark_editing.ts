@@ -8,7 +8,7 @@
 //
 // The bottom bar's elements are found by fixed ids (one editor per page):
 // add_landmark_button, landmark_name_field, remove_landmark_button,
-// undo_landmark_edit_button, reset_landmarks_button.
+// undo_landmark_edit_button, redo_landmark_edit_button, reset_landmarks_button.
 import { TemplatePoint } from "./loomis_girl_plate";
 
 export type EditableLandmark = { name: string; template_point: TemplatePoint };
@@ -35,6 +35,7 @@ export type FitLandmarkEditor<F extends EditableLandmarksFile<EditableLandmark>>
   remember_for_undo: () => void;
   landmarks_edited: () => void;
   undo_landmark_edit: () => void;
+  redo_landmark_edit: () => void;
   select_landmark: (landmark_index: number | null) => void;
   add_landmark_at: (template_point: TemplatePoint) => void;
   remove_selected_landmark: () => void;
@@ -47,11 +48,13 @@ export type FitLandmarkEditor<F extends EditableLandmarksFile<EditableLandmark>>
 
 export function create_fit_landmark_editor<F extends EditableLandmarksFile<EditableLandmark>>(file: F, listeners: FitLandmarkEditorListeners<F>): FitLandmarkEditor<F> {
   const undo_stack: F[] = []; // the file as it was before each edit, oldest first
+  const redo_stack: F[] = []; // the file as it was before each undo, oldest first
   const add_landmark_button = document.getElementById("add_landmark_button") as HTMLButtonElement;
   const landmark_name_field = document.getElementById("landmark_name_field") as HTMLInputElement;
   const remove_landmark_button = document.getElementById("remove_landmark_button") as HTMLButtonElement;
   const undo_button = document.getElementById("undo_landmark_edit_button") as HTMLButtonElement;
   const reset_button = document.getElementById("reset_landmarks_button") as HTMLButtonElement;
+  const redo_button = document.getElementById("redo_landmark_edit_button") as HTMLButtonElement;
 
   const editor: FitLandmarkEditor<F> = {
     file,
@@ -60,6 +63,7 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
 
     remember_for_undo: () => {
       undo_stack.push(structuredClone(editor.file));
+      redo_stack.length = 0; // a new edit: what was undone can no longer be put back
     },
 
     landmarks_edited: () => {
@@ -70,7 +74,17 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
     undo_landmark_edit: () => {
       const before = undo_stack.pop();
       if (before === undefined) return;
+      redo_stack.push(editor.file);
       editor.file = before;
+      if (editor.selected_landmark_index !== null && editor.selected_landmark_index >= editor.file.landmarks.length) editor.selected_landmark_index = null;
+      editor.landmarks_edited();
+    },
+
+    redo_landmark_edit: () => {
+      const after = redo_stack.pop();
+      if (after === undefined) return;
+      undo_stack.push(editor.file);
+      editor.file = after;
       if (editor.selected_landmark_index !== null && editor.selected_landmark_index >= editor.file.landmarks.length) editor.selected_landmark_index = null;
       editor.landmarks_edited();
     },
@@ -127,6 +141,7 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
       landmark_name_field.disabled = selected === null;
       remove_landmark_button.disabled = selected === null;
       undo_button.disabled = undo_stack.length === 0;
+      redo_button.disabled = redo_stack.length === 0;
       add_landmark_button.classList.toggle("armed", editor.is_adding_landmark);
       add_landmark_button.textContent = editor.is_adding_landmark ? listeners.armed_add_button_text : "add landmark";
     },
@@ -142,16 +157,23 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
   add_landmark_button.addEventListener("click", () => toggle_adding(!editor.is_adding_landmark));
   remove_landmark_button.addEventListener("click", editor.remove_selected_landmark);
   undo_button.addEventListener("click", editor.undo_landmark_edit);
+  redo_button.addEventListener("click", editor.redo_landmark_edit);
   reset_button.addEventListener("click", editor.reset_landmarks);
   landmark_name_field.addEventListener("change", () => editor.rename_selected_landmark(landmark_name_field.value));
   landmark_name_field.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === "Escape") landmark_name_field.blur();
   });
 
-  // Ctrl+Z undoes, Delete removes the selected landmark, Escape disarms "add landmark".
+  // Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, Delete removes the selected landmark,
+  // Escape disarms "add landmark".
   window.addEventListener("keydown", (e) => {
     if (document.activeElement === landmark_name_field) return; // the keys belong to the name being typed
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+    const is_command = e.ctrlKey || e.metaKey;
+    const key = e.key.toLowerCase();
+    if (is_command && (key === "y" || (key === "z" && e.shiftKey))) {
+      e.preventDefault();
+      editor.redo_landmark_edit();
+    } else if (is_command && key === "z") {
       e.preventDefault();
       editor.undo_landmark_edit();
     } else if (e.key === "Delete") {
