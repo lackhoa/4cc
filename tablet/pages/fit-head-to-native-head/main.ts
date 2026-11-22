@@ -48,6 +48,13 @@ const NATIVE_HEAD_VIEWS_LAYOUT: PlateViewsLayout = {
   profile_region: { left: 0, top: 50, width: 560, height: 600 },
   plate_image: null,
   background_stroke_color: NATIVE_HEAD_STROKE_COLOR,
+  // The app's dark background (the clear color of the other views).
+  paper_style: "#14161c",
+  label_outline_style: "#14161c",
+  skin_stroke_color: TURNED_SKIN_STROKE_COLOR,
+  skull_stroke_color: { r: 0.75, g: 0.75, b: 0.8 }, // grey: the native head's strokes are blue
+  landmark_style: "#4cd97b",
+  selected_landmark_style: "#ff5fb8",
 };
 
 // ---- state --------------------------------------------------------------------------

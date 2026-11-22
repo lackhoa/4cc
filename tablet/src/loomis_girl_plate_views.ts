@@ -42,10 +42,6 @@ import {
 } from "./loomis_girl_plate";
 
 const PLATE_IMAGE_URL = "/loomis-girl-front-and-profile.webp";
-const SKIN_STROKE_COLOR: Rgb = { r: 0.91, g: 0.15, b: 0.16 };
-const SKULL_STROKE_COLOR: Rgb = { r: 0.16, g: 0.38, b: 0.91 };
-const LANDMARK_STYLE = "#0a9a3a";
-const SELECTED_LANDMARK_STYLE = "#d6007f";
 const MISSING_TEMPLATE_POINT_STYLE = "#c0392b";
 const MIDLINE_STYLE = "#7a4bd6";
 const ON_SURFACE_STROKE_HIGHLIGHT_STYLE = "#ffa94d";
@@ -94,8 +90,15 @@ export type PlateViewsLayout = {
   pixels_per_world_unit: number;
   front_region: PlateRegion; // what a view shows when it is fitted (start, double tap)
   profile_region: PlateRegion;
-  plate_image: { url: string; width_pixels: number; height_pixels: number } | null; // null = a white background
+  plate_image: { url: string; width_pixels: number; height_pixels: number } | null; // null = only the paper
   background_stroke_color: Rgb | null; // the strokes of the adapter's background document; null = the page has none
+  // The colors that must read on the view's background.
+  paper_style: string; // the fill under the plate image
+  label_outline_style: string; // the outline behind the landmark labels
+  skin_stroke_color: Rgb; // the shown document's strokes
+  skull_stroke_color: Rgb;
+  landmark_style: string;
+  selected_landmark_style: string;
 };
 
 // A mark of a landmark in a view, at an image pixel. side_sign is -1 for the mirrored mark
@@ -169,6 +172,12 @@ const LOOMIS_GIRL_PLATE_LAYOUT: PlateViewsLayout = {
   profile_region: PROFILE_REGION,
   plate_image: { url: PLATE_IMAGE_URL, width_pixels: IMAGE_WIDTH_PIXELS, height_pixels: IMAGE_HEIGHT_PIXELS },
   background_stroke_color: null,
+  paper_style: "#fff",
+  label_outline_style: "#ffffff",
+  skin_stroke_color: { r: 0.91, g: 0.15, b: 0.16 },
+  skull_stroke_color: { r: 0.16, g: 0.38, b: 0.91 },
+  landmark_style: "#0a9a3a",
+  selected_landmark_style: "#d6007f",
 };
 
 function fit_view_to_region(view: PlateView): void {
@@ -341,7 +350,7 @@ function draw_plate_layer(state: PlateViewsState, view: PlateView): void {
   const { width, height, device_pixel_ratio } = size_canvas_to_container(view, view.plate_canvas);
   const context = view.plate_canvas.getContext("2d")!;
   context.setTransform(1, 0, 0, 1, 0, 0);
-  context.fillStyle = "#fff";
+  context.fillStyle = state.layout.paper_style;
   context.fillRect(0, 0, width, height);
   const layout_image = state.layout.plate_image;
   if (state.plate_image === null || layout_image === null) return;
@@ -370,8 +379,8 @@ function draw_head_layer(state: PlateViewsState, view: PlateView): void {
       strokes_visible: true,
       mirrored: true, // the document holds one side of the head
       surface_opacity: SURFACE_OPACITY,
-      skin_stroke_color: SKIN_STROKE_COLOR,
-      skull_stroke_color: SKULL_STROKE_COLOR,
+      skin_stroke_color: state.layout.skin_stroke_color,
+      skull_stroke_color: state.layout.skull_stroke_color,
     });
     draw_head_meshes(view.head_meshes, view_projection, camera);
   }
@@ -454,7 +463,7 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     // An empty template is one that is not loaded yet, not one with every point missing.
     const is_missing_template_point = template_position === null && scene.template_document.vertices.length > 0;
     const is_read_from_this_view = adapter.mark_is_read_from_view(view.is_front_view, landmark_index);
-    const style = is_missing_template_point ? MISSING_TEMPLATE_POINT_STYLE : is_selected ? SELECTED_LANDMARK_STYLE : LANDMARK_STYLE;
+    const style = is_missing_template_point ? MISSING_TEMPLATE_POINT_STYLE : is_selected ? state.layout.selected_landmark_style : state.layout.landmark_style;
     const drawn_position = shown === null ? null : template_point_world_position(shown.tablet_document, landmark.template_point);
     const marks = adapter.marks_of_landmark(view.is_front_view, landmark_index);
     for (const mark of marks) {
@@ -501,7 +510,7 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     const point = canvas_point_at_image_pixel(view, label.image_pixel);
     context.font = label.is_selected ? "bold 15px system-ui, sans-serif" : "12px system-ui, sans-serif";
     context.lineWidth = 3;
-    context.strokeStyle = "#ffffff";
+    context.strokeStyle = state.layout.label_outline_style;
     context.strokeText(label.text, point.x + 9, point.y - 7);
     context.fillStyle = label.style;
     context.fillText(label.text, point.x + 9, point.y - 7);
