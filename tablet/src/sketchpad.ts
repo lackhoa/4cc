@@ -19,7 +19,7 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -1159,6 +1159,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // they get is derived per frame from their corners (patch.ts).
   patch_button.addEventListener("click", () => {
     if (edit_state === null || extra_selection.length === 0) return;
+    // Strokes that give no fill (the loop doesn't close, or it has more than 4 corners)
+    // make no patch: the selection stays, so the missing stroke can be added to it.
+    const fill = resolve_patch_fill({ id: -1, strokes: [edit_state.stroke_id, ...extra_selection] }, tablet_document);
+    if (fill === null) {
+      show_change_notice("no patch: these strokes don't close into a loop of 2 to 4 sides");
+      return;
+    }
     begin_history_step(history, tablet_document);
     add_patch(tablet_document, [edit_state.stroke_id, ...extra_selection]);
     end_history_step(history, tablet_document, `make patch [${[edit_state.stroke_id, ...extra_selection].join(" ")}]`);
