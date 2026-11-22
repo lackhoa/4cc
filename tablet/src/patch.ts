@@ -482,6 +482,43 @@ function nearest_on_surface(surface: (u: number, v: number) => V3, grid: Surface
 // How many patches (nearest by grid node) get the Gauss-Newton refinement: a
 // point near a seam can be nearest to the neighbour's rim.
 const PROJECTION_CANDIDATE_PATCHES = 3;
+// A box is skipped only when its squared distance exceeds the cutoff's by this factor:
+// far above rounding, so a skipped surface is strictly farther, never a tie.
+const PROJECTION_PRUNE_MARGIN = 1 + 1e-6;
+
+// The axis-aligned box around a grid's nodes, kept per grid object (a cached grid is
+// never changed in place; a rebuilt patch has a new grid).
+type GridBounds = { min: V3; max: V3 };
+const grid_bounds_by_grid = new WeakMap<SurfaceGrid, GridBounds>();
+
+function cached_grid_bounds(grid: SurfaceGrid): GridBounds {
+  const cached = grid_bounds_by_grid.get(grid);
+  if (cached !== undefined) return cached;
+  const min = v3(Infinity, Infinity, Infinity);
+  const max = v3(-Infinity, -Infinity, -Infinity);
+  for (const column of grid.positions) {
+    for (const position of column) {
+      min.x = Math.min(min.x, position.x);
+      min.y = Math.min(min.y, position.y);
+      min.z = Math.min(min.z, position.z);
+      max.x = Math.max(max.x, position.x);
+      max.y = Math.max(max.y, position.y);
+      max.z = Math.max(max.z, position.z);
+    }
+  }
+  const bounds = { min, max };
+  grid_bounds_by_grid.set(grid, bounds);
+  return bounds;
+}
+
+// No node in the box is nearer than this (squared), computed with the same subtractions
+// a node's distance uses, so rounding can't make it larger than a node's.
+function squared_distance_to_bounds(bounds: GridBounds, point: V3): number {
+  const dx = Math.max(bounds.min.x - point.x, 0, point.x - bounds.max.x);
+  const dy = Math.max(bounds.min.y - point.y, 0, point.y - bounds.max.y);
+  const dz = Math.max(bounds.min.z - point.z, 0, point.z - bounds.max.z);
+  return dx * dx + dy * dy + dz * dz;
+}
 
 // Each point moved to the nearest point on the `layer` patches' surfaces
 // (plan-hairline-drawn-on-surface Q4: an on-surface stroke's ribbon). Patches
@@ -500,15 +537,42 @@ export function project_onto_surface(tablet_document: TabletDocument, points: V3
     surfaces.push({ surface: fill_surface_function(geometry.fill, tablet_document), grid: geometry.grid });
   }
   if (surfaces.length === 0) return points;
+  const bounds_of_surfaces = surfaces.map((entry) => cached_grid_bounds(entry.grid));
   return points.map((point) => {
+    // The distance to the grid's nearest node; the squares are compared and one root
+    // taken, the same number as the least v3_length(v3_sub(node, point)).
     const node_distance = (grid: SurfaceGrid): number => {
-      let best = Infinity;
-      for (const column of grid.positions) for (const position of column) best = Math.min(best, v3_length(v3_sub(position, point)));
-      return best;
+      let best_squared = Infinity;
+      for (const column of grid.positions) {
+        for (const position of column) {
+          const dx = position.x - point.x;
+          const dy = position.y - point.y;
+          const dz = position.z - point.z;
+          const squared = dx * dx + dy * dy + dz * dz;
+          if (squared < best_squared) best_squared = squared;
+        }
+      }
+      return Math.sqrt(best_squared);
     };
-    const candidates = surfaces
-      .map((entry) => ({ entry, distance: node_distance(entry.grid) }))
-      .sort((a, b) => a.distance - b.distance)
+    // The PROJECTION_CANDIDATE_PATCHES surfaces with the nearest nodes, ties in surface
+    // order. Surfaces are scanned nearest bounding box first; once a box is farther than
+    // the third nearest node so far (with a margin, so even a rounded tie can't be lost),
+    // it and every box after it are skipped: none of their nodes could be in the three.
+    const by_lower_bound = surfaces
+      .map((entry, index) => ({ entry, index, lower_bound_squared: squared_distance_to_bounds(bounds_of_surfaces[index], point) }))
+      .sort((a, b) => a.lower_bound_squared - b.lower_bound_squared);
+    const scanned: { entry: (typeof surfaces)[number]; index: number; distance: number }[] = [];
+    let cutoff_squared = Infinity;
+    for (const candidate of by_lower_bound) {
+      if (candidate.lower_bound_squared > cutoff_squared * PROJECTION_PRUNE_MARGIN) break;
+      scanned.push({ entry: candidate.entry, index: candidate.index, distance: node_distance(candidate.entry.grid) });
+      if (scanned.length < PROJECTION_CANDIDATE_PATCHES) continue;
+      const nearest_distances = scanned.map((entry) => entry.distance).sort((a, b) => a - b);
+      const cutoff = nearest_distances[PROJECTION_CANDIDATE_PATCHES - 1];
+      cutoff_squared = cutoff * cutoff;
+    }
+    const candidates = scanned
+      .sort((a, b) => a.distance - b.distance || a.index - b.index)
       .slice(0, PROJECTION_CANDIDATE_PATCHES);
     let best = point, best_distance = Infinity;
     for (const { entry } of candidates) {
