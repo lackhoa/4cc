@@ -489,9 +489,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const is_pin_host = selected_vertex_pin !== null && selected_vertex_pin.host_stroke === stroke.id;
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
-      // The stroke's own color and lightness show only while it is neither hot nor selected.
-      let color = STROKE_COLOR;
-      let lightness_additions = stroke.lightness_additions ?? null;
+      // The stroke's own color and lightness: what its mirrored side always shows, and
+      // its stored side while it is neither hot, selected, nor the host of a pin.
+      let own_color = STROKE_COLOR;
+      if (stroke.line_color !== undefined) {
+        own_color = stroke.line_color;
+      } else if (locked_layers.has(stroke.layer)) {
+        own_color = LOCKED_LAYER_STROKE_COLOR;
+      }
+      const own_lightness_additions = stroke.lightness_additions ?? null;
+      let color = own_color;
+      let lightness_additions = own_lightness_additions;
       if (hot) {
         color = HOT_COLOR;
         lightness_additions = null;
@@ -501,14 +509,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (is_pin_host) {
         color = PIN_HOST_STROKE_COLOR;
         lightness_additions = null;
-      } else if (stroke.line_color !== undefined) {
-        color = stroke.line_color;
-      } else if (locked_layers.has(stroke.layer)) {
-        color = LOCKED_LAYER_STROKE_COLOR;
       }
       append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ false, vertices);
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
-      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ true, vertices);
+      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, /* is_mirrored_side */ true, vertices);
     }
     timed("frame.contours", () => append_contour_ribbons(vertices));
     timed("frame.upload", () => set_stroke_mesh(renderer, vertex_sink_view(vertices)));
