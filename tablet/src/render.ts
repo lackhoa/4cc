@@ -79,6 +79,7 @@ export type LineRenderer = {
   reference_buffer: WebGLBuffer; // reference model, triangle list, drawn first (depth writes on)
   reference_vertex_count: number;
   stroke_buffer: WebGLBuffer; // committed stroke ribbons, triangle list
+  stroke_buffer_capacity_bytes: number; // see upload_into_growing_buffer
   stroke_vertex_count: number;
   // Patch fills and spheres, triangle list in the shaded-surface layout, drawn with
   // surface_program and lit from surface_camera_forward.
@@ -92,6 +93,7 @@ export type LineRenderer = {
   surface_a_normal: number;
   surface_camera_forward: V3;
   surface_buffer: WebGLBuffer;
+  surface_buffer_capacity_bytes: number; // see upload_into_growing_buffer
   surface_vertex_count: number;
   preview_buffer: WebGLBuffer; // in-progress pen stroke, line strip
   preview_vertex_count: number;
@@ -135,6 +137,7 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     reference_buffer: gl.createBuffer()!,
     reference_vertex_count: 0,
     stroke_buffer: gl.createBuffer()!,
+    stroke_buffer_capacity_bytes: 0,
     stroke_vertex_count: 0,
     surface_program,
     surface_u_view_projection: gl.getUniformLocation(surface_program, "u_view_projection")!,
@@ -146,6 +149,7 @@ export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
     surface_a_normal: gl.getAttribLocation(surface_program, "a_normal"),
     surface_camera_forward: { x: 0, y: 0, z: 1 },
     surface_buffer: gl.createBuffer()!,
+    surface_buffer_capacity_bytes: 0,
     surface_vertex_count: 0,
     preview_buffer: gl.createBuffer()!,
     preview_vertex_count: 0,
@@ -165,20 +169,31 @@ export function set_reference_mesh(renderer: LineRenderer, vertices: Float32Arra
   renderer.reference_vertex_count = vertices.length / 6;
 }
 
+// Writes `vertices` to the front of `buffer`, whose storage only grows: an upload that fits
+// in `capacity_bytes` goes in with bufferSubData, a bigger one first reallocates the storage
+// (at least doubled). The draw reads only the vertex count, never the bytes past it.
+// Returns the buffer's capacity afterwards.
+function upload_into_growing_buffer(gl: WebGLRenderingContext, buffer: WebGLBuffer, capacity_bytes: number, vertices: Float32Array): number {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  let capacity_after = capacity_bytes;
+  if (vertices.byteLength > capacity_bytes) {
+    capacity_after = Math.max(vertices.byteLength, 2 * capacity_bytes);
+    gl.bufferData(gl.ARRAY_BUFFER, capacity_after, gl.DYNAMIC_DRAW);
+  }
+  if (vertices.byteLength > 0) gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices);
+  return capacity_after;
+}
+
 // vertices: interleaved [x,y,z, r,g,b] triangle list of all stroke ribbons.
 export function set_stroke_mesh(renderer: LineRenderer, vertices: Float32Array): void {
-  const gl = renderer.gl;
-  gl.bindBuffer(gl.ARRAY_BUFFER, renderer.stroke_buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+  renderer.stroke_buffer_capacity_bytes = upload_into_growing_buffer(renderer.gl, renderer.stroke_buffer, renderer.stroke_buffer_capacity_bytes, vertices);
   renderer.stroke_vertex_count = vertices.length / 6;
 }
 
 // vertices: triangle list of all patch fills and spheres in the shaded-surface layout
 // (vertex_sink.ts FLOATS_PER_SHADED_VERTEX: position, base color, unit normal).
 export function set_surface_mesh(renderer: LineRenderer, vertices: Float32Array): void {
-  const gl = renderer.gl;
-  gl.bindBuffer(gl.ARRAY_BUFFER, renderer.surface_buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+  renderer.surface_buffer_capacity_bytes = upload_into_growing_buffer(renderer.gl, renderer.surface_buffer, renderer.surface_buffer_capacity_bytes, vertices);
   renderer.surface_vertex_count = vertices.length / FLOATS_PER_SHADED_VERTEX;
 }
 

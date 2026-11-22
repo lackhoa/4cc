@@ -43,6 +43,20 @@ export function push_vertex(sink: VertexSink, position: V3, color: Rgb): void {
   sink.length = cursor;
 }
 
+// push_vertex from position components, for a builder that keeps its points in flat arrays.
+export function push_vertex_components(sink: VertexSink, x: number, y: number, z: number, color: Rgb): void {
+  ensure_room_for(sink, FLOATS_PER_VERTEX);
+  const data = sink.data;
+  let cursor = sink.length;
+  data[cursor++] = x;
+  data[cursor++] = y;
+  data[cursor++] = z;
+  data[cursor++] = color.r;
+  data[cursor++] = color.g;
+  data[cursor++] = color.b;
+  sink.length = cursor;
+}
+
 // The shaded-surface layout: interleaved [x,y,z, r,g,b, nx,ny,nz], the base color
 // unshaded and the unit surface normal; the shader lights it from the camera. A zero
 // normal means unlit (drawn in the base color as is).
