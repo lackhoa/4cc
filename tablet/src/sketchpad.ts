@@ -560,6 +560,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // One drawn patch's run of floats in the surface mesh and what it was written from: the
   // same geometry object (a cached geometry is never changed in place), color, flat or
   // shaded, and mirrored side give the same floats, so a frame keeps the run as it is.
+  // A patch gives one slice for its stored side and, when mirrored, one for its mirrored side.
   type SurfaceSlice = { geometry: PatchGeometry; color: Rgb; is_flat: boolean; is_drawn_on_mirrored_side: boolean; start: number; end: number };
   // The slices the surface buffer holds now, in mesh order (the sink holds the same
   // floats: only rebuild_surface_mesh writes it); null while the buffer holds no known
@@ -609,32 +610,42 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       // The selected patch is drawn even with no fill, so the selection stays visible.
       // The hot one too, so the pen shows what a tap would select.
       if (!surface_drawn && !is_selected_or_hot) return;
-      const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
-      // A patch with its own fill color is drawn flat in it, unless it is the selected (or hot) one.
+      // The mirrored side never shows selected, hot or pin host: it is drawn like any
+      // other patch, so not at all while surfaces are off.
+      const is_drawn_on_mirrored_side = surface_drawn && tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
       const geometry = cached_patch_geometry(patch_geometry_cache, patch, tablet_document);
       if (geometry === null) return;
-      if (patch.fill_color !== undefined && !is_selected_or_hot) {
-        const fill_color = patch.fill_color;
-        write_slice(geometry, fill_color, /* is_flat */ true, is_drawn_on_mirrored_side, () => {
+      // The patch's own look: flat in its fill color when it has one, else shaded.
+      const fill_color = patch.fill_color;
+      const own_shaded_color = locked_layers.has(layer) ? LOCKED_LAYER_SURFACE_COLOR : SURFACE_COLOR;
+      // The stored side: a patch with its own fill color is drawn flat in it, unless it is the selected (or hot) one.
+      if (fill_color !== undefined && !is_selected_or_hot) {
+        write_slice(geometry, fill_color, /* is_flat */ true, /* is_drawn_on_mirrored_side */ false, () => {
           append_flat_grid_mesh_with_normals(geometry.grid, fill_color, vertices);
-          if (is_drawn_on_mirrored_side) append_flat_grid_mesh_with_normals(cached_mirrored_grid(geometry), fill_color, vertices);
         });
-        return;
+      } else {
+        let color = own_shaded_color;
+        if (index === selected_patch) {
+          color = PATCH_HIGHLIGHT_COLOR;
+        } else if (index === hot_patch) {
+          color = PATCH_HOT_COLOR;
+        } else if (is_pin_host) {
+          color = PIN_HOST_PATCH_COLOR;
+        }
+        write_slice(geometry, color, /* is_flat */ false, /* is_drawn_on_mirrored_side */ false, () => {
+          append_patch_geometry_mesh_with_normals(geometry, color, vertices);
+        });
       }
-      let color = SURFACE_COLOR;
-      if (index === selected_patch) {
-        color = PATCH_HIGHLIGHT_COLOR;
-      } else if (index === hot_patch) {
-        color = PATCH_HOT_COLOR;
-      } else if (is_pin_host) {
-        color = PIN_HOST_PATCH_COLOR;
-      } else if (locked_layers.has(layer)) {
-        color = LOCKED_LAYER_SURFACE_COLOR;
+      if (!is_drawn_on_mirrored_side) return;
+      if (fill_color !== undefined) {
+        write_slice(geometry, fill_color, /* is_flat */ true, /* is_drawn_on_mirrored_side */ true, () => {
+          append_flat_grid_mesh_with_normals(cached_mirrored_grid(geometry), fill_color, vertices);
+        });
+      } else {
+        write_slice(geometry, own_shaded_color, /* is_flat */ false, /* is_drawn_on_mirrored_side */ true, () => {
+          append_grid_mesh_with_normals(cached_mirrored_grid(geometry), own_shaded_color, vertices);
+        });
       }
-      write_slice(geometry, color, /* is_flat */ false, is_drawn_on_mirrored_side, () => {
-        append_patch_geometry_mesh_with_normals(geometry, color, vertices);
-        if (is_drawn_on_mirrored_side) append_grid_mesh_with_normals(cached_mirrored_grid(geometry), color, vertices);
-      });
     });
     // The spheres are rebuilt from the document each frame: always written.
     const spheres_start = vertices.length;
