@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>compare-two-heads</title>
+<style>
+  #compare_canvas { height: min(640px, 70vh); }
+  #shown_name { font-weight: bold; font-size: 1.2em; margin-left: 12px; }
+  button.is_shown { outline: 2px solid currentColor; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Two heads, one camera</h1>
+  <p class="sub">Two documents drawn at the same place with the same camera, to compare their proportions by swapping. Other documents: <code>?first=name&amp;second=name</code>. <a href="/">main menu</a></p>
+
+  <section>
+    <div class="controls">
+      <button id="show_first"></button>
+      <button id="show_second"></button>
+      <button id="show_both">both, lines only</button>
+      <span id="shown_name"></span>
+    </div>
+    <div class="controls">
+      <button id="view_front">front</button>
+      <button id="view_three_quarter">three-quarter</button>
+      <button id="view_profile">profile</button>
+      <label><input type="checkbox" id="surfaces_visible" checked> surfaces</label>
+      <label><input type="checkbox" id="lines_visible" checked> lines</label>
+      <label><input type="checkbox" id="skull_visible"> skull lines</label>
+    </div>
+    <canvas id="compare_canvas"></canvas>
+    <p class="hint">Space swaps the two heads. 1 / 2 / 3 = first / second / both. F / T / P = front / three-quarter / profile. Drag to orbit, wheel to zoom: the camera stays put when the head is swapped.</p>
+  </section>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
