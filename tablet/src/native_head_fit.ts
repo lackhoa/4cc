@@ -1,7 +1,8 @@
 // The fit of the scan head (skull-zanatomy) onto the native head (plan-native-head-topology,
 // stage 3), by the landmarks of fit-landmarks/native-head.json. One fit for two callers:
-// tmp/make_corrected_head_document.ts writes it as the document head-corrected-trial, the
-// page fit-head-to-native-head shows it live while the landmarks are edited.
+// src/corrected_head_document.ts builds the document head-corrected-trial from it (for
+// tmp/make_corrected_head_document.ts and the page's write button), the page
+// fit-head-to-native-head shows it live while the landmarks are edited.
 // No DOM here: the script runs this under node.
 import { TabletDocument, enforce_midline, stroke_control_points, vertex_position } from "./document";
 import { LandmarkPair, fitted_document_from_landmark_pairs, mirrored_landmark_pairs } from "./landmark_fit";

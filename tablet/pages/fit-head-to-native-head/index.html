@@ -46,6 +46,8 @@
   <input type="text" id="landmark_name_field" placeholder="no landmark selected" autocomplete="off">
   <button id="remove_landmark_button">remove</button>
   <label><input type="checkbox" id="landmark_names_visible"> names</label>
+  <button id="write_corrected_head_button">write head-corrected-trial</button>
+  <a href="../compare-two-heads/">compare-two-heads</a>
   <span id="fit_status"></span>
 </div>
 <div class="views">
@@ -113,9 +115,10 @@
   Sources: the scan head is the document <code>skull-zanatomy</code> (drawn mirrored, its centre plane closed), the
   native head the document <code>native-head</code>. The landmarks are saved to
   <code>tablet/fit-landmarks/native-head.json</code> on every edit; the fit (<code>tablet/src/native_head_fit.ts</code>,
-  <code>tablet/src/landmark_fit.ts</code>) is live here and saved nowhere. The document <code>head-corrected-trial</code>
-  (what <a href="/pages/compare-two-heads/">compare-two-heads</a> shows) changes only when
-  <code>npx tsx tmp/make_corrected_head_document.ts head-corrected-trial</code> is run again.
+  <code>tablet/src/landmark_fit.ts</code>) is live here. The document <code>head-corrected-trial</code>
+  (what <a href="/pages/compare-two-heads/">compare-two-heads</a> shows) is written from the landmarks as they are on
+  this page by "write head-corrected-trial", or by <code>npx tsx tmp/make_corrected_head_document.ts head-corrected-trial</code>;
+  both build it with <code>tablet/src/corrected_head_document.ts</code>.
   The plan is <code>plan-native-head-topology.md</code>, step 3.
 </p>
 </main>

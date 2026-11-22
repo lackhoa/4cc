@@ -11,11 +11,15 @@
 // the fitted head turned, the scan head before the fit, and how far each landmark is from
 // its target. The views in the fold are drawn when it opens.
 // The fit is the one of tmp/make_corrected_head_document.ts (src/native_head_fit.ts),
-// computed here every time the landmarks or either document change; it is saved nowhere.
+// computed here every time the landmarks or either document change. The button "write
+// head-corrected-trial" in the landmark bar writes the document head-corrected-trial from
+// the landmarks as they are on the page, built by src/corrected_head_document.ts as the
+// script builds it.
 // Every landmark edit is saved to the fit-landmarks file at once. Both documents are drawn
 // on other pages; this page polls them and refits when one changed.
 import "../../pages.css";
 import { OrbitCamera, camera_view_projection, default_camera } from "../../src/camera";
+import { corrected_head_document_from_landmarks, corrected_head_document_text } from "../../src/corrected_head_document";
 import { TabletDocument, empty_document } from "../../src/document";
 import { attach_orbit_controls } from "../../src/explainer/orbit_controls";
 import { create_fit_landmark_editor } from "../../src/fit_landmark_editing";
@@ -32,6 +36,7 @@ import { Rgb } from "../../src/vertex_sink";
 
 const PAGE_NAME = "fit-head-to-native-head";
 const FIT_LANDMARKS_NAME = "native-head";
+const CORRECTED_HEAD_DOCUMENT_NAME = "head-corrected-trial";
 const DOCUMENT_POLL_INTERVAL_MS = 2000;
 const TURNED_SKIN_STROKE_COLOR: Rgb = { r: 1, g: 0.42, b: 0.43 };
 const TURNED_SKULL_STROKE_COLOR: Rgb = { r: 0.5, g: 0.7, b: 1 };
@@ -67,6 +72,9 @@ const NATIVE_HEAD_VIEWS_LAYOUT: PlateViewsLayout = {
 // the scan head's on the server; "" = not loaded.
 let template_document: TabletDocument = empty_document();
 let template_revision = "";
+// The scan head as loaded, before scan_head_prepared_for_native_fit: what the corrected
+// head is built from (corrected_head_document_from_landmarks prepares it itself). Null = not loaded.
+let loaded_scan_head: TabletDocument | null = null;
 let native_head: ShownDocument | null = null;
 // The landmarks as the server had them when the page loaded: what "reset" goes back to.
 // Until they are loaded, the page shows no landmarks and saves nothing.
@@ -76,12 +84,14 @@ let fit_count = 0; // counts the fits: the revision of `fitted`
 let landmarks_can_be_fitted = true;
 let unplaced_landmark_messages: string[] = [];
 let failure_message = ""; // the last load or save that failed; cleared by the next save that works
+let corrected_head_write_message = ""; // how the last "write head-corrected-trial" went; "" = not pressed yet
 
 const names_checkbox = document.getElementById("landmark_names_visible") as HTMLInputElement;
 const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
 const stiffness_slider = document.getElementById("fit_stiffness") as HTMLInputElement;
 const stiffness_value = document.getElementById("fit_stiffness_value")!;
 const fit_status = document.getElementById("fit_status")!;
+const write_corrected_head_button = document.getElementById("write_corrected_head_button") as HTMLButtonElement;
 
 // ---- the landmark file --------------------------------------------------------------
 
@@ -215,10 +225,49 @@ function update_bottom_bar(): void {
   stiffness_slider.value = String(Math.cbrt(editor.file.stiffness));
   stiffness_value.textContent = editor.file.stiffness === 0 ? "0" : editor.file.stiffness.toPrecision(2);
   const messages: string[] = [];
+  if (corrected_head_write_message !== "") messages.push(corrected_head_write_message);
   if (failure_message !== "") messages.push(failure_message);
   if (!landmarks_can_be_fitted) messages.push("these landmarks cannot be fitted (two landmarks on the same template point?): showing the last fit that worked");
   if (unplaced_landmark_messages.length > 0) messages.push(`left out of the fit: ${unplaced_landmark_messages.join("; ")}`);
   fit_status.textContent = messages.join(" | ");
+}
+
+// ---- writing head-corrected-trial ---------------------------------------------------
+// The corrected head built from the landmarks as they are on the page (also an edit whose
+// save has not finished), written over documents/head-corrected-trial.json. The trial is
+// replaced, not edited: the write is based on whatever revision the server lists right
+// before it.
+
+async function write_corrected_head_document(): Promise<void> {
+  if (loaded_scan_head === null || native_head === null || loaded_landmarks_file === null) {
+    corrected_head_write_message = `${CORRECTED_HEAD_DOCUMENT_NAME} not written: the documents or the landmarks are not loaded yet`;
+    update_bottom_bar();
+    return;
+  }
+  write_corrected_head_button.disabled = true;
+  try {
+    const corrected_head_document = corrected_head_document_from_landmarks(loaded_scan_head, native_head.tablet_document, editor.file);
+    const document_text = corrected_head_document_text(corrected_head_document.corrected_head);
+    const entries = await list_documents_from_server();
+    if (entries === null) throw new Error("could not list the documents (is the server running?)");
+    const listed_entry = entries.find((entry) => entry.name === CORRECTED_HEAD_DOCUMENT_NAME);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    // No base revision = a new file: the server refuses to replace a file without one (vite.config.ts).
+    if (listed_entry !== undefined) headers["X-Base-Revision"] = listed_entry.revision;
+    const response = await fetch(`/api/documents/${CORRECTED_HEAD_DOCUMENT_NAME}`, { method: "POST", headers, body: document_text });
+    if (!response.ok) {
+      const response_body = (await response.json()) as { error?: string };
+      throw new Error(`HTTP ${response.status}: ${response_body.error ?? "the server gave no reason"}`);
+    }
+    corrected_head_write_message = `${CORRECTED_HEAD_DOCUMENT_NAME} written ${new Date().toLocaleTimeString()}`;
+  } catch (error) {
+    console.error(`${PAGE_NAME}: writing ${CORRECTED_HEAD_DOCUMENT_NAME} failed`, error);
+    const error_text = error instanceof Error ? error.message : String(error);
+    corrected_head_write_message = `${CORRECTED_HEAD_DOCUMENT_NAME} not written: ${error_text}`;
+  } finally {
+    write_corrected_head_button.disabled = false;
+    update_bottom_bar();
+  }
 }
 
 // ---- views --------------------------------------------------------------------------
@@ -458,6 +507,7 @@ async function load_documents_if_changed(): Promise<void> {
     }
     const scan_head = await document_if_changed(template_name, template_entry.revision, template_revision);
     if (scan_head !== null) {
+      loaded_scan_head = scan_head.tablet_document;
       template_document = scan_head_prepared_for_native_fit(scan_head.tablet_document);
       template_revision = scan_head.revision;
     }
@@ -511,6 +561,7 @@ stiffness_slider.addEventListener("change", () => {
 });
 
 names_checkbox.addEventListener("change", draw_everything);
+write_corrected_head_button.addEventListener("click", () => void write_corrected_head_document());
 skull_checkbox.addEventListener("change", draw_head_model_pane); // the plate views listen to it themselves
 
 // The views in the fold have no size while it is closed: they are sized and drawn when it opens.
