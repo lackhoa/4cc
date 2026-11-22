@@ -1,7 +1,8 @@
 // The landmark editing of a page that fits the template to a plate
 // (fit-head-to-loomis-girl): the file as a whole is the unit of undo, with a selected
 // landmark that can be renamed or removed, "add landmark" that waits for a template point
-// to be picked (on the head model pane), and reset to the starting file. Written against
+// to be picked (where the page says: the head model pane, or the views of
+// fit-head-to-native-head), and reset to the starting file. Written against
 // what both files have, `landmarks` with a `name` and a `template_point` each; the page
 // decides what a new landmark's marks are and what to do after an edit (save, draw).
 //
@@ -22,6 +23,8 @@ export type FitLandmarkEditorListeners<F extends EditableLandmarksFile<EditableL
   on_edited: () => void;
   // After the selection or the "adding" state changed without the file changing: redraw.
   on_view_changed: () => void;
+  // The text of the add button while adding is armed: says where to tap.
+  armed_add_button_text: string;
 };
 
 export type FitLandmarkEditor<F extends EditableLandmarksFile<EditableLandmark>> = {
@@ -125,7 +128,7 @@ export function create_fit_landmark_editor<F extends EditableLandmarksFile<Edita
       remove_landmark_button.disabled = selected === null;
       undo_button.disabled = undo_stack.length === 0;
       add_landmark_button.classList.toggle("armed", editor.is_adding_landmark);
-      add_landmark_button.textContent = editor.is_adding_landmark ? "tap a point on the head model…" : "add landmark";
+      add_landmark_button.textContent = editor.is_adding_landmark ? listeners.armed_add_button_text : "add landmark";
     },
   };
 

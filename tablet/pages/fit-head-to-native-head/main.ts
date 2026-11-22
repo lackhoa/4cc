@@ -3,10 +3,13 @@
 // landmarks of fit-landmarks/native-head.json, and the place where those landmarks are tuned.
 // Works like fit-head-to-loomis-girl, with the native head in place of the plate: a
 // landmark is one point of the scan head plus its target on the native head, a vertex of
-// it or a fixed position. Top to bottom: the fitted head over the native head with the
-// targets to drag, the landmark bar and the head model (a new landmark's template point is
-// picked there), the fitted head turned, the scan head before the fit, and how far each
-// landmark is from its target.
+// it or a fixed position. Top to bottom: the landmark bar (undo, reset, add, the selected
+// landmark's name and remove, names, the fit status), the fitted head over the native head
+// with the targets to drag (a new landmark's template point is picked there, on the red
+// lines; a target let go near a blue vertex is pinned to it) and the legend under them;
+// then, in the closed "More views" fold, the stiffness and skin sliders, the head model,
+// the fitted head turned, the scan head before the fit, and how far each landmark is from
+// its target. The views in the fold are drawn when it opens.
 // The fit is the one of tmp/make_corrected_head_document.ts (src/native_head_fit.ts),
 // computed here every time the landmarks or either document change; it is saved nowhere.
 // Every landmark edit is saved to the fit-landmarks file at once. Both documents are drawn
@@ -55,6 +58,7 @@ const NATIVE_HEAD_VIEWS_LAYOUT: PlateViewsLayout = {
   skull_stroke_color: { r: 0.75, g: 0.75, b: 0.8 }, // grey: the native head's strokes are blue
   landmark_style: "#4cd97b",
   selected_landmark_style: "#ff5fb8",
+  landmark_pin_distance_pixels: 8,
 };
 
 // ---- state --------------------------------------------------------------------------
@@ -161,7 +165,8 @@ function new_landmark_at(template_point: TemplatePoint, name: string): NativeHea
   return { name: name, template_point: template_point, target: { native_position: fitted_position }, note: "" };
 }
 
-// Undo, selection, add / remove / rename / reset and the bottom bar's buttons for them.
+// Undo, selection, add / remove / rename / reset and the landmark bar's buttons for them
+// (the editor calls it its bottom bar; on this page it sits above the views).
 const editor = create_fit_landmark_editor<NativeHeadLandmarksFile>(empty_landmarks_file(), {
   starting_file: () => structuredClone(loaded_landmarks_file ?? empty_landmarks_file()),
   new_landmark: new_landmark_at,
@@ -172,6 +177,7 @@ const editor = create_fit_landmark_editor<NativeHeadLandmarksFile>(empty_landmar
     draw_everything();
   },
   on_view_changed: () => draw_everything(),
+  armed_add_button_text: "tap a red line in front or profile…",
 });
 
 // ---- the fit ------------------------------------------------------------------------
@@ -202,7 +208,7 @@ function schedule_refit(): void {
   });
 }
 
-// ---- bottom bar ---------------------------------------------------------------------
+// ---- landmark bar -------------------------------------------------------------------
 
 function update_bottom_bar(): void {
   editor.update_bottom_bar();
@@ -254,7 +260,8 @@ function marks_of_landmark(is_front_view: boolean, landmark_index: number): Plat
 }
 
 // The target becomes a fixed position, starting from where it is now (a native vertex's
-// position): a front drag sets x (not on the midline) and y, a profile drag z and y.
+// position): a front drag sets x (not on the midline) and y, a profile drag z and y. A drag
+// let go near a native vertex then pins it to that vertex (pin_landmark_to_vertex).
 function move_mark_to(is_front_view: boolean, mark: PlateMark): void {
   const landmark = editor.file.landmarks[mark.landmark_index];
   const target_position = landmark_target_position(landmark);
@@ -285,9 +292,17 @@ const native_head_views_adapter: PlateViewsAdapter = {
     return v3(0, y, (PROFILE_ORIGIN_COLUMN_PIXELS - image_pixel.x) / PIXELS_PER_WORLD_UNIT);
   },
   marks_of_landmark,
-  mark_is_read_from_view: () => true, // every mark is a cross: a target is not read off a picture
+  // A cross (or a square when pinned): a target is not read off a picture.
+  mark_is_read_from_view: () => true,
   move_mark_to,
   front_midline: null,
+  background_vertex_pinning: {
+    landmark_is_pinned: (landmark_index) => "native_vertex" in editor.file.landmarks[landmark_index].target,
+    landmark_target_position: (landmark_index) => landmark_target_position(editor.file.landmarks[landmark_index]),
+    pin_landmark_to_vertex: (landmark_index, native_vertex_id) => {
+      editor.file.landmarks[landmark_index].target = { native_vertex: native_vertex_id };
+    },
+  },
 };
 
 const plate_views = start_plate_views(
@@ -307,11 +322,13 @@ const plate_views = start_plate_views(
     on_dragged: schedule_refit,
     on_drag_ended: editor.landmarks_edited,
     on_landmark_selected: editor.select_landmark,
+    landmark_adding_on_views: { is_armed: () => editor.is_adding_landmark, on_template_point_picked: editor.add_landmark_at },
   },
 );
 
 // ---- head model pane ----------------------------------------------------------------
-// The scan head with the landmarks on it; "add landmark" picks a point here.
+// The scan head with the landmarks on it, for reference (in the fold): "add landmark"
+// picks its point on the views above, not here.
 
 const draw_head_model_pane = start_head_model_pane(
   PAGE_NAME,
@@ -323,9 +340,9 @@ const draw_head_model_pane = start_head_model_pane(
     selected_landmark_index: editor.selected_landmark_index,
     landmark_names_visible: names_checkbox.checked,
     skull_visible: skull_checkbox.checked,
-    is_picking_template_point: editor.is_adding_landmark,
+    is_picking_template_point: false,
   }),
-  { on_template_point_picked: editor.add_landmark_at, on_landmark_tapped: editor.select_landmark },
+  { on_template_point_picked: editor.add_landmark_at, on_landmark_tapped: editor.select_landmark }, // never picks: is_picking_template_point is false
 );
 
 // ---- the fitted head, turned --------------------------------------------------------
@@ -495,6 +512,22 @@ stiffness_slider.addEventListener("change", () => {
 
 names_checkbox.addEventListener("change", draw_everything);
 skull_checkbox.addEventListener("change", draw_head_model_pane); // the plate views listen to it themselves
+
+// The views in the fold have no size while it is closed: they are sized and drawn when it opens.
+document.getElementById("more_views")!.addEventListener("toggle", draw_everything);
+
+// The legend's swatches take the colors the views draw with.
+function css_color_of_rgb(color: Rgb): string {
+  return `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`;
+}
+const legend_swatch_colors: { element_id: string; css_color: string }[] = [
+  { element_id: "legend_native_head_swatch", css_color: css_color_of_rgb(NATIVE_HEAD_STROKE_COLOR) },
+  { element_id: "legend_scan_head_swatch", css_color: css_color_of_rgb(NATIVE_HEAD_VIEWS_LAYOUT.skin_stroke_color) },
+  { element_id: "legend_landmark_swatch", css_color: NATIVE_HEAD_VIEWS_LAYOUT.landmark_style },
+  { element_id: "legend_selected_landmark_swatch", css_color: NATIVE_HEAD_VIEWS_LAYOUT.selected_landmark_style },
+  { element_id: "legend_pinned_landmark_swatch", css_color: NATIVE_HEAD_VIEWS_LAYOUT.landmark_style },
+];
+for (const swatch of legend_swatch_colors) document.getElementById(swatch.element_id)!.style.color = swatch.css_color;
 
 update_bottom_bar();
 draw_everything();

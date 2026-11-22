@@ -15,71 +15,77 @@
   .plate_view canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; background: transparent; }
   .plate_view canvas:first-child { position: static; }
   #turned_canvas { height: 560px; }
-  #bottom_bar button:disabled { opacity: 0.4; cursor: default; }
-  #bottom_bar button.armed { background: #3a5a8a; border-color: var(--accent); }
+  #landmark_bar button:disabled { opacity: 0.4; cursor: default; }
+  #landmark_bar button.armed { background: #3a5a8a; border-color: var(--accent); }
   #landmark_name_field { font: inherit; font-size: 14px; width: 210px; color: var(--ink); background: var(--bg); border: 1px solid var(--muted); border-radius: 6px; padding: 2px 8px; user-select: text; }
   #fit_status { font-size: 13px; color: var(--yellow); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 14px; }
+  .legend span.entry { display: inline-flex; align-items: center; gap: 6px; }
+  .legend svg { width: 22px; height: 14px; }
+  .legend .checkboxes { margin-left: auto; display: inline-flex; gap: 12px; }
+  #more_views { margin-top: 24px; }
+  #more_views > summary { cursor: pointer; font-size: 18px; }
   #head_model_box { position: relative; height: 520px; margin: 10px 0; }
   #head_model_box canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; }
   #head_model_overlay_canvas { background: transparent; }
   table.numbers { border-collapse: collapse; font-size: 14px; }
   table.numbers th, table.numbers td { text-align: left; padding: 2px 14px 2px 0; }
   table.numbers th { color: var(--muted); font-weight: normal; }
+  p.sources { font-size: 13px; color: var(--muted); margin-top: 24px; }
 </style>
 </head>
 <body>
 <main>
 <h1>Fit the head to the native head</h1>
-<p class="sub">
-  The scan head (document <code>skull-zanatomy</code>, drawn mirrored, its centre plane closed) warped so
-  that its landmarks land on their targets on the native head (document <code>native-head</code>). Drag a
-  mark and the fitted head follows. The fit here is live and saved nowhere; the landmarks are saved to
-  <code>fit-landmarks/native-head.json</code> on every edit. The document <code>head-corrected-trial</code>
-  (what <a href="/pages/compare-two-heads/">compare-two-heads</a> shows) changes only when
-  <code>npx tsx tmp/make_corrected_head_document.ts head-corrected-trial</code> is run again.
-</p>
+<p class="sub">Move the crosses until the red head sits right on the blue head.</p>
 
-<h2>1. The fitted head on the native head</h2>
-<p class="hint">
-  Blue: the native head's lines; red: the fitted head. A cross is a landmark's target; the line runs from
-  it to where the fitted landmark is. A target on a native vertex follows that vertex; dragging a mark
-  turns its target into a fixed position, starting from where the vertex is. In front a drag moves the
-  target sideways and up or down (only up or down on the midline), in profile forward or back and up or down.
-  Double-tap an empty spot to refit the view.
-</p>
-<div class="controls">
-  <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
-  <label><input type="checkbox" id="plate_skull_visible"> skull</label>
-  <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
+<div class="controls" id="landmark_bar">
+  <button id="undo_landmark_edit_button">undo</button>
+  <button id="reset_landmarks_button">reset</button>
+  <button id="add_landmark_button">add landmark</button>
+  <input type="text" id="landmark_name_field" placeholder="no landmark selected" autocomplete="off">
+  <button id="remove_landmark_button">remove</button>
+  <label><input type="checkbox" id="landmark_names_visible"> names</label>
+  <span id="fit_status"></span>
 </div>
 <div class="views">
   <figure class="front"><div class="plate_view" id="fitted_front_view"></div></figure>
   <figure class="profile"><div class="plate_view" id="fitted_profile_view"></div></figure>
 </div>
-
-<h2>2. Landmarks</h2>
+<div class="legend">
+  <span class="entry"><svg id="legend_native_head_swatch" viewBox="0 0 22 14"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2.5"/></svg> the native head (does not move)</span>
+  <span class="entry"><svg id="legend_scan_head_swatch" viewBox="0 0 22 14"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2.5"/></svg> the scan head, warped to fit</span>
+  <span class="entry"><svg id="legend_landmark_swatch" viewBox="0 0 22 14"><path d="M5 7 H17 M11 1 V13" stroke="currentColor" stroke-width="1.8"/></svg> a landmark: drag it</span>
+  <span class="entry"><svg id="legend_selected_landmark_swatch" viewBox="0 0 22 14"><path d="M4 7 H18 M11 0 V14" stroke="currentColor" stroke-width="2.5"/></svg> the selected landmark</span>
+  <span class="entry"><svg id="legend_pinned_landmark_swatch" viewBox="0 0 22 14"><rect x="7" y="3" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg> a landmark pinned to a vertex of the native head</span>
+  <span class="checkboxes">
+    <label><input type="checkbox" id="plate_surfaces_visible" checked> surfaces</label>
+    <label><input type="checkbox" id="plate_skull_visible"> skull</label>
+    <label><input type="checkbox" id="plate_landmarks_visible" checked> landmarks</label>
+  </span>
+</div>
 <p class="hint">
-  "Add landmark", then tap a point on the head model below: the new landmark's target starts where the
-  fitted head has that point, so it pulls nothing until you drag it. Tap a landmark (here or in the views) to select it.
-  "Reset" goes back to the landmarks as this page loaded them.
+  "Add landmark", then tap a red line: the new landmark starts where the red head has that point. Let a
+  dragged cross go next to a blue vertex (a ring shows it) to pin it there; hold Alt while dragging to not pin.
+  Ctrl + wheel or a pinch zooms, a drag on empty space moves the picture, a double tap on it fits the head again.
 </p>
-<div class="controls" id="bottom_bar">
-  <button id="add_landmark_button">add landmark</button>
-  <input type="text" id="landmark_name_field" placeholder="no landmark selected" autocomplete="off">
-  <button id="remove_landmark_button">remove</button>
-  <button id="undo_landmark_edit_button">undo</button>
-  <button id="reset_landmarks_button">reset</button>
-  <label><input type="checkbox" id="landmark_names_visible"> names</label>
+
+<details id="more_views">
+<summary>More views</summary>
+
+<div class="controls">
   <label>stiffness <input type="range" id="fit_stiffness" min="0" max="1" step="0.01"> <span id="fit_stiffness_value"></span></label>
   <label>skin <input type="range" id="head_model_mesh_opacity" min="0" max="1" step="0.05" value="0.5"></label>
-  <span id="fit_status"></span>
 </div>
+
+<h2>The head model</h2>
+<p class="hint">The scan head with its landmarks. Tap a landmark to select it.</p>
 <div id="head_model_box">
   <canvas id="head_model_mesh_canvas"></canvas>
   <canvas id="head_model_overlay_canvas"></canvas>
 </div>
 
-<h2>3. The fitted head, turned</h2>
+<h2>The fitted head, turned</h2>
 <p class="hint">Drag to turn. The second half is the mirror of the drawn one.</p>
 <div class="controls">
   <label><input type="checkbox" id="turned_surfaces_visible" checked> surfaces</label>
@@ -88,21 +94,30 @@
 </div>
 <canvas id="turned_canvas"></canvas>
 
-<h2>4. The scan head before the fit</h2>
+<h2>The scan head before the fit</h2>
 <p class="hint">The scan head un-warped, on the native head: the lines show how far each landmark has to move.</p>
 <div class="views">
   <figure class="front"><div class="plate_view" id="template_front_view"></div></figure>
   <figure class="profile"><div class="plate_view" id="template_profile_view"></div></figure>
 </div>
 
-<h2>5. How far each landmark is from its target</h2>
+<h2>How far each landmark is from its target</h2>
 <p>In mm (1 unit = 10 cm), between the fitted landmark and its target.</p>
 <table class="numbers" id="landmark_table">
   <thead><tr><th>landmark</th><th>target</th><th>miss, mm</th></tr></thead>
   <tbody></tbody>
 </table>
+</details>
 
-<p>Sources: the landmarks in <code>tablet/fit-landmarks/native-head.json</code> (edited on this page), the fit in <code>tablet/src/native_head_fit.ts</code> and <code>tablet/src/landmark_fit.ts</code>; the plan is <code>plan-native-head-topology.md</code>, step 3.</p>
+<p class="sources">
+  Sources: the scan head is the document <code>skull-zanatomy</code> (drawn mirrored, its centre plane closed), the
+  native head the document <code>native-head</code>. The landmarks are saved to
+  <code>tablet/fit-landmarks/native-head.json</code> on every edit; the fit (<code>tablet/src/native_head_fit.ts</code>,
+  <code>tablet/src/landmark_fit.ts</code>) is live here and saved nowhere. The document <code>head-corrected-trial</code>
+  (what <a href="/pages/compare-two-heads/">compare-two-heads</a> shows) changes only when
+  <code>npx tsx tmp/make_corrected_head_document.ts head-corrected-trial</code> is run again.
+  The plan is <code>plan-native-head-topology.md</code>, step 3.
+</p>
 </main>
 <script type="module" src="./main.ts"></script>
 </body>

@@ -99,6 +99,7 @@ const editor = create_fit_landmark_editor<FitLandmarksFile>(starting_fit_landmar
     draw_everything();
   },
   on_view_changed: () => draw_everything(),
+  armed_add_button_text: "tap a point on the head model…",
 });
 
 // ---- the fit ------------------------------------------------------------------------
@@ -158,6 +159,7 @@ const plate_views = start_loomis_girl_plate_views(
     on_dragged: schedule_refit,
     on_drag_ended: editor.landmarks_edited,
     on_landmark_selected: editor.select_landmark,
+    landmark_adding_on_views: null, // a landmark is added on the head model pane
   },
 );
 

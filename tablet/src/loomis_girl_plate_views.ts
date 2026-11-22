@@ -27,9 +27,17 @@
 //
 // Gestures, per view: a drag on a mark moves it (pairs with `marks: "editable"`), a drag
 // on the midline handle moves the midline, a drag elsewhere moves the picture, two fingers
-// pinch-zoom, the wheel zooms at the cursor, a double tap on nothing fits the head again.
+// pinch-zoom, Ctrl + wheel zooms at the cursor (a plain wheel scrolls the page, as on a map
+// embedded in a page), a double tap on nothing fits the head again.
+//
+// Two gestures only a page's adapter and editing turn on (fit-head-to-native-head):
+//  - adding: while the page has "add landmark" armed, a ring sits on the point of the shown
+//    document's skin lines that a tap would take, and the tap makes it a new landmark.
+//  - pinning: a mark dragged and let go within the layout's pin distance of a vertex of the
+//    background document is pinned to that vertex (Alt held: never); a ring shows that
+//    vertex during the drag, and a pinned landmark is drawn as a square.
 import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthographic_view_projection } from "./camera";
-import { TabletDocument } from "./document";
+import { TabletDocument, bezier_point, stroke_control_points, vertex_position } from "./document";
 import { V2, V3, v3 } from "./math";
 import { stroke_drawn_polyline } from "./patch";
 import { Rgb } from "./vertex_sink";
@@ -48,6 +56,18 @@ const ON_SURFACE_STROKE_HIGHLIGHT_STYLE = "#ffa94d";
 const HAIRLINE_PLANAR_STROKE_SAMPLES = 16; // segments drawn per hairline stroke that is a plain cubic
 const SURFACE_OPACITY = 0.35; // the plate must stay readable under the surfaces
 const GRAB_RADIUS_PIXELS = 14;
+// The ring on the point "add" would take, and on the vertex a drag would pin to.
+const PICK_RING_STYLE = "#ffd166";
+const PICK_RING_RADIUS_PIXELS = 7;
+// Adding: how near the pointer a skin line must pass, in canvas CSS pixels, and how many
+// points along each stroke can be taken.
+const ADD_PICK_RADIUS_PIXELS = 10;
+const ADD_PICK_SAMPLES_PER_STROKE = 40;
+// Where lines cross on the picture, the points this many pixels further from the pointer
+// than the nearest one still count as under it; of those, the one nearest the viewer is
+// taken (world units of depth: closer than this to the front-most counts as just as near).
+const ADD_PICK_NEAR_TIE_PIXELS = 3;
+const ADD_PICK_SAME_DEPTH_WORLD_UNITS = 0.03;
 // The midline is dragged by its handle at the top edge of the front view.
 const MIDLINE_HANDLE_CENTER_Y_PIXELS = 12;
 
@@ -80,6 +100,15 @@ export type PlateMarkEditing = {
   on_dragged: () => void; // the file changed, the drag goes on: refit, draw
   on_drag_ended: () => void; // the drag is over: save
   on_landmark_selected: (landmark_index: number | null) => void;
+  // "Add landmark" on the views; null = the page adds landmarks elsewhere (the head model pane).
+  landmark_adding_on_views: PlateLandmarkAdding | null;
+};
+
+// While `is_armed`, a tap on a skin line of an editable pair's shown document picks that
+// template point (the shown document keeps the template's vertex and stroke ids).
+export type PlateLandmarkAdding = {
+  is_armed: () => boolean;
+  on_template_point_picked: (template_point: TemplatePoint) => void;
 };
 
 export type PlateViews = { draw: () => void };
@@ -99,6 +128,9 @@ export type PlateViewsLayout = {
   skull_stroke_color: Rgb;
   landmark_style: string;
   selected_landmark_style: string;
+  // A mark let go this near (canvas CSS pixels) a vertex of the background document is
+  // pinned to it, when the adapter can pin; 0 = no pinning.
+  landmark_pin_distance_pixels: number;
 };
 
 // A mark of a landmark in a view, at an image pixel. side_sign is -1 for the mirrored mark
@@ -126,10 +158,26 @@ export type PlateViewsAdapter = {
   move_mark_to: (is_front_view: boolean, mark: PlateMark) => void; // mark.image_pixel is where the pointer put it
   // The front view's midline, drawn and dragged by its handle where marks are editable; null = none.
   front_midline: { column_pixels: () => number; move_to_column: (column_pixels: number) => void } | null;
+  // Landmarks pinned to vertices of the scene's background document; null = none can be.
+  background_vertex_pinning: BackgroundVertexPinning | null;
 };
 
+export type BackgroundVertexPinning = {
+  landmark_is_pinned: (landmark_index: number) => boolean; // drawn as a square
+  // Where the landmark's target is in the world now (after move_mark_to during a drag):
+  // of the vertices near the mark on the picture, the one nearest this is taken.
+  landmark_target_position: (landmark_index: number) => V3 | null;
+  pin_landmark_to_vertex: (landmark_index: number, background_vertex_id: number) => void;
+};
+
+// The vertex of the background document a dragged mark would be pinned to if let go now.
+type PinCandidate = { background_vertex_id: number; image_pixel: V2 };
+
+// The template point a tap would make a new landmark of, while adding is armed.
+type AddCandidate = { template_point: TemplatePoint; image_pixel: V2 };
+
 type PlateDrag =
-  | { kind: "mark"; landmark_index: number; side_sign: number; pointer_to_mark_offset: V2; has_moved: boolean }
+  | { kind: "mark"; landmark_index: number; side_sign: number; pointer_to_mark_offset: V2; has_moved: boolean; pin_candidate: PinCandidate | null }
   | { kind: "midline"; has_moved: boolean }
   | { kind: "pan"; travel_pixels: number };
 
@@ -148,7 +196,11 @@ type PlateView = {
   is_front_view: boolean;
   image_pixels_to_canvas_scale: number;
   image_pixel_at_canvas_origin: V2;
+  // False while the view has not been fitted to a container of non-zero size (one inside a
+  // closed <details> has none): it is fitted on its first draw that has a size.
+  is_fitted_to_container: boolean;
   hovered_landmark_index: number | null;
+  add_candidate: AddCandidate | null; // under the pointer while adding is armed
   pointers: Map<number, V2>; // pointerId -> last position, canvas CSS pixels
   drag: PlateDrag | null;
   last_empty_tap_time_ms: number;
@@ -178,10 +230,16 @@ const LOOMIS_GIRL_PLATE_LAYOUT: PlateViewsLayout = {
   skull_stroke_color: { r: 0.16, g: 0.38, b: 0.91 },
   landmark_style: "#0a9a3a",
   selected_landmark_style: "#d6007f",
+  landmark_pin_distance_pixels: 0,
 };
 
+// A container of zero size leaves the view unfitted (a zero scale would divide by zero).
 function fit_view_to_region(view: PlateView): void {
-  const transform = plate_view_transform_showing_region(view.container.clientWidth, view.container.clientHeight, view.region);
+  const width = view.container.clientWidth;
+  const height = view.container.clientHeight;
+  view.is_fitted_to_container = width > 0 && height > 0;
+  if (!view.is_fitted_to_container) return;
+  const transform = plate_view_transform_showing_region(width, height, view.region);
   view.image_pixels_to_canvas_scale = transform.image_pixels_to_canvas_scale;
   view.image_pixel_at_canvas_origin = transform.image_pixel_at_canvas_origin;
 }
@@ -300,6 +358,7 @@ function loomis_girl_plate_adapter(scene: () => PlateViewsScene): PlateViewsAdap
         scene().landmarks_file.front_midline_column_pixels = column_pixels;
       },
     },
+    background_vertex_pinning: null, // a plate mark is read off the picture: there is no background document
   };
 }
 
@@ -344,6 +403,123 @@ function midline_handle_is_under_pointer(state: PlateViewsState, view: PlateView
 function drag_mark_to(state: PlateViewsState, view: PlateView, drag: PlateDrag & { kind: "mark" }, canvas_point: V2): void {
   const image_pixel = image_pixel_at_canvas_point(view, { x: canvas_point.x + drag.pointer_to_mark_offset.x, y: canvas_point.y + drag.pointer_to_mark_offset.y });
   state.adapter.move_mark_to(view.is_front_view, { landmark_index: drag.landmark_index, side_sign: drag.side_sign, image_pixel: image_pixel });
+}
+
+// How far a world point is toward the viewer of the view: the front view looks down -z, the
+// profile down -x.
+function depth_toward_viewer(view: PlateView, position: V3): number {
+  return view.is_front_view ? position.z : position.x;
+}
+
+// The point of the shown document's skin lines a tap at `canvas_point` would make a new
+// landmark of: a stroke's end vertex or a point along it, within ADD_PICK_RADIUS_PIXELS.
+// Where lines cross on the picture (the orthographic front view puts the back of the head
+// over the face), the near ties are decided by depth: the point nearest the viewer, then a
+// vertex over a point along a stroke, then the nearest on the picture. Null = none near.
+function template_point_to_add_under_pointer(state: PlateViewsState, view: PlateView, canvas_point: V2): AddCandidate | null {
+  const shown = view.pair.shown();
+  if (shown === null) return null;
+  const tablet_document = shown.tablet_document;
+  type Candidate = { template_point: TemplatePoint; image_pixel: V2; distance_pixels: number; depth: number; is_vertex: boolean };
+  const candidates: Candidate[] = [];
+  // The document holds one side of the head and is drawn mirrored (draw_head_layer); in
+  // profile the mirrored side lands on the same pixels with the same template point.
+  const side_signs = view.is_front_view ? [1, -1] : [1];
+  const consider = (template_point: TemplatePoint, position: V3, is_vertex: boolean): void => {
+    for (const side_sign of side_signs) {
+      const image_pixel = state.adapter.image_pixel_from_world(view.is_front_view, v3(side_sign * position.x, position.y, position.z));
+      const point = canvas_point_at_image_pixel(view, image_pixel);
+      const distance_pixels = Math.hypot(point.x - canvas_point.x, point.y - canvas_point.y);
+      if (distance_pixels > ADD_PICK_RADIUS_PIXELS) continue;
+      candidates.push({ template_point, image_pixel, distance_pixels, depth: depth_toward_viewer(view, v3(side_sign * position.x, position.y, position.z)), is_vertex });
+    }
+  };
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.layer !== "skin") continue;
+    if (stroke.is_hidden === true) continue;
+    const control_points = stroke_control_points(stroke, tablet_document);
+    consider({ vertex: stroke.p0_vertex }, control_points.p0, true);
+    consider({ vertex: stroke.p3_vertex }, control_points.p3, true);
+    for (let k = 1; k < ADD_PICK_SAMPLES_PER_STROKE; k++) {
+      const position_along_stroke = k / ADD_PICK_SAMPLES_PER_STROKE;
+      consider({ stroke: stroke.id, position_along_stroke }, bezier_point(control_points, position_along_stroke), false);
+    }
+  }
+  if (candidates.length === 0) return null;
+  const nearest_distance_pixels = Math.min(...candidates.map((candidate) => candidate.distance_pixels));
+  const under_pointer = candidates.filter((candidate) => candidate.distance_pixels <= nearest_distance_pixels + ADD_PICK_NEAR_TIE_PIXELS);
+  const front_most_depth = Math.max(...under_pointer.map((candidate) => candidate.depth));
+  const nearest_viewer = under_pointer.filter((candidate) => candidate.depth >= front_most_depth - ADD_PICK_SAME_DEPTH_WORLD_UNITS);
+  const vertices = nearest_viewer.filter((candidate) => candidate.is_vertex);
+  const choices = vertices.length > 0 ? vertices : nearest_viewer;
+  let chosen = choices[0];
+  for (const candidate of choices) if (candidate.distance_pixels < chosen.distance_pixels) chosen = candidate;
+  return { template_point: chosen.template_point, image_pixel: chosen.image_pixel };
+}
+
+// The vertex of the background document the dragged mark would be pinned to if let go now:
+// an end vertex of a drawn background stroke within the layout's pin distance of the mark
+// on the picture. Of those, the one nearest in the world to the landmark's target (so a
+// vertex at the back of the head, under the face in front, is not taken). A midline
+// landmark is pinned only to a vertex on the midline. Null = no pin (none near, Alt held,
+// or the page cannot pin).
+function background_vertex_to_pin_near_mark(state: PlateViewsState, view: PlateView, drag: PlateDrag & { kind: "mark" }, alt_key_is_held: boolean): PinCandidate | null {
+  const pinning = state.adapter.background_vertex_pinning;
+  const pin_distance_pixels = state.layout.landmark_pin_distance_pixels;
+  if (pinning === null || pin_distance_pixels <= 0 || alt_key_is_held) return null;
+  const scene = state.adapter.scene();
+  const background = scene.background_document;
+  if (background === null) return null;
+  const mark = state.adapter.marks_of_landmark(view.is_front_view, drag.landmark_index).find((m) => m.side_sign === drag.side_sign);
+  const target_position = pinning.landmark_target_position(drag.landmark_index);
+  if (mark === undefined || target_position === null) return null;
+  const mark_point = canvas_point_at_image_pixel(view, mark.image_pixel);
+  const template_position = template_point_world_position(scene.template_document, scene.landmarks[drag.landmark_index].template_point);
+  const landmark_is_on_midline = template_position !== null && template_position_is_on_midline(template_position);
+  const background_document = background.tablet_document;
+  const vertex_ids = new Set<number>();
+  for (const stroke of background_document.strokes) {
+    if (stroke.is_hidden === true) continue;
+    if (stroke.layer === "skull" && !state.skull_visible) continue;
+    vertex_ids.add(stroke.p0_vertex);
+    vertex_ids.add(stroke.p3_vertex);
+  }
+  let chosen: PinCandidate | null = null;
+  let chosen_world_distance = Infinity;
+  for (const vertex_id of vertex_ids) {
+    const position = vertex_position(background_document, vertex_id);
+    // A target sits on the drawn side (x >= 0), whether or not the background document
+    // holds both sides: a vertex at -x would make a pair that crosses the midline.
+    if (position.x < -1e-3) continue;
+    if (landmark_is_on_midline && !template_position_is_on_midline(position)) continue;
+    // The mirrored mark (side_sign -1) of the front view shows the target at -x.
+    const shown_position = view.is_front_view ? v3(drag.side_sign * position.x, position.y, position.z) : position;
+    const image_pixel = state.adapter.image_pixel_from_world(view.is_front_view, shown_position);
+    const point = canvas_point_at_image_pixel(view, image_pixel);
+    if (Math.hypot(point.x - mark_point.x, point.y - mark_point.y) > pin_distance_pixels) continue;
+    const world_distance = Math.hypot(position.x - target_position.x, position.y - target_position.y, position.z - target_position.z);
+    if (world_distance < chosen_world_distance) {
+      chosen = { background_vertex_id: vertex_id, image_pixel };
+      chosen_world_distance = world_distance;
+    }
+  }
+  return chosen;
+}
+
+// Draws a ring of PICK_RING_RADIUS_PIXELS at an image pixel, in CSS pixel coordinates.
+function draw_pick_ring(context: CanvasRenderingContext2D, view: PlateView, image_pixel: V2): void {
+  const point = canvas_point_at_image_pixel(view, image_pixel);
+  context.strokeStyle = PICK_RING_STYLE;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(point.x, point.y, PICK_RING_RADIUS_PIXELS, 0, 2 * Math.PI);
+  context.stroke();
+}
+
+function adding_is_armed_in_view(state: PlateViewsState, view: PlateView): boolean {
+  if (view.pair.marks !== "editable" || state.mark_editing === null || !state.mark_editing.is_editable()) return false;
+  const adding = state.mark_editing.landmark_adding_on_views;
+  return adding !== null && adding.is_armed();
 }
 
 function draw_plate_layer(state: PlateViewsState, view: PlateView): void {
@@ -441,9 +617,16 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
       }
     }
   }
+  // The point a tap would add, while adding is armed (drawn in CSS pixels, then back).
+  if (view.add_candidate !== null && adding_is_armed_in_view(state, view)) {
+    context.setTransform(device_pixel_ratio, 0, 0, device_pixel_ratio, 0, 0);
+    draw_pick_ring(context, view, view.add_candidate.image_pixel);
+    context.setTransform(scale, 0, 0, scale, -view.image_pixel_at_canvas_origin.x * scale, -view.image_pixel_at_canvas_origin.y * scale);
+  }
   if (!marks_are_drawn(state, view)) return;
 
   const is_editable = view.pair.marks === "editable";
+  const pinning = adapter.background_vertex_pinning;
   if (view.is_front_view && is_editable && adapter.front_midline !== null) {
     const midline = adapter.front_midline.column_pixels();
     context.strokeStyle = MIDLINE_STYLE;
@@ -486,7 +669,11 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
       const arm = (is_selected ? 9 : 6) / canvas_scale;
       context.lineWidth = (is_selected ? 2.5 : 1.6) / canvas_scale;
       context.beginPath();
-      if (is_read_from_this_view) {
+      if (pinning !== null && pinning.landmark_is_pinned(landmark_index)) {
+        // Pinned to a vertex of the background document: a square.
+        const half_side = arm * 0.7;
+        context.rect(x - half_side, y - half_side, 2 * half_side, 2 * half_side);
+      } else if (is_read_from_this_view) {
         context.moveTo(x - arm, y);
         context.lineTo(x + arm, y);
         context.moveTo(x, y - arm);
@@ -515,6 +702,10 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     context.fillStyle = label.style;
     context.fillText(label.text, point.x + 9, point.y - 7);
   }
+  // The vertex the dragged mark would be pinned to if let go now.
+  if (view.drag !== null && view.drag.kind === "mark" && view.drag.pin_candidate !== null) {
+    draw_pick_ring(context, view, view.drag.pin_candidate.image_pixel);
+  }
   if (view.is_front_view && is_editable && adapter.front_midline !== null) {
     const handle_x = canvas_point_at_image_pixel(view, { x: adapter.front_midline.column_pixels(), y: 0 }).x;
     context.fillStyle = MIDLINE_STYLE;
@@ -530,6 +721,10 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
 }
 
 function draw_view(state: PlateViewsState, view: PlateView): void {
+  if (!view.is_fitted_to_container) {
+    fit_view_to_region(view);
+    if (!view.is_fitted_to_container) return; // no size yet (a closed <details>): drawn when it has one
+  }
   draw_plate_layer(state, view);
   draw_head_layer(state, view);
   draw_overlay_layer(state, view);
@@ -558,6 +753,16 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
     if (drag === null) return;
     if (drag.kind === "pan") {
       if (drag.travel_pixels >= 4) return;
+      // A tap while adding is armed: the point under the ring becomes a new landmark (a tap
+      // on no skin line adds nothing, and adding stays armed).
+      const adding = state.mark_editing?.landmark_adding_on_views ?? null;
+      if (adding !== null && adding_is_armed_in_view(state, view)) {
+        const add_candidate = view.add_candidate;
+        view.add_candidate = null;
+        if (add_candidate !== null) adding.on_template_point_picked(add_candidate.template_point);
+        draw_overlay_layer(state, view);
+        return;
+      }
       // A tap on nothing: deselect; two in a row show the whole head again.
       const now_ms = performance.now();
       if (now_ms - view.last_empty_tap_time_ms < 350) {
@@ -568,8 +773,16 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
       if (view.pair.marks === "editable") state.mark_editing?.on_landmark_selected(null);
       return;
     }
+    // A mark let go near a vertex of the background document is pinned to it (before the
+    // save below, so the pin is saved).
+    const pinning = state.adapter.background_vertex_pinning;
+    if (drag.kind === "mark" && drag.has_moved && drag.pin_candidate !== null && pinning !== null) {
+      pinning.pin_landmark_to_vertex(drag.landmark_index, drag.pin_candidate.background_vertex_id);
+      state.mark_editing?.on_dragged();
+    }
     // An edit drag (mark or midline) ends: what it changed is saved.
     if (drag.has_moved) state.mark_editing?.on_drag_ended();
+    if (drag.kind === "mark") draw_overlay_layer(state, view); // the pin ring goes
   };
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -579,15 +792,23 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
     const canvas_point = canvas_point_of(e);
     view.pointers.set(e.pointerId, canvas_point);
     if (view.pointers.size > 1) {
-      // A second finger: the gesture is a pinch, whatever the first finger had grabbed.
+      // A second finger: the gesture is a pinch, whatever the first finger had grabbed (and
+      // the first finger's touch adds nothing).
+      view.add_candidate = null;
       end_drag();
       view.drag = { kind: "pan", travel_pixels: Infinity };
+      return;
+    }
+    // While adding is armed nothing is grabbed: a tap adds, a drag still moves the picture.
+    if (adding_is_armed_in_view(state, view)) {
+      view.add_candidate = template_point_to_add_under_pointer(state, view, canvas_point); // a touch has no hover before it
+      view.drag = { kind: "pan", travel_pixels: 0 };
       return;
     }
     const mark = marks_can_be_dragged(state, view) ? mark_under_pointer(state, view, canvas_point) : null;
     if (mark !== null) {
       const mark_point = canvas_point_at_image_pixel(view, mark.image_pixel);
-      view.drag = { kind: "mark", landmark_index: mark.landmark_index, side_sign: mark.side_sign, pointer_to_mark_offset: { x: mark_point.x - canvas_point.x, y: mark_point.y - canvas_point.y }, has_moved: false };
+      view.drag = { kind: "mark", landmark_index: mark.landmark_index, side_sign: mark.side_sign, pointer_to_mark_offset: { x: mark_point.x - canvas_point.x, y: mark_point.y - canvas_point.y }, has_moved: false, pin_candidate: null };
       state.mark_editing!.on_landmark_selected(mark.landmark_index);
     } else if (midline_handle_is_under_pointer(state, view, canvas_point)) {
       view.drag = { kind: "midline", has_moved: false };
@@ -600,6 +821,17 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
     const canvas_point = canvas_point_of(e);
     const previous_point = view.pointers.get(e.pointerId);
     if (previous_point === undefined || view.drag === null) {
+      // No button down, adding armed: the ring shows what a tap here would add.
+      if (adding_is_armed_in_view(state, view)) {
+        view.add_candidate = template_point_to_add_under_pointer(state, view, canvas_point);
+        canvas.style.cursor = "crosshair";
+        draw_overlay_layer(state, view);
+        return;
+      }
+      if (view.add_candidate !== null) {
+        view.add_candidate = null; // adding was disarmed (Escape, the button)
+        draw_overlay_layer(state, view);
+      }
       // No button down: say what a press here would grab.
       const mark = mark_under_pointer(state, view, canvas_point);
       const hovered = mark === null ? null : mark.landmark_index;
@@ -631,23 +863,34 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
       mark_editing.on_drag_started();
       drag.has_moved = true;
     }
-    if (drag.kind === "mark") drag_mark_to(state, view, drag, canvas_point);
-    else state.adapter.front_midline!.move_to_column(image_pixel_at_canvas_point(view, canvas_point).x); // a midline drag only starts with a midline
+    if (drag.kind === "mark") {
+      drag_mark_to(state, view, drag, canvas_point);
+      drag.pin_candidate = background_vertex_to_pin_near_mark(state, view, drag, e.altKey);
+    } else {
+      state.adapter.front_midline!.move_to_column(image_pixel_at_canvas_point(view, canvas_point).x); // a midline drag only starts with a midline
+    }
     mark_editing.on_dragged();
   });
 
   const pointer_gone = (e: PointerEvent): void => {
     if (!view.pointers.delete(e.pointerId)) return;
+    // Alt pressed or let go after the last move still decides the pin.
+    if (view.drag !== null && view.drag.kind === "mark" && view.drag.has_moved) {
+      view.drag.pin_candidate = background_vertex_to_pin_near_mark(state, view, view.drag, e.altKey);
+    }
     if (view.pointers.size === 0) end_drag();
   };
   canvas.addEventListener("pointerup", pointer_gone);
   canvas.addEventListener("pointercancel", pointer_gone);
   canvas.addEventListener("pointerleave", () => {
-    if (view.hovered_landmark_index === null) return;
+    if (view.hovered_landmark_index === null && view.add_candidate === null) return;
     view.hovered_landmark_index = null;
+    view.add_candidate = null;
     draw_overlay_layer(state, view);
   });
   canvas.addEventListener("wheel", (e) => {
+    // A plain wheel scrolls the page; Ctrl + wheel zooms (a trackpad pinch arrives as one).
+    if (!e.ctrlKey) return;
     e.preventDefault();
     zoom_view_at(view, canvas_point_of(e), Math.exp(-e.deltaY * 0.0015));
     draw_view(state, view);
@@ -696,7 +939,9 @@ export function start_plate_views(layout: PlateViewsLayout, pairs: PlateViewPair
       pair, region, is_front_view,
       image_pixels_to_canvas_scale: 1,
       image_pixel_at_canvas_origin: { x: 0, y: 0 },
+      is_fitted_to_container: false,
       hovered_landmark_index: null,
+      add_candidate: null,
       pointers: new Map(),
       drag: null,
       last_empty_tap_time_ms: 0,
