@@ -3,13 +3,14 @@
 // tangent IN CAMERA SPACE (billboard), so a stroke never vanishes edge-on.
 // Radius is world-space (thins with distance): RIBBON_RADIUS times the stroke's
 // own width profile (`Stroke.radii`, edited in the sketchpad's width panel;
-// absent = DEFAULT_STROKE_RADII, a plain constant-width line). Mesh depends on
+// absent = DEFAULT_STROKE_RADII, a plain constant-width line), read by length
+// fraction along the drawn line, not by the curve parameter. Mesh depends on
 // the camera — rebuild it whenever the camera moves.
 
 import { OrbitCamera, camera_basis } from "./camera";
 import {
   DEFAULT_STROKE_RADII, Stroke, StrokeControlPoints, StrokeRadii, TabletDocument,
-  stroke_control_points, stroke_radii, stroke_radii_at,
+  bezier_point, stroke_control_points, stroke_radii, stroke_radii_at,
 } from "./document";
 import { V3 } from "./math";
 import { on_surface_stroke_samples } from "./patch";
@@ -60,14 +61,17 @@ type CameraBasis = { right: V3; up: V3 };
 
 // One ribbon's samples, in flat arrays reused by every ribbon (one is built at a time, and
 // nothing outside this file sees them): x, y, z per sample for centers, tangents and
-// offsets; radius and color per sample.
-type RibbonSamples = { centers: Float64Array; tangents: Float64Array; offsets: Float64Array; radii: Float64Array; colors: Rgb[] };
+// offsets; radius, color and length fraction per sample.
+type RibbonSamples = {
+  centers: Float64Array; tangents: Float64Array; offsets: Float64Array; radii: Float64Array; colors: Rgb[]; length_fractions: Float64Array;
+};
 const ribbon_samples: RibbonSamples = {
   centers: new Float64Array(3 * (RIBBON_SAMPLES + 1)),
   tangents: new Float64Array(3 * (RIBBON_SAMPLES + 1)),
   offsets: new Float64Array(3 * (RIBBON_SAMPLES + 1)),
   radii: new Float64Array(RIBBON_SAMPLES + 1),
   colors: [],
+  length_fractions: new Float64Array(RIBBON_SAMPLES + 1),
 };
 
 function ensure_ribbon_sample_room(sample_count: number): void {
@@ -76,6 +80,55 @@ function ensure_ribbon_sample_room(sample_count: number): void {
   ribbon_samples.tangents = new Float64Array(3 * sample_count);
   ribbon_samples.offsets = new Float64Array(3 * sample_count);
   ribbon_samples.radii = new Float64Array(sample_count);
+  ribbon_samples.length_fractions = new Float64Array(sample_count);
+}
+
+// Writes into `fractions` how far along the polyline each of the first `point_count` points
+// of `points` (x, y, z per point) is: the length of the polyline up to the point over its
+// whole length, 0 at the first point, 1 at the last. The stroke's width and lightness values
+// are read at these fractions, so they run evenly along the drawn line whatever the speed
+// of the curve parameter. A polyline of zero length falls back to evenly spaced i / (n - 1).
+// Returns the polyline's whole length.
+export function polyline_length_fractions(points: Float64Array, point_count: number, fractions: Float64Array): number {
+  fractions[0] = 0;
+  for (let i = 1; i < point_count; i++) {
+    const dx = points[3 * i] - points[3 * (i - 1)];
+    const dy = points[3 * i + 1] - points[3 * (i - 1) + 1];
+    const dz = points[3 * i + 2] - points[3 * (i - 1) + 2];
+    fractions[i] = fractions[i - 1] + Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  const total_length = fractions[point_count - 1];
+  for (let i = 0; i < point_count; i++) {
+    fractions[i] = total_length === 0 ? i / (point_count - 1) : fractions[i] / total_length;
+  }
+  return total_length;
+}
+
+// A stroke's line as its ribbon draws it, from p0 to p3, x, y, z per point: an on-surface
+// stroke's projected samples, otherwise the cubic at RIBBON_SAMPLES + 1 evenly spaced t.
+// Either way point i is at t = i / (point count - 1). The mirrored side has the same lengths.
+export function drawn_stroke_points(stroke: Stroke, tablet_document: TabletDocument): Float64Array {
+  let centers: V3[];
+  if (stroke.on_surface === true) {
+    centers = on_surface_stroke_samples(stroke, tablet_document);
+  } else {
+    const points = stroke_control_points(stroke, tablet_document);
+    centers = Array.from({ length: RIBBON_SAMPLES + 1 }, (_, i) => bezier_point(points, i / RIBBON_SAMPLES));
+  }
+  return Float64Array.from(centers.flatMap((center) => [center.x, center.y, center.z]));
+}
+
+// How far along the stroke's drawn line (drawn_stroke_points) the point at curve parameter t
+// is, as a fraction of the line's length: interpolated in t between the two drawn points
+// around it.
+export function stroke_length_fraction_at(stroke: Stroke, tablet_document: TabletDocument, t: number): number {
+  const points = drawn_stroke_points(stroke, tablet_document);
+  const point_count = points.length / 3;
+  const fractions = new Float64Array(point_count);
+  polyline_length_fractions(points, point_count, fractions);
+  const position = t * (point_count - 1);
+  const before = Math.min(Math.floor(position), point_count - 2);
+  return fractions[before] + (fractions[before + 1] - fractions[before]) * (position - before);
 }
 
 // The cubic's Bernstein weights for bezier_point and its derivative weights for
@@ -160,7 +213,8 @@ function lightened_color(color: Rgb, addition: number): Rgb {
 
 // Where this cubic sits in the taper of the whole curve it belongs to, as a
 // fraction range: a drawn stroke is one cubic covering 0..1; a computed
-// contour chain spreads one taper over all its cubics by arc length.
+// contour chain spreads one taper over all its cubics by chord length, and
+// inside each cubic by its length fraction.
 export type TaperWindow = { start: number; end: number };
 
 export function append_bezier_ribbon(
@@ -194,9 +248,10 @@ function append_cubic_ribbon(
   append_polyline_ribbon(RIBBON_SAMPLES + 1, radii, taper_window, basis, color, lightness_additions, end_caps, out);
 }
 
-// The first `sample_count` samples in ribbon_samples.centers / .tangents, evenly spaced in
-// the curve parameter; the taper and the lightness run over them by index. The part of the
-// line whose width is zero or below is not drawn.
+// The first `sample_count` samples in ribbon_samples.centers / .tangents. The taper and the
+// lightness are read at each sample's length fraction along this polyline
+// (polyline_length_fractions), the taper mapped into `taper_window`. The part of the line
+// whose width is zero or below is not drawn.
 // Each end named in `end_caps` gets a round cap: a filled disc in the camera's screen
 // plane, centred on the end sample with that sample's radius and color, so two strokes
 // meeting at an angle leave no wedge gap at the corner. An end whose radius is zero
@@ -205,18 +260,19 @@ function append_polyline_ribbon(
   sample_count: number, radii: StrokeRadii, taper_window: TaperWindow, basis: CameraBasis, color: Rgb,
   lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, out: VertexSink,
 ): void {
-  const { centers, tangents, offsets, radii: sample_radii, colors } = ribbon_samples;
+  const { centers, tangents, offsets, radii: sample_radii, colors, length_fractions } = ribbon_samples;
   const { right, up } = basis;
+  polyline_length_fractions(centers, sample_count, length_fractions);
   for (let i = 0; i < sample_count; i++) {
-    const t = i / (sample_count - 1);
+    const length_fraction = length_fractions[i];
     const tangent_x = tangents[3 * i], tangent_y = tangents[3 * i + 1], tangent_z = tangents[3 * i + 2];
     // Project onto the camera's screen plane, take the 2D perpendicular there.
     const screen_x = tangent_x * right.x + tangent_y * right.y + tangent_z * right.z;
     const screen_y = tangent_x * up.x + tangent_y * up.y + tangent_z * up.z;
     const len = Math.hypot(screen_x, screen_y);
-    const radius = Math.max(0, RIBBON_RADIUS * stroke_radii_at(radii, taper_window.start + (taper_window.end - taper_window.start) * t));
+    const radius = Math.max(0, RIBBON_RADIUS * stroke_radii_at(radii, taper_window.start + (taper_window.end - taper_window.start) * length_fraction));
     sample_radii[i] = radius;
-    colors[i] = lightness_additions === null ? color : lightened_color(color, stroke_radii_at(lightness_additions, t));
+    colors[i] = lightness_additions === null ? color : lightened_color(color, stroke_radii_at(lightness_additions, length_fraction));
     if (len < 1e-9) {
       // Tangent points straight at the camera; fall back to screen-right.
       offsets[3 * i] = right.x * radius;

@@ -85,8 +85,9 @@ export type Stroke = {
   is_hidden?: boolean;
   line_color?: Rgb; // sRGB; absent = the app's stroke color
   // Lightness along the line, same as the C++ `Curve.lightness_additions`: four scalar
-  // bezier control values sampled along t; the line color is multiplied by (1 + value)
-  // in linear light. Absent = no change.
+  // bezier control values read at the length fraction along the drawn line (ribbon.ts
+  // polyline_length_fractions); the line color is multiplied by (1 + value) in linear
+  // light. Absent = no change.
   lightness_additions?: StrokeRadii;
   is_one_sided?: boolean; // not drawn on the mirrored side of a document mirrored across the midline
   // Edited through one handle, like a parabola (stroke_single_handle_point): the cubic
@@ -95,7 +96,8 @@ export type Stroke = {
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
-// control values, multipliers of the base ribbon radius, sampled along t.
+// control values, multipliers of the base ribbon radius, read at the length
+// fraction along the drawn line (ribbon.ts polyline_length_fractions), not at t.
 // Flat = constant width; (.25,1,1,.25)-shaped = the classic taper. A stroke
 // without a stored profile is flat at width 0.25 (Khoa's pick, 2026-09-27).
 export type StrokeRadii = [number, number, number, number];
@@ -110,8 +112,8 @@ export function stroke_radii_at(radii: StrokeRadii, t: number): number {
   return s * s * s * radii[0] + 3 * s * s * t * radii[1] + 3 * s * t * t * radii[2] + t * t * t * radii[3];
 }
 
-// De Casteljau of the scalar profile at t: the two halves keep the width the
-// whole stroke had, so a split is invisible.
+// De Casteljau of the scalar profile at t, here the cut's length fraction: the
+// two halves keep the width the whole stroke had, so a split is invisible.
 function split_stroke_radii(radii: StrokeRadii, t: number): { left: StrokeRadii; right: StrokeRadii } {
   const lerp = (a: number, b: number) => a + (b - a) * t;
   const r01 = lerp(radii[0], radii[1]), r12 = lerp(radii[1], radii[2]), r23 = lerp(radii[2], radii[3]);
@@ -360,8 +362,10 @@ const SPLIT_MIN_T_FROM_ENDS = 0.02;
 // at a vertex pinned to this stroke: then that vertex becomes the knot (its
 // pin dropped — it's now a real junction), so a chain welded there stays
 // welded. Returns the knot vertex, or null for a cut too close to an end.
+// The width and lightness values are cut at `cut_length_fraction`, how far along
+// the drawn line the cut is (they are read by length fraction, not by t).
 export function split_stroke(
-  tablet_document: TabletDocument, stroke_id: StrokeId, t: number, pinned_vertex: VertexId | null = null,
+  tablet_document: TabletDocument, stroke_id: StrokeId, t: number, pinned_vertex: VertexId | null, cut_length_fraction: number,
 ): VertexId | null {
   if (t < SPLIT_MIN_T_FROM_ENDS || t > 1 - SPLIT_MIN_T_FROM_ENDS) return null;
   const stroke = stroke_by_id(tablet_document, stroke_id);
@@ -409,7 +413,7 @@ export function split_stroke(
   if (stroke.midline === true) stroke_by_id(tablet_document, second_stroke).midline = true;
   if (stroke.on_surface === true) stroke_by_id(tablet_document, second_stroke).on_surface = true;
   if (stroke.radii !== undefined) {
-    const halves = split_stroke_radii(stroke.radii, t);
+    const halves = split_stroke_radii(stroke.radii, cut_length_fraction);
     stroke.radii = halves.left;
     stroke_by_id(tablet_document, second_stroke).radii = halves.right;
   }
@@ -417,7 +421,7 @@ export function split_stroke(
   if (stroke.is_one_sided === true) stroke_by_id(tablet_document, second_stroke).is_one_sided = true;
   if (stroke.line_color !== undefined) stroke_by_id(tablet_document, second_stroke).line_color = { ...stroke.line_color };
   if (stroke.lightness_additions !== undefined) {
-    const halves = split_stroke_radii(stroke.lightness_additions, t);
+    const halves = split_stroke_radii(stroke.lightness_additions, cut_length_fraction);
     stroke.lightness_additions = halves.left;
     stroke_by_id(tablet_document, second_stroke).lightness_additions = halves.right;
   }

@@ -25,7 +25,7 @@ import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
-import { append_chain_ribbon, append_stroke_ribbon } from "./ribbon";
+import { append_chain_ribbon, append_stroke_ribbon, stroke_length_fraction_at } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
@@ -1057,11 +1057,16 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const selected_id = edit_state.stroke_id;
       pen_history_label = `split stroke ${selected_id}`;
       const pinned = pick_pin_on_stroke(selected_id, position);
+      const selected_stroke = stroke_by_id(tablet_document, selected_id);
       if (pinned !== null) {
-        split_stroke(tablet_document, selected_id, pinned.t, pinned.vertex);
+        const cut_length_fraction = stroke_length_fraction_at(selected_stroke, tablet_document, pinned.t);
+        split_stroke(tablet_document, selected_id, pinned.t, pinned.vertex, cut_length_fraction);
       } else {
         const nearest = nearest_t_on_stroke_screen(tablet_document, selected_id, camera, position, canvas);
-        if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) split_stroke(tablet_document, selected_id, nearest.t);
+        if (nearest.distance < STROKE_PICK_RADIUS_PIXELS) {
+          const cut_length_fraction = stroke_length_fraction_at(selected_stroke, tablet_document, nearest.t);
+          split_stroke(tablet_document, selected_id, nearest.t, null, cut_length_fraction);
+        }
       }
       drop_unused_patch_strokes(tablet_document); // a patch that used one side of the cut keeps only that half
       set_armed_tool(null); // tap off the curve = cancel, selection kept
@@ -1302,7 +1307,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const stroke_id = pin.host_stroke;
     const vertex = pin.vertex;
     begin_history_step(history, tablet_document);
-    const new_stroke = split_stroke(tablet_document, stroke_id, pin.t, vertex);
+    const cut_length_fraction = stroke_length_fraction_at(stroke_by_id(tablet_document, stroke_id), tablet_document, pin.t);
+    const new_stroke = split_stroke(tablet_document, stroke_id, pin.t, vertex, cut_length_fraction);
     if (new_stroke === null) return; // pin within the end guard: nothing to record
     drop_unused_patch_strokes(tablet_document); // a patch that used one side of the cut keeps only that half
     end_history_step(history, tablet_document, `split stroke ${stroke_id} at vertex ${vertex}`);

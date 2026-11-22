@@ -10,6 +10,7 @@
 import { StrokeId, StrokeRadii, TabletDocument, VertexId, bezier_point, delete_stroke, drop_surface_pins_of_missing_patches, enforce_smooth_knots_of_stroke, nearest_point_on_stroke_world, pin_by_vertex, stroke_by_id, stroke_control_points, stroke_handles_from_control_points, stroke_radii, stroke_radii_at, vertex_by_id, vertex_position } from "./document";
 import { V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { resolve_patch_fill, update_pinned_vertex_positions } from "./patch";
+import { drawn_stroke_points, polyline_length_fractions } from "./ribbon";
 
 const MERGE_SAMPLES_PER_STROKE = 24;
 
@@ -29,19 +30,29 @@ function sample_stroke_from_vertex(
   return samples;
 }
 
-// The stroke's width at the same samples as sample_stroke_from_vertex.
+// The stroke's width at the same samples as sample_stroke_from_vertex, and how far along
+// the stroke's drawn line (drawn_stroke_points, the projected samples of an on-surface
+// stroke) each sample is from that vertex. The width is read at the sample's length
+// fraction along the drawn line, as the ribbon reads it.
+type SampledWidths = { widths: number[]; drawn_lengths: number[] };
 function sample_stroke_widths_from_vertex(
   tablet_document: TabletDocument, stroke_id: StrokeId, from_vertex: VertexId,
-): number[] {
+): SampledWidths {
   const stroke = stroke_by_id(tablet_document, stroke_id);
   const radii = stroke_radii(stroke);
   const from_p0 = stroke.p0_vertex === from_vertex;
+  const drawn_points = drawn_stroke_points(stroke, tablet_document);
+  const fractions_from_p0 = new Float64Array(MERGE_SAMPLES_PER_STROKE + 1);
+  const drawn_length = polyline_length_fractions(drawn_points, MERGE_SAMPLES_PER_STROKE + 1, fractions_from_p0);
   const widths: number[] = [];
+  const drawn_lengths: number[] = [];
   for (let i = 0; i <= MERGE_SAMPLES_PER_STROKE; i++) {
-    const t = i / MERGE_SAMPLES_PER_STROKE;
-    widths.push(stroke_radii_at(radii, from_p0 ? t : 1 - t));
+    const index_from_p0 = from_p0 ? i : MERGE_SAMPLES_PER_STROKE - i;
+    const fraction_from_p0 = fractions_from_p0[index_from_p0];
+    widths.push(stroke_radii_at(radii, fraction_from_p0));
+    drawn_lengths.push(drawn_length * (from_p0 ? fraction_from_p0 : 1 - fraction_from_p0));
   }
-  return widths;
+  return { widths, drawn_lengths };
 }
 
 // Chord-length parameter per sample, normalized to [0, 1]; null for a path with no length.
@@ -205,10 +216,16 @@ export function merge_adjacent_strokes(
     .map((pin) => ({ pin, world_position: vertex_position(tablet_document, pin.vertex) }));
 
   // One width profile across both strokes; two default-width strokes stay without a stored profile.
+  // Fitted by length fraction along the two drawn lines, so the join sits at the first
+  // stroke's drawn length over both drawn lengths.
   if (stroke_a.radii !== undefined || stroke_b.radii !== undefined) {
-    const widths = sample_stroke_widths_from_vertex(tablet_document, stroke_a_id, a_far_vertex);
-    widths.push(...sample_stroke_widths_from_vertex(tablet_document, stroke_b_id, shared_vertex).slice(1));
-    stroke_a.radii = fit_stroke_radii(widths, parameters);
+    const a_samples = sample_stroke_widths_from_vertex(tablet_document, stroke_a_id, a_far_vertex);
+    const b_samples = sample_stroke_widths_from_vertex(tablet_document, stroke_b_id, shared_vertex);
+    const a_drawn_length = a_samples.drawn_lengths[MERGE_SAMPLES_PER_STROKE];
+    const widths = [...a_samples.widths, ...b_samples.widths.slice(1)];
+    const drawn_lengths = [...a_samples.drawn_lengths, ...b_samples.drawn_lengths.slice(1).map((length) => a_drawn_length + length)];
+    const total_drawn_length = drawn_lengths[drawn_lengths.length - 1];
+    stroke_a.radii = fit_stroke_radii(widths, drawn_lengths.map((length) => length / total_drawn_length));
   }
 
   // Reshape A into the merged stroke.
