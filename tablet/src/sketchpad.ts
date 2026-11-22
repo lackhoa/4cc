@@ -12,15 +12,15 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { SurfaceGrid, append_grid_mesh, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
-import { extract_contour_chains } from "./contour";
+import { SurfaceGrid, append_grid_mesh, append_flat_grid_mesh, append_patch_geometry_mesh, cached_mirrored_grid, cached_patch_geometry, create_patch_geometry_cache, invalidate_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
@@ -169,6 +169,27 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let line_start_vertex: VertexId | null = null; // line tool armed from a selected vertex: the stroke starts there
   let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
   let frame_requested = false;
+  // The patches' grids (and loft rails, mirrored grids) for frames and picks; invalidated
+  // by request_render, kept across camera-only requests (request_camera_render).
+  const patch_geometry_cache = create_patch_geometry_cache();
+  // The contour extractor's eye-independent part per cached grid (cached_surface_partials).
+  const surface_partials_by_grid = new WeakMap<SurfaceGrid, SurfacePartials>();
+  // Where the time of a render request and of a frame goes: milliseconds per part,
+  // summed since the last reset, read by profiling scripts as `window.debug_frame_timings`
+  // (reset with `window.debug_reset_frame_timings()`). performance.now() around each part
+  // is cheap enough to leave in.
+  type FrameTimings = { frame_count: number; full_request_count: number; camera_request_count: number; milliseconds_by_part: Record<string, number> };
+  let frame_timings: FrameTimings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, milliseconds_by_part: {} };
+  function add_frame_timing(part: string, started_ms: number): void {
+    const elapsed_ms = performance.now() - started_ms;
+    frame_timings.milliseconds_by_part[part] = (frame_timings.milliseconds_by_part[part] ?? 0) + elapsed_ms;
+  }
+  function timed<T>(part: string, step: () => T): T {
+    const started_ms = performance.now();
+    const result = step();
+    add_frame_timing(part, started_ms);
+    return result;
+  }
   // Pen tap detection (tap = select/deselect instead of moving anything).
   // Displacement from the down point, not path length — pencil taps jitter.
   let pen_down_screen: V2 | null = null;
@@ -210,8 +231,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const eye = camera_eye(camera);
     let occluding_grids: SurfaceGrid[] | null = null;
     const is_point_visible = (world_position: V3): boolean => {
-      if (occluding_grids === null) occluding_grids = drawn_surface_grids();
-      return point_is_visible_past_surfaces(occluding_grids, eye, world_position);
+      if (occluding_grids === null) occluding_grids = timed("pick.occluding_grids", drawn_surface_grids);
+      const grids = occluding_grids;
+      return timed("pick.occlusion_tests", () => point_is_visible_past_surfaces(grids, eye, world_position));
     };
     const visibility_filter = surface_drawn ? is_point_visible : undefined;
     // The p0 and p3 ends of the active line are drawn on top like its handles, so
@@ -226,11 +248,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return is_point_visible(world_position);
     };
     const vertex_visibility_filter = surface_drawn ? is_vertex_pickable : undefined;
-    const vertex = pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), vertex_visibility_filter);
+    const vertex = timed("pick.vertex", () => pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), vertex_visibility_filter));
     if (vertex !== null) return { kind: "vertex", vertex };
-    const stroke_id = pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter);
+    const stroke_id = timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter));
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
-    const patch = pick_patch(tablet_document, camera, screen, canvas, pickable_layers()); // fill = last resort (Q10)
+    const grid_of_patch = (patch: Patch): SurfaceGrid | null => cached_patch_geometry(patch_geometry_cache, patch, tablet_document)?.grid ?? null;
+    const patch = timed("pick.patch", () => pick_patch(tablet_document, camera, screen, canvas, pickable_layers(), grid_of_patch)); // fill = last resort (Q10)
     return patch === null ? { kind: "nothing" } : { kind: "patch", patch };
   }
 
@@ -266,8 +289,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // rAF, which pauses in hidden tabs) so any host reshape carries its riders
     // before history snapshots and autosave see the document. The midline pass
     // goes first: a pin may ride a midline stroke, never the other way round (Q71).
-    enforce_midline(tablet_document);
-    update_pinned_vertex_positions(tablet_document);
+    const request_started_ms = performance.now();
+    frame_timings.full_request_count++;
+    timed("request.midline", () => enforce_midline(tablet_document));
+    timed("request.pins", () => update_pinned_vertex_positions(tablet_document));
+    // Anything may have changed the document since the last full request: the patch
+    // grids are built again, once, by the next frame or pick that needs them.
+    invalidate_patch_geometry_cache(patch_geometry_cache);
+    const refresh_started_ms = performance.now();
     // A stroke operation (join, split here) can garbage-collect a vertex that is
     // selected along with the strokes.
     if (extra_vertex !== null && !tablet_document.vertices.some((vertex) => vertex.id === extra_vertex)) extra_vertex = null;
@@ -284,12 +313,32 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
+    add_frame_timing("request.refresh_panels", refresh_started_ms);
     persistence.history_snapshot = current_history_snapshot();
-    schedule_autosave(persistence, tablet_document, camera);
+    timed("request.autosave", () => schedule_autosave(persistence, tablet_document, camera));
     if (setup.on_document_edited !== undefined && persistence.history_snapshot !== last_reported_history_snapshot) {
       last_reported_history_snapshot = persistence.history_snapshot;
       setup.on_document_edited(tablet_document);
     }
+    add_frame_timing("request.total", request_started_ms);
+    next_frame_is_camera_only = false;
+    request_frame();
+  }
+  // True while every request since the last frame came from request_camera_render: the
+  // next frame then only follows the camera (see render_now). A full request wins.
+  let next_frame_is_camera_only = false;
+  // A render request from a camera move alone (orbit, pan, zoom): the document is
+  // unchanged, so the midline and pin passes, the panel refreshes and the history
+  // snapshot are left alone. Only the orbit/pan/zoom call sites use it; anything that
+  // may have touched the document or the selection goes through request_render.
+  function request_camera_render(): void {
+    frame_timings.camera_request_count++;
+    // The camera is never saved on its own; this only keeps a pending save armed.
+    schedule_autosave(persistence, tablet_document, camera);
+    if (!frame_requested) next_frame_is_camera_only = true;
+    request_frame();
+  }
+  function request_frame(): void {
     if (frame_requested) return;
     frame_requested = true;
     requestAnimationFrame(() => {
@@ -300,19 +349,27 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // One frame, synchronously. Also the debug hook `window.debug_render_now` for
   // automated tests in a hidden tab, where requestAnimationFrame never fires.
   function render_now(): void {
-    hot_item = resolve_hot_item();
+    const frame_started_ms = performance.now();
+    frame_timings.frame_count++;
+    const frame_is_camera_only = next_frame_is_camera_only;
+    next_frame_is_camera_only = false;
+    // During a camera gesture nothing is hovered on purpose, and the pick (a ray against
+    // every patch) was a third of a hovered frame: no hot item until the pen moves again.
+    if (frame_is_camera_only) hot_item = null;
+    else hot_item = timed("frame.hot_item", resolve_hot_item);
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
-    rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id);
-    rebuild_surface_mesh();
-    rebuild_reference_mesh();
-    rebuild_edit_overlay();
+    timed("frame.stroke_mesh", () => rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id));
+    timed("frame.surface_mesh", rebuild_surface_mesh);
+    timed("frame.reference_mesh", rebuild_reference_mesh);
+    timed("frame.edit_overlay", rebuild_edit_overlay);
     const view_projection = camera_view_projection(camera, canvas.width / canvas.height);
     const clip = clip_plane.enabled ? clip_plane : null;
-    render_frame(renderer, view_projection, clip, () => {
+    timed("frame.draw", () => render_frame(renderer, view_projection, clip, () => {
       draw_mesh_translucent(reference_translucent, view_projection, camera_eye(camera), clip);
-    });
-    rebuild_stroke_labels();
-    refresh_selection_readout();
+    }));
+    timed("frame.stroke_labels", rebuild_stroke_labels);
+    timed("frame.selection_readout", refresh_selection_readout);
+    add_frame_timing("frame.total", frame_started_ms);
   }
 
   // Names live in an HTML overlay (no text rendering in WebGL): only the selected
@@ -429,8 +486,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
       if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ true, vertices);
     }
-    append_contour_ribbons(vertices);
-    set_stroke_mesh(renderer, vertex_sink_view(vertices));
+    timed("frame.contours", () => append_contour_ribbons(vertices));
+    timed("frame.upload", () => set_stroke_mesh(renderer, vertex_sink_view(vertices)));
   }
 
   // Computed contours share the stroke mesh so they get the same depth bias
@@ -442,14 +499,27 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (hidden_layers.has(layer)) continue;
       // A flat fill has no shape to turn away from the eye: no contour line.
       if (patch.fill_color !== undefined) continue;
-      const grid = patch_surface_grid(patch, tablet_document);
-      if (grid === null) continue;
+      const geometry = timed("contours.grids", () => cached_patch_geometry(patch_geometry_cache, patch, tablet_document));
+      if (geometry === null) continue;
+      const grid = geometry.grid;
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
-      for (const chain of extract_contour_chains(grid, eye)) append_chain_ribbon(chain, camera, color, vertices);
+      const chains = timed("contours.extract", () => extract_contour_chains(grid, eye, cached_surface_partials(grid)));
+      timed("contours.ribbons", () => { for (const chain of chains) append_chain_ribbon(chain, camera, color, vertices); });
       if (tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true) {
-        for (const chain of extract_contour_chains(mirrored_surface_grid(grid), eye)) append_chain_ribbon(chain, camera, color, vertices);
+        const mirrored_grid = timed("contours.grids", () => cached_mirrored_grid(geometry));
+        const mirrored_chains = timed("contours.extract", () => extract_contour_chains(mirrored_grid, eye, cached_surface_partials(mirrored_grid)));
+        timed("contours.ribbons", () => { for (const chain of mirrored_chains) append_chain_ribbon(chain, camera, color, vertices); });
       }
     }
+  }
+  // Keyed on the grid object: invalidating the patch geometry cache makes new grids, so a
+  // stale entry is never looked up again (and the WeakMap lets it go).
+  function cached_surface_partials(grid: SurfaceGrid): SurfacePartials {
+    const cached = surface_partials_by_grid.get(grid);
+    if (cached !== undefined) return cached;
+    const partials = surface_partials(grid);
+    surface_partials_by_grid.set(grid, partials);
+    return partials;
   }
 
   function rebuild_surface_mesh(): void {
@@ -466,9 +536,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (!surface_drawn && !is_selected_or_hot) return;
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
       // A patch with its own fill color is drawn flat in it, unless it is the selected (or hot) one.
+      const geometry = cached_patch_geometry(patch_geometry_cache, patch, tablet_document);
+      if (geometry === null) return;
       if (patch.fill_color !== undefined && !is_selected_or_hot) {
-        append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ false, vertices);
-        if (is_drawn_on_mirrored_side) append_flat_patch_mesh(patch, tablet_document, patch.fill_color, /* is_mirrored_side */ true, vertices);
+        append_flat_grid_mesh(geometry.grid, patch.fill_color, vertices);
+        if (is_drawn_on_mirrored_side) append_flat_grid_mesh(cached_mirrored_grid(geometry), patch.fill_color, vertices);
         return;
       }
       let color = SURFACE_COLOR;
@@ -479,13 +551,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       } else if (locked_layers.has(layer)) {
         color = LOCKED_LAYER_SURFACE_COLOR;
       }
-      append_patch_mesh(patch, tablet_document, camera, color, vertices);
-      if (is_drawn_on_mirrored_side) append_mirrored_patch_mesh(patch, tablet_document, camera, color, vertices);
+      append_patch_geometry_mesh(geometry, camera, color, vertices);
+      if (is_drawn_on_mirrored_side) append_grid_mesh(cached_mirrored_grid(geometry), camera, color, vertices);
     });
     if (surface_drawn) {
       for (const grid of drawn_sphere_grids()) append_grid_mesh(grid, camera, SPHERE_COLOR, vertices);
     }
-    set_surface_mesh(renderer, vertex_sink_view(vertices));
+    timed("frame.upload", () => set_surface_mesh(renderer, vertex_sink_view(vertices)));
   }
 
   // The spheres on visible layers as grids, with their mirror images when the document
@@ -507,11 +579,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const grids: SurfaceGrid[] = drawn_sphere_grids();
     for (const patch of tablet_document.patches) {
       if (hidden_layers.has(patch_layer(patch, tablet_document))) continue;
-      const grid = patch_surface_grid(patch, tablet_document);
-      if (grid === null) continue;
-      grids.push(grid);
+      const geometry = cached_patch_geometry(patch_geometry_cache, patch, tablet_document);
+      if (geometry === null) continue;
+      grids.push(geometry.grid);
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
-      if (is_drawn_on_mirrored_side) grids.push(mirrored_surface_grid(grid));
+      if (is_drawn_on_mirrored_side) grids.push(cached_mirrored_grid(geometry));
     }
     return grids;
   }
@@ -1542,6 +1614,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         }
       } else if (pen_orbit_last_screen !== null) {
         pen_orbit(position);
+        // Only the camera moved.
+        request_camera_render();
+        return;
       } else if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) {
         // Still a tap: nothing moves (a tap only selects). The drag's last
         // screen position stays at the pen-down point, so the first real move
@@ -1595,7 +1670,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     on_undo_tap: perform_undo,
     on_redo_tap: perform_redo,
   }, () => {
-    request_render();
+    request_camera_render();
   });
 
   // Name (or rename; empty clears) the selected vertex or stroke. A named vertex
@@ -2253,7 +2328,40 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { tablet_document: unknown }).tablet_document = tablet_document;
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
-  (window as unknown as { debug_render_now: unknown }).debug_render_now = render_now;
+  // A test may have changed `window.tablet_document` without a render request, so the
+  // hook builds the patch grids again, unless only camera requests came since the last
+  // frame (a profiling script timing camera-only frames).
+  (window as unknown as { debug_render_now: unknown }).debug_render_now = () => {
+    if (!next_frame_is_camera_only) invalidate_patch_geometry_cache(patch_geometry_cache);
+    // As the animation frame callback does: a script calling request + this hook in a loop
+    // never yields to the animation frame, and a stuck flag would make every later camera
+    // request look like a full one. The pending animation frame still renders, harmlessly.
+    frame_requested = false;
+    render_now();
+  };
+  // Profiling (2026-11-22): the frame timings above, and a hash of what the last frame
+  // put in the stroke, surface and reference vertex sinks (the filled prefix, bit for
+  // bit), so a script can check that a speed-up leaves the picture unchanged.
+  const vertex_sink_hash = (sink: VertexSink): string => {
+    const words = new Uint32Array(sink.data.buffer, sink.data.byteOffset, sink.length);
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < words.length; i++) hash = Math.imul(hash ^ words[i], 0x01000193) >>> 0;
+    return `${sink.length}:${hash.toString(16)}`;
+  };
+  Object.assign(window, {
+    debug_frame_timings: () => frame_timings,
+    debug_reset_frame_timings: () => {
+      frame_timings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, milliseconds_by_part: {} };
+    },
+    debug_set_hover_screen: (screen: V2 | null) => {
+      hover_screen = screen;
+    },
+    debug_frame_vertex_hash: () => ({
+      strokes: vertex_sink_hash(stroke_sink),
+      surfaces: vertex_sink_hash(surface_sink),
+      reference: vertex_sink_hash(reference_sink),
+    }),
+  });
   (window as unknown as { debug_selection_text: unknown }).debug_selection_text = selection_readout_text;
   (window as unknown as { debug_pull_document_changes_if_any: unknown }).debug_pull_document_changes_if_any = pull_document_changes_if_any;
   // Drive the editor from the browser console or a scripted tab without clicking
@@ -2272,6 +2380,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     },
     debug_nudge_selected_handle: nudge_selected_handle,
     debug_request_render: request_render,
+    debug_request_camera_render: request_camera_render,
   });
   // Read by the page-reload script of the build (vite.config.ts reload_on_rebuild_plugin).
   (window as unknown as { tablet_has_unsaved_edits: unknown }).tablet_has_unsaved_edits = () => has_unsaved_edits(persistence);

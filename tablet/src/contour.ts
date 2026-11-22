@@ -5,6 +5,7 @@
 // each polyline becomes a bezier chain (one cubic per cell, tangents from the
 // gradient of f), so downstream a contour is the same object as a drawn
 // stroke. Everything here is per frame: the result is never stored.
+// (Since 2026-11-22 the eye-independent surface partials may be: see SurfacePartials.)
 // Walkthrough with pictures: docs/interactive-contour-extraction.html.
 //
 // The extractor takes any scalar field on the surface (`ScalarField`); the
@@ -49,38 +50,62 @@ function central_difference(values: V3[], index: number): V3 {
   return v3_scale(v3_sub(values[index + 1], values[index - 1]), 0.5);
 }
 
-function evaluate_corner_field(grid: SurfaceGrid, field_value: ScalarField): CornerField {
-  const f: number[][] = [];
+// The part of the corner field that doesn't depend on the eye: the surface partials, their
+// cross product (the raw normal) and the degenerate corners. A caller that keeps a grid
+// across frames can compute this once per grid (the sketchpad does, during a camera
+// gesture) and pass it to extract_contour_chains.
+export type SurfacePartials = { s_u: V3[][]; s_v: V3[][]; normals: V3[][]; degenerate: boolean[][] };
+
+export function surface_partials(grid: SurfaceGrid): SurfacePartials {
   const s_u: V3[][] = [];
   const s_v: V3[][] = [];
+  const normals: V3[][] = [];
   const normal_lengths: number[][] = [];
   let max_normal_length = 0;
+  // Gathered once per row, not once per corner (it was the bulk of a contour frame).
+  const rows_along_u: V3[][] = [];
+  for (let j = 0; j <= grid.rows; j++) rows_along_u.push(grid.positions.map((column) => column[j]));
   for (let i = 0; i <= grid.columns; i++) {
-    f.push([]);
     s_u.push([]);
     s_v.push([]);
+    normals.push([]);
     normal_lengths.push([]);
     for (let j = 0; j <= grid.rows; j++) {
-      const row_along_u = grid.positions.map((column) => column[j]);
+      const row_along_u = rows_along_u[j];
       const partial_u = central_difference(row_along_u, i);
       const partial_v = central_difference(grid.positions[i], j);
       const normal = v3_cross(partial_u, partial_v);
       const normal_length = v3_length(normal);
       max_normal_length = Math.max(max_normal_length, normal_length);
-      f[i].push(field_value(grid.positions[i][j], partial_u, partial_v));
       s_u[i].push(partial_u);
       s_v[i].push(partial_v);
+      normals[i].push(normal);
       normal_lengths[i].push(normal_length);
     }
   }
   const degenerate = normal_lengths.map((column) => column.map((length) => length < DEGENERATE_NORMAL_FRACTION * max_normal_length));
-  return { f, s_u, s_v, degenerate };
+  return { s_u, s_v, normals, degenerate };
 }
 
-function edge_crossing(field: CornerField, from: GridPoint, to: GridPoint, edge_id: string): Crossing | null {
+function evaluate_corner_field(grid: SurfaceGrid, partials: SurfacePartials, field_value: ScalarField): CornerField {
+  const f = grid.positions.map((column, i) => column.map((position, j) => field_value(position, partials.s_u[i][j], partials.s_v[i][j])));
+  return { f, s_u: partials.s_u, s_v: partials.s_v, degenerate: partials.degenerate };
+}
+
+// silhouette_field's values from the precomputed normals: the same arithmetic in the same
+// order (cross, then dot with eye − S), so the same numbers bit for bit.
+function silhouette_corner_field(grid: SurfaceGrid, partials: SurfacePartials, eye: V3): CornerField {
+  const f = grid.positions.map((column, i) => column.map((position, j) => v3_dot(partials.normals[i][j], v3_sub(eye, position))));
+  return { f, s_u: partials.s_u, s_v: partials.s_v, degenerate: partials.degenerate };
+}
+
+function has_sign_flip(field: CornerField, from: GridPoint, to: GridPoint): boolean {
+  return (field.f[from.i][from.j] < 0) !== (field.f[to.i][to.j] < 0);
+}
+
+function edge_crossing(field: CornerField, from: GridPoint, to: GridPoint, edge_id: string): Crossing {
   const f0 = field.f[from.i][from.j];
   const f1 = field.f[to.i][to.j];
-  if ((f0 < 0) === (f1 < 0)) return null;
   return { edge_id, from, to, s: f0 / (f0 - f1) };
 }
 
@@ -93,13 +118,13 @@ function marching_squares(grid: SurfaceGrid, field: CornerField): Segment[] {
     for (let i = 0; i < grid.columns; i++) {
       const corners: GridPoint[] = [{ i, j }, { i: i + 1, j }, { i, j: j + 1 }, { i: i + 1, j: j + 1 }];
       if (corners.some((corner) => field.degenerate[corner.i][corner.j])) continue;
-      const candidates = [
-        edge_crossing(field, corners[0], corners[1], `h${i},${j}`),
-        edge_crossing(field, corners[2], corners[3], `h${i},${j + 1}`),
-        edge_crossing(field, corners[0], corners[2], `v${i},${j}`),
-        edge_crossing(field, corners[1], corners[3], `v${i + 1},${j}`),
-      ];
-      const crossings = candidates.filter((crossing): crossing is Crossing => crossing !== null);
+      // Edge ids are built only for the edges that cross (most cells have none; building
+      // all four strings per cell was a large part of extraction).
+      const crossings: Crossing[] = [];
+      if (has_sign_flip(field, corners[0], corners[1])) crossings.push(edge_crossing(field, corners[0], corners[1], `h${i},${j}`));
+      if (has_sign_flip(field, corners[2], corners[3])) crossings.push(edge_crossing(field, corners[2], corners[3], `h${i},${j + 1}`));
+      if (has_sign_flip(field, corners[0], corners[2])) crossings.push(edge_crossing(field, corners[0], corners[2], `v${i},${j}`));
+      if (has_sign_flip(field, corners[1], corners[3])) crossings.push(edge_crossing(field, corners[1], corners[3], `v${i + 1},${j}`));
       for (let k = 0; k + 1 < crossings.length; k += 2) segments.push({ a: crossings[k], b: crossings[k + 1] });
     }
   }
@@ -206,13 +231,18 @@ function fit_bezier_chain(knots: Knot[]): ContourChain {
   return chain;
 }
 
-export function extract_contour_chains(grid: SurfaceGrid, eye: V3): ContourChain[] {
-  return extract_level_set_chains(grid, silhouette_field(eye));
+// `partials` must be surface_partials(grid) of this same grid; a caller without a cache
+// leaves it out.
+export function extract_contour_chains(grid: SurfaceGrid, eye: V3, partials: SurfacePartials = surface_partials(grid)): ContourChain[] {
+  return chains_from_corner_field(grid, silhouette_corner_field(grid, partials, eye));
 }
 
 // Zero set of `field_value` on the grid as bezier chains, one per polyline.
 export function extract_level_set_chains(grid: SurfaceGrid, field_value: ScalarField): ContourChain[] {
-  const field = evaluate_corner_field(grid, field_value);
+  return chains_from_corner_field(grid, evaluate_corner_field(grid, surface_partials(grid), field_value));
+}
+
+function chains_from_corner_field(grid: SurfaceGrid, field: CornerField): ContourChain[] {
   const segments = marching_squares(grid, field);
   const polylines = join_into_polylines(segments);
   return polylines

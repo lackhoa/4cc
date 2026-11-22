@@ -186,8 +186,24 @@ function push_shaded_vertex(position: V3, brightness: number, color: Color, out:
 // Ruled surface P(u, v) = lerp(A(u), B(u), v), both sides running the same
 // way — normals from the analytic partials.
 function append_loft_mesh(side_a: Side, side_b: Side, tablet_document: TabletDocument, camera: OrbitCamera, color: Color, out: VertexSink): void {
+  const rails = sample_loft_rails(side_a, side_b, tablet_document);
+  append_loft_mesh_from_rails(rails, camera, color, out);
+}
+
+// The two sides of a loft sampled at LOFT_SAMPLES_ALONG_RAILS + 1 points each: all the
+// loft mesh and the loft grid are built from.
+type RailSample = { position: V3; tangent: V3 };
+type LoftRails = { samples_a: RailSample[]; samples_b: RailSample[] };
+
+function sample_loft_rails(side_a: Side, side_b: Side, tablet_document: TabletDocument): LoftRails {
   const samples_a = sample_side(side_a, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
   const samples_b = sample_side(side_b, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
+  return { samples_a, samples_b };
+}
+
+function append_loft_mesh_from_rails(rails: LoftRails, camera: OrbitCamera, color: Color, out: VertexSink): void {
+  const samples_a = rails.samples_a;
+  const samples_b = rails.samples_b;
   const camera_forward = camera_basis(camera).forward;
   const shaded = (u: number, v: number): { position: V3; brightness: number } => {
     const a = samples_a[u];
@@ -259,8 +275,12 @@ function coons_surface_grid(sides: Side[], tablet_document: TabletDocument): Sur
 
 // The loft as a grid: rows are the lerp steps between the two rails.
 function loft_surface_grid(side_a: Side, side_b: Side, tablet_document: TabletDocument): SurfaceGrid {
-  const samples_a = sample_side(side_a, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
-  const samples_b = sample_side(side_b, tablet_document, LOFT_SAMPLES_ALONG_RAILS);
+  return loft_surface_grid_from_rails(sample_loft_rails(side_a, side_b, tablet_document));
+}
+
+function loft_surface_grid_from_rails(rails: LoftRails): SurfaceGrid {
+  const samples_a = rails.samples_a;
+  const samples_b = rails.samples_b;
   const grid_positions: V3[][] = [];
   for (let u = 0; u <= LOFT_SAMPLES_ALONG_RAILS; u++) {
     const column: V3[] = [];
@@ -534,6 +554,11 @@ export function append_flat_patch_mesh(patch: Patch, tablet_document: TabletDocu
   let grid = patch_surface_grid(patch, tablet_document);
   if (grid === null) return;
   if (is_mirrored_side) grid = mirrored_surface_grid(grid);
+  append_flat_grid_mesh(grid, color, out);
+}
+
+// A grid in one flat color, no shading.
+export function append_flat_grid_mesh(grid: SurfaceGrid, color: Color, out: VertexSink): void {
   for (let j = 0; j < grid.rows; j++) {
     for (let i = 0; i < grid.columns; i++) {
       const point_00 = grid.positions[i][j];
@@ -550,6 +575,57 @@ export function append_mirrored_patch_mesh(patch: Patch, tablet_document: Tablet
   const grid = patch_surface_grid(patch, tablet_document);
   if (grid === null) return;
   append_grid_mesh(mirrored_surface_grid(grid), camera, color, out);
+}
+
+// What a patch's fill looks like apart from the camera: its surface grid, the loft
+// rails its shaded mesh is built from (null for a Coons fill), and the grid's mirror
+// image, made the first time it is asked for. Same arithmetic as patch_surface_grid,
+// append_patch_mesh and append_mirrored_patch_mesh, so the meshes come out the same.
+export type PatchGeometry = { grid: SurfaceGrid; loft_rails: LoftRails | null; mirrored_grid: SurfaceGrid | null };
+
+// The PatchGeometry of each patch, built on first use. The cache does not see the
+// document change: its owner invalidates it whenever the document may have changed
+// (the sketchpad on every full render request, after the pin pass), and only a frame
+// that follows the camera alone reuses it. Keyed by the patch object, so a patch
+// added or deleted between invalidations is never matched to another one's geometry.
+export type PatchGeometryCache = { geometry_by_patch: Map<Patch, PatchGeometry | null> };
+
+export function create_patch_geometry_cache(): PatchGeometryCache {
+  return { geometry_by_patch: new Map() };
+}
+
+export function invalidate_patch_geometry_cache(cache: PatchGeometryCache): void {
+  cache.geometry_by_patch.clear();
+}
+
+// Null when the patch has no drawable fill (as patch_surface_grid).
+export function cached_patch_geometry(cache: PatchGeometryCache, patch: Patch, tablet_document: TabletDocument): PatchGeometry | null {
+  if (cache.geometry_by_patch.has(patch)) return cache.geometry_by_patch.get(patch)!;
+  const geometry = patch_geometry(patch, tablet_document);
+  cache.geometry_by_patch.set(patch, geometry);
+  return geometry;
+}
+
+function patch_geometry(patch: Patch, tablet_document: TabletDocument): PatchGeometry | null {
+  const fill = resolve_patch_fill(patch, tablet_document);
+  if (fill === null) return null;
+  if (fill.kind === "loft") {
+    const loft_rails = sample_loft_rails(fill.side_a, fill.side_b, tablet_document);
+    return { grid: loft_surface_grid_from_rails(loft_rails), loft_rails, mirrored_grid: null };
+  }
+  return { grid: coons_surface_grid(fill.sides, tablet_document), loft_rails: null, mirrored_grid: null };
+}
+
+export function cached_mirrored_grid(geometry: PatchGeometry): SurfaceGrid {
+  if (geometry.mirrored_grid === null) geometry.mirrored_grid = mirrored_surface_grid(geometry.grid);
+  return geometry.mirrored_grid;
+}
+
+// append_patch_mesh from the cached geometry.
+export function append_patch_geometry_mesh(geometry: PatchGeometry, camera: OrbitCamera, color: Color, out: VertexSink): void {
+  // The loft keeps its analytic-partial shading; Coons shades per triangle.
+  if (geometry.loft_rails !== null) append_loft_mesh_from_rails(geometry.loft_rails, camera, color, out);
+  else append_grid_mesh(geometry.grid, camera, color, out);
 }
 
 // Locks (plan-patch-subcurve-boundary.md Q3/Q7): a patch owns its boundary.
@@ -708,9 +784,13 @@ export function drag_surface_pin(
 // per-frame surface grid is projected and tested in 2D, so what you see is
 // what you pick. Callers try vertices and strokes first.
 // Only patches on `layers` count (the sketchpad passes the layers neither locked nor hidden).
-export function pick_patch(tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>): number | null {
+// `grid_of_patch` gives each patch's grid (the sketchpad passes its cached ones).
+export function pick_patch(
+  tablet_document: TabletDocument, camera: OrbitCamera, screen: V2, canvas: HTMLCanvasElement, layers: ReadonlySet<Layer>,
+  grid_of_patch: (patch: Patch) => SurfaceGrid | null = (patch) => patch_surface_grid(patch, tablet_document),
+): number | null {
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
-  return pick_patch_grid_triangle(tablet_document, project, camera_eye(camera), screen, layers)?.index ?? null;
+  return pick_patch_grid_triangle(tablet_document, project, camera_eye(camera), screen, layers, grid_of_patch)?.index ?? null;
 }
 
 // The point of the surface under the tap (plan-hairline-drawn-on-surface Q5/Q8:
@@ -733,7 +813,7 @@ export function pick_surface_point(
 export function pick_surface_point_projected(
   tablet_document: TabletDocument, project: (world: V3) => V2 | null, eye: V3, screen: V2, layers: ReadonlySet<Layer>,
 ): { patch: Patch; u: number; v: number; position: V3 } | null {
-  const hit = pick_patch_grid_triangle(tablet_document, project, eye, screen, layers);
+  const hit = pick_patch_grid_triangle(tablet_document, project, eye, screen, layers, (patch) => patch_surface_grid(patch, tablet_document));
   if (hit === null) return null;
   const patch = tablet_document.patches[hit.index];
   const position = patch_point(patch, tablet_document, hit.u, hit.v);
@@ -744,13 +824,14 @@ export function pick_surface_point_projected(
 // nearest-to-eye grid triangle containing the tap.
 function pick_patch_grid_triangle(
   tablet_document: TabletDocument, project: (world: V3) => V2 | null, eye: V3, screen: V2, layers: ReadonlySet<Layer>,
+  grid_of_patch: (patch: Patch) => SurfaceGrid | null,
 ): { index: number; u: number; v: number } | null {
   const side = (a: V2, b: V2): number => (b.x - a.x) * (screen.y - a.y) - (b.y - a.y) * (screen.x - a.x);
   let best: { index: number; u: number; v: number } | null = null;
   let best_distance = Infinity;
   tablet_document.patches.forEach((patch, index) => {
     if (!layers.has(patch_layer(patch, tablet_document))) return;
-    const grid = patch_surface_grid(patch, tablet_document);
+    const grid = grid_of_patch(patch);
     if (grid === null) return;
     // Corners as grid indices (i, j); the weights of the tap are the opposite
     // edges' signed areas, normalized.
