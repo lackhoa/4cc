@@ -5,6 +5,12 @@
 // Both views are orthographic, so a world point maps to an image pixel by a scale and an
 // offset (loomis_girl_plate.ts).
 //
+// The same views without the plate: start_plate_views with a layout and an adapter of the
+// page's own, used by fit-head-to-native-head (no plate image; a background document, the
+// native head, drawn in blue strokes with the fitted head; marks at world positions; no
+// midline). start_loomis_girl_plate_views is that call with the plate's layout and the
+// adapter of the plate's landmark file.
+//
 // A view is three canvases stacked in one container: the plate (2D), the document's
 // surfaces and strokes (WebGL, depth-tested so the surfaces hide the strokes behind them,
 // head_meshes.ts) seen through an orthographic OrbitCamera that reproduces the plate's
@@ -30,7 +36,7 @@ import { Rgb } from "./vertex_sink";
 import { HeadMeshes, create_head_meshes, draw_head_meshes, update_head_meshes } from "./head_meshes";
 import {
   FRONT_REGION, FitLandmark, FitLandmarksFile, IMAGE_HEIGHT_PIXELS, IMAGE_WIDTH_PIXELS, PIXELS_PER_WORLD_UNIT, PROFILE_PORION_X_PIXELS,
-  PROFILE_REGION, PlateRegion, WORLD_Y_ZERO_ROW_PIXELS, front_pixel_from_world,
+  PROFILE_REGION, PlateRegion, TemplatePoint, WORLD_Y_ZERO_ROW_PIXELS, front_pixel_from_world,
   plate_view_transform_showing_region, plate_view_transform_zoomed_at, profile_pixel_from_world, template_point_world_position,
   template_position_is_on_midline,
 } from "./loomis_girl_plate";
@@ -82,6 +88,43 @@ export type PlateMarkEditing = {
 
 export type PlateViews = { draw: () => void };
 
+// What stays the same for all views of a page. The "image pixels" of a view are the
+// plate's pixels, or with no plate any pixels the page's adapter maps the world to.
+export type PlateViewsLayout = {
+  pixels_per_world_unit: number;
+  front_region: PlateRegion; // what a view shows when it is fitted (start, double tap)
+  profile_region: PlateRegion;
+  plate_image: { url: string; width_pixels: number; height_pixels: number } | null; // null = a white background
+  background_stroke_color: Rgb | null; // the strokes of the adapter's background document; null = the page has none
+};
+
+// A mark of a landmark in a view, at an image pixel. side_sign is -1 for the mirrored mark
+// of a landmark off the midline in the front view, else 1.
+export type PlateMark = { landmark_index: number; side_sign: number; image_pixel: V2 };
+
+// The landmarks as the views see them, asked from the adapter on every draw.
+export type PlateMarksScene = {
+  template_document: TabletDocument; // says which landmarks are midline landmarks
+  landmarks: { name: string; template_point: TemplatePoint }[];
+  selected_landmark_index: number | null;
+  landmark_names_visible: boolean;
+  background_document: ShownDocument | null; // drawn in every view in the layout's background stroke color
+};
+
+// The page's side of the views: where its marks are, how a drag moves them, and how the
+// world maps to image pixels. A drag changes the page's landmarks in place.
+export type PlateViewsAdapter = {
+  scene: () => PlateMarksScene;
+  image_pixel_from_world: (is_front_view: boolean, position: V3) => V2;
+  // The world point the orthographic camera looks at to show `image_pixel` at the canvas centre.
+  camera_pivot_at_image_pixel: (is_front_view: boolean, image_pixel: V2) => V3;
+  marks_of_landmark: (is_front_view: boolean, landmark_index: number) => PlateMark[];
+  mark_is_read_from_view: (is_front_view: boolean, landmark_index: number) => boolean; // a cross; else a circle
+  move_mark_to: (is_front_view: boolean, mark: PlateMark) => void; // mark.image_pixel is where the pointer put it
+  // The front view's midline, drawn and dragged by its handle where marks are editable; null = none.
+  front_midline: { column_pixels: () => number; move_to_column: (column_pixels: number) => void } | null;
+};
+
 type PlateDrag =
   | { kind: "mark"; landmark_index: number; side_sign: number; pointer_to_mark_offset: V2; has_moved: boolean }
   | { kind: "midline"; has_moved: boolean }
@@ -95,6 +138,7 @@ type PlateView = {
   mesh_canvas: HTMLCanvasElement;
   mesh_gl: WebGLRenderingContext | null; // null = no WebGL, the view shows plate and overlay only
   head_meshes: HeadMeshes | null;
+  background_meshes: HeadMeshes | null; // null = no WebGL, or the layout has no background document
   overlay_canvas: HTMLCanvasElement; // on top, takes the gestures
   pair: PlateViewPair;
   region: PlateRegion;
@@ -109,16 +153,23 @@ type PlateView = {
 
 type PlateViewsState = {
   views: PlateView[];
-  scene: () => PlateViewsScene;
+  layout: PlateViewsLayout;
+  adapter: PlateViewsAdapter;
   mark_editing: PlateMarkEditing | null;
-  plate_image: HTMLImageElement | null; // null = not loaded (the scan is not in the repo)
+  plate_image: HTMLImageElement | null; // null = not loaded (the scan is not in the repo), or the layout has none
   plate_opacity: number;
   surfaces_visible: boolean;
   skull_visible: boolean;
   landmarks_visible: boolean;
 };
 
-type PlateMark = { landmark_index: number; side_sign: number; image_pixel: V2 };
+const LOOMIS_GIRL_PLATE_LAYOUT: PlateViewsLayout = {
+  pixels_per_world_unit: PIXELS_PER_WORLD_UNIT,
+  front_region: FRONT_REGION,
+  profile_region: PROFILE_REGION,
+  plate_image: { url: PLATE_IMAGE_URL, width_pixels: IMAGE_WIDTH_PIXELS, height_pixels: IMAGE_HEIGHT_PIXELS },
+  background_stroke_color: null,
+};
 
 function fit_view_to_region(view: PlateView): void {
   const transform = plate_view_transform_showing_region(view.container.clientWidth, view.container.clientHeight, view.region);
@@ -160,26 +211,20 @@ function canvas_point_at_image_pixel(view: PlateView, image_pixel: V2): V2 {
   };
 }
 
-function view_pixel_from_world(view: PlateView, landmarks_file: FitLandmarksFile, p: V3): V2 {
-  return view.is_front_view ? front_pixel_from_world(p, landmarks_file.front_midline_column_pixels) : profile_pixel_from_world(p);
-}
-
 // The orthographic camera that shows the world as the plate does (front_pixel_from_world,
 // profile_pixel_from_world): looking down -z for the front view, down -x for the profile
 // (+z to the viewer's left), pivot at the world point under the canvas centre.
 function plate_view_camera(state: PlateViewsState, view: PlateView): OrbitCamera {
   const centre = image_pixel_at_canvas_point(view, { x: view.container.clientWidth / 2, y: view.container.clientHeight / 2 });
-  const y = (WORLD_Y_ZERO_ROW_PIXELS - centre.y) / PIXELS_PER_WORLD_UNIT;
-  const pivot = view.is_front_view
-    ? v3((centre.x - state.scene().landmarks_file.front_midline_column_pixels) / PIXELS_PER_WORLD_UNIT, y, 0)
-    : v3(0, y, (PROFILE_PORION_X_PIXELS - centre.x) / PIXELS_PER_WORLD_UNIT);
   return {
-    pivot,
+    pivot: state.adapter.camera_pivot_at_image_pixel(view.is_front_view, centre),
     yaw: view.is_front_view ? 0 : Math.PI / 2,
     pitch: 0,
-    distance: camera_distance_for_world_units_per_pixel(1 / (view.image_pixels_to_canvas_scale * PIXELS_PER_WORLD_UNIT), view.container.clientHeight),
+    distance: camera_distance_for_world_units_per_pixel(1 / (view.image_pixels_to_canvas_scale * state.layout.pixels_per_world_unit), view.container.clientHeight),
   };
 }
+
+// ---- the adapter of the Loomis plate's landmark file ---------------------------------
 
 // A landmark on the midline has one mark in the front view; any other has one on each side
 // of the face. The template decides; a landmark whose template point is gone keeps what its
@@ -191,12 +236,65 @@ function landmark_is_on_midline(scene: PlateViewsScene, landmark: FitLandmark): 
 }
 
 // The marks of one landmark in a view: two in the front view when the landmark is paired.
-function marks_of_landmark(view: PlateView, scene: PlateViewsScene, landmark: FitLandmark, landmark_index: number): PlateMark[] {
-  if (!view.is_front_view) return [{ landmark_index, side_sign: 1, image_pixel: { x: landmark.profile_column_pixels, y: landmark.row_pixels } }];
+function marks_of_loomis_landmark(is_front_view: boolean, scene: PlateViewsScene, landmark: FitLandmark, landmark_index: number): PlateMark[] {
+  if (!is_front_view) return [{ landmark_index, side_sign: 1, image_pixel: { x: landmark.profile_column_pixels, y: landmark.row_pixels } }];
   const midline = scene.landmarks_file.front_midline_column_pixels;
   if (landmark_is_on_midline(scene, landmark)) return [{ landmark_index, side_sign: 1, image_pixel: { x: midline, y: landmark.row_pixels } }];
   return [1, -1].map((side_sign) => ({ landmark_index, side_sign, image_pixel: { x: midline + side_sign * landmark.front_half_width_pixels, y: landmark.row_pixels } }));
 }
+
+// Moves the dragged mark to the pointer. The view a mark is dragged in becomes a view the
+// landmark is read from.
+function move_loomis_mark_to(is_front_view: boolean, scene: PlateViewsScene, mark: PlateMark): void {
+  const landmark = scene.landmarks_file.landmarks[mark.landmark_index];
+  const image_pixel = mark.image_pixel;
+  landmark.row_pixels = image_pixel.y;
+  if (is_front_view) {
+    if (!landmark_is_on_midline(scene, landmark)) landmark.front_half_width_pixels = Math.max(0, (image_pixel.x - scene.landmarks_file.front_midline_column_pixels) * mark.side_sign);
+    landmark.read_from_front = true;
+  } else {
+    landmark.profile_column_pixels = image_pixel.x;
+    landmark.read_from_profile = true;
+  }
+}
+
+function loomis_girl_plate_adapter(scene: () => PlateViewsScene): PlateViewsAdapter {
+  return {
+    scene: () => {
+      const plate_scene = scene();
+      return {
+        template_document: plate_scene.template_document,
+        landmarks: plate_scene.landmarks_file.landmarks,
+        selected_landmark_index: plate_scene.selected_landmark_index,
+        landmark_names_visible: plate_scene.landmark_names_visible,
+        background_document: null,
+      };
+    },
+    image_pixel_from_world: (is_front_view, position) => (is_front_view ? front_pixel_from_world(position, scene().landmarks_file.front_midline_column_pixels) : profile_pixel_from_world(position)),
+    camera_pivot_at_image_pixel: (is_front_view, centre) => {
+      const y = (WORLD_Y_ZERO_ROW_PIXELS - centre.y) / PIXELS_PER_WORLD_UNIT;
+      if (is_front_view) return v3((centre.x - scene().landmarks_file.front_midline_column_pixels) / PIXELS_PER_WORLD_UNIT, y, 0);
+      return v3(0, y, (PROFILE_PORION_X_PIXELS - centre.x) / PIXELS_PER_WORLD_UNIT);
+    },
+    marks_of_landmark: (is_front_view, landmark_index) => {
+      const plate_scene = scene();
+      return marks_of_loomis_landmark(is_front_view, plate_scene, plate_scene.landmarks_file.landmarks[landmark_index], landmark_index);
+    },
+    mark_is_read_from_view: (is_front_view, landmark_index) => {
+      const landmark = scene().landmarks_file.landmarks[landmark_index];
+      return is_front_view ? landmark.read_from_front : landmark.read_from_profile;
+    },
+    move_mark_to: (is_front_view, mark) => move_loomis_mark_to(is_front_view, scene(), mark),
+    front_midline: {
+      column_pixels: () => scene().landmarks_file.front_midline_column_pixels,
+      move_to_column: (column_pixels) => {
+        scene().landmarks_file.front_midline_column_pixels = column_pixels;
+      },
+    },
+  };
+}
+
+// ---- the views -----------------------------------------------------------------------
 
 function marks_are_drawn(state: PlateViewsState, view: PlateView): boolean {
   return view.pair.marks !== "hidden" && state.landmarks_visible;
@@ -208,11 +306,11 @@ function marks_can_be_dragged(state: PlateViewsState, view: PlateView): boolean 
 
 function mark_under_pointer(state: PlateViewsState, view: PlateView, canvas_point: V2): PlateMark | null {
   if (!marks_are_drawn(state, view)) return null;
-  const scene = state.scene();
+  const scene = state.adapter.scene();
   let nearest: PlateMark | null = null;
   let nearest_distance = GRAB_RADIUS_PIXELS;
-  scene.landmarks_file.landmarks.forEach((landmark, landmark_index) => {
-    for (const mark of marks_of_landmark(view, scene, landmark, landmark_index)) {
+  scene.landmarks.forEach((_landmark, landmark_index) => {
+    for (const mark of state.adapter.marks_of_landmark(view.is_front_view, landmark_index)) {
       const mark_point = canvas_point_at_image_pixel(view, mark.image_pixel);
       let distance = Math.hypot(mark_point.x - canvas_point.x, mark_point.y - canvas_point.y);
       if (landmark_index === scene.selected_landmark_index) distance *= 0.5; // where marks crowd, the selected one is the one grabbed
@@ -226,25 +324,17 @@ function mark_under_pointer(state: PlateViewsState, view: PlateView, canvas_poin
 }
 
 function midline_handle_is_under_pointer(state: PlateViewsState, view: PlateView, canvas_point: V2): boolean {
+  const front_midline = state.adapter.front_midline;
+  if (front_midline === null) return false;
   if (!view.is_front_view || !marks_can_be_dragged(state, view)) return false;
-  const handle_x = canvas_point_at_image_pixel(view, { x: state.scene().landmarks_file.front_midline_column_pixels, y: 0 }).x;
+  const handle_x = canvas_point_at_image_pixel(view, { x: front_midline.column_pixels(), y: 0 }).x;
   return Math.hypot(handle_x - canvas_point.x, MIDLINE_HANDLE_CENTER_Y_PIXELS - canvas_point.y) <= GRAB_RADIUS_PIXELS;
 }
 
-// Moves the dragged mark to the pointer. The view a mark is dragged in becomes a view the
-// landmark is read from.
+// Moves the dragged mark to the pointer.
 function drag_mark_to(state: PlateViewsState, view: PlateView, drag: PlateDrag & { kind: "mark" }, canvas_point: V2): void {
-  const scene = state.scene();
-  const landmark = scene.landmarks_file.landmarks[drag.landmark_index];
   const image_pixel = image_pixel_at_canvas_point(view, { x: canvas_point.x + drag.pointer_to_mark_offset.x, y: canvas_point.y + drag.pointer_to_mark_offset.y });
-  landmark.row_pixels = image_pixel.y;
-  if (view.is_front_view) {
-    if (!landmark_is_on_midline(scene, landmark)) landmark.front_half_width_pixels = Math.max(0, (image_pixel.x - scene.landmarks_file.front_midline_column_pixels) * drag.side_sign);
-    landmark.read_from_front = true;
-  } else {
-    landmark.profile_column_pixels = image_pixel.x;
-    landmark.read_from_profile = true;
-  }
+  state.adapter.move_mark_to(view.is_front_view, { landmark_index: drag.landmark_index, side_sign: drag.side_sign, image_pixel: image_pixel });
 }
 
 function draw_plate_layer(state: PlateViewsState, view: PlateView): void {
@@ -253,12 +343,13 @@ function draw_plate_layer(state: PlateViewsState, view: PlateView): void {
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.fillStyle = "#fff";
   context.fillRect(0, 0, width, height);
-  if (state.plate_image === null) return;
+  const layout_image = state.layout.plate_image;
+  if (state.plate_image === null || layout_image === null) return;
   const scale = view.image_pixels_to_canvas_scale * device_pixel_ratio;
   context.setTransform(scale, 0, 0, scale, -view.image_pixel_at_canvas_origin.x * scale, -view.image_pixel_at_canvas_origin.y * scale);
   context.globalAlpha = state.plate_opacity;
   // The landmark pixels were read on the plate at this size, whatever the file's own.
-  context.drawImage(state.plate_image, 0, 0, IMAGE_WIDTH_PIXELS, IMAGE_HEIGHT_PIXELS);
+  context.drawImage(state.plate_image, 0, 0, layout_image.width_pixels, layout_image.height_pixels);
 }
 
 function draw_head_layer(state: PlateViewsState, view: PlateView): void {
@@ -268,23 +359,43 @@ function draw_head_layer(state: PlateViewsState, view: PlateView): void {
   gl.viewport(0, 0, width, height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  const shown = view.pair.shown();
-  if (shown === null || height === 0) return;
+  if (height === 0) return;
   const camera = plate_view_camera(state, view);
-  update_head_meshes(view.head_meshes, shown.tablet_document, shown.revision, camera, {
+  const view_projection = camera_orthographic_view_projection(camera, width / height);
+  const shown = view.pair.shown();
+  if (shown !== null) {
+    update_head_meshes(view.head_meshes, shown.tablet_document, shown.revision, camera, {
+      skull_visible: state.skull_visible,
+      surfaces_visible: state.surfaces_visible,
+      strokes_visible: true,
+      mirrored: true, // the document holds one side of the head
+      surface_opacity: SURFACE_OPACITY,
+      skin_stroke_color: SKIN_STROKE_COLOR,
+      skull_stroke_color: SKULL_STROKE_COLOR,
+    });
+    draw_head_meshes(view.head_meshes, view_projection, camera);
+  }
+  // The background document: its strokes only, over the shown document (the depth is
+  // cleared), so the shown document's surfaces hide none of them.
+  const background = state.adapter.scene().background_document;
+  const background_stroke_color = state.layout.background_stroke_color;
+  if (background === null || background_stroke_color === null || view.background_meshes === null) return;
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  update_head_meshes(view.background_meshes, background.tablet_document, background.revision, camera, {
     skull_visible: state.skull_visible,
-    surfaces_visible: state.surfaces_visible,
+    surfaces_visible: false,
     strokes_visible: true,
-    mirrored: true, // the document holds one side of the head
+    mirrored: background.tablet_document.is_mirrored_across_midline === true,
     surface_opacity: SURFACE_OPACITY,
-    skin_stroke_color: SKIN_STROKE_COLOR,
-    skull_stroke_color: SKULL_STROKE_COLOR,
+    skin_stroke_color: background_stroke_color,
+    skull_stroke_color: background_stroke_color,
   });
-  draw_head_meshes(view.head_meshes, camera_orthographic_view_projection(camera, width / height), camera);
+  draw_head_meshes(view.background_meshes, view_projection, camera);
 }
 
 function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
-  const scene = state.scene();
+  const adapter = state.adapter;
+  const scene = adapter.scene();
   const shown = view.pair.shown();
   const { width, height, device_pixel_ratio } = size_canvas_to_container(view, view.overlay_canvas);
   const context = view.overlay_canvas.getContext("2d")!;
@@ -313,7 +424,7 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
       for (const side_sign of view.is_front_view ? [1, -1] : [1]) {
         context.beginPath();
         samples.forEach((sample, k) => {
-          const pixel = view_pixel_from_world(view, scene.landmarks_file, v3(side_sign * sample.x, sample.y, sample.z));
+          const pixel = adapter.image_pixel_from_world(view.is_front_view, v3(side_sign * sample.x, sample.y, sample.z));
           if (k === 0) context.moveTo(pixel.x, pixel.y);
           else context.lineTo(pixel.x, pixel.y);
         });
@@ -324,8 +435,8 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
   if (!marks_are_drawn(state, view)) return;
 
   const is_editable = view.pair.marks === "editable";
-  if (view.is_front_view && is_editable) {
-    const midline = scene.landmarks_file.front_midline_column_pixels;
+  if (view.is_front_view && is_editable && adapter.front_midline !== null) {
+    const midline = adapter.front_midline.column_pixels();
     context.strokeStyle = MIDLINE_STYLE;
     context.lineWidth = 1 / canvas_scale;
     context.setLineDash([6 / canvas_scale, 4 / canvas_scale]);
@@ -337,15 +448,15 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
   }
 
   const labels: { text: string; image_pixel: V2; is_selected: boolean; style: string }[] = [];
-  scene.landmarks_file.landmarks.forEach((landmark, landmark_index) => {
+  scene.landmarks.forEach((landmark, landmark_index) => {
     const is_selected = is_editable && landmark_index === scene.selected_landmark_index;
     const template_position = template_point_world_position(scene.template_document, landmark.template_point);
     // An empty template is one that is not loaded yet, not one with every point missing.
     const is_missing_template_point = template_position === null && scene.template_document.vertices.length > 0;
-    const is_read_from_this_view = view.is_front_view ? landmark.read_from_front : landmark.read_from_profile;
+    const is_read_from_this_view = adapter.mark_is_read_from_view(view.is_front_view, landmark_index);
     const style = is_missing_template_point ? MISSING_TEMPLATE_POINT_STYLE : is_selected ? SELECTED_LANDMARK_STYLE : LANDMARK_STYLE;
     const drawn_position = shown === null ? null : template_point_world_position(shown.tablet_document, landmark.template_point);
-    const marks = marks_of_landmark(view, scene, landmark, landmark_index);
+    const marks = adapter.marks_of_landmark(view.is_front_view, landmark_index);
     for (const mark of marks) {
       const { x, y } = mark.image_pixel;
       context.strokeStyle = style;
@@ -353,7 +464,7 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
       context.globalAlpha = is_read_from_this_view || is_selected ? 1 : 0.6;
       // From the mark to where the shown document has the landmark's point.
       if (drawn_position !== null) {
-        const drawn_pixel = view_pixel_from_world(view, scene.landmarks_file, v3(mark.side_sign * Math.abs(drawn_position.x), drawn_position.y, drawn_position.z));
+        const drawn_pixel = adapter.image_pixel_from_world(view.is_front_view, v3(mark.side_sign * Math.abs(drawn_position.x), drawn_position.y, drawn_position.z));
         context.lineWidth = 1 / canvas_scale;
         context.beginPath();
         context.moveTo(x, y);
@@ -377,6 +488,8 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
       context.stroke();
       context.globalAlpha = 1;
     }
+    // A landmark the adapter cannot place (its target is gone) has no mark to label.
+    if (marks.length === 0) return;
     if (is_selected || scene.landmark_names_visible || landmark_index === view.hovered_landmark_index) {
       labels.push({ text: is_missing_template_point ? `${landmark.name} (template point missing)` : landmark.name, image_pixel: marks[0].image_pixel, is_selected, style });
     }
@@ -393,8 +506,8 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     context.fillStyle = label.style;
     context.fillText(label.text, point.x + 9, point.y - 7);
   }
-  if (view.is_front_view && is_editable) {
-    const handle_x = canvas_point_at_image_pixel(view, { x: scene.landmarks_file.front_midline_column_pixels, y: 0 }).x;
+  if (view.is_front_view && is_editable && adapter.front_midline !== null) {
+    const handle_x = canvas_point_at_image_pixel(view, { x: adapter.front_midline.column_pixels(), y: 0 }).x;
     context.fillStyle = MIDLINE_STYLE;
     context.beginPath();
     context.moveTo(handle_x - 9, MIDLINE_HANDLE_CENTER_Y_PIXELS - 9);
@@ -510,7 +623,7 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
       drag.has_moved = true;
     }
     if (drag.kind === "mark") drag_mark_to(state, view, drag, canvas_point);
-    else state.scene().landmarks_file.front_midline_column_pixels = image_pixel_at_canvas_point(view, canvas_point).x;
+    else state.adapter.front_midline!.move_to_column(image_pixel_at_canvas_point(view, canvas_point).x); // a midline drag only starts with a midline
     mark_editing.on_dragged();
   });
 
@@ -537,16 +650,23 @@ function attach_view_gestures(state: PlateViewsState, view: PlateView): void {
 // pairs all hide the marks needs none). `plate_missing_note` is shown when the plate image
 // is not there. `mark_editing` is null on a page with no editable pair.
 export function start_loomis_girl_plate_views(pairs: PlateViewPair[], scene: () => PlateViewsScene, mark_editing: PlateMarkEditing | null): PlateViews {
-  const opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement;
+  return start_plate_views(LOOMIS_GIRL_PLATE_LAYOUT, pairs, loomis_girl_plate_adapter(scene), mark_editing);
+}
+
+// The same controls as start_loomis_girl_plate_views; a layout with no plate image needs
+// neither `plate_opacity` nor `plate_missing_note`.
+export function start_plate_views(layout: PlateViewsLayout, pairs: PlateViewPair[], adapter: PlateViewsAdapter, mark_editing: PlateMarkEditing | null): PlateViews {
+  const opacity_slider = document.getElementById("plate_opacity") as HTMLInputElement | null;
   const surfaces_checkbox = document.getElementById("plate_surfaces_visible") as HTMLInputElement;
   const skull_checkbox = document.getElementById("plate_skull_visible") as HTMLInputElement;
   const landmarks_checkbox = document.getElementById("plate_landmarks_visible") as HTMLInputElement | null;
   const state: PlateViewsState = {
     views: [],
-    scene,
+    layout,
+    adapter,
     mark_editing,
     plate_image: null,
-    plate_opacity: Number(opacity_slider.value),
+    plate_opacity: opacity_slider === null ? 1 : Number(opacity_slider.value),
     surfaces_visible: surfaces_checkbox.checked,
     skull_visible: skull_checkbox.checked,
     landmarks_visible: landmarks_checkbox === null || landmarks_checkbox.checked,
@@ -559,9 +679,11 @@ export function start_loomis_girl_plate_views(pairs: PlateViewPair[], scene: () 
     const overlay_canvas = add_canvas();
     const mesh_gl = mesh_canvas.getContext("webgl");
     if (mesh_gl === null) console.error(`plate views: no WebGL, view '${container_id}' shows no surfaces or strokes`);
+    const has_background_meshes = mesh_gl !== null && layout.background_stroke_color !== null;
     return {
       container, plate_canvas, mesh_canvas, mesh_gl, overlay_canvas,
       head_meshes: mesh_gl === null ? null : create_head_meshes(mesh_gl),
+      background_meshes: has_background_meshes ? create_head_meshes(mesh_gl) : null,
       pair, region, is_front_view,
       image_pixels_to_canvas_scale: 1,
       image_pixel_at_canvas_origin: { x: 0, y: 0 },
@@ -572,15 +694,15 @@ export function start_loomis_girl_plate_views(pairs: PlateViewPair[], scene: () 
     };
   };
   for (const pair of pairs) {
-    state.views.push(make_view(pair.front_view_id, pair, FRONT_REGION, true));
-    state.views.push(make_view(pair.profile_view_id, pair, PROFILE_REGION, false));
+    state.views.push(make_view(pair.front_view_id, pair, layout.front_region, true));
+    state.views.push(make_view(pair.profile_view_id, pair, layout.profile_region, false));
   }
   for (const view of state.views) {
     fit_view_to_region(view);
     attach_view_gestures(state, view);
   }
 
-  opacity_slider.addEventListener("input", () => {
+  opacity_slider?.addEventListener("input", () => {
     state.plate_opacity = Number(opacity_slider.value);
     draw_all_views(state);
   });
@@ -602,16 +724,19 @@ export function start_loomis_girl_plate_views(pairs: PlateViewPair[], scene: () 
     draw_all_views(state);
   });
 
-  const plate_image = new Image();
-  plate_image.onload = () => {
-    state.plate_image = plate_image;
-    draw_all_views(state);
-  };
-  plate_image.onerror = () => {
-    console.error(`plate views: ${PLATE_IMAGE_URL} not found (the scan is not in the repo, copy it into tablet/public/)`);
-    document.getElementById("plate_missing_note")!.hidden = false;
-  };
-  plate_image.src = PLATE_IMAGE_URL;
+  const layout_image = layout.plate_image;
+  if (layout_image !== null) {
+    const plate_image = new Image();
+    plate_image.onload = () => {
+      state.plate_image = plate_image;
+      draw_all_views(state);
+    };
+    plate_image.onerror = () => {
+      console.error(`plate views: ${layout_image.url} not found (the scan is not in the repo, copy it into tablet/public/)`);
+      document.getElementById("plate_missing_note")!.hidden = false;
+    };
+    plate_image.src = layout_image.url;
+  }
 
   draw_all_views(state);
   return { draw: () => draw_all_views(state) };

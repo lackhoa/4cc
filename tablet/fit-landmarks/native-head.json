@@ -3,7 +3,7 @@
  "template_document": "skull-zanatomy",
  "target_document": "native-head",
  "stiffness": 0,
- "pairs": [
+ "landmarks": [
   { "name": "nose tip", "template_point": { "vertex": 74 }, "target": { "native_vertex": 6 }, "note": "native 6 is the foremost point of the head, end of the nose ridge stroke 3" },
   { "name": "nasion", "template_point": { "vertex": 73 }, "target": { "native_vertex": 5 }, "note": "native 5 is the top of the nose ridge stroke 3, on the front of the ball" },
   { "name": "subnasale", "template_point": { "vertex": 78 }, "target": { "native_vertex": 24 }, "note": "native 24 is where the underside of the nose (stroke 17) meets the philtrum (stroke 28)" },
