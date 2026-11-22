@@ -74,6 +74,9 @@ const PATCH_HIGHLIGHT_COLOR = { r: 0.75, g: 0.5, b: 0.2 }; // the selected patch
 // that stands out from the blue-gray surface but stays quieter than the selected orange.
 const PATCH_HOT_COLOR = { r: 0.72, g: 0.78, b: 0.55 };
 const HOT_COLOR = { r: 1.0, g: 1.0, b: 0.4 }; // what the hovering pen would hit
+// What the selected vertex is pinned to: its host stroke, or the fill of its host patch.
+const PIN_HOST_STROKE_COLOR = { r: 0.3, g: 0.85, b: 1.0 };
+const PIN_HOST_PATCH_COLOR = { r: 0.45, g: 0.72, b: 0.85 };
 const PREVIEW_COLOR = { r: 0.6, g: 0.75, b: 1.0 };
 const ANCHOR_COLOR = { r: 1.0, g: 1.0, b: 1.0 };
 const HANDLE_COLOR = { r: 0.45, g: 0.8, b: 1.0 };
@@ -479,10 +482,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function rebuild_stroke_mesh(highlighted_stroke: StrokeId | null): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
+    const selected_vertex_pin = selected_vertex === null ? null : pin_by_vertex(tablet_document, selected_vertex);
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
       if (stroke.is_hidden === true) continue;
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
+      const is_pin_host = selected_vertex_pin !== null && selected_vertex_pin.host_stroke === stroke.id;
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
       // The stroke's own color and lightness show only while it is neither hot nor selected.
       let color = STROKE_COLOR;
@@ -492,6 +497,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         lightness_additions = null;
       } else if (highlighted) {
         color = HIGHLIGHT_COLOR;
+        lightness_additions = null;
+      } else if (is_pin_host) {
+        color = PIN_HOST_STROKE_COLOR;
         lightness_additions = null;
       } else if (stroke.line_color !== undefined) {
         color = stroke.line_color;
@@ -586,11 +594,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       }
       slices.push({ geometry, color: { r: color.r, g: color.g, b: color.b }, is_flat, is_drawn_on_mirrored_side, start, end: vertices.length });
     };
+    const selected_vertex_surface_pin = selected_vertex === null ? null : surface_pin_by_vertex(tablet_document, selected_vertex);
     tablet_document.patches.forEach((patch, index) => {
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) return;
-      // The selected and hot patches are treated alike below; selected wins the color.
-      const is_selected_or_hot = index === selected_patch || index === hot_patch;
+      const is_pin_host = selected_vertex_surface_pin !== null && selected_vertex_surface_pin.patch === patch.id;
+      // The selected and hot patches, and the one the selected vertex is pinned to, are
+      // treated alike below; selected wins the color, then hot.
+      const is_selected_or_hot = index === selected_patch || index === hot_patch || is_pin_host;
       // The selected patch is drawn even with no fill, so the selection stays visible.
       // The hot one too, so the pen shows what a tap would select.
       if (!surface_drawn && !is_selected_or_hot) return;
@@ -611,6 +622,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         color = PATCH_HIGHLIGHT_COLOR;
       } else if (index === hot_patch) {
         color = PATCH_HOT_COLOR;
+      } else if (is_pin_host) {
+        color = PIN_HOST_PATCH_COLOR;
       } else if (locked_layers.has(layer)) {
         color = LOCKED_LAYER_SURFACE_COLOR;
       }
