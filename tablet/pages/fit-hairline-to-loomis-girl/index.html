@@ -67,7 +67,9 @@
   #width_panel .controls { display: flex; flex-direction: column; gap: 8px; }
   #width_panel label { display: flex; align-items: center; gap: 8px; }
   #width_panel input[type=range] { width: 180px; }
-  #width_panel input[type=number] { width: 56px; }
+  #width_panel .raw_number { width: 48px; padding: 2px 4px; text-align: right; font-family: monospace;
+                             border: 1px solid #444; border-radius: 4px; }
+  #width_panel .raw_number.picked { color: #ffff66; border-color: #ffff66; }
   #width_panel .empty { color: #666; }
   #stroke_labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   #stroke_labels div { position: absolute; transform: translate(-50%, -50%);

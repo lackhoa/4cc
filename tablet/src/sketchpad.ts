@@ -2,7 +2,9 @@
 // Sketchpad rework (plan step 7): strokes are single cubics put down with the
 // armed line tool and shaped afterwards; endpoints live in a shared vertex
 // table so joined strokes can never tear. Bare pen drags orbit (Q27/Q35), also
-// when they start on the selected stroke; vertex/handle drags reshape.
+// when they start on the selected stroke; vertex/handle drags reshape. In width mode
+// (the width panel open) a pen drag on any line changes its width instead, and
+// nothing is reshaped.
 // Finger = camera throughout (1-finger orbit, 2-finger pan/zoom).
 //
 // The whole editor is `start_sketchpad(setup)`: one page calls it with its own
@@ -11,9 +13,9 @@
 // drawing page of `src/drawing_pages.ts` (skull-draw: the same editor over the
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
-import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
-import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
+import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_screen_projector, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_point_on_segment, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
@@ -25,7 +27,7 @@ import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
-import { append_chain_ribbon, append_stroke_ribbon, stroke_length_fraction_at } from "./ribbon";
+import { RIBBON_RADIUS, RibbonTint, append_chain_ribbon, append_stroke_ribbon, drawn_stroke_points, polyline_length_fractions, stroke_length_fraction_at } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
@@ -205,7 +207,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Hot item: what a tap at the hovering pen's position would select,
   // resolved every frame (the camera can move under a still pen) with the same
   // picks and priority as the tap (pick_tap_target), and drawn in
-  // HOT_COLOR so the user knows before committing.
+  // HOT_COLOR so the user knows before committing. In width mode only lines are hot
+  // (what the pen-down grabs), drawn tinted (resolve_stroke_width_tint).
   type HotItem =
     | { kind: "stroke"; stroke_id: StrokeId }
     | { kind: "handle"; key: "p1" | "p2" } // handle of the selected stroke
@@ -213,6 +216,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     | { kind: "patch"; patch: number }; // index into tablet_document.patches, drawn in PATCH_HOT_COLOR
   let hover_screen: V2 | null = null; // null while the pen is down or off the canvas
   let hot_item: HotItem | null = null;
+  // The running width drag (stroke_width_drag_begin), and the line and number the tint
+  // shows this frame (resolve_stroke_width_tint).
+  let stroke_width_drag: StrokeWidthDrag | null = null;
+  type StrokeWidthTint = { stroke_id: StrokeId; radii_index: number };
+  let stroke_width_tint: StrokeWidthTint | null = null;
 
   // What a tap at a screen position selects. One order whatever is selected
   // (plan-sketchpad-selection-revamp.md Q1): a handle of the selected stroke,
@@ -233,13 +241,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // (plan-tablet-pick-ignores-hidden-vertices Q1); with "surf" off nothing hides (Q4).
     // The same holds for a line, judged at its point nearest the pen.
     // The fills' grids are built on the first vertex or line in range, once per pick.
-    const eye = camera_eye(camera);
-    let occluding_grids: SurfaceGrid[] | null = null;
-    const is_point_visible = (world_position: V3): boolean => {
-      if (occluding_grids === null) occluding_grids = timed("pick.occluding_grids", drawn_surface_grids);
-      const grids = occluding_grids;
-      return timed("pick.occlusion_tests", () => point_is_visible_past_surfaces(grids, eye, world_position));
-    };
+    const is_point_visible = point_visibility_test_for_one_pick();
     const visibility_filter = surface_drawn ? is_point_visible : undefined;
     // The p0 and p3 ends of the active line are drawn on top like its handles, so
     // they stay pickable behind a fill; they still compete on distance.
@@ -262,11 +264,36 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     return patch === null ? { kind: "nothing" } : { kind: "patch", patch };
   }
 
+  // Whether a world point is in front of every drawn fill, for the picks of one pen
+  // position: the fills' grids are built on the first call and kept for the later ones.
+  function point_visibility_test_for_one_pick(): (world_position: V3) => boolean {
+    const eye = camera_eye(camera);
+    let occluding_grids: SurfaceGrid[] | null = null;
+    return (world_position: V3): boolean => {
+      if (occluding_grids === null) occluding_grids = timed("pick.occluding_grids", drawn_surface_grids);
+      const grids = occluding_grids;
+      return timed("pick.occlusion_tests", () => point_is_visible_past_surfaces(grids, eye, world_position));
+    };
+  }
+
+  // The line a width-mode pen-down at `screen` grabs: the nearest pickable line, judged
+  // like a tap's line pick (hidden behind a drawn fill = not picked), but ahead of
+  // vertices and handles, which width mode never moves.
+  function pick_width_mode_stroke(screen: V2): StrokeId | null {
+    const visibility_filter = surface_drawn ? point_visibility_test_for_one_pick() : undefined;
+    return timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter));
+  }
+
   function resolve_hot_item(): HotItem | null {
     if (hover_screen === null || armed_tool === "line") return null;
     if (armed_tool !== null) {
       // Pin / split armed: the tap feeds the tool, which only reads curves.
       const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers());
+      return picked === null ? null : { kind: "stroke", stroke_id: picked };
+    }
+    if (width_mode_is_on()) {
+      // Width mode: the pen grabs lines only, so only a line lights up.
+      const picked = pick_width_mode_stroke(hover_screen);
       return picked === null ? null : { kind: "stroke", stroke_id: picked };
     }
     const target = pick_tap_target(hover_screen);
@@ -374,6 +401,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // every patch) was a third of a hovered frame: no hot item until the pen moves again.
     if (frame_is_camera_only) hot_item = null;
     else hot_item = timed("frame.hot_item", resolve_hot_item);
+    stroke_width_tint = resolve_stroke_width_tint();
+    refresh_width_panel_picked_number();
     // Ribbons are camera-facing (desktop parity) — retessellate every frame.
     timed("frame.stroke_mesh", () => rebuild_stroke_mesh(edit_state === null ? null : edit_state.stroke_id));
     // See surface_mesh_built_without_hot_patch: a camera-only frame usually keeps the fills.
@@ -500,7 +529,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const own_lightness_additions = stroke.lightness_additions ?? null;
       let color = own_color;
       let lightness_additions = own_lightness_additions;
-      if (hot) {
+      // The line a width drag changes, or a hovering pen in width mode would grab: its own
+      // color on both sides, with HOT_COLOR mixed in where the picked number acts.
+      let tint: RibbonTint | null = null;
+      if (stroke_width_tint !== null && stroke_width_tint.stroke_id === stroke.id) {
+        tint = { color: HOT_COLOR, radii_index: stroke_width_tint.radii_index };
+      } else if (hot) {
         color = HOT_COLOR;
         lightness_additions = null;
       } else if (highlighted) {
@@ -510,9 +544,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         color = PIN_HOST_STROKE_COLOR;
         lightness_additions = null;
       }
-      append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, /* is_mirrored_side */ false, vertices);
+      append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, tint, /* is_mirrored_side */ false, vertices);
       const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
-      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, /* is_mirrored_side */ true, vertices);
+      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, tint, /* is_mirrored_side */ true, vertices);
     }
     timed("frame.contours", () => append_contour_ribbons(vertices));
     timed("frame.upload", () => set_stroke_mesh(renderer, vertex_sink_view(vertices)));
@@ -1447,8 +1481,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // Width panel: the C++ Selection panel's radii controls (game_main.cpp, search
   // "raw radii") for the selected stroke. `width` scales the stroke's own profile
   // (keeps its taper), `taper` picks a preset end shape at that width, `raw`
-  // edits the four multipliers directly. One history entry per slider drag or
-  // per picked value; consecutive edits of one stroke merge into one entry.
+  // shows the four multipliers (read only; a width drag on the line changes one of
+  // them, and the one it changes or would change is highlighted). One history entry per
+  // slider drag or per picked value; consecutive edits of one stroke merge into one entry.
+  // While the panel is open the sketchpad is in width mode (see stroke_width_drag_begin).
   const width_button = document.getElementById("width_button") as HTMLButtonElement;
   const width_panel = document.getElementById("width_panel") as HTMLDivElement;
   const WIDTH_SLIDER_MIN = 0.1, WIDTH_SLIDER_MAX = 4; // log scale, as the C++ slider
@@ -1472,13 +1508,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const taper_select = document.createElement("select");
   for (const preset of TAPER_PRESETS) taper_select.appendChild(new Option(preset.name));
   taper_select.appendChild(new Option("custom"));
-  const raw_inputs: HTMLInputElement[] = [0, 1, 2, 3].map(() => {
-    const input = document.createElement("input");
-    input.type = "number";
-    input.min = "0";
-    input.max = "8";
-    input.step = "0.05";
-    return input;
+  const raw_numbers: HTMLSpanElement[] = [0, 1, 2, 3].map(() => {
+    const number = document.createElement("span");
+    number.className = "raw_number";
+    return number;
   });
   function labelled_row(label: string, ...controls: HTMLElement[]): HTMLLabelElement {
     const row = document.createElement("label");
@@ -1488,7 +1521,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   width_panel_controls.append(
     labelled_row("width", width_slider, width_readout),
     labelled_row("taper", taper_select),
-    labelled_row("raw", ...raw_inputs),
+    labelled_row("raw", ...raw_numbers),
   );
   // Transfer style: the first selected line (the one this panel shows) gives its width
   // and lightness to the other selected lines.
@@ -1530,8 +1563,20 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     width_readout.textContent = width.toFixed(2);
     const preset_index = TAPER_PRESETS.findIndex((preset) => width > 0 && radii_equal(radii, preset.radii.map((r) => r * width) as StrokeRadii));
     taper_select.selectedIndex = preset_index >= 0 ? preset_index : TAPER_PRESETS.length;
-    raw_inputs.forEach((input, index) => {
-      if (active !== input) input.value = radii[index].toFixed(2);
+    raw_numbers.forEach((number, index) => {
+      number.textContent = radii[index].toFixed(2);
+    });
+  }
+  // Highlights the number a width drag changes, or a hovering pen would grab, when that
+  // line is the one the panel shows (another line's number is not in the row). Every
+  // frame, since a hover frame does not refresh the rest of the panel.
+  function refresh_width_panel_picked_number(): void {
+    let picked_index = -1;
+    if (stroke_width_tint !== null && edit_state !== null && stroke_width_tint.stroke_id === edit_state.stroke_id) {
+      picked_index = stroke_width_tint.radii_index;
+    }
+    raw_numbers.forEach((number, index) => {
+      number.classList.toggle("picked", index === picked_index);
     });
   }
   // A slider drag is many `input` events and one `change`; the step opens on
@@ -1543,10 +1588,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       begin_history_step(history, tablet_document);
       width_edit_pending = true;
     }
-    const stroke = stroke_by_id(tablet_document, edit_state.stroke_id);
+    store_stroke_radii(edit_state.stroke_id, radii);
+    request_render();
+  }
+  // The default profile is stored as no radii at all.
+  function store_stroke_radii(stroke_id: StrokeId, radii: StrokeRadii): void {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
     if (radii_equal(radii, DEFAULT_STROKE_RADII)) delete stroke.radii;
     else stroke.radii = radii;
-    request_render();
   }
   function commit_radii_edit(): void {
     if (!width_edit_pending || edit_state === null) return;
@@ -1569,19 +1618,147 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     apply_radii_to_selected_stroke(TAPER_PRESETS[taper_select.selectedIndex].radii.map((r) => r * width) as StrokeRadii);
     commit_radii_edit();
   });
-  raw_inputs.forEach((input) => {
-    input.addEventListener("input", () => {
-      const raw = raw_inputs.map((each) => Number(each.value));
-      if (raw.some((value) => !Number.isFinite(value) || value < 0)) return;
-      apply_radii_to_selected_stroke(raw as StrokeRadii);
-    });
-    input.addEventListener("change", commit_radii_edit);
-  });
   width_button.addEventListener("click", () => {
     width_panel.classList.toggle("open");
     width_button.classList.toggle("armed", width_panel.classList.contains("open"));
-    refresh_width_panel();
+    // The hot item and the tint follow width mode, so the whole frame is redrawn.
+    request_render();
   });
+
+  // Width mode: on while the width panel is open. Pen down on any line (its stored side)
+  // selects it and starts a width drag; control points, pins and handles don't move;
+  // pen down on empty space orbits. Fingers are the camera as always.
+  function width_mode_is_on(): boolean {
+    return width_panel.classList.contains("open");
+  }
+
+  // The spot of a line nearest a screen position, on the line as its ribbon draws it
+  // (drawn_stroke_points), in CSS pixels.
+  type StrokeWidthGrabbedSpot = {
+    length_fraction: number; // along the drawn line, 0 at p0, 1 at p3
+    center_world: V3;
+    center_screen: V2;
+    line_direction_screen: V2; // unit, along the screen segment the spot is on
+  };
+  function stroke_width_grabbed_spot(stroke_id: StrokeId, screen: V2): StrokeWidthGrabbedSpot | null {
+    const points = drawn_stroke_points(stroke_by_id(tablet_document, stroke_id), tablet_document);
+    const point_count = points.length / 3;
+    const fractions = new Float64Array(point_count);
+    polyline_length_fractions(points, point_count, fractions);
+    const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
+    const world_point = (index: number): V3 => v3(points[3 * index], points[3 * index + 1], points[3 * index + 2]);
+    let nearest: StrokeWidthGrabbedSpot | null = null;
+    let nearest_distance = Infinity;
+    let previous_screen = project(world_point(0));
+    for (let index = 1; index < point_count; index++) {
+      const segment_start = previous_screen;
+      const segment_end = project(world_point(index));
+      previous_screen = segment_end;
+      if (segment_start === null || segment_end === null) continue;
+      const on_segment = nearest_point_on_segment(screen, segment_start, segment_end);
+      if (on_segment.distance >= nearest_distance) continue;
+      nearest_distance = on_segment.distance;
+      const t = on_segment.t;
+      const segment_x = segment_end.x - segment_start.x;
+      const segment_y = segment_end.y - segment_start.y;
+      const segment_length = Math.hypot(segment_x, segment_y);
+      // A segment seen end-on has no direction on screen; screen-right stands in.
+      let line_direction_screen: V2 = { x: 1, y: 0 };
+      if (segment_length > 1e-9) line_direction_screen = { x: segment_x / segment_length, y: segment_y / segment_length };
+      nearest = {
+        length_fraction: fractions[index - 1] + (fractions[index] - fractions[index - 1]) * t,
+        center_world: v3_add(world_point(index - 1), v3_scale(v3_sub(world_point(index), world_point(index - 1)), t)),
+        center_screen: { x: segment_start.x + segment_x * t, y: segment_start.y + segment_y * t },
+        line_direction_screen,
+      };
+    }
+    return nearest;
+  }
+
+  // One pen drag that changes one width number of one line. Relative: nothing changes on
+  // pen down, then the line's edge at the grabbed spot moves on screen as far as the pen
+  // moves along `outward_direction_screen`.
+  type StrokeWidthDrag = {
+    stroke_id: StrokeId;
+    radii_index: number; // the strongest number at the grabbed spot, the only one changed
+    length_fraction: number; // of the grabbed spot
+    radii_at_begin: StrokeRadii;
+    pen_down_screen: V2;
+    outward_direction_screen: V2; // unit, from the line's centre at the spot toward the pen
+    pixels_per_radii_unit: number; // screen pixels of edge move per 1 of stroke_radii_at, at the spot
+  };
+
+  // Below this distance between the pen and the line's centre, the outward direction is the
+  // line's screen normal instead (the pen sits on the centre of a thin line).
+  const STROKE_WIDTH_DRAG_CENTER_PIXELS = 2;
+
+  // Starts a width drag of `stroke_id` grabbed at `screen`; false when the spot can't be
+  // found on screen (then the pen-down is not a width drag).
+  function stroke_width_drag_begin(stroke_id: StrokeId, screen: V2): boolean {
+    const spot = stroke_width_grabbed_spot(stroke_id, screen);
+    if (spot === null) return false;
+    const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
+    // The camera scale at the spot's own depth: one RIBBON_RADIUS step to screen-right.
+    const stepped_screen = project(v3_add(spot.center_world, v3_scale(camera_basis(camera).right, RIBBON_RADIUS)));
+    if (stepped_screen === null) return false;
+    const pixels_per_radii_unit = Math.hypot(stepped_screen.x - spot.center_screen.x, stepped_screen.y - spot.center_screen.y);
+    const to_pen_x = screen.x - spot.center_screen.x;
+    const to_pen_y = screen.y - spot.center_screen.y;
+    const to_pen_length = Math.hypot(to_pen_x, to_pen_y);
+    let outward_direction_screen: V2 = { x: to_pen_x / to_pen_length, y: to_pen_y / to_pen_length };
+    if (to_pen_length < STROKE_WIDTH_DRAG_CENTER_PIXELS) {
+      outward_direction_screen = { x: -spot.line_direction_screen.y, y: spot.line_direction_screen.x };
+    }
+    stroke_width_drag = {
+      stroke_id,
+      radii_index: strongest_stroke_radii_index_at(spot.length_fraction),
+      length_fraction: spot.length_fraction,
+      radii_at_begin: stroke_radii(stroke_by_id(tablet_document, stroke_id)),
+      pen_down_screen: screen,
+      outward_direction_screen,
+      pixels_per_radii_unit,
+    };
+    return true;
+  }
+
+  // The pen's move since pen down, along the outward direction, is the edge's move: the
+  // grabbed number changes so the width at the spot changes by exactly that much.
+  function stroke_width_drag_move(screen: V2): void {
+    const drag = stroke_width_drag!;
+    const edge_move_pixels = (screen.x - drag.pen_down_screen.x) * drag.outward_direction_screen.x
+      + (screen.y - drag.pen_down_screen.y) * drag.outward_direction_screen.y;
+    // The edge stops at the line's centre: the width at the spot does not go below zero
+    // (or below where it began, for a line that is already negative there).
+    const width_at_begin = stroke_radii_at(drag.radii_at_begin, drag.length_fraction);
+    const lowest_width_change = Math.min(width_at_begin, 0) - width_at_begin;
+    const width_change = Math.max(edge_move_pixels / drag.pixels_per_radii_unit, lowest_width_change);
+    const radii = stroke_radii_with_width_change_at(drag.radii_at_begin, drag.radii_index, drag.length_fraction, width_change);
+    // The grabbed number itself does not go below zero either (the other three numbers
+    // can leave some width at the spot when it is zero).
+    const lowest_number = Math.min(drag.radii_at_begin[drag.radii_index], 0);
+    radii[drag.radii_index] = Math.max(radii[drag.radii_index], lowest_number);
+    store_stroke_radii(drag.stroke_id, radii);
+    request_render();
+  }
+
+  // The undo label of the drag (a tap changed nothing, so the pen gesture's step adds no
+  // entry), and the drag is over.
+  function stroke_width_drag_end(): string {
+    const label = `set radii stroke ${stroke_width_drag!.stroke_id}`;
+    stroke_width_drag = null;
+    return label;
+  }
+
+  // What the tint along a line shows this frame: the number a running width drag changes,
+  // or in width mode the number a pen-down at the hovering pen would grab; null otherwise.
+  function resolve_stroke_width_tint(): StrokeWidthTint | null {
+    if (stroke_width_drag !== null) return { stroke_id: stroke_width_drag.stroke_id, radii_index: stroke_width_drag.radii_index };
+    if (!width_mode_is_on() || armed_tool !== null || hover_screen === null) return null;
+    if (hot_item === null || hot_item.kind !== "stroke") return null;
+    const spot = stroke_width_grabbed_spot(hot_item.stroke_id, hover_screen);
+    if (spot === null) return null;
+    return { stroke_id: hot_item.stroke_id, radii_index: strongest_stroke_radii_index_at(spot.length_fraction) };
+  }
 
   // Keyboard nudge of the selected vertex (plan-sketchpad-vertex-nudge-link.md
   // Q76-Q78): h/l along the camera's right, j/k along its up, i/o along forward
@@ -1741,6 +1918,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         const line_surface_layers = surface_drawn ? pickable_layers() : null;
         line_state = line_pen_down(tablet_document, camera, position, canvas, line_start_vertex, line_surface_layers);
         update_preview_line();
+      } else if (width_mode_is_on() && armed_tool === null) {
+        // Width mode: a line under the pen becomes the selected line (unless it already
+        // is) and its width drag starts; anywhere else the pen orbits.
+        const picked = pick_width_mode_stroke(position);
+        if (picked !== null && stroke_width_drag_begin(picked, position)) {
+          if (edit_state === null || edit_state.stroke_id !== picked) select_stroke_by_tap(picked, false);
+        } else {
+          pen_orbit_last_screen = position;
+        }
       } else if (edit_state !== null && armed_tool === null) {
         // Consumed only when the pen lands on a control point or pin of the selection; otherwise orbit.
         if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
@@ -1754,8 +1940,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         pen_orbit_last_screen = position;
       }
       // A point is small, so landing on one already says "this point": a few
-      // pixels of jitter is still a tap, anything more is a drag of it.
-      const pen_landed_on_point = selected_vertex_drag_last_screen !== null
+      // pixels of jitter is still a tap, anything more is a drag of it. The same for a
+      // width drag, whose edge would otherwise jump by the whole tap distance.
+      const pen_landed_on_point = selected_vertex_drag_last_screen !== null || stroke_width_drag !== null
         || (edit_state !== null && (edit_state.dragging !== null || edit_state.dragging_pin !== null));
       pen_tap_max_movement_pixels = pen_landed_on_point ? 4 : TAP_MAX_MOVEMENT_PIXELS;
       request_render();
@@ -1781,6 +1968,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         // Still a tap: nothing moves (a tap only selects). The drag's last
         // screen position stays at the pen-down point, so the first real move
         // catches up with the pen.
+      } else if (stroke_width_drag !== null) {
+        stroke_width_drag_move(position);
       } else if (selected_vertex_drag_last_screen !== null && selected_vertex !== null) {
         const pin = pin_by_vertex(tablet_document, selected_vertex);
         if (surface_pin_by_vertex(tablet_document, selected_vertex) !== null) {
@@ -1809,6 +1998,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const multi = event.ctrlKey || event.metaKey; // ctrl/cmd-tap extends the selection (Q1)
       if (armed_tool === "line") {
         line_mode_pen_up();
+      } else if (stroke_width_drag !== null) {
+        // A tap moved nothing, so the gesture's history step adds no entry.
+        pen_history_label = stroke_width_drag_end();
       } else if (edit_state !== null) {
         edit_mode_pen_up(position, multi);
       } else if (pen_max_displacement_pixels < pen_tap_max_movement_pixels) {

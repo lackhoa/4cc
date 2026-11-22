@@ -112,6 +112,38 @@ export function stroke_radii_at(radii: StrokeRadii, t: number): number {
   return s * s * s * radii[0] + 3 * s * s * t * radii[1] + 3 * s * t * t * radii[2] + t * t * t * radii[3];
 }
 
+// How strongly width number `radii_index` (0..3) acts on the width at `t`: its Bernstein
+// weight, so stroke_radii_at(radii, t) is the sum of influence * radii[index]. `t` is the
+// one the ribbon reads the profile at (the length fraction, through the taper window).
+export function stroke_radii_influence_at(radii_index: number, t: number): number {
+  const s = 1 - t;
+  switch (radii_index) {
+    case 0: return s * s * s;
+    case 1: return 3 * s * s * t;
+    case 2: return 3 * s * t * t;
+    default: return t * t * t;
+  }
+}
+
+// The width number that changes the width at `t` the most (largest influence). Splits
+// the line into four zones: below 1/4 number 0, then 1, then 2, above 3/4 number 3.
+export function strongest_stroke_radii_index_at(t: number): number {
+  let strongest_index = 0;
+  for (let index = 1; index < 4; index++) {
+    if (stroke_radii_influence_at(index, t) > stroke_radii_influence_at(strongest_index, t)) strongest_index = index;
+  }
+  return strongest_index;
+}
+
+// A copy of `radii` with only number `radii_index` changed, so the width at `t`
+// (stroke_radii_at) is `width_change` more; the other three keep their values exactly.
+// Nothing is clamped (a negative number is a legal stored value).
+export function stroke_radii_with_width_change_at(radii: StrokeRadii, radii_index: number, t: number, width_change: number): StrokeRadii {
+  const changed: StrokeRadii = [radii[0], radii[1], radii[2], radii[3]];
+  changed[radii_index] = radii[radii_index] + width_change / stroke_radii_influence_at(radii_index, t);
+  return changed;
+}
+
 // De Casteljau of the scalar profile at t, here the cut's length fraction: the
 // two halves keep the width the whole stroke had, so a split is invisible.
 function split_stroke_radii(radii: StrokeRadii, t: number): { left: StrokeRadii; right: StrokeRadii } {

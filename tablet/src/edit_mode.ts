@@ -55,7 +55,7 @@ export function begin_edit_state(stroke_id: StrokeId): EditState {
 
 // The point of segment a→b nearest `point`: its parameter t in [0, 1] (0 at a)
 // and its distance to `point`.
-function nearest_point_on_segment(point: V2, a: V2, b: V2): { t: number; distance: number } {
+export function nearest_point_on_segment(point: V2, a: V2, b: V2): { t: number; distance: number } {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const length_squared = abx * abx + aby * aby;
