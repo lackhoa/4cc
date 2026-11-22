@@ -598,6 +598,31 @@ export function straighten_strokes(tablet_document: TabletDocument, stroke_ids: 
   for (const stroke_id of stroke_ids) enforce_smooth_knots_of_stroke(tablet_document, stroke_id);
 }
 
+// Give each target stroke the width profile and the lightness of the source stroke (not
+// its color). A target that runs the other way than the source (its chord points against
+// the source's chord) gets both profiles reversed, so the same end stays thin.
+export function transfer_stroke_style(tablet_document: TabletDocument, source_stroke_id: StrokeId, target_stroke_ids: StrokeId[]): void {
+  const source = stroke_by_id(tablet_document, source_stroke_id);
+  const source_chord = v3_sub(vertex_position(tablet_document, source.p3_vertex), vertex_position(tablet_document, source.p0_vertex));
+  for (const target_stroke_id of target_stroke_ids) {
+    const target = stroke_by_id(tablet_document, target_stroke_id);
+    const target_chord = v3_sub(vertex_position(tablet_document, target.p3_vertex), vertex_position(tablet_document, target.p0_vertex));
+    const runs_the_same_way = v3_dot(source_chord, target_chord) >= 0;
+    if (source.radii === undefined) {
+      delete target.radii;
+    } else {
+      target.radii = [...source.radii];
+      if (!runs_the_same_way) target.radii.reverse();
+    }
+    if (source.lightness_additions === undefined) {
+      delete target.lightness_additions;
+    } else {
+      target.lightness_additions = [...source.lightness_additions];
+      if (!runs_the_same_way) target.lightness_additions.reverse();
+    }
+  }
+}
+
 // Drop vertices that no stroke endpoint, no pin and no sphere references. Named vertices (landmarks) stay.
 export function garbage_collect_vertices(tablet_document: TabletDocument): void {
   const used_vertices = new Set<VertexId>();

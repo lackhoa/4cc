@@ -12,7 +12,7 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -1459,6 +1459,18 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     labelled_row("taper", taper_select),
     labelled_row("raw", ...raw_inputs),
   );
+  // Transfer style: the first selected line (the one this panel shows) gives its width
+  // and lightness to the other selected lines.
+  const transfer_style_button = document.createElement("button");
+  transfer_style_button.textContent = "transfer style";
+  width_panel_controls.append(transfer_style_button);
+  transfer_style_button.addEventListener("click", () => {
+    if (edit_state === null || extra_selection.length === 0) return;
+    begin_history_step(history, tablet_document);
+    transfer_stroke_style(tablet_document, edit_state.stroke_id, extra_selection);
+    end_history_step(history, tablet_document, `transfer style of stroke ${edit_state.stroke_id} to ${extra_selection.join(" ")}`);
+    request_render();
+  });
   width_panel.append(width_panel_empty, width_panel_controls);
 
   function width_of_radii(radii: StrokeRadii): number {
@@ -1472,6 +1484,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     width_panel_empty.style.display = has_stroke ? "none" : "";
     width_panel_controls.style.display = has_stroke ? "" : "none";
     if (!has_stroke) return;
+    transfer_style_button.disabled = extra_selection.length === 0;
+    transfer_style_button.title = extra_selection.length === 0
+      ? "select the line with the style first, then the lines that get it"
+      : `width and lightness of line ${edit_state!.stroke_id} go to line ${extra_selection.join(", ")}`;
     const radii = stroke_radii(stroke_by_id(tablet_document, edit_state!.stroke_id));
     const width = width_of_radii(radii);
     // Don't fight the control being dragged/typed into.
