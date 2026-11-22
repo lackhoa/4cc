@@ -19,7 +19,7 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, cached_mirrored_grid, cached_patch_geometry, create_patch_geometry_cache, invalidate_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -169,9 +169,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   let line_start_vertex: VertexId | null = null; // line tool armed from a selected vertex: the stroke starts there
   let pen_orbit_last_screen: V2 | null = null; // non-null while a bare pen drag orbits
   let frame_requested = false;
-  // The patches' grids (and loft rails, mirrored grids) for frames and picks; invalidated
-  // by request_render, kept across camera-only requests (request_camera_render).
-  const patch_geometry_cache = create_patch_geometry_cache();
+  // The patches' grids (and loft rails, mirrored grids) for frames and picks; request_render
+  // begins a check pass (a patch whose inputs changed is built again), camera-only and hover
+  // requests keep them. The document's own cache: the pin pass and the on-surface strokes
+  // (project_onto_surface) read the same grids.
+  const patch_geometry_cache = document_patch_geometry_cache(tablet_document);
   // The contour extractor's eye-independent part per cached grid (cached_surface_partials).
   const surface_partials_by_grid = new WeakMap<SurfaceGrid, SurfacePartials>();
   // Where the time of a render request and of a frame goes: milliseconds per part,
@@ -293,9 +295,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     frame_timings.full_request_count++;
     timed("request.midline", () => enforce_midline(tablet_document));
     timed("request.pins", () => update_pinned_vertex_positions(tablet_document));
-    // Anything may have changed the document since the last full request: the patch
-    // grids are built again, once, by the next frame or pick that needs them.
-    invalidate_patch_geometry_cache(patch_geometry_cache);
+    // Anything may have changed the document since the last full request: each patch's
+    // inputs are compared again, once, by the next frame or pick that needs its grid, and
+    // only the patches that changed are built again.
+    begin_patch_geometry_check_pass(patch_geometry_cache, tablet_document);
     const refresh_started_ms = performance.now();
     // A stroke operation (join, split here) can garbage-collect a vertex that is
     // selected along with the strokes.
@@ -2350,11 +2353,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
   // A test may have changed `window.tablet_document` without a render request, so the
-  // hook builds the patch grids again when no request came since the last frame. After a
+  // hook checks the patch grids again when no request came since the last frame. After a
   // request it leaves them to the request: a full one has already dealt with them, a
   // camera or hover one keeps them (a profiling script timing those frames).
   (window as unknown as { debug_render_now: unknown }).debug_render_now = () => {
-    if (!frame_requested) invalidate_patch_geometry_cache(patch_geometry_cache);
+    if (!frame_requested) begin_patch_geometry_check_pass(patch_geometry_cache, tablet_document);
     // As the animation frame callback does: a script calling request + this hook in a loop
     // never yields to the animation frame, and a stuck flag would make every later camera
     // request look like a full one. The pending animation frame still renders, harmlessly.

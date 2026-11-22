@@ -490,13 +490,14 @@ const PROJECTION_CANDIDATE_PATCHES = 3;
 // no patch qualifies.
 export function project_onto_surface(tablet_document: TabletDocument, points: V3[], layer: Layer, excluded_stroke: StrokeId | null): V3[] {
   const surfaces: { surface: (u: number, v: number) => V3; grid: SurfaceGrid }[] = [];
+  // Called while the pin pass moves vertices: every patch is compared with the document now.
+  const geometry_cache = document_patch_geometry_cache(tablet_document);
   for (const patch of tablet_document.patches) {
     if (patch_layer(patch, tablet_document) !== layer) continue;
     if (excluded_stroke !== null && patch.strokes.includes(excluded_stroke)) continue;
-    const fill = resolve_patch_fill(patch, tablet_document);
-    if (fill === null) continue;
-    const grid = fill.kind === "loft" ? loft_surface_grid(fill.side_a, fill.side_b, tablet_document) : coons_surface_grid(fill.sides, tablet_document);
-    surfaces.push({ surface: fill_surface_function(fill, tablet_document), grid });
+    const geometry = checked_patch_geometry(geometry_cache, patch, tablet_document);
+    if (geometry === null) continue;
+    surfaces.push({ surface: fill_surface_function(geometry.fill, tablet_document), grid: geometry.grid });
   }
   if (surfaces.length === 0) return points;
   return points.map((point) => {
@@ -649,29 +650,105 @@ export function append_mirrored_patch_mesh(patch: Patch, tablet_document: Tablet
 // rails its shaded mesh is built from (null for a Coons fill), and the grid's mirror
 // image, made the first time it is asked for. Same arithmetic as patch_surface_grid,
 // append_patch_mesh and append_mirrored_patch_mesh, so the meshes come out the same.
-export type PatchGeometry = { grid: SurfaceGrid; loft_rails: LoftRails | null; mirrored_grid: SurfaceGrid | null };
+// `fill` is the resolved fill the grid was sampled from (project_onto_surface evaluates
+// it between the grid nodes).
+export type PatchGeometry = { fill: PatchFill; grid: SurfaceGrid; loft_rails: LoftRails | null; mirrored_grid: SurfaceGrid | null };
 
-// The PatchGeometry of each patch, built on first use. The cache does not see the
-// document change: its owner invalidates it whenever the document may have changed
-// (the sketchpad on every full render request, after the pin pass), and only a frame
-// that follows the camera alone reuses it. Keyed by the patch object, so a patch
-// added or deleted between invalidations is never matched to another one's geometry.
-export type PatchGeometryCache = { geometry_by_patch: Map<Patch, PatchGeometry | null> };
+// Everything resolve_patch_fill and the grid builders read from the document for one
+// patch: the stroke objects it lists (an undo or a reload makes new ones), and as numbers
+// each stroke's id, end vertex ids and control points (the vertex positions with d0/d3;
+// rails_are_crossed reads the same end positions), the pins riding it in document order,
+// and every smooth knot touching one of its strokes.
+type PatchGeometryInputs = { strokes: Stroke[]; numbers: number[] };
 
-export function create_patch_geometry_cache(): PatchGeometryCache {
-  return { geometry_by_patch: new Map() };
+function patch_geometry_inputs(patch: Patch, tablet_document: TabletDocument): PatchGeometryInputs {
+  const strokes = patch.strokes.map((id) => stroke_by_id(tablet_document, id));
+  const numbers: number[] = [];
+  for (const stroke of strokes) {
+    numbers.push(stroke.id, stroke.p0_vertex, stroke.p3_vertex);
+    const points = stroke_control_points(stroke, tablet_document);
+    for (const point of [points.p0, points.p1, points.p2, points.p3]) numbers.push(point.x, point.y, point.z);
+    const pins = pins_on_stroke(tablet_document, stroke.id);
+    numbers.push(pins.length);
+    for (const pin of pins) numbers.push(pin.vertex, pin.t);
+  }
+  for (const knot of tablet_document.smooth_knots) {
+    if (!patch.strokes.includes(knot.stroke_a) && !patch.strokes.includes(knot.stroke_b)) continue;
+    numbers.push(knot.vertex, knot.stroke_a, knot.stroke_b);
+  }
+  return { strokes, numbers };
 }
 
+function patch_geometry_inputs_equal(a: PatchGeometryInputs, b: PatchGeometryInputs): boolean {
+  if (a.strokes.length !== b.strokes.length || a.numbers.length !== b.numbers.length) return false;
+  for (let i = 0; i < a.strokes.length; i++) if (a.strokes[i] !== b.strokes[i]) return false;
+  for (let i = 0; i < a.numbers.length; i++) if (!Object.is(a.numbers[i], b.numbers[i])) return false;
+  return true;
+}
+
+// One patch's cached geometry, the inputs it was built from, and the check pass in which
+// those inputs were last compared with the document.
+type PatchGeometryCacheEntry = { inputs: PatchGeometryInputs; geometry: PatchGeometry | null; checked_in_pass: number };
+
+// The PatchGeometry of each patch, built on first use and rebuilt only when the patch's
+// inputs changed, so an edit rebuilds just the patches it touched. Comparing the inputs
+// costs a little, so cached_patch_geometry compares them once per check pass: its owner
+// begins a pass whenever the document may have changed (the sketchpad on every full render
+// request, after the pin pass), and frames that follow the camera or the hovering pen
+// alone stay in the pass. checked_patch_geometry compares on every call, for code that
+// runs while the document changes (the pin pass). Keyed by the patch object, so a patch
+// added or deleted is never matched to another one's geometry.
+export type PatchGeometryCache = { entry_by_patch: Map<Patch, PatchGeometryCacheEntry>; pass: number };
+
+export function create_patch_geometry_cache(): PatchGeometryCache {
+  return { entry_by_patch: new Map(), pass: 0 };
+}
+
+// Forget every patch: all are built again on next use.
 export function invalidate_patch_geometry_cache(cache: PatchGeometryCache): void {
-  cache.geometry_by_patch.clear();
+  cache.entry_by_patch.clear();
+}
+
+// The next lookup of each patch compares its inputs with the document again. Entries of
+// patches no longer in the document are dropped here (the map would otherwise keep them).
+export function begin_patch_geometry_check_pass(cache: PatchGeometryCache, tablet_document: TabletDocument): void {
+  cache.pass++;
+  if (cache.entry_by_patch.size <= tablet_document.patches.length) return;
+  const live_patches = new Set(tablet_document.patches);
+  for (const patch of [...cache.entry_by_patch.keys()]) if (!live_patches.has(patch)) cache.entry_by_patch.delete(patch);
 }
 
 // Null when the patch has no drawable fill (as patch_surface_grid).
 export function cached_patch_geometry(cache: PatchGeometryCache, patch: Patch, tablet_document: TabletDocument): PatchGeometry | null {
-  if (cache.geometry_by_patch.has(patch)) return cache.geometry_by_patch.get(patch)!;
+  const entry = cache.entry_by_patch.get(patch);
+  if (entry !== undefined && entry.checked_in_pass === cache.pass) return entry.geometry;
+  return checked_patch_geometry(cache, patch, tablet_document);
+}
+
+// cached_patch_geometry, comparing the inputs with the document now whatever the pass.
+export function checked_patch_geometry(cache: PatchGeometryCache, patch: Patch, tablet_document: TabletDocument): PatchGeometry | null {
+  const inputs = patch_geometry_inputs(patch, tablet_document);
+  const entry = cache.entry_by_patch.get(patch);
+  if (entry !== undefined && patch_geometry_inputs_equal(entry.inputs, inputs)) {
+    entry.checked_in_pass = cache.pass;
+    return entry.geometry;
+  }
   const geometry = patch_geometry(patch, tablet_document);
-  cache.geometry_by_patch.set(patch, geometry);
+  cache.entry_by_patch.set(patch, { inputs, geometry, checked_in_pass: cache.pass });
   return geometry;
+}
+
+// The cache patch.ts itself uses (project_onto_surface), one per document; the sketchpad
+// shares it, so the grids its frames build serve the pin pass and the on-surface strokes.
+const patch_geometry_cache_by_document = new WeakMap<TabletDocument, PatchGeometryCache>();
+
+export function document_patch_geometry_cache(tablet_document: TabletDocument): PatchGeometryCache {
+  let cache = patch_geometry_cache_by_document.get(tablet_document);
+  if (cache === undefined) {
+    cache = create_patch_geometry_cache();
+    patch_geometry_cache_by_document.set(tablet_document, cache);
+  }
+  return cache;
 }
 
 function patch_geometry(patch: Patch, tablet_document: TabletDocument): PatchGeometry | null {
@@ -679,9 +756,9 @@ function patch_geometry(patch: Patch, tablet_document: TabletDocument): PatchGeo
   if (fill === null) return null;
   if (fill.kind === "loft") {
     const loft_rails = sample_loft_rails(fill.side_a, fill.side_b, tablet_document);
-    return { grid: loft_surface_grid_from_rails(loft_rails), loft_rails, mirrored_grid: null };
+    return { fill, grid: loft_surface_grid_from_rails(loft_rails), loft_rails, mirrored_grid: null };
   }
-  return { grid: coons_surface_grid(fill.sides, tablet_document), loft_rails: null, mirrored_grid: null };
+  return { fill, grid: coons_surface_grid(fill.sides, tablet_document), loft_rails: null, mirrored_grid: null };
 }
 
 export function cached_mirrored_grid(geometry: PatchGeometry): SurfaceGrid {
