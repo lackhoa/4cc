@@ -19,7 +19,7 @@ import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
 import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line_tool";
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { SurfaceGrid, append_grid_mesh, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
+import { SurfaceGrid, append_grid_mesh, append_flat_patch_mesh, append_mirrored_patch_mesh, append_patch_mesh, mirrored_surface_grid, drop_unused_patch_strokes, patch_surface_grid, pick_patch, patch_junction_vertices, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, vertex_can_pin_to_selected_surface } from "./patch";
 import { extract_contour_chains } from "./contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
@@ -1634,6 +1634,19 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   function delete_is_locked(): boolean {
     return selected_strokes().some((id) => stroke_bounds_a_patch(tablet_document, id));
   }
+  // The patches a locked del takes along once the user says yes: every patch that
+  // lists a selected line (delete_stroke removes exactly those), or that has the
+  // selected vertex as a corner.
+  function patch_ids_deleted_with_selected_strokes(): number[] {
+    const stroke_ids = selected_strokes();
+    return tablet_document.patches.filter((patch) => patch.strokes.some((stroke_id) => stroke_ids.includes(stroke_id))).map((patch) => patch.id);
+  }
+  function patch_ids_with_corner_at_vertex(vertex: VertexId): number[] {
+    return tablet_document.patches.filter((patch) => patch_junction_vertices(patch, tablet_document).includes(vertex)).map((patch) => patch.id);
+  }
+  function patches_label(patch_ids: number[]): string {
+    return patch_ids.length === 1 ? `patch ${patch_ids[0]}` : `patches ${patch_ids.join(", ")}`;
+  }
   // A join is not locked by a patch: it carries the patches along, and is
   // refused only when one of them would lose its fill (stroke_merge.ts).
   function selected_join_refusal_reason(): string | null {
@@ -1648,6 +1661,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // A button with nothing to act on in the current selection is hidden. A button
   // whose action a patch blocks stays, greyed out, with the reason as its tooltip;
   // the button's own tooltip from the page comes back once it is usable.
+  // With lock_asks_first the greyed button still takes a click: its handler asks
+  // "are you sure" and then removes what blocks it too (del does this).
   // The reason is not the browser's `title` tooltip: that one comes after a delay, and
   // not at all on a disabled button in some browsers. It is a box drawn by CSS under the
   // button the moment the pointer is over it (the style is added here so every page
@@ -1661,12 +1676,15 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       width: max-content; max-width: 280px; white-space: normal; text-align: left; padding: 6px 10px;
       font-size: 13px; line-height: 1.3; color: #eee; background: #1b1b20; border: 1px solid #888; border-radius: 6px;
       pointer-events: none;
-    }`;
+    }
+    #toolbar button[data-lock-asks-first] { color: #666; border-color: #333; }`;
   document.head.append(lock_reason_style);
-  function set_button_availability(button: HTMLButtonElement, selection_fits: boolean, lock_reason: string | null): void {
+  function set_button_availability(button: HTMLButtonElement, selection_fits: boolean, lock_reason: string | null, lock_asks_first = false): void {
     if (!own_button_titles.has(button)) own_button_titles.set(button, button.title);
     button.hidden = !selection_fits;
-    button.disabled = lock_reason !== null;
+    button.disabled = lock_reason !== null && !lock_asks_first;
+    if (lock_reason !== null && lock_asks_first) button.dataset.lockAsksFirst = "";
+    else delete button.dataset.lockAsksFirst;
     if (lock_reason !== null) {
       button.dataset.lockReason = lock_reason;
       button.title = "";
@@ -1682,17 +1700,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
     let delete_lock_reason: string | null = null;
     if (selected_patch === null && selected_vertex === null && delete_is_locked()) {
-      delete_lock_reason = `the selected line bounds a patch, ${DELETE_PATCH_FIRST}`;
+      delete_lock_reason = `the selected line bounds ${patches_label(patch_ids_deleted_with_selected_strokes())}: del asks, then deletes that too`;
     }
     if (selected_patch === null && selected_vertex !== null && pin_is_locked(tablet_document, selected_vertex)) {
-      delete_lock_reason = `this vertex bounds a patch, ${DELETE_PATCH_FIRST}`;
+      delete_lock_reason = `this vertex is a corner of ${patches_label(patch_ids_with_corner_at_vertex(selected_vertex))}: del asks, then deletes that too`;
     }
     // del does nothing while two kinds are selected together: a vertex and a
     // line (line plan Q2), or a patch with either (surface plan Q2).
     const vertex_and_line_selected = edit_state !== null && selected_vertex !== null;
     const patch_and_other_selected = selected_patch !== null && line_or_vertex_selected;
     set_button_availability(
-      delete_button, !patch_and_other_selected && (selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected)), delete_lock_reason,
+      delete_button, !patch_and_other_selected && (selected_patch !== null || (line_or_vertex_selected && !vertex_and_line_selected)), delete_lock_reason, true,
     );
     set_button_availability(weld_button, selected_weld_pair() !== null, null);
     const detach_end_pair = selected_detach_end_pair();
@@ -1734,8 +1752,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     }
     if (edit_state !== null && selected_vertex !== null) return; // which of the two is meant is unclear (Q2)
     if (selected_vertex !== null) {
-      if (pin_is_locked(tablet_document, selected_vertex)) return; // a patch's sub-curve ends here
+      // A patch's sub-curve ends here: the patch goes first, after a yes.
+      const corner_patch_ids = patch_ids_with_corner_at_vertex(selected_vertex);
+      if (corner_patch_ids.length > 0 && !window.confirm(`Vertex ${selected_vertex} is a corner of ${patches_label(corner_patch_ids)}. Delete that too? (undo brings it back)`)) return;
       begin_history_step(history, tablet_document);
+      if (corner_patch_ids.length > 0) {
+        tablet_document.patches = tablet_document.patches.filter((patch) => !corner_patch_ids.includes(patch.id));
+        drop_surface_pins_of_missing_patches(tablet_document);
+      }
       // Deleting a pinned vertex takes its pin along; without that the pin
       // keeps the vertex alive and delete does nothing.
       const deleted_vertex = selected_vertex;
@@ -1748,9 +1772,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       request_render();
       return;
     }
-    if (edit_state === null || delete_is_locked()) return;
-    begin_history_step(history, tablet_document);
+    if (edit_state === null) return;
     const deleted_strokes = selected_strokes();
+    if (delete_is_locked()) {
+      const line_label = deleted_strokes.length === 1 ? `Line ${deleted_strokes[0]} bounds` : `Lines ${deleted_strokes.join(", ")} bound`;
+      if (!window.confirm(`${line_label} ${patches_label(patch_ids_deleted_with_selected_strokes())}. Delete that too? (undo brings it back)`)) return;
+    }
+    begin_history_step(history, tablet_document);
     for (const stroke_id of deleted_strokes) delete_stroke(tablet_document, stroke_id);
     end_history_step(history, tablet_document, `delete strokes [${deleted_strokes.join(" ")}]`);
     edit_state = null;
