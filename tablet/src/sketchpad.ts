@@ -178,8 +178,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // summed since the last reset, read by profiling scripts as `window.debug_frame_timings`
   // (reset with `window.debug_reset_frame_timings()`). performance.now() around each part
   // is cheap enough to leave in.
-  type FrameTimings = { frame_count: number; full_request_count: number; camera_request_count: number; milliseconds_by_part: Record<string, number> };
-  let frame_timings: FrameTimings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, milliseconds_by_part: {} };
+  type FrameTimings = { frame_count: number; full_request_count: number; camera_request_count: number; hover_request_count: number; milliseconds_by_part: Record<string, number> };
+  let frame_timings: FrameTimings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, hover_request_count: 0, milliseconds_by_part: {} };
   function add_frame_timing(part: string, started_ms: number): void {
     const elapsed_ms = performance.now() - started_ms;
     frame_timings.milliseconds_by_part[part] = (frame_timings.milliseconds_by_part[part] ?? 0) + elapsed_ms;
@@ -336,6 +336,17 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     // The camera is never saved on its own; this only keeps a pending save armed.
     schedule_autosave(persistence, tablet_document, camera);
     if (!frame_requested) next_frame_is_camera_only = true;
+    request_frame();
+  }
+  // A render request from the pen hovering alone: the document and the selection are
+  // unchanged, only what is hot may be, so the passes and refreshes of request_render
+  // are skipped (and the patch grids kept), but the frame is a full one: it picks the
+  // hot item and rebuilds the meshes that show it.
+  function request_hover_render(): void {
+    frame_timings.hover_request_count++;
+    // Nothing to save; this only keeps a pending save armed, as a camera request does.
+    schedule_autosave(persistence, tablet_document, camera);
+    next_frame_is_camera_only = false;
     request_frame();
   }
   function request_frame(): void {
@@ -1675,7 +1686,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     },
     on_pen_hover: (position) => {
       hover_screen = position;
-      request_render();
+      request_hover_render();
     },
     on_undo_tap: perform_undo,
     on_redo_tap: perform_redo,
@@ -2339,10 +2350,11 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   (window as unknown as { debug_camera: unknown }).debug_camera = camera;
   (window as unknown as { debug_persistence: unknown }).debug_persistence = persistence;
   // A test may have changed `window.tablet_document` without a render request, so the
-  // hook builds the patch grids again, unless only camera requests came since the last
-  // frame (a profiling script timing camera-only frames).
+  // hook builds the patch grids again when no request came since the last frame. After a
+  // request it leaves them to the request: a full one has already dealt with them, a
+  // camera or hover one keeps them (a profiling script timing those frames).
   (window as unknown as { debug_render_now: unknown }).debug_render_now = () => {
-    if (!next_frame_is_camera_only) invalidate_patch_geometry_cache(patch_geometry_cache);
+    if (!frame_requested) invalidate_patch_geometry_cache(patch_geometry_cache);
     // As the animation frame callback does: a script calling request + this hook in a loop
     // never yields to the animation frame, and a stuck flag would make every later camera
     // request look like a full one. The pending animation frame still renders, harmlessly.
@@ -2361,7 +2373,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   Object.assign(window, {
     debug_frame_timings: () => frame_timings,
     debug_reset_frame_timings: () => {
-      frame_timings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, milliseconds_by_part: {} };
+      frame_timings = { frame_count: 0, full_request_count: 0, camera_request_count: 0, hover_request_count: 0, milliseconds_by_part: {} };
     },
     debug_set_hover_screen: (screen: V2 | null) => {
       hover_screen = screen;
