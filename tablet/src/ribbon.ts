@@ -17,7 +17,11 @@ import { on_surface_stroke_samples } from "./patch";
 import { Rgb, VertexSink, push_vertex_components } from "./vertex_sink";
 
 export const RIBBON_RADIUS = 0.01; // world units; grid cell = 1
-const RIBBON_SAMPLES = 24;
+// Straight pieces a planar stroke's ribbon is drawn with. A line that bounds a curved patch
+// cuts under it between its points; at 48 the cut is no deeper than the patch's own grid allows.
+const RIBBON_SAMPLES = 48;
+// Straight pieces of the polyline drawn_stroke_points returns for a planar stroke.
+const DRAWN_STROKE_POINT_SAMPLES = 24;
 const ROUND_CAP_SEGMENTS = 12; // triangles in the disc at each capped ribbon end
 
 // Which ends of a ribbon get a round cap. A drawn stroke caps both; a contour chain
@@ -111,7 +115,7 @@ export function polyline_length_fractions(points: Float64Array, point_count: num
 }
 
 // A stroke's line as its ribbon draws it, from p0 to p3, x, y, z per point: an on-surface
-// stroke's projected samples, otherwise the cubic at RIBBON_SAMPLES + 1 evenly spaced t.
+// stroke's projected samples, otherwise the cubic at DRAWN_STROKE_POINT_SAMPLES + 1 evenly spaced t.
 // Either way point i is at t = i / (point count - 1). The mirrored side has the same lengths.
 export function drawn_stroke_points(stroke: Stroke, tablet_document: TabletDocument): Float64Array {
   let centers: V3[];
@@ -119,7 +123,9 @@ export function drawn_stroke_points(stroke: Stroke, tablet_document: TabletDocum
     centers = on_surface_stroke_samples(stroke, tablet_document);
   } else {
     const points = stroke_control_points(stroke, tablet_document);
-    centers = Array.from({ length: RIBBON_SAMPLES + 1 }, (_, i) => bezier_point(points, i / RIBBON_SAMPLES));
+    centers = Array.from({ length: DRAWN_STROKE_POINT_SAMPLES + 1 }, (_, i) =>
+      bezier_point(points, i / DRAWN_STROKE_POINT_SAMPLES),
+    );
   }
   return Float64Array.from(centers.flatMap((center) => [center.x, center.y, center.z]));
 }
