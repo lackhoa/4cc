@@ -287,6 +287,7 @@ function plate_view_camera(state: PlateViewsState, view: PlateView): OrbitCamera
     yaw: view.is_front_view ? 0 : Math.PI / 2,
     pitch: 0,
     distance: camera_distance_for_world_units_per_pixel(1 / (view.image_pixels_to_canvas_scale * state.layout.pixels_per_world_unit), view.container.clientHeight),
+    is_orthographic: true,
   };
 }
 

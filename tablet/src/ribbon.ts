@@ -7,7 +7,7 @@
 // fraction along the drawn line, not by the curve parameter. Mesh depends on
 // the camera — rebuild it whenever the camera moves.
 
-import { OrbitCamera, camera_basis } from "./camera";
+import { OrbitCamera, camera_basis, camera_eye } from "./camera";
 import {
   DEFAULT_STROKE_RADII, Stroke, StrokeControlPoints, StrokeRadii, TabletDocument,
   bezier_point, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_influence_at,
@@ -67,7 +67,47 @@ function mirrored_across_midline(point: V3): V3 {
   return { x: -point.x, y: point.y, z: point.z };
 }
 
-type CameraBasis = { right: V3; up: V3 };
+// What a ribbon needs of its camera: the screen plane (right, up) its band lies in, and the
+// view rays (forward, eye, is_orthographic) its wide parts are pulled along.
+type CameraBasis = { right: V3; up: V3; forward: V3; eye: V3; is_orthographic: boolean };
+
+function ribbon_camera_basis(camera: OrbitCamera): CameraBasis {
+  const { right, up, forward } = camera_basis(camera);
+  return { right, up, forward, eye: camera_eye(camera), is_orthographic: camera.is_orthographic === true };
+}
+
+// A patch fill is drawn behind its own surface by enough for a line of this half-width
+// lying on the surface to stay in front of it (render.ts, SURFACE_DEPTH_PUSH_LINE_HALF_WIDTH:
+// the same number). A wider line's edge reaches further up a tilted surface, so the part of
+// a ribbon wider than this is drawn nearer the camera by
+// (half-width - this) * WIDE_LINE_DEPTH_PULL_PER_EXTRA_HALF_WIDTH, each vertex moved along
+// its own view ray, so nothing moves on screen. A line of this width or thinner is not moved.
+const SURFACE_CLEARED_LINE_HALF_WIDTH = 0.0025;
+// tan(70 degrees), the steepest tilt the patch fills' own push covers.
+const WIDE_LINE_DEPTH_PULL_PER_EXTRA_HALF_WIDTH = 2.75;
+
+function wide_line_depth_pull(half_width: number): number {
+  return Math.max(0, half_width - SURFACE_CLEARED_LINE_HALF_WIDTH) * WIDE_LINE_DEPTH_PULL_PER_EXTRA_HALF_WIDTH;
+}
+
+// Pushes the vertex at (x, y, z) moved `depth_pull` world units of view depth toward the
+// camera along its view ray: against the forward for an orthographic camera, toward the eye
+// for a perspective one.
+function push_vertex_pulled_toward_camera(out: VertexSink, x: number, y: number, z: number, depth_pull: number, color: Rgb, basis: CameraBasis): void {
+  if (depth_pull === 0) {
+    push_vertex_components(out, x, y, z, color);
+    return;
+  }
+  const { forward, eye } = basis;
+  if (basis.is_orthographic) {
+    push_vertex_components(out, x - forward.x * depth_pull, y - forward.y * depth_pull, z - forward.z * depth_pull, color);
+    return;
+  }
+  const from_eye_x = x - eye.x, from_eye_y = y - eye.y, from_eye_z = z - eye.z;
+  const view_depth = from_eye_x * forward.x + from_eye_y * forward.y + from_eye_z * forward.z;
+  const kept = 1 - depth_pull / view_depth;
+  push_vertex_components(out, eye.x + from_eye_x * kept, eye.y + from_eye_y * kept, eye.z + from_eye_z * kept, color);
+}
 
 // One ribbon's samples, in flat arrays reused by every ribbon (one is built at a time, and
 // nothing outside this file sees them): x, y, z per sample for centers, tangents and
@@ -200,7 +240,7 @@ export function append_sampled_ribbon(
     sample_tangents[3 * i + 1] = ahead.y - behind.y;
     sample_tangents[3 * i + 2] = ahead.z - behind.z;
   }
-  append_polyline_ribbon(centers.length, radii, { start: 0, end: 1 }, camera_basis(camera), color, lightness_additions, end_caps, tint, out);
+  append_polyline_ribbon(centers.length, radii, { start: 0, end: 1 }, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, out);
 }
 
 function linear_from_srgb(value: number): number {
@@ -242,7 +282,7 @@ export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
   lightness_additions: StrokeRadii | null = null, end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null,
 ): void {
-  append_cubic_ribbon(points, radii, taper_window, camera_basis(camera), color, lightness_additions, end_caps, tint, RIBBON_SAMPLES, out);
+  append_cubic_ribbon(points, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, RIBBON_SAMPLES, out);
 }
 
 // The cubic sampled at piece_count + 1 evenly spaced t: bezier_point and bezier_tangent
@@ -326,12 +366,14 @@ function append_polyline_ribbon(
     const b0_x = centers[c0] - offsets[c0], b0_y = centers[c0 + 1] - offsets[c0 + 1], b0_z = centers[c0 + 2] - offsets[c0 + 2];
     const a1_x = centers[c1] + offsets[c1], a1_y = centers[c1 + 1] + offsets[c1 + 1], a1_z = centers[c1 + 2] + offsets[c1 + 2];
     const b1_x = centers[c1] - offsets[c1], b1_y = centers[c1 + 1] - offsets[c1 + 1], b1_z = centers[c1 + 2] - offsets[c1 + 2];
-    push_vertex_components(out, a0_x, a0_y, a0_z, colors[i]);
-    push_vertex_components(out, b0_x, b0_y, b0_z, colors[i]);
-    push_vertex_components(out, a1_x, a1_y, a1_z, colors[i + 1]);
-    push_vertex_components(out, a1_x, a1_y, a1_z, colors[i + 1]);
-    push_vertex_components(out, b0_x, b0_y, b0_z, colors[i]);
-    push_vertex_components(out, b1_x, b1_y, b1_z, colors[i + 1]);
+    const pull0 = wide_line_depth_pull(sample_radii[i]);
+    const pull1 = wide_line_depth_pull(sample_radii[i + 1]);
+    push_vertex_pulled_toward_camera(out, a0_x, a0_y, a0_z, pull0, colors[i], basis);
+    push_vertex_pulled_toward_camera(out, b0_x, b0_y, b0_z, pull0, colors[i], basis);
+    push_vertex_pulled_toward_camera(out, a1_x, a1_y, a1_z, pull1, colors[i + 1], basis);
+    push_vertex_pulled_toward_camera(out, a1_x, a1_y, a1_z, pull1, colors[i + 1], basis);
+    push_vertex_pulled_toward_camera(out, b0_x, b0_y, b0_z, pull0, colors[i], basis);
+    push_vertex_pulled_toward_camera(out, b1_x, b1_y, b1_z, pull1, colors[i + 1], basis);
   }
   const last = sample_count - 1;
   if (end_caps.at_start) append_round_cap(0, sample_radii[0], colors[0], basis, out);
@@ -347,19 +389,22 @@ function append_round_cap(sample: number, radius: number, color: Rgb, basis: Cam
   const center_x = ribbon_samples.centers[3 * sample];
   const center_y = ribbon_samples.centers[3 * sample + 1];
   const center_z = ribbon_samples.centers[3 * sample + 2];
+  const depth_pull = wide_line_depth_pull(radius);
   const push_rim_vertex = (rim_segment: number): void => {
     const along_right = cosines[rim_segment] * radius;
     const along_up = sines[rim_segment] * radius;
-    push_vertex_components(
+    push_vertex_pulled_toward_camera(
       out,
       center_x + (right.x * along_right + up.x * along_up),
       center_y + (right.y * along_right + up.y * along_up),
       center_z + (right.z * along_right + up.z * along_up),
+      depth_pull,
       color,
+      basis,
     );
   };
   for (let segment = 0; segment < ROUND_CAP_SEGMENTS; segment++) {
-    push_vertex_components(out, center_x, center_y, center_z, color);
+    push_vertex_pulled_toward_camera(out, center_x, center_y, center_z, depth_pull, color, basis);
     push_rim_vertex(segment);
     push_rim_vertex(segment + 1);
   }
@@ -384,7 +429,7 @@ export function append_chain_ribbon(
   let total = 0;
   for (const points of chain) total += chord_length(points);
   if (total < 1e-9) return;
-  const basis = camera_basis(camera);
+  const basis = ribbon_camera_basis(camera);
   let covered = 0;
   const last_index = chain.length - 1;
   for (let index = 0; index <= last_index; index++) {

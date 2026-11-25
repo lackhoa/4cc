@@ -8,6 +8,9 @@ export type OrbitCamera = {
   yaw: number; // radians, around world y
   pitch: number; // radians, clamped to avoid pole flip
   distance: number;
+  // Shown through camera_orthographic_view_projection: every view ray runs along the
+  // camera forward instead of through the eye. Absent = perspective.
+  is_orthographic?: boolean;
 };
 
 export const PITCH_LIMIT = Math.PI / 2 - 0.01;
