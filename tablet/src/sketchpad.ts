@@ -31,7 +31,7 @@ import { RIBBON_RADIUS, RibbonTint, append_chain_ribbon, append_stroke_ribbon, d
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
-import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, FloatRange, LineDepthMode, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_camera_forward, set_surface_mesh, set_surface_mesh_ranges, set_translucent_mesh } from "./render";
+import { ClipPlane, FLOATS_PER_TRANSLUCENT_VERTEX, FloatRange, create_line_renderer, create_translucent_mesh, draw_mesh_translucent, render_frame, set_overlay_lines, set_overlay_triangles, set_preview_line, set_reference_mesh, set_stroke_mesh, set_surface_camera_forward, set_surface_mesh, set_surface_mesh_ranges, set_translucent_mesh } from "./render";
 
 // One vertex moved by wrap_skull_onto_skin: how it reached the mesh and how far it went.
 type WrapRow = { vertex: VertexId; method: MeshProjectionMethod; push_mm: number };
@@ -65,10 +65,6 @@ export type SketchpadSetup = {
   // False while another view of the page owns the keyboard (the one last touched): the
   // sketchpad's window key listeners (undo, nudge, axis view, reference) do nothing.
   owns_keyboard?: () => boolean;
-  // TEMPORARY (plan-lines-not-hidden-by-nearby-patch.md step 2): how lines on a patch keep
-  // out of it in the depth test (render.ts LineDepthMode); undefined = "as_today". Only the
-  // draw page passes it, from its `?line_depth=` parameter.
-  line_depth_mode?: LineDepthMode;
 };
 
 // Ported from the desktop app (driver.kc default_line_color = gray 0.03
@@ -107,7 +103,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
 
   const camera = default_camera();
   const tablet_document = empty_document();
-  const renderer = create_line_renderer(gl, setup.line_depth_mode ?? "as_today");
+  const renderer = create_line_renderer(gl);
   const persistence = create_persistence_state(setup.default_document_name, setup.storage_key_prefix);
   const history = create_history_state();
   let reference_mesh: ReferenceMesh | null = null;

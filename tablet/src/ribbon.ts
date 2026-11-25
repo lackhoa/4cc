@@ -242,31 +242,34 @@ export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
   lightness_additions: StrokeRadii | null = null, end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null,
 ): void {
-  append_cubic_ribbon(points, radii, taper_window, camera_basis(camera), color, lightness_additions, end_caps, tint, out);
+  append_cubic_ribbon(points, radii, taper_window, camera_basis(camera), color, lightness_additions, end_caps, tint, RIBBON_SAMPLES, out);
 }
 
-// The cubic sampled at RIBBON_SAMPLES + 1 evenly spaced t: bezier_point and bezier_tangent
-// written out per coordinate, the same arithmetic in the same order.
+// The cubic sampled at piece_count + 1 evenly spaced t: bezier_point and bezier_tangent
+// written out per coordinate, the same arithmetic in the same order. piece_count must
+// divide RIBBON_SAMPLES (the weight table is read with that stride).
 function append_cubic_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, basis: CameraBasis, color: Rgb,
-  lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, tint: RibbonTint | null, out: VertexSink,
+  lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, tint: RibbonTint | null, piece_count: number, out: VertexSink,
 ): void {
   const { p0, p1, p2, p3 } = points;
   const point_weights = bezier_sample_weights.point;
   const tangent_weights = bezier_sample_weights.tangent;
   const centers = ribbon_samples.centers;
   const tangents = ribbon_samples.tangents;
-  for (let i = 0; i <= RIBBON_SAMPLES; i++) {
-    const b0 = point_weights[4 * i], b1 = point_weights[4 * i + 1], b2 = point_weights[4 * i + 2], b3 = point_weights[4 * i + 3];
+  const weight_stride = RIBBON_SAMPLES / piece_count;
+  for (let i = 0; i <= piece_count; i++) {
+    const weight_index = i * weight_stride;
+    const b0 = point_weights[4 * weight_index], b1 = point_weights[4 * weight_index + 1], b2 = point_weights[4 * weight_index + 2], b3 = point_weights[4 * weight_index + 3];
     centers[3 * i] = (p0.x * b0 + p1.x * b1) + (p2.x * b2 + p3.x * b3);
     centers[3 * i + 1] = (p0.y * b0 + p1.y * b1) + (p2.y * b2 + p3.y * b3);
     centers[3 * i + 2] = (p0.z * b0 + p1.z * b1) + (p2.z * b2 + p3.z * b3);
-    const w0 = tangent_weights[3 * i], w1 = tangent_weights[3 * i + 1], w2 = tangent_weights[3 * i + 2];
+    const w0 = tangent_weights[3 * weight_index], w1 = tangent_weights[3 * weight_index + 1], w2 = tangent_weights[3 * weight_index + 2];
     tangents[3 * i] = ((p1.x - p0.x) * w0 + (p2.x - p1.x) * w1) + (p3.x - p2.x) * w2;
     tangents[3 * i + 1] = ((p1.y - p0.y) * w0 + (p2.y - p1.y) * w1) + (p3.y - p2.y) * w2;
     tangents[3 * i + 2] = ((p1.z - p0.z) * w0 + (p2.z - p1.z) * w1) + (p3.z - p2.z) * w2;
   }
-  append_polyline_ribbon(RIBBON_SAMPLES + 1, radii, taper_window, basis, color, lightness_additions, end_caps, tint, out);
+  append_polyline_ribbon(piece_count + 1, radii, taper_window, basis, color, lightness_additions, end_caps, tint, out);
 }
 
 // The first `sample_count` samples in ribbon_samples.centers / .tangents. The taper and the
@@ -387,6 +390,7 @@ export function append_chain_ribbon(
     covered += chord_length(points);
     // Caps only at the two ends of the whole chain, not at the seams between cubics.
     const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
-    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, out);
+    // A chain cubic spans one patch grid cell: half the pieces of a drawn stroke.
+    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, RIBBON_SAMPLES / 2, out);
   }
 }

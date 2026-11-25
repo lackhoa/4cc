@@ -48,41 +48,16 @@ export const SURFACE_AMBIENT = 0.35;
 // UNLIT_NORMAL_WITH_DIRECTION_LENGTH (flat fill, vertex_sink.ts).
 // Below this squared length a non-zero normal is a lit unit normal.
 const LIT_NORMAL_LENGTH_SQUARED_LIMIT = (1 + UNLIT_NORMAL_WITH_DIRECTION_LENGTH) * (1 + UNLIT_NORMAL_WITH_DIRECTION_LENGTH) / 4;
-const SHADED_SURFACE_VERTEX_SHADER = `
-attribute vec3 a_position;
-attribute vec3 a_color;
-attribute vec3 a_normal;
-uniform mat4 u_view_projection;
-uniform vec3 u_camera_forward;
-varying vec3 v_color;
-varying vec3 v_world_position;
-void main() {
-  gl_Position = u_view_projection * vec4(a_position, 1.0);
-  float facing = abs(dot(a_normal, u_camera_forward));
-  float normal_length_squared = dot(a_normal, a_normal);
-  bool is_lit = normal_length_squared > 0.0 && normal_length_squared < ${LIT_NORMAL_LENGTH_SQUARED_LIMIT.toFixed(6)};
-  float brightness = is_lit ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
-  v_color = a_color * brightness;
-  v_world_position = a_position;
-}`;
 
-// TEMPORARY (plan-lines-not-hidden-by-nearby-patch.md step 2, the draw page's
-// `?line_depth=fixed|tilt`): how a line lying on a patch keeps out of the patch in the depth
-// test. Only the depth each vertex is tested with changes, never where it lands on screen.
-//   "as_today": the shaders as they are, lines and surfaces tested at their own depth.
-//   "fixed_line_offset": every stroke ribbon and the pen preview are tested LINE_DEPTH_OFFSET
-//     nearer to the camera (plan option A).
-//   "tilt_scaled_surface_push": every patch fill and sphere vertex is tested farther from the
-//     camera by SURFACE_DEPTH_PUSH_FIXED + SURFACE_DEPTH_PUSH_LINE_HALF_WIDTH * tan(tilt),
-//     tilt capped at SURFACE_DEPTH_PUSH_MAX_TILT_DEGREES (plan option C).
-export type LineDepthMode = "as_today" | "fixed_line_offset" | "tilt_scaled_surface_push";
-
-// Tablet units (about 0.1 m each, WORLD_PER_MM = 0.01).
-const LINE_DEPTH_OFFSET = 0.001;
+// A line lying on a patch keeps out of the patch in the depth test: every patch fill and
+// sphere vertex is tested farther from the camera by
+// SURFACE_DEPTH_PUSH_FIXED + SURFACE_DEPTH_PUSH_LINE_HALF_WIDTH * tan(tilt), tilt capped at
+// SURFACE_DEPTH_PUSH_MAX_TILT_DEGREES. Only the depth each vertex is tested with changes,
+// never where it lands on screen. Tablet units (about 0.1 m each, WORLD_PER_MM = 0.01).
 // The default line's half-width: RIBBON_RADIUS (ribbon.ts) * DEFAULT_STROKE_RADII (0.25).
 const SURFACE_DEPTH_PUSH_LINE_HALF_WIDTH = 0.0025;
 const SURFACE_DEPTH_PUSH_MAX_TILT_DEGREES = 70;
-const SURFACE_DEPTH_PUSH_FIXED = 0.0002;
+const SURFACE_DEPTH_PUSH_FIXED = 0.0005;
 
 // GLSL: the clip position of `world` whose depth is that of `world` moved
 // `distance_toward_camera` world units against u_camera_forward (negative = away from the
@@ -98,30 +73,14 @@ vec4 clip_position_with_shifted_depth(vec3 world, float distance_toward_camera) 
   return vec4(original.xy, displaced.z / displaced.w * original.w, original.w);
 }`;
 
-// VERTEX_SHADER with the depth tested LINE_DEPTH_OFFSET nearer to the camera
-// ("fixed_line_offset"): stroke ribbons and the pen preview only.
-const LINE_DEPTH_OFFSET_VERTEX_SHADER = `
-attribute vec3 a_position;
-attribute vec3 a_color;
-uniform mat4 u_view_projection;
-uniform vec3 u_camera_forward;
-varying vec3 v_color;
-varying vec3 v_world_position;
-${CLIP_POSITION_WITH_SHIFTED_DEPTH}
-void main() {
-  gl_Position = clip_position_with_shifted_depth(a_position, ${LINE_DEPTH_OFFSET.toFixed(8)});
-  v_color = a_color;
-  v_world_position = a_position;
-}`;
-
-// SHADED_SURFACE_VERTEX_SHADER with the depth tested farther from the camera by the
-// tilt-scaled push ("tilt_scaled_surface_push"). A line is a band in the camera's screen
-// plane (ribbon.ts), so a patch tilted by `tilt` from u_camera_forward rises in front of the
-// band's edge by half-width * tan(tilt) along the forward: tan(acos(facing)) =
-// sqrt(1 - facing^2) / facing, facing clamped at cos(max tilt). A flat fill's normal (length
-// UNLIT_NORMAL_WITH_DIRECTION_LENGTH) gives the tilt but no lighting. A zero normal
-// (degenerate triangle) has no tilt: it gets the fixed part alone.
-const TILT_SCALED_PUSH_SURFACE_VERTEX_SHADER = `
+// The fill program's vertex shader, lit as above, its depth tested farther from the camera
+// by the tilt-scaled push. A line is a band in
+// the camera's screen plane (ribbon.ts), so a patch tilted by `tilt` from u_camera_forward
+// rises in front of the band's edge by half-width * tan(tilt) along the forward:
+// tan(acos(facing)) = sqrt(1 - facing^2) / facing, facing clamped at cos(max tilt). A flat
+// fill's normal (length UNLIT_NORMAL_WITH_DIRECTION_LENGTH) gives the tilt but no lighting.
+// A zero normal (degenerate triangle) has no tilt: it gets the fixed part alone.
+const SHADED_SURFACE_VERTEX_SHADER = `
 attribute vec3 a_position;
 attribute vec3 a_color;
 attribute vec3 a_normal;
@@ -146,15 +105,6 @@ void main() {
   v_color = a_color * brightness;
   v_world_position = a_position;
 }`;
-
-// The program the stroke ribbons and the pen preview are drawn with in "fixed_line_offset".
-type LineDepthOffsetProgram = {
-  program: WebGLProgram;
-  u_view_projection: WebGLUniformLocation;
-  u_clip_plane: WebGLUniformLocation;
-  u_clip_enabled: WebGLUniformLocation;
-  u_camera_forward: WebGLUniformLocation;
-};
 
 function set_clip_plane_uniforms(gl: WebGLRenderingContext, u_clip_plane: WebGLUniformLocation, u_clip_enabled: WebGLUniformLocation, clip: ClipPlane | null): void {
   if (clip === null || !clip.enabled) {
@@ -196,11 +146,6 @@ export type LineRenderer = {
   overlay_line_vertex_count: number;
   overlay_triangle_buffer: WebGLBuffer; // edit-mode anchor/handle squares, depth-test-off
   overlay_triangle_vertex_count: number;
-  // TEMPORARY (plan-lines-not-hidden-by-nearby-patch.md step 2): fixed at creation. Only
-  // "fixed_line_offset" has a line_depth_offset_program; "tilt_scaled_surface_push" lives in
-  // surface_program's vertex shader.
-  line_depth_mode: LineDepthMode;
-  line_depth_offset_program: LineDepthOffsetProgram | null;
 };
 
 function compile_shader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
@@ -224,24 +169,9 @@ function link_program(gl: WebGLRenderingContext, vertex_source: string, fragment
   return program;
 }
 
-function create_line_depth_offset_program(gl: WebGLRenderingContext): LineDepthOffsetProgram {
-  const program = link_program(gl, LINE_DEPTH_OFFSET_VERTEX_SHADER, FRAGMENT_SHADER);
-  return {
-    program,
-    u_view_projection: gl.getUniformLocation(program, "u_view_projection")!,
-    u_clip_plane: gl.getUniformLocation(program, "u_clip_plane")!,
-    u_clip_enabled: gl.getUniformLocation(program, "u_clip_enabled")!,
-    u_camera_forward: gl.getUniformLocation(program, "u_camera_forward")!,
-  };
-}
-
-// `line_depth_mode` (TEMPORARY, see LineDepthMode): "as_today" links exactly the shaders
-// there were before it existed.
-export function create_line_renderer(gl: WebGLRenderingContext, line_depth_mode: LineDepthMode = "as_today"): LineRenderer {
+export function create_line_renderer(gl: WebGLRenderingContext): LineRenderer {
   const program = link_program(gl, VERTEX_SHADER, FRAGMENT_SHADER);
-  const surface_vertex_shader = line_depth_mode === "tilt_scaled_surface_push" ? TILT_SCALED_PUSH_SURFACE_VERTEX_SHADER : SHADED_SURFACE_VERTEX_SHADER;
-  const surface_program = link_program(gl, surface_vertex_shader, FRAGMENT_SHADER);
-  const line_depth_offset_program = line_depth_mode === "fixed_line_offset" ? create_line_depth_offset_program(gl) : null;
+  const surface_program = link_program(gl, SHADED_SURFACE_VERTEX_SHADER, FRAGMENT_SHADER);
 
   return {
     gl,
@@ -272,8 +202,6 @@ export function create_line_renderer(gl: WebGLRenderingContext, line_depth_mode:
     overlay_line_vertex_count: 0,
     overlay_triangle_buffer: gl.createBuffer()!,
     overlay_triangle_vertex_count: 0,
-    line_depth_mode,
-    line_depth_offset_program,
   };
 }
 
@@ -363,14 +291,12 @@ export function set_overlay_triangles(renderer: LineRenderer, vertices: Float32A
   renderer.overlay_triangle_vertex_count = vertices.length / 6;
 }
 
-// `program`: the one in use, whose attribute locations are bound (renderer.program unless
-// the line depth offset program draws).
-function bind_interleaved_buffer(renderer: LineRenderer, buffer: WebGLBuffer, program: WebGLProgram = renderer.program): void {
+function bind_interleaved_buffer(renderer: LineRenderer, buffer: WebGLBuffer): void {
   const gl = renderer.gl;
   const stride = 6 * 4;
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  const a_position = gl.getAttribLocation(program, "a_position");
-  const a_color = gl.getAttribLocation(program, "a_color");
+  const a_position = gl.getAttribLocation(renderer.program, "a_position");
+  const a_color = gl.getAttribLocation(renderer.program, "a_color");
   gl.enableVertexAttribArray(a_position);
   gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, stride, 0);
   gl.enableVertexAttribArray(a_color);
@@ -421,26 +347,14 @@ export function render_frame(renderer: LineRenderer, view_projection: Mat4, clip
     draw_shaded_surfaces(renderer, view_projection, clip);
     gl.useProgram(renderer.program);
   }
-  // The lines: with renderer.program, or in "fixed_line_offset" with the offset program.
-  const offset_program = renderer.line_depth_offset_program;
-  let line_program = renderer.program;
-  if (offset_program !== null) {
-    line_program = offset_program.program;
-    const forward = renderer.surface_camera_forward;
-    gl.useProgram(line_program);
-    gl.uniformMatrix4fv(offset_program.u_view_projection, false, view_projection);
-    gl.uniform3f(offset_program.u_camera_forward, forward.x, forward.y, forward.z);
-    set_clip_plane_uniforms(gl, offset_program.u_clip_plane, offset_program.u_clip_enabled, clip);
-  }
   if (renderer.stroke_vertex_count > 0) {
-    bind_interleaved_buffer(renderer, renderer.stroke_buffer, line_program);
+    bind_interleaved_buffer(renderer, renderer.stroke_buffer);
     gl.drawArrays(gl.TRIANGLES, 0, renderer.stroke_vertex_count);
   }
   if (renderer.preview_vertex_count > 1) {
-    bind_interleaved_buffer(renderer, renderer.preview_buffer, line_program);
+    bind_interleaved_buffer(renderer, renderer.preview_buffer);
     gl.drawArrays(gl.LINE_STRIP, 0, renderer.preview_vertex_count);
   }
-  if (offset_program !== null) gl.useProgram(renderer.program);
 
   if (draw_translucent !== null) {
     draw_translucent();
