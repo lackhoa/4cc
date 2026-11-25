@@ -239,6 +239,9 @@ export function merge_adjacent_strokes(
   if (stroke_a.on_surface === true && stroke_b.on_surface !== true) delete stroke_a.on_surface;
   // The fit is a full cubic: the merged stroke has two handles, whatever the parts had.
   delete stroke_a.has_one_handle;
+  // Always drawn if either part was (plan-head-picture-from-contours-and-chosen-lines):
+  // joining a picture line to a construction line must not drop it from the picture.
+  if (stroke_b.is_always_drawn === true) stroke_a.is_always_drawn = true;
 
   for (const { pin, world_position } of riding_pins) {
     pin.host_stroke = stroke_a_id;

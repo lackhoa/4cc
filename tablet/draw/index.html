@@ -81,6 +81,7 @@
     <button id="smooth_button">smooth</button>
     <button id="straighten_button" title="make the selected line(s) straight between their endpoints">straight</button>
     <button id="one_handle_button" title="switches the selected lines between one handle (like a parabola) and two">1 handle</button>
+    <button id="always_drawn_button" title="marks the selected lines as always drawn (in the picture view too), or back to construction lines">always (K)</button>
     <button id="pin_button" title="a line selected: tap the line to drop a pinned vertex; a pinned vertex selected: unpin it; a vertex and a line or a surface selected (tap one, ctrl-tap the other): pin the vertex there, at the nearest point">pin</button>
     <button id="detach_end_button" hidden title="give this end of the selected line its own vertex, detaching it from the other lines welded at the selected vertex">detach end</button>
     <button id="swing_button" title="sticky swing mode; or hold ctrl while dragging a handle">swing</button>
@@ -98,6 +99,7 @@
     <input type="range" id="reference_alpha" hidden min="0.05" max="1" step="0.05" value="1" title="reference opacity">
     <input type="range" id="clip_offset" hidden min="-1" max="1" step="0.01" value="1" title="sagittal clip: cuts away the far side of the plane; all the way right = off">
     <button id="surface_button" title="surfaces on/off">surf (S)</button>
+    <button id="picture_button" title="picture view on/off: only the computed contours and the always-drawn lines are drawn and picked (all lines, when no line is marked)">picture (V)</button>
         <button id="docs_button">docs</button>
     <span id="save_status" title="autosave status"></span>
     <button id="pages_button" title="back to the main menu">menu</button>

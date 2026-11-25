@@ -14,7 +14,7 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_screen_projector, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, set_strokes_always_drawn, document_has_always_drawn_strokes, stroke_is_in_picture, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_point_on_segment, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -121,6 +121,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // slider; parked at its max it cuts nothing.
   const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
   let surface_drawn = true; // "surf" button: off = no fill, the reference shows through everywhere
+  // "picture" button / V key (plan-head-picture-from-contours-and-chosen-lines Q1): on = draw
+  // and pick only the strokes stroke_is_in_picture keeps, plus the computed contours. A view
+  // state, never saved in the document.
+  let is_picture_view = false;
   // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
   // active_layer; locked layers are ignored by every pick and snap; hidden
   // layers are not drawn (and not picked either). A vertex is on the layers of
@@ -255,9 +259,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return is_point_visible(world_position);
     };
     const vertex_visibility_filter = surface_drawn ? is_vertex_pickable : undefined;
-    const vertex = timed("pick.vertex", () => pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), vertex_visibility_filter));
+    const vertex = timed("pick.vertex", () => pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, vertex_visibility_filter));
     if (vertex !== null) return { kind: "vertex", vertex };
-    const stroke_id = timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter));
+    const stroke_id = timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, visibility_filter));
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
     const grid_of_patch = (patch: Patch): SurfaceGrid | null => cached_patch_geometry(patch_geometry_cache, patch, tablet_document)?.grid ?? null;
     const patch = timed("pick.patch", () => pick_patch(tablet_document, camera, screen, canvas, pickable_layers(), grid_of_patch)); // fill = last resort (Q10)
@@ -281,14 +285,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // vertices and handles, which width mode never moves.
   function pick_width_mode_stroke(screen: V2): StrokeId | null {
     const visibility_filter = surface_drawn ? point_visibility_test_for_one_pick() : undefined;
-    return timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), visibility_filter));
+    return timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, visibility_filter));
   }
 
   function resolve_hot_item(): HotItem | null {
     if (hover_screen === null || armed_tool === "line") return null;
     if (armed_tool !== null) {
       // Pin / split armed: the tap feeds the tool, which only reads curves.
-      const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers());
+      const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers(), is_picture_view);
       return picked === null ? null : { kind: "stroke", stroke_id: picked };
     }
     if (width_mode_is_on()) {
@@ -343,6 +347,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     refresh_midline_button_armed();
     refresh_on_surface_button_armed();
     refresh_one_handle_button_armed();
+    refresh_always_drawn_button_armed();
     refresh_smooth_button_armed();
     refresh_history_panel();
     refresh_width_panel();
@@ -512,9 +517,13 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
     const selected_vertex_pin = selected_vertex === null ? null : pin_by_vertex(tablet_document, selected_vertex);
+    const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
       if (stroke.is_hidden === true) continue;
+      // The picture view draws the always-drawn strokes only, on both sides; the contours
+      // below are drawn either way (plan-head-picture-from-contours-and-chosen-lines Q1, Q2).
+      if (is_picture_view && !stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const is_pin_host = selected_vertex_pin !== null && selected_vertex_pin.host_stroke === stroke.id;
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
@@ -1166,6 +1175,25 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     end_history_step(history, tablet_document, `${turn_on ? "one handle" : "two handles"} on strokes ${strokes.join(" ")}`);
     request_render();
   });
+  const always_drawn_button = document.getElementById("always_drawn_button") as HTMLButtonElement;
+  // Like the one handle button: marks the selected lines as always drawn, or unmarks them
+  // (all to the opposite of the primary's), lit by the primary's flag. Also the K key.
+  // In the picture view an unmarked line stops being drawn, but stays selected with its
+  // handles until the selection changes (plan-head-picture-from-contours-and-chosen-lines Q3).
+  function refresh_always_drawn_button_armed(): void {
+    const armed = edit_state !== null && stroke_by_id(tablet_document, edit_state.stroke_id).is_always_drawn === true;
+    always_drawn_button.classList.toggle("armed", armed);
+  }
+  function document_toggle_always_drawn(): void {
+    if (edit_state === null) return;
+    const strokes = selected_strokes();
+    const turn_on = stroke_by_id(tablet_document, edit_state.stroke_id).is_always_drawn !== true;
+    begin_history_step(history, tablet_document);
+    set_strokes_always_drawn(tablet_document, strokes, turn_on);
+    end_history_step(history, tablet_document, `${turn_on ? "always drawn" : "construction"} on strokes ${strokes.join(" ")}`);
+    request_render();
+  }
+  always_drawn_button.addEventListener("click", document_toggle_always_drawn);
   // The pin of the selected vertex, or null: the target of unpin and split here.
   // The selected vertex when no stroke is selected with it. With a stroke
   // selected too, the stroke owns the buttons that take either kind
@@ -1932,7 +1960,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
           pen_orbit_last_screen = position;
         }
-      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers()) === selected_vertex) {
+      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers(), is_picture_view) === selected_vertex) {
         // Landing on the selected vertex drags it on the camera plane.
         selected_vertex_drag_last_screen = position;
       } else {
@@ -2165,6 +2193,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     set_button_availability(midline_button, line_or_vertex_selected, null);
     set_button_availability(on_surface_button, edit_state !== null, null);
     set_button_availability(one_handle_button, edit_state !== null, null);
+    set_button_availability(always_drawn_button, edit_state !== null, null);
     set_button_availability(name_button, line_or_vertex_selected, null);
   }
   delete_button.addEventListener("click", () => {
@@ -2303,6 +2332,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     if (document.activeElement instanceof HTMLInputElement) return;
     if (event.key === "r" || event.key === "q") toggle_reference_visible();
     if (event.key === "s") toggle_surface_drawn();
+    if (event.key === "v") toggle_picture_view();
+    if (event.key === "k") document_toggle_always_drawn();
   });
   // Eyeballs with the reference (Q9): the mesh is fetched on the first arm only.
   const eyeball_button = document.getElementById("eyeball_button") as HTMLButtonElement | null;
@@ -2354,6 +2385,16 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   }
   surface_button.addEventListener("click", toggle_surface_drawn);
   refresh_surface_button();
+
+  // Picture view on/off: the "picture" button, or the v key. It drops the selection, like
+  // a layer toggle: the selected line or vertex may just have stopped being drawn and picked.
+  const picture_button = document.getElementById("picture_button") as HTMLButtonElement;
+  function toggle_picture_view(): void {
+    is_picture_view = !is_picture_view;
+    picture_button.classList.toggle("armed", is_picture_view);
+    clear_selection_after_history_jump();
+  }
+  picture_button.addEventListener("click", toggle_picture_view);
 
   // Layer bar (plan-skin-over-skull-study.md): per layer a name button (tap =
   // active layer), a lock toggle and a hide toggle. Pages without a `#layer_bar`

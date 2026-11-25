@@ -93,6 +93,10 @@ export type Stroke = {
   // Edited through one handle, like a parabola (stroke_single_handle_point): the cubic
   // is stored as usual, with d0 equal to d3. Absent = two handles.
   has_one_handle?: boolean;
+  // Drawn in the picture view too (plan-head-picture-from-contours-and-chosen-lines Q2):
+  // a document with any stroke marked draws only the marked ones there, besides the
+  // computed contours (stroke_is_in_picture). Absent = drawn and picked in the edit view only.
+  is_always_drawn?: boolean;
 };
 
 // Width profile of a stroke, same as the C++ `Curve.radii`: four scalar bezier
@@ -318,6 +322,33 @@ export function vertex_is_on_layers(tablet_document: TabletDocument, vertex_id: 
   return !has_stroke;
 }
 
+// The picture view (plan-head-picture-from-contours-and-chosen-lines Q1, Q2): a document
+// with at least one stroke marked is_always_drawn draws only the marked strokes there; a
+// document with no mark draws every stroke. Computed once per frame or pick by the caller.
+export function document_has_always_drawn_strokes(tablet_document: TabletDocument): boolean {
+  return tablet_document.strokes.some((stroke) => stroke.is_always_drawn === true);
+}
+
+// Whether `stroke` is drawn (and picked) in the picture view. `has_always_drawn_strokes`
+// is document_has_always_drawn_strokes of its document. is_hidden and hidden layers are
+// checked by the caller, as in the edit view.
+export function stroke_is_in_picture(stroke: Stroke, has_always_drawn_strokes: boolean): boolean {
+  if (!has_always_drawn_strokes) return true;
+  return stroke.is_always_drawn === true;
+}
+
+// A vertex is in the picture when a stroke in the picture ends on it. A vertex no stroke
+// uses (a bare landmark) is always in it, as it is on every layer (vertex_is_on_layers).
+export function vertex_is_in_picture(tablet_document: TabletDocument, vertex_id: VertexId, has_always_drawn_strokes: boolean): boolean {
+  let has_stroke = false;
+  for (const stroke of tablet_document.strokes) {
+    if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
+    has_stroke = true;
+    if (stroke_is_in_picture(stroke, has_always_drawn_strokes)) return true;
+  }
+  return !has_stroke;
+}
+
 // A patch is on the layer of its first boundary stroke (a patch across layers
 // is not expected; the layer bar's lock/hide act on whole patches).
 export function patch_layer(patch: Patch, tablet_document: TabletDocument): Layer {
@@ -451,6 +482,7 @@ export function split_stroke(
   }
   if (stroke.is_hidden === true) stroke_by_id(tablet_document, second_stroke).is_hidden = true;
   if (stroke.is_one_sided === true) stroke_by_id(tablet_document, second_stroke).is_one_sided = true;
+  if (stroke.is_always_drawn === true) stroke_by_id(tablet_document, second_stroke).is_always_drawn = true;
   if (stroke.line_color !== undefined) stroke_by_id(tablet_document, second_stroke).line_color = { ...stroke.line_color };
   if (stroke.lightness_additions !== undefined) {
     const halves = split_stroke_radii(stroke.lightness_additions, cut_length_fraction);
@@ -535,6 +567,19 @@ export function set_strokes_have_one_handle(tablet_document: TabletDocument, str
     stroke.has_one_handle = true;
     average_stroke_handle_offsets(stroke);
     enforce_smooth_knots_of_stroke(tablet_document, stroke_id);
+  }
+}
+
+// Mark or unmark strokes as always drawn (the "always" button). Unmarking removes the
+// field, so a document never stores `false`.
+export function set_strokes_always_drawn(tablet_document: TabletDocument, stroke_ids: StrokeId[], is_always_drawn: boolean): void {
+  for (const stroke_id of stroke_ids) {
+    const stroke = stroke_by_id(tablet_document, stroke_id);
+    if (is_always_drawn) {
+      stroke.is_always_drawn = true;
+    } else {
+      delete stroke.is_always_drawn;
+    }
   }
 }
 
@@ -963,6 +1008,7 @@ export function copy_layer_strokes(tablet_document: TabletDocument, from_layer: 
     if (source.is_hidden === true) copy.is_hidden = true;
     if (source.is_one_sided === true) copy.is_one_sided = true;
     if (source.has_one_handle === true) copy.has_one_handle = true;
+    if (source.is_always_drawn === true) copy.is_always_drawn = true;
     if (source.line_color !== undefined) copy.line_color = { ...source.line_color };
     if (source.lightness_additions !== undefined) copy.lightness_additions = [...source.lightness_additions];
     copied_stroke.set(source.id, copy_id);
