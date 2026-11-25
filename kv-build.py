@@ -91,12 +91,14 @@ CODE=pjoin(FCODER_ROOT, "code")
 NON_SOURCE=pjoin(FCODER_ROOT, "4coder-non-source")
 OS_WINDOWS = int(os.name== "nt")
 
-VCVARSALL = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat"
+# NOTE(kv) Portable MSVC + Windows SDK in ~/msvc (Visual Studio is not installed);
+# its setup.bat sets PATH/INCLUDE/LIB the way vcvarsall.bat used to.
+VCVARSALL = pjoin(HOME, "msvc", "setup.bat")
 VCVARS_CACHE = pjoin(OUTDIR, "vcvars.json")
 
 def setup_msvc_env():
-    """NOTE(kv) vcvarsall.bat costs ~2 s and only sets env vars, so run it once and
-    cache the result. Cache is refreshed when vcvarsall.bat itself is newer (VS update).
+    """NOTE(kv) the setup script only sets env vars, so run it once and cache the result.
+    Cache is refreshed when the setup script itself is newer (toolchain update).
     Skipped entirely when cl is already on PATH (launched from a dev shell)."""
     if not OS_WINDOWS or shutil.which("cl"):
         return
@@ -107,9 +109,9 @@ def setup_msvc_env():
         with open(VCVARS_CACHE, encoding="utf-8") as f:
             cached = json.load(f)
     if cached is None:
-        print("vcvars: cache miss, running vcvarsall.bat once")
+        print(f"vcvars: cache miss, running {VCVARSALL} once")
         marker = "__VCVARS_ENV__"
-        out = subprocess.run(f'"{VCVARSALL}" x86_amd64 >nul && echo {marker} && set',
+        out = subprocess.run(f'"{VCVARSALL}" >nul && echo {marker} && set',
                              shell=True, capture_output=True, text=True, check=True).stdout
         env_lines = out.split(marker, 1)[1].splitlines()
         after = dict(line.split("=", 1) for line in env_lines if "=" in line)
@@ -375,7 +377,9 @@ def run_compiler(compiler, input_files, output_file,
         unused_var = "-wd4189"
         signed_unsigned_mismatch = "-wd4245"
         enum_freedom = "-wd4063"
-        warnings = f" {enum_freedom} {signed_unsigned_mismatch} {unused_var} -wd4200 -wd4146 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
+        # NOTE(kv) MSVC 14.38 (~/msvc) flags the assignment inside the Match() macro, 14.41 didn't
+        assign_in_condition = "-wd4706"
+        warnings = f" {enum_freedom} {signed_unsigned_mismatch} {unused_var} {assign_in_condition} -wd4200 -wd4146 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4244 -wd4211"
     if is_clang:
         warnings = CLANG_WARNINGS
     if not no_warnings:

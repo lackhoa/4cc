@@ -490,10 +490,13 @@ build_main(i32 arg_count, String *args)
   String signed_unsigned_mismatch = strlit("-wd4245");
   String enum_freedom = strlit("-wd4063");
   String number_lossy_conversion = strlit("-wd4244");
+  //NOTE(kv) MSVC 14.38 (~/msvc) flags the assignment inside the Match() macro, 14.41 didn't
+  String assign_in_condition = strlit("-wd4706");
   String msvc_warnings_list[] = {
    unused_var,
    signed_unsigned_mismatch,
    enum_freedom,
+   assign_in_condition,
    strlit("-wd4200 -wd4146 -wd4201 -wd4100 -wd4101 -wd4815 -wd4505 -wd4701 -wd4816 -wd4702 -wd4211")
   };
   msvc_warnings = join_strings(tmp, strlit(" "), ArrayAndCount(msvc_warnings_list));
