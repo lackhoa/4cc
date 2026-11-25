@@ -62,6 +62,11 @@ export function push_vertex_components(sink: VertexSink, x: number, y: number, z
 // normal means unlit (drawn in the base color as is).
 export const FLOATS_PER_SHADED_VERTEX = 9;
 
+// The length of the normal of a vertex that is drawn in its color as is, but whose
+// direction the shader still needs (render.ts: the tilt-scaled depth push). A lit normal
+// has length 1, so the shaders tell the two apart by the length.
+export const UNLIT_NORMAL_WITH_DIRECTION_LENGTH = 2;
+
 export function push_shaded_surface_vertex(sink: VertexSink, position: V3, color: Rgb, normal: V3): void {
   ensure_room_for(sink, FLOATS_PER_SHADED_VERTEX);
   const data = sink.data;

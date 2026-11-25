@@ -1,7 +1,7 @@
 // Raw-WebGL renderer: reference model, stroke ribbons, fills and the edit overlay.
 
 import { Mat4, V3 } from "./math";
-import { FLOATS_PER_SHADED_VERTEX } from "./vertex_sink";
+import { FLOATS_PER_SHADED_VERTEX, UNLIT_NORMAL_WITH_DIRECTION_LENGTH } from "./vertex_sink";
 
 // One clipping plane (plan-skin-over-skull-study.md Q5): fragments with
 // dot(world, normal) > offset are discarded, in every program that draws geometry
@@ -44,7 +44,10 @@ export const SURFACE_AMBIENT = 0.35;
 
 // The fill program: per-vertex base color and unit normal (FLOATS_PER_SHADED_VERTEX),
 // lit per vertex against u_camera_forward and the lit color interpolated, as the
-// CPU-baked colors were. A zero normal (degenerate triangle, flat fill) is unlit.
+// CPU-baked colors were. Unlit: a zero normal (degenerate triangle), and a normal of length
+// UNLIT_NORMAL_WITH_DIRECTION_LENGTH (flat fill, vertex_sink.ts).
+// Below this squared length a non-zero normal is a lit unit normal.
+const LIT_NORMAL_LENGTH_SQUARED_LIMIT = (1 + UNLIT_NORMAL_WITH_DIRECTION_LENGTH) * (1 + UNLIT_NORMAL_WITH_DIRECTION_LENGTH) / 4;
 const SHADED_SURFACE_VERTEX_SHADER = `
 attribute vec3 a_position;
 attribute vec3 a_color;
@@ -56,7 +59,9 @@ varying vec3 v_world_position;
 void main() {
   gl_Position = u_view_projection * vec4(a_position, 1.0);
   float facing = abs(dot(a_normal, u_camera_forward));
-  float brightness = dot(a_normal, a_normal) > 0.0 ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
+  float normal_length_squared = dot(a_normal, a_normal);
+  bool is_lit = normal_length_squared > 0.0 && normal_length_squared < ${LIT_NORMAL_LENGTH_SQUARED_LIMIT.toFixed(6)};
+  float brightness = is_lit ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
   v_color = a_color * brightness;
   v_world_position = a_position;
 }`;
@@ -113,8 +118,9 @@ void main() {
 // tilt-scaled push ("tilt_scaled_surface_push"). A line is a band in the camera's screen
 // plane (ribbon.ts), so a patch tilted by `tilt` from u_camera_forward rises in front of the
 // band's edge by half-width * tan(tilt) along the forward: tan(acos(facing)) =
-// sqrt(1 - facing^2) / facing, facing clamped at cos(max tilt). A zero normal (flat fill,
-// degenerate triangle) has no tilt: it gets the fixed part alone.
+// sqrt(1 - facing^2) / facing, facing clamped at cos(max tilt). A flat fill's normal (length
+// UNLIT_NORMAL_WITH_DIRECTION_LENGTH) gives the tilt but no lighting. A zero normal
+// (degenerate triangle) has no tilt: it gets the fixed part alone.
 const TILT_SCALED_PUSH_SURFACE_VERTEX_SHADER = `
 attribute vec3 a_position;
 attribute vec3 a_color;
@@ -125,8 +131,10 @@ varying vec3 v_color;
 varying vec3 v_world_position;
 ${CLIP_POSITION_WITH_SHIFTED_DEPTH}
 void main() {
-  float facing = abs(dot(a_normal, u_camera_forward));
-  bool has_normal = dot(a_normal, a_normal) > 0.0;
+  float normal_length_squared = dot(a_normal, a_normal);
+  bool has_normal = normal_length_squared > 0.0;
+  bool is_lit = has_normal && normal_length_squared < ${LIT_NORMAL_LENGTH_SQUARED_LIMIT.toFixed(6)};
+  float facing = has_normal ? abs(dot(a_normal, u_camera_forward)) / sqrt(normal_length_squared) : 0.0;
   float push_away_from_camera = ${SURFACE_DEPTH_PUSH_FIXED.toFixed(8)};
   if (has_normal) {
     float capped_facing = clamp(facing, ${Math.cos(SURFACE_DEPTH_PUSH_MAX_TILT_DEGREES * Math.PI / 180).toFixed(8)}, 1.0);
@@ -134,7 +142,7 @@ void main() {
     push_away_from_camera += ${SURFACE_DEPTH_PUSH_LINE_HALF_WIDTH.toFixed(8)} * tan_tilt;
   }
   gl_Position = clip_position_with_shifted_depth(a_position, -push_away_from_camera);
-  float brightness = has_normal ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
+  float brightness = is_lit ? ${SURFACE_AMBIENT.toFixed(6)} + ${(1 - SURFACE_AMBIENT).toFixed(6)} * facing : 1.0;
   v_color = a_color * brightness;
   v_world_position = a_position;
 }`;

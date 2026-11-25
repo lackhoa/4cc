@@ -19,7 +19,7 @@ import { Layer, Patch, PatchId, SmoothKnot, Stroke, StrokeControlPoints, StrokeI
 import { V2, V3, v3, v3_add, v3_cross, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { SURFACE_AMBIENT } from "./render";
-import { VertexSink, push_shaded_surface_vertex, push_vertex } from "./vertex_sink";
+import { UNLIT_NORMAL_WITH_DIRECTION_LENGTH, VertexSink, push_shaded_surface_vertex, push_vertex } from "./vertex_sink";
 
 const LOFT_SAMPLES_ALONG_RAILS = 24;
 const LOFT_ROWS_ACROSS = 4;
@@ -363,15 +363,21 @@ export function append_grid_mesh_with_normals(grid: SurfaceGrid, color: Color, o
   }
 }
 
-// append_flat_grid_mesh in the shaded-surface layout: zero normals, so the color is drawn as is.
+// append_flat_grid_mesh in the shaded-surface layout: one normal per triangle, of length
+// UNLIT_NORMAL_WITH_DIRECTION_LENGTH, so the color is drawn as is.
 export function append_flat_grid_mesh_with_normals(grid: SurfaceGrid, color: Color, out: VertexSink): void {
+  const push_triangle = (a: V3, b: V3, c: V3) => {
+    const normal = v3_scale(shading_normal(v3_cross(v3_sub(b, a), v3_sub(c, a))), UNLIT_NORMAL_WITH_DIRECTION_LENGTH);
+    for (const vertex of [a, b, c]) push_shaded_surface_vertex(out, vertex, color, normal);
+  };
   for (let j = 0; j < grid.rows; j++) {
     for (let i = 0; i < grid.columns; i++) {
       const point_00 = grid.positions[i][j];
       const point_10 = grid.positions[i + 1][j];
       const point_11 = grid.positions[i + 1][j + 1];
       const point_01 = grid.positions[i][j + 1];
-      for (const point of [point_00, point_10, point_11, point_00, point_11, point_01]) push_shaded_surface_vertex(out, point, color, UNLIT_NORMAL);
+      push_triangle(point_00, point_10, point_11);
+      push_triangle(point_00, point_11, point_01);
     }
   }
 }
