@@ -372,6 +372,9 @@ function chord_length(points: StrokeControlPoints): number {
   return Math.sqrt(x * x + y * y + z * z);
 }
 
+// Pieces per cubic of a chain. Must divide RIBBON_SAMPLES.
+const CHAIN_CUBIC_PIECES = 4;
+
 // A chain of cubics rendered as one stroke: a single flat profile (default
 // width unless given) spread over the chain by chord length (cubics here are
 // short cell segments, chord ≈ arc).
@@ -390,7 +393,7 @@ export function append_chain_ribbon(
     covered += chord_length(points);
     // Caps only at the two ends of the whole chain, not at the seams between cubics.
     const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
-    // A chain cubic spans one patch grid cell: half the pieces of a drawn stroke.
-    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, RIBBON_SAMPLES / 2, out);
+    // A chain cubic spans one patch grid cell, a short and nearly straight piece of line.
+    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, CHAIN_CUBIC_PIECES, out);
   }
 }
