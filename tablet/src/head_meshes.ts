@@ -3,7 +3,7 @@
 // Shading follows the camera, so the meshes are shaded again when it turns. The document
 // holds one side of the head; `mirrored` adds the other side.
 import { OrbitCamera, camera_eye } from "./camera";
-import { TabletDocument, document_has_always_drawn_strokes, patch_layer, stroke_control_points, stroke_is_in_picture, stroke_radii } from "./document";
+import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
 import { SurfaceGrid, mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid } from "./patch";
@@ -35,7 +35,7 @@ type ContourSurface = { grid: SurfaceGrid; partials: SurfacePartials; color: Rgb
 
 export type HeadMeshOptions = {
   // On: the picture, as the draw page's picture view shows it: the strokes marked
-  // `is_always_drawn` (all strokes, when none is marked) plus the computed contours of
+  // `is_always_drawn` plus the computed contours of
   // the patches. Off: every stroke and no contours, for the views where points are chosen.
   is_picture_view: boolean;
   skull_visible: boolean;
@@ -184,11 +184,10 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
 
   reset_vertex_sink(meshes.shaded_vertices);
   if (options.strokes_visible) {
-    const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
     for (const stroke of tablet_document.strokes) {
       if (stroke.layer === "skull" && !options.skull_visible) continue;
       if (stroke.is_hidden === true) continue;
-      if (options.is_picture_view && !stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
+      if (options.is_picture_view && stroke.is_always_drawn !== true) continue;
       const color = stroke.layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
       const radii = stroke_radii(stroke);
       if (stroke.on_surface === true) {

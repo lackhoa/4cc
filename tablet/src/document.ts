@@ -94,8 +94,8 @@ export type Stroke = {
   // is stored as usual, with d0 equal to d3. Absent = two handles.
   has_one_handle?: boolean;
   // Drawn in the picture view too (plan-head-picture-from-contours-and-chosen-lines Q2):
-  // a document with any stroke marked draws only the marked ones there, besides the
-  // computed contours (stroke_is_in_picture). Absent = drawn and picked in the edit view only.
+  // only the marked strokes are drawn there, besides the computed contours.
+  // Absent = drawn and picked in the edit view only.
   is_always_drawn?: boolean;
 };
 
@@ -322,29 +322,16 @@ export function vertex_is_on_layers(tablet_document: TabletDocument, vertex_id: 
   return !has_stroke;
 }
 
-// The picture view (plan-head-picture-from-contours-and-chosen-lines Q1, Q2): a document
-// with at least one stroke marked is_always_drawn draws only the marked strokes there; a
-// document with no mark draws every stroke. Computed once per frame or pick by the caller.
-export function document_has_always_drawn_strokes(tablet_document: TabletDocument): boolean {
-  return tablet_document.strokes.some((stroke) => stroke.is_always_drawn === true);
-}
-
-// Whether `stroke` is drawn (and picked) in the picture view. `has_always_drawn_strokes`
-// is document_has_always_drawn_strokes of its document. is_hidden and hidden layers are
-// checked by the caller, as in the edit view.
-export function stroke_is_in_picture(stroke: Stroke, has_always_drawn_strokes: boolean): boolean {
-  if (!has_always_drawn_strokes) return true;
-  return stroke.is_always_drawn === true;
-}
-
-// A vertex is in the picture when a stroke in the picture ends on it. A vertex no stroke
-// uses (a bare landmark) is always in it, as it is on every layer (vertex_is_on_layers).
-export function vertex_is_in_picture(tablet_document: TabletDocument, vertex_id: VertexId, has_always_drawn_strokes: boolean): boolean {
+// The picture view (plan-head-picture-from-contours-and-chosen-lines Q1, Q2) draws and
+// picks only the strokes marked is_always_drawn. A vertex is in the picture when such a
+// stroke ends on it. A vertex no stroke uses (a bare landmark) is always in it, as it is
+// on every layer (vertex_is_on_layers).
+export function vertex_is_in_picture(tablet_document: TabletDocument, vertex_id: VertexId): boolean {
   let has_stroke = false;
   for (const stroke of tablet_document.strokes) {
     if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
     has_stroke = true;
-    if (stroke_is_in_picture(stroke, has_always_drawn_strokes)) return true;
+    if (stroke.is_always_drawn === true) return true;
   }
   return !has_stroke;
 }

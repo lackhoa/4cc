@@ -13,7 +13,7 @@
 // consumed — the caller orbits the camera instead (Q35).
 
 import { OrbitCamera, camera_basis, camera_pen_ray, camera_screen_projector, camera_world_to_screen, camera_world_units_per_pixel } from "./camera";
-import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, set_stroke_single_handle_point, stroke_by_id, stroke_control_points, stroke_plane_normal, stroke_single_handle_point, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position, document_has_always_drawn_strokes, stroke_is_in_picture, vertex_is_in_picture } from "./document";
+import { Layer, SmoothKnot, Stroke, StrokeId, TabletDocument, VertexId, bezier_point, enforce_smooth_knot, move_vertex, pin_by_vertex, smooth_knots_at_vertex, surface_pin_by_vertex, vertex_is_pinned, set_stroke_single_handle_point, stroke_by_id, stroke_control_points, stroke_plane_normal, stroke_single_handle_point, swing_offset_into_plane, vertex_by_id, vertex_is_on_layers, vertex_position, vertex_world_position, vertex_is_in_picture } from "./document";
 import { V2, V3, v3_add, v3_dot, v3_length, v3_lerp, v3_normalize, v3_scale, v3_sub } from "./math";
 import { drag_surface_pin, stroke_drawn_point, stroke_drawn_polyline } from "./patch";
 
@@ -68,7 +68,7 @@ export function nearest_point_on_segment(point: V2, a: V2, b: V2): { t: number; 
 // zoomed-in stroke has no dead zones between samples. Only strokes on `layers`
 // count (the sketchpad passes the layers neither locked nor hidden).
 // With `is_picture_view`, a stroke the picture view does not draw is not picked
-// either (stroke_is_in_picture, plan-head-picture-from-contours-and-chosen-lines Q1).
+// either (plan-head-picture-from-contours-and-chosen-lines Q1).
 // With `is_point_visible`, a stroke whose point nearest the pen it rejects is
 // skipped and the next nearest wins; it is asked only for strokes within range
 // and nearer than the best so far, once per stroke.
@@ -80,11 +80,10 @@ export function pick_stroke(
   let best_id: StrokeId | null = null;
   let best_distance = STROKE_PICK_RADIUS_PIXELS;
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
-  const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
   for (const stroke of tablet_document.strokes) {
     if (!layers.has(stroke.layer)) continue;
     if (stroke.is_hidden === true) continue;
-    if (is_picture_view && !stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
+    if (is_picture_view && stroke.is_always_drawn !== true) continue;
     // This stroke's point nearest the pen on screen, in world space.
     let stroke_distance = Infinity;
     let stroke_nearest_world: V3 | null = null;
@@ -248,10 +247,9 @@ export function pick_vertex(
   let best: VertexId | null = null;
   let best_distance = CONTROL_POINT_PICK_RADIUS_PIXELS;
   const project = camera_screen_projector(camera, canvas.clientWidth, canvas.clientHeight);
-  const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
   for (const vertex of tablet_document.vertices) {
     if (!vertex_is_on_layers(tablet_document, vertex.id, layers)) continue;
-    if (is_picture_view && !vertex_is_in_picture(tablet_document, vertex.id, has_always_drawn_strokes)) continue;
+    if (is_picture_view && !vertex_is_in_picture(tablet_document, vertex.id)) continue;
     const world_position = vertex_world_position(tablet_document, vertex);
     const projected = project(world_position);
     if (projected === null) continue;

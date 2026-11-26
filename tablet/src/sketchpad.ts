@@ -14,7 +14,7 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_screen_projector, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, set_strokes_always_drawn, document_has_always_drawn_strokes, stroke_is_in_picture, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, set_strokes_always_drawn, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_point_on_segment, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -122,7 +122,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const clip_plane: ClipPlane = { normal: v3(1, 0, 0), offset: 0, enabled: false };
   let surface_drawn = true; // "surf" button: off = no fill, the reference shows through everywhere
   // "picture" button / V key (plan-head-picture-from-contours-and-chosen-lines Q1): on = draw
-  // and pick only the strokes stroke_is_in_picture keeps, plus the computed contours. A view
+  // and pick only the strokes marked is_always_drawn, plus the computed contours. A view
   // state, never saved in the document.
   let is_picture_view = false;
   // Layers (plan-skin-over-skull-study.md): new strokes and their vertices go to
@@ -517,13 +517,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
     const selected_vertex_pin = selected_vertex === null ? null : pin_by_vertex(tablet_document, selected_vertex);
-    const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
       if (stroke.is_hidden === true) continue;
       // The picture view draws the always-drawn strokes only, on both sides; the contours
       // below are drawn either way (plan-head-picture-from-contours-and-chosen-lines Q1, Q2).
-      if (is_picture_view && !stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
+      if (is_picture_view && stroke.is_always_drawn !== true) continue;
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const is_pin_host = selected_vertex_pin !== null && selected_vertex_pin.host_stroke === stroke.id;
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
