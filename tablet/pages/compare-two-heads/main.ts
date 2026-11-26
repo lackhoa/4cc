@@ -72,6 +72,7 @@ async function fetch_compared_head(webgl: WebGLRenderingContext, document_name: 
 
 function draw_compared_head(head: ComparedHead, surfaces_visible: boolean, aspect: number): void {
   update_head_meshes(head.meshes, head.tablet_document, head.revision, camera, {
+    is_picture_view: true, // a preview shows the picture
     skull_visible: skull_checkbox.checked,
     surfaces_visible: surfaces_visible,
     strokes_visible: lines_checkbox.checked,

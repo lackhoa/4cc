@@ -5,12 +5,13 @@
 import { OrbitCamera, camera_eye } from "./camera";
 import { TabletDocument, document_has_always_drawn_strokes, patch_layer, stroke_control_points, stroke_is_in_picture, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
-import { on_surface_stroke_samples, patch_surface_grid } from "./patch";
+import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
+import { SurfaceGrid, mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid } from "./patch";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { TaperWindow, append_bezier_ribbon, append_sampled_ribbon } from "./ribbon";
+import { TaperWindow, append_bezier_ribbon, append_chain_ribbon, append_sampled_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
 export const SURFACE_COLOR: Rgb = { r: 0.45, g: 0.55, b: 0.7 };
@@ -25,10 +26,18 @@ export type HeadMeshes = {
   markers_depth_tested: boolean; // from the options of the last update
   shaded_vertices: VertexSink; // scratch for the shading pass
   surface_triangles: ReferenceMesh | null; // the patches as triangles, shaded per camera
+  contour_surfaces: ContourSurface[]; // the surfaces whose contours are drawn; empty outside the picture view
   shaded_for: string; // document, camera and options the uploaded meshes were built for
 };
 
+// One side of one patch, with what its computed contour needs for every camera.
+type ContourSurface = { grid: SurfaceGrid; partials: SurfacePartials; color: Rgb };
+
 export type HeadMeshOptions = {
+  // On: the picture, as the draw page's picture view shows it: the strokes marked
+  // `is_always_drawn` (all strokes, when none is marked) plus the computed contours of
+  // the patches. Off: every stroke and no contours, for the views where points are chosen.
+  is_picture_view: boolean;
   skull_visible: boolean;
   surfaces_visible: boolean;
   strokes_visible: boolean;
@@ -53,6 +62,7 @@ export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
     markers_depth_tested: false,
     shaded_vertices: create_vertex_sink(1024),
     surface_triangles: null,
+    contour_surfaces: [],
     shaded_for: "",
   };
 }
@@ -98,6 +108,27 @@ function surface_triangles_of(tablet_document: TabletDocument, options: HeadMesh
   return reference_mesh_from_positions(positions, positions.map((_, index) => index), triangle_colors);
 }
 
+// The patches whose contours the picture view draws, on one or both sides of the head.
+function contour_surfaces_of(tablet_document: TabletDocument, options: HeadMeshOptions): ContourSurface[] {
+  const contour_surfaces: ContourSurface[] = [];
+  if (!options.is_picture_view) return contour_surfaces;
+  for (const patch of tablet_document.patches) {
+    const layer = patch_layer(patch, tablet_document);
+    if (layer === "skull" && !options.skull_visible) continue;
+    // A flat fill has no shape to turn away from the eye: no contour line.
+    if (patch.fill_color !== undefined) continue;
+    const grid = patch_surface_grid(patch, tablet_document);
+    if (grid === null) continue;
+    const color = layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
+    contour_surfaces.push({ grid, partials: surface_partials(grid), color });
+    if (options.mirrored && patch.is_one_sided !== true) {
+      const mirrored_grid = mirrored_surface_grid(grid);
+      contour_surfaces.push({ grid: mirrored_grid, partials: surface_partials(mirrored_grid), color });
+    }
+  }
+  return contour_surfaces;
+}
+
 // The markers as octahedra (six tips along the axes), one or both sides of the head.
 function marker_triangles_of(options: HeadMeshOptions): ReferenceMesh | null {
   const markers = options.markers ?? [];
@@ -139,10 +170,13 @@ function translucent_vertices_of(sink: VertexSink, opacity: number): Float32Arra
 // names the document's state: any string that changes when it does).
 export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDocument, document_revision: string, camera: OrbitCamera, options: HeadMeshOptions): void {
   const built_for = `${document_revision} ${JSON.stringify(options)}`;
-  const shaded_for = `${built_for} ${camera.yaw} ${camera.pitch}`;
+  // A computed contour depends on where the eye is, not only on the direction it looks in.
+  const eye = camera_eye(camera);
+  const shaded_for = `${built_for} ${camera.yaw} ${camera.pitch} ${eye.x} ${eye.y} ${eye.z}`;
   if (shaded_for === meshes.shaded_for) return;
   if (meshes.surface_triangles === null || !meshes.shaded_for.startsWith(built_for + " ")) {
     meshes.surface_triangles = surface_triangles_of(tablet_document, options);
+    meshes.contour_surfaces = contour_surfaces_of(tablet_document, options);
   }
   reset_vertex_sink(meshes.shaded_vertices);
   if (options.surfaces_visible) append_reference_mesh(meshes.surface_triangles, camera, meshes.shaded_vertices);
@@ -154,8 +188,7 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
     for (const stroke of tablet_document.strokes) {
       if (stroke.layer === "skull" && !options.skull_visible) continue;
       if (stroke.is_hidden === true) continue;
-      // These views always show the picture (plan-head-picture-from-contours-and-chosen-lines Q1).
-      if (!stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
+      if (options.is_picture_view && !stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
       const color = stroke.layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
       const radii = stroke_radii(stroke);
       if (stroke.on_surface === true) {
@@ -172,6 +205,10 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
         const mirrored_points = { p0: mirror(points.p0), p1: mirror(points.p1), p2: mirror(points.p2), p3: mirror(points.p3) };
         append_bezier_ribbon(mirrored_points, radii, WHOLE_STROKE, camera, color, meshes.shaded_vertices);
       }
+    }
+    for (const contour_surface of meshes.contour_surfaces) {
+      const chains = extract_contour_chains(contour_surface.grid, eye, contour_surface.partials);
+      for (const chain of chains) append_chain_ribbon(chain, camera, contour_surface.color, meshes.shaded_vertices);
     }
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));

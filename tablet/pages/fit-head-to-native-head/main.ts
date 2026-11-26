@@ -412,6 +412,7 @@ function draw_turned_view(): void {
   turned_gl.clear(turned_gl.COLOR_BUFFER_BIT | turned_gl.DEPTH_BUFFER_BIT);
   if (fitted === null || turned_canvas.height === 0) return;
   update_head_meshes(turned_meshes, fitted.tablet_document, fitted.revision, camera, {
+    is_picture_view: false,
     skull_visible: turned_skull_checkbox.checked,
     surfaces_visible: turned_surfaces_checkbox.checked,
     strokes_visible: turned_lines_checkbox.checked,

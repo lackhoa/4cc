@@ -153,6 +153,7 @@ export function start_head_model_pane(
       for (const candidate of vertex_candidates(scene)) markers.push({ position: candidate.world_position, color: CANDIDATE_COLOR, radius: CANDIDATE_RADIUS });
     }
     update_head_meshes(head_meshes, scene.template_document, scene.document_revision, camera, {
+      is_picture_view: false, // landmarks are chosen here: every line and vertex
       skull_visible: scene.skull_visible,
       surfaces_visible: true,
       strokes_visible: true,

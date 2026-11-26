@@ -36,7 +36,7 @@
 //    background document is pinned to that vertex (Alt held: never); a ring shows that
 //    vertex during the drag, and a pinned landmark is drawn as a square.
 import { OrbitCamera, camera_distance_for_world_units_per_pixel, camera_orthographic_view_projection } from "./camera";
-import { TabletDocument, bezier_point, document_has_always_drawn_strokes, stroke_control_points, stroke_is_in_picture, vertex_position } from "./document";
+import { TabletDocument, bezier_point, stroke_control_points, vertex_position } from "./document";
 import { V2, V3, v3 } from "./math";
 import { stroke_drawn_polyline } from "./patch";
 import { Rgb } from "./vertex_sink";
@@ -434,12 +434,9 @@ function template_point_to_add_under_pointer(state: PlateViewsState, view: Plate
       candidates.push({ template_point, image_pixel, distance_pixels, depth: depth_toward_viewer(view, v3(side_sign * position.x, position.y, position.z)), is_vertex });
     }
   };
-  // Only the lines the plate views draw: the picture (plan-head-picture-from-contours-and-chosen-lines Q1).
-  const has_always_drawn_strokes = document_has_always_drawn_strokes(tablet_document);
   for (const stroke of tablet_document.strokes) {
     if (stroke.layer !== "skin") continue;
     if (stroke.is_hidden === true) continue;
-    if (!stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
     const control_points = stroke_control_points(stroke, tablet_document);
     consider({ vertex: stroke.p0_vertex }, control_points.p0, true);
     consider({ vertex: stroke.p3_vertex }, control_points.p3, true);
@@ -481,11 +478,8 @@ function background_vertex_to_pin_near_mark(state: PlateViewsState, view: PlateV
   const landmark_is_on_midline = template_position !== null && template_position_is_on_midline(template_position);
   const background_document = background.tablet_document;
   const vertex_ids = new Set<number>();
-  // Only the vertices of the lines drawn: the picture (plan-head-picture-from-contours-and-chosen-lines Q1).
-  const has_always_drawn_strokes = document_has_always_drawn_strokes(background_document);
   for (const stroke of background_document.strokes) {
     if (stroke.is_hidden === true) continue;
-    if (!stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
     if (stroke.layer === "skull" && !state.skull_visible) continue;
     vertex_ids.add(stroke.p0_vertex);
     vertex_ids.add(stroke.p3_vertex);
@@ -556,6 +550,7 @@ function draw_head_layer(state: PlateViewsState, view: PlateView): void {
   const shown = view.pair.shown();
   if (shown !== null) {
     update_head_meshes(view.head_meshes, shown.tablet_document, shown.revision, camera, {
+      is_picture_view: false, // points are chosen on the plate: every line and vertex
       skull_visible: state.skull_visible,
       surfaces_visible: state.surfaces_visible,
       strokes_visible: true,
@@ -573,6 +568,7 @@ function draw_head_layer(state: PlateViewsState, view: PlateView): void {
   if (background === null || background_stroke_color === null || view.background_meshes === null) return;
   gl.clear(gl.DEPTH_BUFFER_BIT);
   update_head_meshes(view.background_meshes, background.tablet_document, background.revision, camera, {
+    is_picture_view: false,
     skull_visible: state.skull_visible,
     surfaces_visible: false,
     strokes_visible: true,
@@ -606,12 +602,9 @@ function draw_overlay_layer(state: PlateViewsState, view: PlateView): void {
     // A hairline stroke is a skin stroke drawn on the surface, or one that ends at a point
     // pinned to the surface (the hairline drawn so far is of the second kind).
     const surface_pinned_vertices = new Set(shown.tablet_document.vertex_surface_pins.map((pin) => pin.vertex));
-    // The picture's lines only (plan-head-picture-from-contours-and-chosen-lines Q1).
-    const has_always_drawn_strokes = document_has_always_drawn_strokes(shown.tablet_document);
     for (const stroke of shown.tablet_document.strokes) {
       if (stroke.layer !== "skin") continue;
       if (stroke.is_hidden === true) continue;
-      if (!stroke_is_in_picture(stroke, has_always_drawn_strokes)) continue;
       const is_hairline_stroke = stroke.on_surface === true || surface_pinned_vertices.has(stroke.p0_vertex) || surface_pinned_vertices.has(stroke.p3_vertex);
       if (!is_hairline_stroke) continue;
       const samples = stroke_drawn_polyline(stroke, shown.tablet_document, HAIRLINE_PLANAR_STROKE_SAMPLES);
