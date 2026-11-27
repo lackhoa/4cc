@@ -95,7 +95,8 @@ export type Stroke = {
   has_one_handle?: boolean;
   // Drawn in the picture view too (plan-head-picture-from-contours-and-chosen-lines Q2):
   // only the marked strokes are drawn there, besides the computed contours.
-  // Absent = drawn and picked in the edit view only.
+  // Absent = drawn in the edit view only; in the picture view it is still picked, and
+  // shows while it is hot or selected.
   is_always_drawn?: boolean;
 };
 
@@ -318,20 +319,6 @@ export function vertex_is_on_layers(tablet_document: TabletDocument, vertex_id: 
     if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
     has_stroke = true;
     if (layers.has(stroke.layer)) return true;
-  }
-  return !has_stroke;
-}
-
-// The picture view (plan-head-picture-from-contours-and-chosen-lines Q1, Q2) draws and
-// picks only the strokes marked is_always_drawn. A vertex is in the picture when such a
-// stroke ends on it. A vertex no stroke uses (a bare landmark) is always in it, as it is
-// on every layer (vertex_is_on_layers).
-export function vertex_is_in_picture(tablet_document: TabletDocument, vertex_id: VertexId): boolean {
-  let has_stroke = false;
-  for (const stroke of tablet_document.strokes) {
-    if (stroke.p0_vertex !== vertex_id && stroke.p3_vertex !== vertex_id) continue;
-    has_stroke = true;
-    if (stroke.is_always_drawn === true) return true;
   }
   return !has_stroke;
 }

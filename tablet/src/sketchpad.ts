@@ -259,9 +259,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       return is_point_visible(world_position);
     };
     const vertex_visibility_filter = surface_drawn ? is_vertex_pickable : undefined;
-    const vertex = timed("pick.vertex", () => pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, vertex_visibility_filter));
+    const vertex = timed("pick.vertex", () => pick_vertex(tablet_document, camera, screen, canvas, pickable_layers(),vertex_visibility_filter));
     if (vertex !== null) return { kind: "vertex", vertex };
-    const stroke_id = timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, visibility_filter));
+    const stroke_id = timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(),visibility_filter));
     if (stroke_id !== null) return { kind: "stroke", stroke_id };
     const grid_of_patch = (patch: Patch): SurfaceGrid | null => cached_patch_geometry(patch_geometry_cache, patch, tablet_document)?.grid ?? null;
     const patch = timed("pick.patch", () => pick_patch(tablet_document, camera, screen, canvas, pickable_layers(), grid_of_patch)); // fill = last resort (Q10)
@@ -285,14 +285,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // vertices and handles, which width mode never moves.
   function pick_width_mode_stroke(screen: V2): StrokeId | null {
     const visibility_filter = surface_drawn ? point_visibility_test_for_one_pick() : undefined;
-    return timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(), is_picture_view, visibility_filter));
+    return timed("pick.stroke", () => pick_stroke(tablet_document, camera, screen, canvas, pickable_layers(),visibility_filter));
   }
 
   function resolve_hot_item(): HotItem | null {
     if (hover_screen === null || armed_tool === "line") return null;
     if (armed_tool !== null) {
       // Pin / split armed: the tap feeds the tool, which only reads curves.
-      const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers(), is_picture_view);
+      const picked = pick_stroke(tablet_document, camera, hover_screen, canvas, pickable_layers());
       return picked === null ? null : { kind: "stroke", stroke_id: picked };
     }
     if (width_mode_is_on()) {
@@ -520,12 +520,16 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
       if (stroke.is_hidden === true) continue;
-      // The picture view draws the always-drawn strokes only, on both sides; the contours
-      // below are drawn either way (plan-head-picture-from-contours-and-chosen-lines Q1, Q2).
-      if (is_picture_view && stroke.is_always_drawn !== true) continue;
       const highlighted = stroke.id === highlighted_stroke || extra_selection.includes(stroke.id);
       const is_pin_host = selected_vertex_pin !== null && selected_vertex_pin.host_stroke === stroke.id;
       const hot = hot_item !== null && hot_item.kind === "stroke" && hot_item.stroke_id === stroke.id;
+      // The picture view draws the always-drawn strokes, on both sides; every other stroke
+      // is still picked, and is drawn on its stored side only while it is hot or selected.
+      // The contours below are drawn either way
+      // (plan-head-picture-from-contours-and-chosen-lines Q1, Q2).
+      const is_in_picture = !is_picture_view || stroke.is_always_drawn === true;
+      const is_shown_for_picking = hot || highlighted || (stroke_width_tint !== null && stroke_width_tint.stroke_id === stroke.id);
+      if (!is_in_picture && !is_shown_for_picking) continue;
       // The stroke's own color and lightness: what its mirrored side always shows, and
       // its stored side while it is neither hot, selected, nor the host of a pin.
       let own_color = STROKE_COLOR;
@@ -553,7 +557,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         lightness_additions = null;
       }
       append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, tint, /* is_mirrored_side */ false, vertices);
-      const is_drawn_on_mirrored_side = tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
+      const is_drawn_on_mirrored_side = is_in_picture && tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
       if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, tint, /* is_mirrored_side */ true, vertices);
     }
     timed("frame.contours", () => append_contour_ribbons(vertices));
@@ -1959,7 +1963,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         if (!edit_pen_down(edit_state, tablet_document, camera, position, canvas)) {
           pen_orbit_last_screen = position;
         }
-      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers(), is_picture_view) === selected_vertex) {
+      } else if (selected_vertex !== null && armed_tool === null && pick_vertex(tablet_document, camera, position, canvas, pickable_layers()) === selected_vertex) {
         // Landing on the selected vertex drags it on the camera plane.
         selected_vertex_drag_last_screen = position;
       } else {
