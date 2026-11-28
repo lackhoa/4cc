@@ -337,7 +337,8 @@ function line_piece_widths(
     for (let knot = 0; knot <= last; knot++) {
       const own_knot = line_piece.is_reversed ? last - knot : knot;
       const along_piece = line_piece.is_reversed ? arc_lengths[last] - arc_lengths[own_knot] : arc_lengths[own_knot];
-      line_widths[first_knot + knot] = widths[own_knot];
+      // A width below 0 is drawn as 0 (the stroke has faded out there), so the rule sees 0.
+      line_widths[first_knot + knot] = Math.max(0, widths[own_knot]);
       line_arc_lengths[first_knot + knot] = line_length + along_piece;
     }
     first_knot += widths.length;
