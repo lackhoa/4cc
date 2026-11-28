@@ -23,8 +23,9 @@ import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
 import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, refit_on_surface_stroke_control_points, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_placed_contour_chains, surface_partials } from "./contour";
-import { BorderContours, BorderPieceLook, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
-import { append_contour_ribbons_with_blend, cached_contour_width_blend, create_contour_width_blend_cache } from "./contour_width";
+import { BorderContours, BorderPieceLook, BorderSurface, border_contours_of, border_runs_of } from "./boundary_contour";
+import { cached_contour_width_blend, create_contour_width_blend_cache } from "./contour_width";
+import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of } from "./outline_lines";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
@@ -587,6 +588,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // and draw order as drawn strokes; they are derived per frame, never stored.
   function append_contour_ribbons(vertices: VertexSink): void {
     const eye = camera_eye(camera);
+    const outline_pieces = create_outline_pieces();
     frame_contour_geometries.length = 0;
     frame_contour_mirroring.length = 0;
     for (const patch of tablet_document.patches) {
@@ -605,12 +607,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       // Width and lightness from the patch's boundary strokes (plan Q8), the same on both sides.
       const blend = timed("contours.widths", () => cached_contour_width_blend(contour_width_blends, geometry.fill, grid, tablet_document));
-      const chains = timed("contours.extract", () => extract_placed_contour_chains(grid, eye, cached_surface_partials(grid)));
-      timed("contours.ribbons", () => append_contour_ribbons_with_blend(chains, blend, /* has_lightness */ true, camera, color, vertices));
+      const partials = cached_surface_partials(grid);
+      const chains = timed("contours.extract", () => extract_placed_contour_chains(grid, eye, partials));
+      append_outline_chains(outline_pieces, chains, partials, grid, blend, /* has_lightness */ true, color);
       if (is_mirrored) {
         const mirrored_grid = timed("contours.grids", () => cached_mirrored_grid(geometry));
-        const mirrored_chains = timed("contours.extract", () => extract_placed_contour_chains(mirrored_grid, eye, cached_surface_partials(mirrored_grid)));
-        timed("contours.ribbons", () => append_contour_ribbons_with_blend(mirrored_chains, blend, /* has_lightness */ true, camera, color, vertices));
+        const mirrored_partials = cached_surface_partials(mirrored_grid);
+        const mirrored_chains = timed("contours.extract", () => extract_placed_contour_chains(mirrored_grid, eye, mirrored_partials));
+        append_outline_chains(outline_pieces, mirrored_chains, mirrored_partials, mirrored_grid, blend, /* has_lightness */ true, color);
       }
     }
     // The contours lying on the strokes between patches (boundary_contour.ts).
@@ -618,7 +622,10 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       border_contours = timed("contours.borders.build", () => build_border_contours());
     }
     const built_border_contours = border_contours;
-    timed("contours.borders", () => append_border_contour_ribbons(built_border_contours, tablet_document, camera, border_piece_look_of, vertices));
+    outline_pieces.runs = timed("contours.borders", () => border_runs_of(built_border_contours, camera, border_piece_look_of));
+    // The chains and the runs joined into lines (outline_lines.ts), drawn line by line.
+    const outline_lines = timed("contours.lines", () => outline_lines_of(outline_pieces, built_border_contours, camera));
+    timed("contours.ribbons", () => append_outline_ribbons(outline_pieces, outline_lines, tablet_document, camera, vertices));
   }
   function frame_contours_match_built_border_contours(): boolean {
     if (frame_contour_geometries.length !== border_contours_built_from_geometries.length) return false;

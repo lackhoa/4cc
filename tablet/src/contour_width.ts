@@ -273,23 +273,21 @@ export function contour_knot_values_at(blend: ContourWidthBlend, place: GridEdge
 let knot_radii = new Float64Array(64);
 let knot_lightness_additions = new Float64Array(64);
 
-// The chains of one side of one patch, each drawn with its knots' blended width, and with
-// their lightness unless `has_lightness` is false (the flat color).
-export function append_contour_ribbons_with_blend(
-  placed_chains: PlacedContourChain[], blend: ContourWidthBlend, has_lightness: boolean,
+// One chain of one side of one patch, drawn with its knots' blended width, and with its
+// lightness unless `has_lightness` is false (the flat color).
+export function append_contour_chain_ribbon_with_blend(
+  placed: PlacedContourChain, blend: ContourWidthBlend, has_lightness: boolean,
   camera: OrbitCamera, color: Rgb, out: VertexSink,
 ): void {
-  for (const placed of placed_chains) {
-    const knot_count = placed.knot_places.length;
-    if (knot_radii.length < knot_count) {
-      knot_radii = new Float64Array(2 * knot_count);
-      knot_lightness_additions = new Float64Array(2 * knot_count);
-    }
-    for (let knot = 0; knot < knot_count; knot++) {
-      const values = contour_knot_values_at(blend, placed.knot_places[knot]);
-      knot_radii[knot] = values.radius;
-      knot_lightness_additions[knot] = values.lightness_addition;
-    }
-    append_chain_ribbon_with_knot_values(placed.chain, knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out);
+  const knot_count = placed.knot_places.length;
+  if (knot_radii.length < knot_count) {
+    knot_radii = new Float64Array(2 * knot_count);
+    knot_lightness_additions = new Float64Array(2 * knot_count);
   }
+  for (let knot = 0; knot < knot_count; knot++) {
+    const values = contour_knot_values_at(blend, placed.knot_places[knot]);
+    knot_radii[knot] = values.radius;
+    knot_lightness_additions[knot] = values.lightness_addition;
+  }
+  append_chain_ribbon_with_knot_values(placed.chain, knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out);
 }

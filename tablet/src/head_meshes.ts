@@ -6,9 +6,10 @@ import { OrbitCamera, camera_eye } from "./camera";
 import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
 import { extract_placed_contour_chains, surface_partials } from "./contour";
-import { ContourWidthBlend, append_contour_ribbons_with_blend, contour_width_blend_of } from "./contour_width";
+import { ContourWidthBlend, contour_width_blend_of } from "./contour_width";
 import { mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid, resolve_patch_fill } from "./patch";
-import { BorderContours, BorderPieceLookOf, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
+import { BorderContours, BorderPieceLookOf, BorderSurface, border_contours_of, border_runs_of } from "./boundary_contour";
+import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of } from "./outline_lines";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
@@ -68,7 +69,7 @@ export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
     shaded_vertices: create_vertex_sink(1024),
     surface_triangles: null,
     contour_surfaces: [],
-    border_contours: { bordered_strokes: [] },
+    border_contours: { bordered_strokes: [], uses_by_partials: new Map() },
     shaded_for: "",
   };
 }
@@ -227,11 +228,16 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
     }
     // Blended width, no lightness: the strokes and the border pieces here are drawn in
     // their layer's flat color.
+    const outline_pieces = create_outline_pieces();
     for (const contour_surface of meshes.contour_surfaces) {
       const chains = extract_placed_contour_chains(contour_surface.grid, eye, contour_surface.partials);
-      append_contour_ribbons_with_blend(chains, contour_surface.width_blend, /* has_lightness */ false, camera, contour_surface.color, meshes.shaded_vertices);
+      append_outline_chains(
+        outline_pieces, chains, contour_surface.partials, contour_surface.grid, contour_surface.width_blend, /* has_lightness */ false, contour_surface.color,
+      );
     }
-    append_border_contour_ribbons(meshes.border_contours, tablet_document, camera, head_border_piece_look_of(options), meshes.shaded_vertices);
+    outline_pieces.runs = border_runs_of(meshes.border_contours, camera, head_border_piece_look_of(options));
+    const outline_lines = outline_lines_of(outline_pieces, meshes.border_contours, camera);
+    append_outline_ribbons(outline_pieces, outline_lines, tablet_document, camera, meshes.shaded_vertices);
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));
 

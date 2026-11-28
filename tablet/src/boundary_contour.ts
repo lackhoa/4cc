@@ -24,9 +24,16 @@
 // What does not depend on the eye (which border corners each part of each stroke reads,
 // and how far between them) is built once by border_contours_of; a frame only reads f at
 // those corners.
+//
+// A frame first lists the drawn runs (border_runs_of) and then draws each
+// (append_border_run_ribbon), so that outline_lines.ts can join a run's end to the end of
+// a contour chain inside a patch. Both ends are named by a BorderPlace: the end of a run
+// where a patch's g changes sign is the cut computed from that patch's use
+// (use_zero_t), and the end of that patch's chain on the same grid edge is named by the
+// same computation (border_place_of_chain_end), so the two are equal numbers.
 
 import { OrbitCamera, camera_eye } from "./camera";
-import { SurfacePartials, corner_index } from "./contour";
+import { GridEdgePlace, SurfacePartials, corner_index } from "./contour";
 import { Stroke, StrokeRadii, TabletDocument } from "./document";
 import { V3 } from "./math";
 import { PatchFill, Side, SurfaceGrid } from "./patch";
@@ -43,6 +50,7 @@ export type BorderSurface = { fill: PatchFill; grid: SurfaceGrid; partials: Surf
 // knot_corner_from[k] to knot_corner_to[k]. knot_values holds g at each knot, written by
 // each frame.
 type BorderUse = {
+  stroke: Stroke;
   is_mirrored_side: boolean;
   partials: SurfacePartials;
   sign: number;
@@ -59,19 +67,37 @@ type BorderUse = {
 // and split by side), and its stroke_length_fractions.
 type BorderedStroke = { stroke: Stroke; length_fractions: Float64Array; uses: BorderUse[]; stored_uses: BorderUse[]; mirrored_uses: BorderUse[] };
 
-export type BorderContours = { bordered_strokes: BorderedStroke[] };
+// The bordered strokes, and the uses of each followed surface (by its partials).
+export type BorderContours = { bordered_strokes: BorderedStroke[]; uses_by_partials: Map<SurfacePartials, BorderUse[]> };
 
 // How a border piece of `stroke` is drawn on one side: its color and lightness, or null
 // when it is not drawn there (the caller already draws the whole stroke on that side).
 export type BorderPieceLook = { color: Rgb; lightness_additions: StrokeRadii | null };
 export type BorderPieceLookOf = (stroke: Stroke, is_mirrored_side: boolean) => BorderPieceLook | null;
 
+// One drawn run of a bordered stroke on one side, between curve parameters t_start <
+// t_end; `is_whole` when it reaches the stroke's two ends and is drawn as the whole stroke.
+export type BorderRun = {
+  stroke: Stroke;
+  length_fractions: Float64Array;
+  t_start: number;
+  t_end: number;
+  is_whole: boolean;
+  is_mirrored_side: boolean;
+  look: BorderPieceLook;
+};
+
+// A place on a stroke where an outline piece ends: curve parameter t on the stroke's
+// stored or mirrored side. A midline stroke has one side, named as the stored one.
+export type BorderPlace = { stroke: Stroke; is_mirrored_side: boolean; t: number };
+
 // Below this a part of a stroke between two cuts is empty, and a drawn part that reaches
 // this close to an end of the stroke is drawn whole.
-const STROKE_T_EPSILON = 1e-6;
+export const STROKE_T_EPSILON = 1e-6;
 
 export function border_contours_of(surfaces: BorderSurface[], tablet_document: TabletDocument): BorderContours {
   const bordered_by_stroke = new Map<Stroke, BorderedStroke>();
+  const uses_by_partials = new Map<SurfacePartials, BorderUse[]>();
   const add_use = (stroke: Stroke, use: BorderUse): void => {
     let bordered = bordered_by_stroke.get(stroke);
     if (bordered === undefined) {
@@ -81,6 +107,12 @@ export function border_contours_of(surfaces: BorderSurface[], tablet_document: T
     bordered.uses.push(use);
     if (use.is_mirrored_side) bordered.mirrored_uses.push(use);
     else bordered.stored_uses.push(use);
+    let surface_uses = uses_by_partials.get(use.partials);
+    if (surface_uses === undefined) {
+      surface_uses = [];
+      uses_by_partials.set(use.partials, surface_uses);
+    }
+    surface_uses.push(use);
   };
   for (const surface of surfaces) {
     const grid = surface.grid;
@@ -100,7 +132,7 @@ export function border_contours_of(surfaces: BorderSurface[], tablet_document: T
     append_side_uses(surface, sides[2], last_column, (k) => corner_index(grid, last_column - k, last_row), 1, add_use);
     if (sides.length === 4) append_side_uses(surface, sides[3], last_row, (k) => corner_index(grid, 0, last_row - k), 1, add_use);
   }
-  return { bordered_strokes: [...bordered_by_stroke.values()] };
+  return { bordered_strokes: [...bordered_by_stroke.values()], uses_by_partials };
 }
 
 // One use per piece of `side`, whose sample k of 0..last_node is at grid corner
@@ -153,6 +185,7 @@ function append_side_uses(
       knot_weight[knot] = numerator / piece_count - node_from;
     }
     add_use(piece.stroke, {
+      stroke: piece.stroke,
       is_mirrored_side: surface.is_mirrored_side,
       partials: surface.partials,
       sign: piece.reversed ? -side_sign : side_sign,
@@ -167,24 +200,75 @@ function append_side_uses(
   }
 }
 
-export function append_border_contour_ribbons(
-  border_contours: BorderContours, tablet_document: TabletDocument, camera: OrbitCamera, look_of: BorderPieceLookOf, out: VertexSink,
-): void {
+// The drawn runs of every bordered stroke for this camera, stroke after stroke.
+export function border_runs_of(border_contours: BorderContours, camera: OrbitCamera, look_of: BorderPieceLookOf): BorderRun[] {
   const eye = camera_eye(camera);
+  const runs: BorderRun[] = [];
   for (const bordered of border_contours.bordered_strokes) {
     const stroke = bordered.stroke;
     const stored_look = look_of(stroke, false);
     if (stroke.midline === true) {
       // The patches on both sides of the head meet at a midline stroke.
-      if (stored_look !== null) append_drawn_parts(bordered, bordered.uses, eye, stored_look, false, tablet_document, camera, out);
+      if (stored_look !== null) append_drawn_runs(bordered, bordered.uses, eye, stored_look, false, runs);
       continue;
     }
-    if (stored_look !== null) append_drawn_parts(bordered, bordered.stored_uses, eye, stored_look, false, tablet_document, camera, out);
+    if (stored_look !== null) append_drawn_runs(bordered, bordered.stored_uses, eye, stored_look, false, runs);
     if (stroke.is_one_sided === true) continue;
     if (bordered.mirrored_uses.length === 0) continue;
     const mirrored_look = look_of(stroke, true);
-    if (mirrored_look !== null) append_drawn_parts(bordered, bordered.mirrored_uses, eye, mirrored_look, true, tablet_document, camera, out);
+    if (mirrored_look !== null) append_drawn_runs(bordered, bordered.mirrored_uses, eye, mirrored_look, true, runs);
   }
+  return runs;
+}
+
+// One drawn run as one ribbon, both ends capped.
+export function append_border_run_ribbon(run: BorderRun, tablet_document: TabletDocument, camera: OrbitCamera, out: VertexSink): void {
+  const look = run.look;
+  if (run.is_whole) {
+    append_stroke_ribbon(run.stroke, tablet_document, camera, look.color, look.lightness_additions, null, run.is_mirrored_side, out);
+    return;
+  }
+  append_stroke_part_ribbon(
+    run.stroke, tablet_document, run.length_fractions, run.t_start, run.t_end, camera, look.color, look.lightness_additions, run.is_mirrored_side, out,
+  );
+}
+
+// The place of the run's start (or end, `at_end`), or null where nothing can join it: a
+// run drawn whole, or an end this close to an end of the stroke (a vertex, where other
+// strokes meet).
+export function border_run_end_place(run: BorderRun, at_end: boolean): BorderPlace | null {
+  if (run.is_whole) return null;
+  const t = at_end ? run.t_end : run.t_start;
+  if (t <= STROKE_T_EPSILON || t >= 1 - STROKE_T_EPSILON) return null;
+  return { stroke: run.stroke, is_mirrored_side: run.stroke.midline === true ? false : run.is_mirrored_side, t };
+}
+
+// The place where a contour chain of the surface with `partials` (on `grid`) ends at
+// `place` on its border: the cut where that surface's g changes sign on the same grid edge,
+// as append_drawn_runs cuts the stroke there (use_zero_t). Null for an end inside the
+// patch, on a loft's open edge, next to a collapsed corner (whose f is read from another
+// corner), or this close to an end of the stroke.
+export function border_place_of_chain_end(
+  border_contours: BorderContours, partials: SurfacePartials, grid: SurfaceGrid, place: GridEdgePlace, eye: V3,
+): BorderPlace | null {
+  const uses = border_contours.uses_by_partials.get(partials);
+  if (uses === undefined) return null;
+  const corner_from = corner_index(grid, place.from.i, place.from.j);
+  const corner_to = corner_index(grid, place.to.i, place.to.j);
+  for (const use of uses) {
+    write_use_values(use, eye);
+    for (let knot = 0; knot + 1 < use.knot_t.length; knot++) {
+      const knot_from = use.knot_corner_from[knot];
+      const knot_to = use.knot_corner_to[knot];
+      const is_same_edge = (knot_from === corner_from && knot_to === corner_to) || (knot_from === corner_to && knot_to === corner_from);
+      if (!is_same_edge) continue;
+      if (!use_changes_sign(use, knot)) continue;
+      const t = use_zero_t(use, knot);
+      if (t <= STROKE_T_EPSILON || t >= 1 - STROKE_T_EPSILON) return null;
+      return { stroke: use.stroke, is_mirrored_side: use.stroke.midline === true ? false : use.is_mirrored_side, t };
+    }
+  }
+  return null;
 }
 
 // g at every knot of `use` for this eye.
@@ -216,38 +300,50 @@ function use_value_at(use: BorderUse, t: number): number {
   return use.knot_values[knot_t.length - 1];
 }
 
+// Whether g of `use` changes sign between knot and knot + 1 (a zero counts as positive).
+function use_changes_sign(use: BorderUse, knot: number): boolean {
+  return use.knot_values[knot] < 0 !== use.knot_values[knot + 1] < 0;
+}
+
+// The stroke parameter where g of `use` is zero between knot and knot + 1, linear between
+// them (use_changes_sign).
+function use_zero_t(use: BorderUse, knot: number): number {
+  const value_from = use.knot_values[knot];
+  const value_to = use.knot_values[knot + 1];
+  const fraction = value_from / (value_from - value_to);
+  return use.knot_t[knot] + (use.knot_t[knot + 1] - use.knot_t[knot]) * fraction;
+}
+
 // Cuts the stroke where a use starts or ends or its g changes sign, decides each part
-// between two cuts at its middle, and draws each run of drawn parts as one ribbon.
-function append_drawn_parts(
-  bordered: BorderedStroke, uses: BorderUse[], eye: V3, look: BorderPieceLook, is_mirrored_side: boolean,
-  tablet_document: TabletDocument, camera: OrbitCamera, out: VertexSink,
+// between two cuts at its middle, and lists each run of drawn parts as one run.
+function append_drawn_runs(
+  bordered: BorderedStroke, uses: BorderUse[], eye: V3, look: BorderPieceLook, is_mirrored_side: boolean, runs: BorderRun[],
 ): void {
   if (uses.length === 0) return;
   const cuts: number[] = [];
   for (const use of uses) {
     write_use_values(use, eye);
     cuts.push(use.t_low, use.t_high);
-    const values = use.knot_values;
-    for (let knot = 0; knot + 1 < values.length; knot++) {
-      const value_from = values[knot];
-      const value_to = values[knot + 1];
-      if (value_from < 0 === value_to < 0) continue;
-      const fraction = value_from / (value_from - value_to);
-      cuts.push(use.knot_t[knot] + (use.knot_t[knot + 1] - use.knot_t[knot]) * fraction);
+    for (let knot = 0; knot + 1 < use.knot_values.length; knot++) {
+      if (!use_changes_sign(use, knot)) continue;
+      cuts.push(use_zero_t(use, knot));
     }
   }
   cuts.sort((a, b) => a - b);
   const is_open_edge_drawn = bordered.stroke.midline !== true;
   let run_start = -1;
   let run_end = -1;
-  const draw_run = (): void => {
+  const finish_run = (): void => {
     if (run_start < 0) return;
-    const stroke = bordered.stroke;
-    if (run_start <= STROKE_T_EPSILON && run_end >= 1 - STROKE_T_EPSILON) {
-      append_stroke_ribbon(stroke, tablet_document, camera, look.color, look.lightness_additions, null, is_mirrored_side, out);
-    } else {
-      append_stroke_part_ribbon(stroke, tablet_document, bordered.length_fractions, run_start, run_end, camera, look.color, look.lightness_additions, is_mirrored_side, out);
-    }
+    runs.push({
+      stroke: bordered.stroke,
+      length_fractions: bordered.length_fractions,
+      t_start: run_start,
+      t_end: run_end,
+      is_whole: run_start <= STROKE_T_EPSILON && run_end >= 1 - STROKE_T_EPSILON,
+      is_mirrored_side,
+      look,
+    });
     run_start = -1;
   };
   for (let cut = 0; cut + 1 < cuts.length; cut++) {
@@ -255,13 +351,13 @@ function append_drawn_parts(
     const part_end = cuts[cut + 1];
     if (part_end - part_start < STROKE_T_EPSILON) continue;
     if (!part_is_drawn(uses, (part_start + part_end) / 2, is_open_edge_drawn)) {
-      draw_run();
+      finish_run();
       continue;
     }
     if (run_start < 0) run_start = part_start;
     run_end = part_end;
   }
-  draw_run();
+  finish_run();
 }
 
 // Whether the part of the stroke around t is drawn: one use borders it (when
