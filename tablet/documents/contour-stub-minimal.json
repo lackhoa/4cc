@@ -1,0 +1,42 @@
+{
+ "version": 5,
+ "camera": {
+  "pivot": { "x": 0.5, "y": 0, "z": 0.5 },
+  "yaw": -0.5236,
+  "pitch": 0.7,
+  "distance": 2.4
+ },
+ "document": {
+  "next_vertex_id": 6,
+  "next_stroke_id": 8,
+  "next_patch_id": 2,
+  "bones": [
+   { "id": "skull", "parent_id": "", "parent_from_bone": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] }
+  ],
+  "vertices": [
+   { "id": 0, "bone_id": "skull", "position": { "x": 0, "y": 0, "z": 1 } },
+   { "id": 1, "bone_id": "skull", "position": { "x": 1, "y": 0, "z": 0 } },
+   { "id": 2, "bone_id": "skull", "position": { "x": 0, "y": 0.5, "z": 1 } },
+   { "id": 3, "bone_id": "skull", "position": { "x": 1, "y": 0.5, "z": 0 } },
+   { "id": 4, "bone_id": "skull", "position": { "x": 0, "y": -0.5, "z": 1 } },
+   { "id": 5, "bone_id": "skull", "position": { "x": 0.89, "y": -0.5, "z": 0 } }
+  ],
+  "vertex_pins": [],
+  "vertex_surface_pins": [],
+  "smooth_knots": [],
+  "strokes": [
+   { "id": 1, "layer": "skin", "p0_vertex": 0, "p3_vertex": 1, "d0": { "x": 0.219, "y": 0, "z": 0.3333 }, "d3": { "x": 0.3333, "y": 0, "z": 0.219 }, "radii": [0.4, 0.4, 0.4, 0.4] },
+   { "id": 2, "layer": "skin", "p0_vertex": 2, "p3_vertex": 3, "d0": { "x": 0.219, "y": 0, "z": 0.3333 }, "d3": { "x": 0.3333, "y": 0, "z": 0.219 } },
+   { "id": 3, "layer": "skin", "p0_vertex": 0, "p3_vertex": 2, "d0": { "x": 0, "y": 0, "z": 0 }, "d3": { "x": 0, "y": 0, "z": 0 } },
+   { "id": 4, "layer": "skin", "p0_vertex": 1, "p3_vertex": 3, "d0": { "x": 0, "y": 0, "z": 0 }, "d3": { "x": 0, "y": 0, "z": 0 } },
+   { "id": 5, "layer": "skin", "p0_vertex": 4, "p3_vertex": 5, "d0": { "x": 0.1948, "y": 0, "z": 0.3333 }, "d3": { "x": 0.2967, "y": 0, "z": 0.219 } },
+   { "id": 6, "layer": "skin", "p0_vertex": 0, "p3_vertex": 4, "d0": { "x": 0, "y": 0, "z": 0 }, "d3": { "x": 0, "y": 0, "z": 0 } },
+   { "id": 7, "layer": "skin", "p0_vertex": 1, "p3_vertex": 5, "d0": { "x": 0, "y": 0, "z": 0 }, "d3": { "x": 0, "y": 0, "z": 0 } }
+  ],
+  "patches": [
+   { "id": 0, "strokes": [1, 4, 2, 3] },
+   { "id": 1, "strokes": [1, 7, 5, 6] }
+  ],
+  "spheres": []
+ }
+}

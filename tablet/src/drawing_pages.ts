@@ -92,6 +92,21 @@ export const DRAWING_PAGES: DrawingPage[] = [
     shows_opacity_and_clip_sliders: false,
     description_html: "the corrected head, document <code>head-corrected</code>: the scan head warped to the native head's proportions, one side stored and the other mirrored, the skull layer locked, no reference mesh.",
   },
+  // Document `contour-stub-minimal`: two patches that share one thick stroke (width 0.40,
+  // the others 0.25) and meet at a small angle along it. In the picture view (key `v`) the
+  // outline crosses from one patch to the other along the shared stroke, and that piece is
+  // drawn with the stroke's own width.
+  {
+    page_name: "contour-stub-minimal-draw",
+    document_name: "contour-stub-minimal",
+    active_layer: "skin",
+    locked_layers: [],
+    hidden_layers: [],
+    load_reference_mesh: null,
+    load_eyeball_mesh: null,
+    shows_opacity_and_clip_sliders: false,
+    description_html: "two patches sharing one thick stroke, document <code>contour-stub-minimal</code>: in the picture view the outline crosses from one patch to the other along the shared stroke.",
+  },
 ];
 
 // The record of `page_name`; null when there is none.
