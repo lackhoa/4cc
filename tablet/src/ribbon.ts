@@ -511,3 +511,35 @@ export function append_chain_ribbon(
     append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, CHAIN_CUBIC_PIECES, out);
   }
 }
+
+// The width profile running linearly from `start_value` to `end_value`: a cubic
+// Bernstein sum with evenly spaced control values is the straight line between them.
+function linear_profile(start_value: number, end_value: number, profile: StrokeRadii): StrokeRadii {
+  profile[0] = start_value;
+  profile[1] = start_value + (end_value - start_value) / 3;
+  profile[2] = start_value + (2 * (end_value - start_value)) / 3;
+  profile[3] = end_value;
+  return profile;
+}
+const chain_cubic_radii: StrokeRadii = [0, 0, 0, 0];
+const chain_cubic_lightness_additions: StrokeRadii = [0, 0, 0, 0];
+
+// A contour chain whose width and lightness are given at its knots (plan Q8): cubic k runs
+// from knot k to knot k + 1 of `knot_radii` (stroke width values, as in Stroke.radii) and
+// `knot_lightness_additions` (null: the flat color), each linear in length along the
+// cubic between its two knots. Caps only at the two ends of the whole chain.
+export function append_chain_ribbon_with_knot_values(
+  chain: StrokeControlPoints[], knot_radii: Float64Array, knot_lightness_additions: Float64Array | null,
+  camera: OrbitCamera, color: Rgb, out: VertexSink,
+): void {
+  const basis = ribbon_camera_basis(camera);
+  const last_index = chain.length - 1;
+  for (let index = 0; index <= last_index; index++) {
+    const radii = linear_profile(knot_radii[index], knot_radii[index + 1], chain_cubic_radii);
+    const lightness_additions = knot_lightness_additions === null
+      ? null
+      : linear_profile(knot_lightness_additions[index], knot_lightness_additions[index + 1], chain_cubic_lightness_additions);
+    const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
+    append_cubic_ribbon(chain[index], radii, { start: 0, end: 1 }, basis, color, lightness_additions, end_caps, null, CHAIN_CUBIC_PIECES, out);
+  }
+}

@@ -145,13 +145,20 @@ function side_point(
   side: Side, tablet_document: TabletDocument, u: number,
   points_of: (stroke: Stroke) => StrokeControlPoints = (stroke) => stroke_control_points(stroke, tablet_document),
 ): { position: V3; tangent: V3 } {
-  const scaled = Math.min(u * side.length, side.length - 1e-9);
-  const oriented = side[Math.floor(scaled)];
-  const local = scaled - Math.floor(scaled);
-  const t = oriented.start.t + (oriented.end.t - oriented.start.t) * local;
+  const { oriented, t } = side_piece_at(side, u);
   const points = points_of(oriented.stroke);
   const tangent = bezier_tangent(points, t);
   return { position: bezier_point(points, t), tangent: oriented.reversed ? v3_scale(tangent, -1) : tangent };
+}
+
+// The stroke piece of `side` at side parameter u in [0, 1] and the stroke parameter t
+// there, as side_point reads them: u = 1 is the end of the last piece, and a u where two
+// pieces meet is the start of the later one.
+export function side_piece_at(side: Side, u: number): { oriented: OrientedStroke; t: number } {
+  const scaled = Math.min(u * side.length, side.length - 1e-9);
+  const oriented = side[Math.floor(scaled)];
+  const local = scaled - Math.floor(scaled);
+  return { oriented, t: oriented.start.t + (oriented.end.t - oriented.start.t) * local };
 }
 
 function sample_side(side: Side, tablet_document: TabletDocument, sample_count: number): { position: V3; tangent: V3 }[] {

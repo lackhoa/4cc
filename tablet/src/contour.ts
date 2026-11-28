@@ -34,11 +34,18 @@ export function silhouette_field(eye: V3): ScalarField {
   return (position, partial_u, partial_v) => v3_dot(v3_cross(partial_u, partial_v), v3_sub(eye, position));
 }
 
-type GridPoint = { i: number; j: number };
+export type GridPoint = { i: number; j: number };
+// A place on a grid edge: s of the way from grid corner `from` to grid corner `to`.
+export type GridEdgePlace = { from: GridPoint; to: GridPoint; s: number };
 // A zero of f on a grid edge. Edge id is unique per grid edge so the two
 // cells sharing it produce the same id (2 × corner index of (i, j) for the edge
 // along u from (i, j), that + 1 for the edge along v); s is the fraction along the edge.
-type Crossing = { edge_id: number; from: GridPoint; to: GridPoint; s: number };
+type Crossing = GridEdgePlace & { edge_id: number };
+
+// A contour chain with the grid places of its knots: cubic k runs from knot_places[k] to
+// knot_places[k + 1] (plan-head-picture-from-contours-and-chosen-lines Q8 reads the width
+// and lightness there).
+export type PlacedContourChain = { chain: ContourChain; knot_places: GridEdgePlace[] };
 type Segment = { a: Crossing; b: Crossing };
 
 // f per grid corner, flat: corner (i, j) at i × (rows + 1) + j (corner_index).
@@ -273,9 +280,11 @@ function oriented_unit_tangent(knot: Knot, along: V3): V3 {
 }
 
 // Cubic Hermite per cell segment: endpoints at the crossings, handles along
-// the contour tangents, chord / 3 long.
-function fit_bezier_chain(knots: Knot[]): ContourChain {
+// the contour tangents, chord / 3 long. A segment shorter than 1e-9 is left out, so the
+// next cubic starts at the place the last one ended, give or take that.
+function fit_bezier_chain(knots: Knot[], crossings: Crossing[]): PlacedContourChain {
   const chain: ContourChain = [];
+  const knot_places: GridEdgePlace[] = [];
   for (let k = 0; k + 1 < knots.length; k++) {
     const p0 = knots[k].position;
     const p3 = knots[k + 1].position;
@@ -285,25 +294,32 @@ function fit_bezier_chain(knots: Knot[]): ContourChain {
     const t0 = oriented_unit_tangent(knots[k], chord_vector);
     const t3 = oriented_unit_tangent(knots[k + 1], chord_vector);
     chain.push({ p0, p1: v3_add(p0, v3_scale(t0, chord / 3)), p2: v3_sub(p3, v3_scale(t3, chord / 3)), p3 });
+    if (knot_places.length === 0) knot_places.push(crossings[k]);
+    knot_places.push(crossings[k + 1]);
   }
-  return chain;
+  return { chain, knot_places };
 }
 
 // `partials` must be surface_partials(grid) of this same grid; a caller without a cache
 // leaves it out.
 export function extract_contour_chains(grid: SurfaceGrid, eye: V3, partials: SurfacePartials = surface_partials(grid)): ContourChain[] {
+  return extract_placed_contour_chains(grid, eye, partials).map((placed) => placed.chain);
+}
+
+// extract_contour_chains with the grid places of each chain's knots.
+export function extract_placed_contour_chains(grid: SurfaceGrid, eye: V3, partials: SurfacePartials = surface_partials(grid)): PlacedContourChain[] {
   return chains_from_corner_field(grid, silhouette_corner_field(partials, eye));
 }
 
 // Zero set of `field_value` on the grid as bezier chains, one per polyline.
 export function extract_level_set_chains(grid: SurfaceGrid, field_value: ScalarField): ContourChain[] {
-  return chains_from_corner_field(grid, evaluate_corner_field(grid, surface_partials(grid), field_value));
+  return chains_from_corner_field(grid, evaluate_corner_field(grid, surface_partials(grid), field_value)).map((placed) => placed.chain);
 }
 
-function chains_from_corner_field(grid: SurfaceGrid, field: CornerField): ContourChain[] {
+function chains_from_corner_field(grid: SurfaceGrid, field: CornerField): PlacedContourChain[] {
   const segments = marching_squares(grid, field);
   const polylines = join_into_polylines(segments);
   return polylines
-    .map((polyline) => fit_bezier_chain(polyline.map((crossing) => knot_at_crossing(grid, field, crossing))))
-    .filter((chain) => chain.length > 0);
+    .map((polyline) => fit_bezier_chain(polyline.map((crossing) => knot_at_crossing(grid, field, crossing)), polyline))
+    .filter((placed) => placed.chain.length > 0);
 }

@@ -5,14 +5,15 @@
 import { OrbitCamera, camera_eye } from "./camera";
 import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
-import { extract_contour_chains, surface_partials } from "./contour";
+import { extract_placed_contour_chains, surface_partials } from "./contour";
+import { ContourWidthBlend, append_contour_ribbons_with_blend, contour_width_blend_of } from "./contour_width";
 import { mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid, resolve_patch_fill } from "./patch";
 import { BorderContours, BorderPieceLookOf, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
-import { TaperWindow, append_bezier_ribbon, append_chain_ribbon, append_sampled_ribbon } from "./ribbon";
+import { TaperWindow, append_bezier_ribbon, append_sampled_ribbon } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink } from "./vertex_sink";
 
 export const SURFACE_COLOR: Rgb = { r: 0.45, g: 0.55, b: 0.7 };
@@ -32,9 +33,10 @@ export type HeadMeshes = {
   shaded_for: string; // document, camera and options the uploaded meshes were built for
 };
 
-// One side of one patch, with what its computed contour needs for every camera; also
-// what its border contours (boundary_contour.ts) start from.
-type ContourSurface = BorderSurface & { color: Rgb };
+// One side of one patch, with what its computed contour needs for every camera (its width
+// from the boundary strokes, contour_width.ts, shared by the two sides); also what its
+// border contours (boundary_contour.ts) start from.
+type ContourSurface = BorderSurface & { color: Rgb; width_blend: ContourWidthBlend };
 
 export type HeadMeshOptions = {
   // On: the picture, as the draw page's picture view shows it: the strokes marked
@@ -125,10 +127,11 @@ function contour_surfaces_of(tablet_document: TabletDocument, options: HeadMeshO
     const grid = patch_surface_grid(patch, tablet_document);
     if (fill === null || grid === null) continue;
     const color = layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
-    contour_surfaces.push({ fill, grid, partials: surface_partials(grid), color, is_mirrored_side: false });
+    const width_blend = contour_width_blend_of(fill, grid, tablet_document);
+    contour_surfaces.push({ fill, grid, partials: surface_partials(grid), color, width_blend, is_mirrored_side: false });
     if (options.mirrored && patch.is_one_sided !== true) {
       const mirrored_grid = mirrored_surface_grid(grid);
-      contour_surfaces.push({ fill, grid: mirrored_grid, partials: surface_partials(mirrored_grid), color, is_mirrored_side: true });
+      contour_surfaces.push({ fill, grid: mirrored_grid, partials: surface_partials(mirrored_grid), color, width_blend, is_mirrored_side: true });
     }
   }
   return contour_surfaces;
@@ -222,9 +225,11 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
         append_bezier_ribbon(mirrored_points, radii, WHOLE_STROKE, camera, color, meshes.shaded_vertices);
       }
     }
+    // Blended width, no lightness: the strokes and the border pieces here are drawn in
+    // their layer's flat color.
     for (const contour_surface of meshes.contour_surfaces) {
-      const chains = extract_contour_chains(contour_surface.grid, eye, contour_surface.partials);
-      for (const chain of chains) append_chain_ribbon(chain, camera, contour_surface.color, meshes.shaded_vertices);
+      const chains = extract_placed_contour_chains(contour_surface.grid, eye, contour_surface.partials);
+      append_contour_ribbons_with_blend(chains, contour_surface.width_blend, /* has_lightness */ false, camera, contour_surface.color, meshes.shaded_vertices);
     }
     append_border_contour_ribbons(meshes.border_contours, tablet_document, camera, head_border_piece_look_of(options), meshes.shaded_vertices);
   }

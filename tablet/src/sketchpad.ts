@@ -22,13 +22,14 @@ import { LineToolState, line_pen_down, line_pen_move, line_pen_up } from "./line
 import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
 import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, refit_on_surface_stroke_control_points, vertex_can_pin_to_selected_surface } from "./patch";
-import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
+import { SurfacePartials, extract_placed_contour_chains, surface_partials } from "./contour";
 import { BorderContours, BorderPieceLook, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
+import { append_contour_ribbons_with_blend, cached_contour_width_blend, create_contour_width_blend_cache } from "./contour_width";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
 import { WORLD_PER_MM } from "./reference_skull_view";
-import { RIBBON_RADIUS, RibbonTint, append_chain_ribbon, append_stroke_ribbon, drawn_stroke_points, polyline_length_fractions, stroke_length_fraction_at } from "./ribbon";
+import { RIBBON_RADIUS, RibbonTint, append_stroke_ribbon, drawn_stroke_points, polyline_length_fractions, stroke_length_fraction_at } from "./ribbon";
 import { FLOATS_PER_VERTEX, Rgb, VertexSink, create_vertex_sink, reset_vertex_sink, vertex_sink_view } from "./vertex_sink";
 import { ReferenceMesh, append_reference_mesh } from "./reference";
 import { FetchedDocument, apply_fetched_document, create_persistence_state, fetch_current_document, fetch_document_if_changed_elsewhere, flush_autosave, fork_document_to_conflict_copy, has_unsaved_edits, list_documents_from_server, load_current_document_on_startup, remember_camera, rename_document, schedule_autosave, switch_document } from "./persistence";
@@ -186,6 +187,9 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const patch_geometry_cache = document_patch_geometry_cache(tablet_document);
   // The contour extractor's eye-independent part per cached grid (cached_surface_partials).
   const surface_partials_by_grid = new WeakMap<SurfaceGrid, SurfacePartials>();
+  // The computed contours' width and lightness at every grid corner, per cached patch fill
+  // (contour_width.ts).
+  const contour_width_blends = create_contour_width_blend_cache();
   // The border contours' eye-independent part (border_contours_of), and what it was built
   // from: per patch its geometry (null when the patch has no contours) and whether its
   // mirror image is followed too. Built again when any of that changes.
@@ -599,12 +603,14 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       frame_contour_mirroring[frame_contour_mirroring.length - 1] = is_mirrored;
       const grid = geometry.grid;
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
-      const chains = timed("contours.extract", () => extract_contour_chains(grid, eye, cached_surface_partials(grid)));
-      timed("contours.ribbons", () => { for (const chain of chains) append_chain_ribbon(chain, camera, color, vertices); });
+      // Width and lightness from the patch's boundary strokes (plan Q8), the same on both sides.
+      const blend = timed("contours.widths", () => cached_contour_width_blend(contour_width_blends, geometry.fill, grid, tablet_document));
+      const chains = timed("contours.extract", () => extract_placed_contour_chains(grid, eye, cached_surface_partials(grid)));
+      timed("contours.ribbons", () => append_contour_ribbons_with_blend(chains, blend, /* has_lightness */ true, camera, color, vertices));
       if (is_mirrored) {
         const mirrored_grid = timed("contours.grids", () => cached_mirrored_grid(geometry));
-        const mirrored_chains = timed("contours.extract", () => extract_contour_chains(mirrored_grid, eye, cached_surface_partials(mirrored_grid)));
-        timed("contours.ribbons", () => { for (const chain of mirrored_chains) append_chain_ribbon(chain, camera, color, vertices); });
+        const mirrored_chains = timed("contours.extract", () => extract_placed_contour_chains(mirrored_grid, eye, cached_surface_partials(mirrored_grid)));
+        timed("contours.ribbons", () => append_contour_ribbons_with_blend(mirrored_chains, blend, /* has_lightness */ true, camera, color, vertices));
       }
     }
     // The contours lying on the strokes between patches (boundary_contour.ts).
