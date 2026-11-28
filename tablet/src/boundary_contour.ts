@@ -38,7 +38,8 @@ import { Stroke, StrokeRadii, TabletDocument } from "./document";
 import { V3 } from "./math";
 import { PatchFill, Side, SurfaceGrid } from "./patch";
 import {
-  RibbonEndCaps, RibbonEndDirection, append_stroke_part_ribbon, append_stroke_ribbon, stroke_length_fractions, stroke_part_end_direction,
+  RibbonEndCaps, RibbonEndDirection, RibbonSampleWidths, append_stroke_part_ribbon, append_stroke_ribbon, stroke_length_fractions,
+  stroke_part_end_direction, stroke_part_sample_widths,
 } from "./ribbon";
 import { Rgb, VertexSink } from "./vertex_sink";
 
@@ -224,19 +225,28 @@ export function border_runs_of(border_contours: BorderContours, camera: OrbitCam
 }
 
 // One drawn run as one ribbon, capped at the ends named in `end_caps` (a run drawn whole has
-// no place to join, so both its ends are capped).
+// no place to join, so both its ends are capped). With `given_widths` (one per sample, as
+// border_run_sample_widths lists them) it is drawn as a part from t_start to t_end, with
+// those widths, even when whole.
 export function append_border_run_ribbon(
   run: BorderRun, tablet_document: TabletDocument, camera: OrbitCamera, out: VertexSink, end_caps: RibbonEndCaps,
+  given_widths: Float64Array | null,
 ): void {
   const look = run.look;
-  if (run.is_whole) {
+  if (run.is_whole && given_widths === null) {
     append_stroke_ribbon(run.stroke, tablet_document, camera, look.color, look.lightness_additions, null, run.is_mirrored_side, out);
     return;
   }
   append_stroke_part_ribbon(
     run.stroke, tablet_document, run.length_fractions, run.t_start, run.t_end, camera, look.color, look.lightness_additions, run.is_mirrored_side, out,
-    end_caps,
+    end_caps, given_widths,
   );
+}
+
+// The widths a run is drawn with as a part (append_border_run_ribbon with given widths), per
+// ribbon sample, and the samples' world length from the run's start.
+export function border_run_sample_widths(run: BorderRun, tablet_document: TabletDocument): RibbonSampleWidths {
+  return stroke_part_sample_widths(run.stroke, tablet_document, run.length_fractions, run.t_start, run.t_end, run.is_mirrored_side);
 }
 
 // The start (or end, `at_end`) of a run not drawn whole, and the way its ribbon leaves it.

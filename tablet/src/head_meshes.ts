@@ -9,7 +9,7 @@ import { extract_placed_contour_chains, surface_partials } from "./contour";
 import { ContourWidthBlend, contour_width_blend_of } from "./contour_width";
 import { mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid, resolve_patch_fill } from "./patch";
 import { BorderContours, BorderPieceLookOf, BorderSurface, border_contours_of, border_runs_of } from "./boundary_contour";
-import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of } from "./outline_lines";
+import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of, set_outline_width_rule_from_url } from "./outline_lines";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
@@ -61,6 +61,7 @@ export type HeadMeshOptions = {
 };
 
 export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
+  set_outline_width_rule_from_url();
   return {
     surfaces: create_translucent_mesh(gl),
     strokes: create_translucent_mesh(gl),

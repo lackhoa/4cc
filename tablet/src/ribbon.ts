@@ -199,20 +199,51 @@ export function length_fraction_at(fractions: Float64Array, t: number): number {
 // stroke's whole ribbon (append_stroke_ribbon) is: the width and the lightness are read
 // through a taper window running between the part's two length fractions in
 // `length_fractions` (stroke_length_fractions). The ends named in `end_caps` are capped. With
-// `is_mirrored_side` it is the part's mirror image across the midline.
+// `is_mirrored_side` it is the part's mirror image across the midline. With `given_widths`
+// (one per sample, as stroke_part_sample_widths lists them) those are its widths instead.
 export function append_stroke_part_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, length_fractions: Float64Array, t_start: number, t_end: number,
   camera: OrbitCamera, color: Rgb, lightness_additions: StrokeRadii | null, is_mirrored_side: boolean, out: VertexSink,
-  end_caps: RibbonEndCaps,
+  end_caps: RibbonEndCaps, given_widths: Float64Array | null,
 ): void {
   const taper_window: TaperWindow = { start: length_fraction_at(length_fractions, t_start), end: length_fraction_at(length_fractions, t_end) };
   if (stroke.on_surface === true) {
     const centers = stroke_part_samples(stroke, tablet_document, t_start, t_end, is_mirrored_side);
-    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions, end_caps, null, taper_window);
+    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions, end_caps, null, taper_window, given_widths);
     return;
   }
   const points = stroke_part_cubic(stroke, tablet_document, t_start, t_end, is_mirrored_side);
-  append_bezier_ribbon(points, stroke_radii(stroke), taper_window, camera, color, out, lightness_additions, end_caps);
+  append_bezier_ribbon(points, stroke_radii(stroke), taper_window, camera, color, out, lightness_additions, end_caps, null, given_widths);
+}
+
+// The samples of a stroke part's ribbon (append_stroke_part_ribbon) as one line's knots:
+// the width each is drawn with (a stroke width value, as in Stroke.radii) and how far along
+// the part it is (world length from the part's start).
+export type RibbonSampleWidths = { widths: Float64Array; arc_lengths: Float64Array };
+
+export function stroke_part_sample_widths(
+  stroke: Stroke, tablet_document: TabletDocument, length_fractions: Float64Array, t_start: number, t_end: number, is_mirrored_side: boolean,
+): RibbonSampleWidths {
+  let sample_count = RIBBON_SAMPLES + 1;
+  if (stroke.on_surface === true) {
+    const centers = stroke_part_samples(stroke, tablet_document, t_start, t_end, is_mirrored_side);
+    sample_count = centers.length;
+    write_sampled_ribbon_samples(centers);
+  } else {
+    write_cubic_ribbon_samples(stroke_part_cubic(stroke, tablet_document, t_start, t_end, is_mirrored_side), RIBBON_SAMPLES);
+  }
+  const taper_start = length_fraction_at(length_fractions, t_start);
+  const taper_end = length_fraction_at(length_fractions, t_end);
+  const sample_fractions = ribbon_samples.length_fractions;
+  const total_length = polyline_length_fractions(ribbon_samples.centers, sample_count, sample_fractions);
+  const radii = stroke_radii(stroke);
+  const widths = new Float64Array(sample_count);
+  const arc_lengths = new Float64Array(sample_count);
+  for (let i = 0; i < sample_count; i++) {
+    widths[i] = stroke_radii_at(radii, taper_start + (taper_end - taper_start) * sample_fractions[i]);
+    arc_lengths[i] = sample_fractions[i] * total_length;
+  }
+  return { widths, arc_lengths };
 }
 
 // The samples an on-surface stroke's part between t_start < t_end is drawn through.
@@ -336,8 +367,17 @@ const round_cap_rim: RoundCapRim = ((): RoundCapRim => {
 export function append_sampled_ribbon(
   centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink, lightness_additions: StrokeRadii | null = null,
   end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null, taper_window: TaperWindow = { start: 0, end: 1 },
+  given_widths: Float64Array | null = null,
 ): void {
   if (centers.length < 2) return;
+  write_sampled_ribbon_samples(centers);
+  append_polyline_ribbon(
+    centers.length, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, out, given_widths,
+  );
+}
+
+// append_sampled_ribbon's samples, into ribbon_samples.centers / .tangents.
+function write_sampled_ribbon_samples(centers: V3[]): void {
   ensure_ribbon_sample_room(centers.length);
   const sample_centers = ribbon_samples.centers;
   const sample_tangents = ribbon_samples.tangents;
@@ -353,7 +393,6 @@ export function append_sampled_ribbon(
     sample_tangents[3 * i + 1] = ahead.y - behind.y;
     sample_tangents[3 * i + 2] = ahead.z - behind.z;
   }
-  append_polyline_ribbon(centers.length, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, out);
 }
 
 function linear_from_srgb(value: number): number {
@@ -394,17 +433,28 @@ export type TaperWindow = { start: number; end: number };
 export function append_bezier_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, camera: OrbitCamera, color: Rgb, out: VertexSink,
   lightness_additions: StrokeRadii | null = null, end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null,
+  given_widths: Float64Array | null = null,
 ): void {
-  append_cubic_ribbon(points, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, RIBBON_SAMPLES, out);
+  append_cubic_ribbon(
+    points, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, RIBBON_SAMPLES, out, given_widths,
+  );
 }
 
-// The cubic sampled at piece_count + 1 evenly spaced t: bezier_point and bezier_tangent
-// written out per coordinate, the same arithmetic in the same order. piece_count must
-// divide RIBBON_SAMPLES (the weight table is read with that stride).
+// The cubic sampled at piece_count + 1 evenly spaced t, drawn (append_polyline_ribbon).
 function append_cubic_ribbon(
   points: StrokeControlPoints, radii: StrokeRadii, taper_window: TaperWindow, basis: CameraBasis, color: Rgb,
   lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, tint: RibbonTint | null, piece_count: number, out: VertexSink,
+  given_widths: Float64Array | null,
 ): void {
+  write_cubic_ribbon_samples(points, piece_count);
+  append_polyline_ribbon(piece_count + 1, radii, taper_window, basis, color, lightness_additions, end_caps, tint, out, given_widths);
+}
+
+// The cubic sampled at piece_count + 1 evenly spaced t, into ribbon_samples.centers /
+// .tangents: bezier_point and bezier_tangent written out per coordinate, the same arithmetic
+// in the same order. piece_count must divide RIBBON_SAMPLES (the weight table is read with
+// that stride).
+function write_cubic_ribbon_samples(points: StrokeControlPoints, piece_count: number): void {
   const { p0, p1, p2, p3 } = points;
   const point_weights = bezier_sample_weights.point;
   const tangent_weights = bezier_sample_weights.tangent;
@@ -422,7 +472,6 @@ function append_cubic_ribbon(
     tangents[3 * i + 1] = ((p1.y - p0.y) * w0 + (p2.y - p1.y) * w1) + (p3.y - p2.y) * w2;
     tangents[3 * i + 2] = ((p1.z - p0.z) * w0 + (p2.z - p1.z) * w1) + (p3.z - p2.z) * w2;
   }
-  append_polyline_ribbon(piece_count + 1, radii, taper_window, basis, color, lightness_additions, end_caps, tint, out);
 }
 
 // The first `sample_count` samples in ribbon_samples.centers / .tangents. The taper and the
@@ -434,9 +483,13 @@ function append_cubic_ribbon(
 // plane, centred on the end sample with that sample's radius and color, so two strokes
 // meeting at an angle leave no wedge gap at the corner. An end whose radius is zero
 // (a tapered point) gets no cap.
+// With `given_widths` (stroke width values, as in Stroke.radii, one per sample) the width at
+// each sample is that one instead of the taper's; the lightness and the tint still follow
+// the taper.
 function append_polyline_ribbon(
   sample_count: number, radii: StrokeRadii, taper_window: TaperWindow, basis: CameraBasis, color: Rgb,
   lightness_additions: StrokeRadii | null, end_caps: RibbonEndCaps, tint: RibbonTint | null, out: VertexSink,
+  given_widths: Float64Array | null,
 ): void {
   const { centers, tangents, offsets, radii: sample_radii, colors, length_fractions } = ribbon_samples;
   const { right, up } = basis;
@@ -449,7 +502,8 @@ function append_polyline_ribbon(
     const screen_y = tangent_x * up.x + tangent_y * up.y + tangent_z * up.z;
     const len = Math.hypot(screen_x, screen_y);
     const taper_t = taper_window.start + (taper_window.end - taper_window.start) * length_fraction;
-    const radius = Math.max(0, RIBBON_RADIUS * stroke_radii_at(radii, taper_t));
+    const width = given_widths === null ? stroke_radii_at(radii, taper_t) : given_widths[i];
+    const radius = Math.max(0, RIBBON_RADIUS * width);
     sample_radii[i] = radius;
     const own_color = lightness_additions === null ? color : lightened_color(color, stroke_radii_at(lightness_additions, taper_t));
     if (tint === null) {
@@ -552,7 +606,7 @@ export function append_chain_ribbon(
     // Caps only at the two ends of the whole chain, not at the seams between cubics.
     const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
     // A chain cubic spans one patch grid cell, a short and nearly straight piece of line.
-    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, CHAIN_CUBIC_PIECES, out);
+    append_cubic_ribbon(points, radii, { start, end: covered / total }, basis, color, null, end_caps, null, CHAIN_CUBIC_PIECES, out, null);
   }
 }
 
@@ -585,6 +639,6 @@ export function append_chain_ribbon_with_knot_values(
       ? null
       : linear_profile(knot_lightness_additions[index], knot_lightness_additions[index + 1], chain_cubic_lightness_additions);
     const cubic_end_caps: RibbonEndCaps = { at_start: index === 0 && end_caps.at_start, at_end: index === last_index && end_caps.at_end };
-    append_cubic_ribbon(chain[index], radii, { start: 0, end: 1 }, basis, color, lightness_additions, cubic_end_caps, null, CHAIN_CUBIC_PIECES, out);
+    append_cubic_ribbon(chain[index], radii, { start: 0, end: 1 }, basis, color, lightness_additions, cubic_end_caps, null, CHAIN_CUBIC_PIECES, out, null);
   }
 }

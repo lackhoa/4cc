@@ -275,10 +275,10 @@ let knot_lightness_additions = new Float64Array(64);
 
 // One chain of one side of one patch, drawn with its knots' blended width, and with its
 // lightness unless `has_lightness` is false (the flat color). Capped at the ends named in
-// `end_caps`.
+// `end_caps`. With `given_knot_widths` (one per knot) those are its widths instead.
 export function append_contour_chain_ribbon_with_blend(
   placed: PlacedContourChain, blend: ContourWidthBlend, has_lightness: boolean,
-  camera: OrbitCamera, color: Rgb, out: VertexSink, end_caps: RibbonEndCaps,
+  camera: OrbitCamera, color: Rgb, out: VertexSink, end_caps: RibbonEndCaps, given_knot_widths: Float64Array | null,
 ): void {
   const knot_count = placed.knot_places.length;
   if (knot_radii.length < knot_count) {
@@ -290,5 +290,12 @@ export function append_contour_chain_ribbon_with_blend(
     knot_radii[knot] = values.radius;
     knot_lightness_additions[knot] = values.lightness_addition;
   }
-  append_chain_ribbon_with_knot_values(placed.chain, knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out, end_caps);
+  const drawn_knot_radii = given_knot_widths === null ? knot_radii : given_knot_widths;
+  append_chain_ribbon_with_knot_values(placed.chain, drawn_knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out, end_caps);
+}
+
+// The width (a stroke width value, as in Stroke.radii) at each knot of the chain, as
+// append_contour_chain_ribbon_with_blend draws it.
+export function contour_chain_knot_widths(placed: PlacedContourChain, blend: ContourWidthBlend): Float64Array {
+  return Float64Array.from(placed.knot_places, (place) => contour_knot_values_at(blend, place).radius);
 }

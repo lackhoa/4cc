@@ -25,7 +25,7 @@ import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_
 import { SurfacePartials, extract_placed_contour_chains, surface_partials } from "./contour";
 import { BorderContours, BorderPieceLook, BorderSurface, border_contours_of, border_runs_of } from "./boundary_contour";
 import { cached_contour_width_blend, create_contour_width_blend_cache } from "./contour_width";
-import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of } from "./outline_lines";
+import { append_outline_chains, append_outline_ribbons, create_outline_pieces, outline_lines_of, set_outline_width_rule_from_url } from "./outline_lines";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
@@ -97,6 +97,7 @@ const HANDLE_SIZE_PIXELS = 9;
 const HOT_SIZE_SCALE = 1.5; // hot markers grow by this much
 
 export function start_sketchpad(setup: SketchpadSetup): void {
+  set_outline_width_rule_from_url();
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
   const gl = canvas.getContext("webgl");
   if (!gl) {
