@@ -5,8 +5,9 @@
 import { OrbitCamera, camera_eye } from "./camera";
 import { TabletDocument, patch_layer, stroke_control_points, stroke_radii } from "./document";
 import { Mat4, V3, v3, v3_length, v3_normalize, v3_sub } from "./math";
-import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
-import { SurfaceGrid, mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid } from "./patch";
+import { extract_contour_chains, surface_partials } from "./contour";
+import { mirrored_surface_grid, on_surface_stroke_samples, patch_surface_grid, resolve_patch_fill } from "./patch";
+import { BorderContours, BorderPieceLookOf, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
 import { ReferenceMesh, append_reference_mesh, reference_mesh_from_positions } from "./reference";
 import { ray_triangle_distance } from "./reference_skull_view";
 import { FLOATS_PER_TRANSLUCENT_VERTEX, TranslucentMesh, create_translucent_mesh, draw_mesh_translucent, draw_mesh_translucent_on_top, draw_mesh_translucent_writing_depth, set_translucent_mesh } from "./render";
@@ -27,11 +28,13 @@ export type HeadMeshes = {
   shaded_vertices: VertexSink; // scratch for the shading pass
   surface_triangles: ReferenceMesh | null; // the patches as triangles, shaded per camera
   contour_surfaces: ContourSurface[]; // the surfaces whose contours are drawn; empty outside the picture view
+  border_contours: BorderContours; // the contours on the strokes between those surfaces
   shaded_for: string; // document, camera and options the uploaded meshes were built for
 };
 
-// One side of one patch, with what its computed contour needs for every camera.
-type ContourSurface = { grid: SurfaceGrid; partials: SurfacePartials; color: Rgb };
+// One side of one patch, with what its computed contour needs for every camera; also
+// what its border contours (boundary_contour.ts) start from.
+type ContourSurface = BorderSurface & { color: Rgb };
 
 export type HeadMeshOptions = {
   // On: the picture, as the draw page's picture view shows it: the strokes marked
@@ -63,6 +66,7 @@ export function create_head_meshes(gl: WebGLRenderingContext): HeadMeshes {
     shaded_vertices: create_vertex_sink(1024),
     surface_triangles: null,
     contour_surfaces: [],
+    border_contours: { bordered_strokes: [] },
     shaded_for: "",
   };
 }
@@ -117,16 +121,28 @@ function contour_surfaces_of(tablet_document: TabletDocument, options: HeadMeshO
     if (layer === "skull" && !options.skull_visible) continue;
     // A flat fill has no shape to turn away from the eye: no contour line.
     if (patch.fill_color !== undefined) continue;
+    const fill = resolve_patch_fill(patch, tablet_document);
     const grid = patch_surface_grid(patch, tablet_document);
-    if (grid === null) continue;
+    if (fill === null || grid === null) continue;
     const color = layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
-    contour_surfaces.push({ grid, partials: surface_partials(grid), color });
+    contour_surfaces.push({ fill, grid, partials: surface_partials(grid), color, is_mirrored_side: false });
     if (options.mirrored && patch.is_one_sided !== true) {
       const mirrored_grid = mirrored_surface_grid(grid);
-      contour_surfaces.push({ grid: mirrored_grid, partials: surface_partials(mirrored_grid), color });
+      contour_surfaces.push({ fill, grid: mirrored_grid, partials: surface_partials(mirrored_grid), color, is_mirrored_side: true });
     }
   }
   return contour_surfaces;
+}
+
+// A border piece in the picture view: the stroke in its layer's color without lightness,
+// as the strokes are drawn here, unless it is drawn whole already (always drawn).
+function head_border_piece_look_of(options: HeadMeshOptions): BorderPieceLookOf {
+  return (stroke) => {
+    if (stroke.is_always_drawn === true) return null;
+    if (stroke.layer === "skull" && !options.skull_visible) return null;
+    const color = stroke.layer === "skin" ? options.skin_stroke_color : options.skull_stroke_color;
+    return { color, lightness_additions: null };
+  };
 }
 
 // The markers as octahedra (six tips along the axes), one or both sides of the head.
@@ -177,6 +193,7 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
   if (meshes.surface_triangles === null || !meshes.shaded_for.startsWith(built_for + " ")) {
     meshes.surface_triangles = surface_triangles_of(tablet_document, options);
     meshes.contour_surfaces = contour_surfaces_of(tablet_document, options);
+    meshes.border_contours = border_contours_of(meshes.contour_surfaces, tablet_document);
   }
   reset_vertex_sink(meshes.shaded_vertices);
   if (options.surfaces_visible) append_reference_mesh(meshes.surface_triangles, camera, meshes.shaded_vertices);
@@ -209,6 +226,7 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
       const chains = extract_contour_chains(contour_surface.grid, eye, contour_surface.partials);
       for (const chain of chains) append_chain_ribbon(chain, camera, contour_surface.color, meshes.shaded_vertices);
     }
+    append_border_contour_ribbons(meshes.border_contours, tablet_document, camera, head_border_piece_look_of(options), meshes.shaded_vertices);
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));
 

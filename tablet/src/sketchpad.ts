@@ -14,7 +14,7 @@
 // Z-Anatomy skull). The page's HTML supplies the canvas and the toolbar buttons by id.
 
 import { CameraSnapState, camera_basis, camera_eye, camera_orbit, camera_screen_projector, camera_snap_to_axis_view, camera_view_projection, camera_world_to_screen, camera_world_units_per_pixel, default_camera } from "./camera";
-import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, set_strokes_always_drawn, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
+import { ALL_LAYERS, DEFAULT_STROKE_RADII, Layer, Patch, SKULL_BONE_ID, StrokeId, StrokeRadii, TabletDocument, VertexId, VertexPin, add_patch, add_straight_stroke, add_vertex,bezier_point, copy_layer_strokes, delete_stroke, first_layer_with_strokes, pin_vertex_to_stroke, vertex_can_pin_to_stroke, detach_stroke_end_from_weld, stroke_end_can_detach_from_weld, empty_document, enforce_midline, garbage_collect_vertices, move_vertex, patch_layer, pin_by_vertex, reflect_new_stroke_onto_stored_side, smooth_knot_between_strokes, smooth_knots_at_vertex, smooth_strokes, split_stroke, straighten_strokes, Stroke, transfer_stroke_style, stroke_by_id, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_with_width_change_at, strongest_stroke_radii_index_at, set_strokes_have_one_handle, set_strokes_always_drawn, stroke_single_handle_point, unsmooth_strokes, unpin_vertices, vertex_by_id, vertex_is_pinned, surface_pin_by_vertex, drop_surface_pins_of_missing_patches, vertex_is_on_layers, vertex_is_on_midline, vertex_position, vertex_world_position, world_from_bone } from "./document";
 import { CONTROL_POINT_PICK_RADIUS_PIXELS, EditState, HandleMode, STROKE_PICK_RADIUS_PIXELS, TAP_MAX_MOVEMENT_PIXELS, begin_edit_state, camera_plane_drag, edit_nudge_handle, edit_pen_down, edit_pen_move, edit_pen_up, vertex_can_weld_into, weld_vertex_into, nearest_point_on_segment, nearest_t_on_stroke_screen, pick_stroke, pick_stroke_point, pick_vertex } from "./edit_mode";
 import { begin_history_step, clear_history, create_history_state, end_history_step, jump_history, redo, undo } from "./history";
 import { ORBIT_RADIANS_PER_PIXEL, attach_gestures } from "./gestures";
@@ -23,6 +23,7 @@ import { join_refusal_reason, merge_adjacent_strokes } from "./stroke_merge";
 import { SPHERE_COLOR, sphere_drawn_grids } from "./sphere";
 import { PatchGeometry, SurfaceGrid, append_grid_mesh_with_normals, append_flat_grid_mesh_with_normals, append_patch_geometry_mesh_with_normals, begin_patch_geometry_check_pass, cached_mirrored_grid, cached_patch_geometry, document_patch_geometry_cache, drop_unused_patch_strokes, pick_patch, patch_junction_vertices, resolve_patch_fill, pin_is_locked, point_is_visible_past_surfaces, stroke_bounds_a_patch, stroke_drawn_point, update_pinned_vertex_positions, drag_surface_pin, nearest_point_on_patch, pin_vertex_to_surface, refit_on_surface_stroke_control_points, vertex_can_pin_to_selected_surface } from "./patch";
 import { SurfacePartials, extract_contour_chains, surface_partials } from "./contour";
+import { BorderContours, BorderPieceLook, BorderSurface, append_border_contour_ribbons, border_contours_of } from "./boundary_contour";
 import { describe_selection } from "./selection_readout";
 import { V2, V3, mat4_transform_point, v3, v3_add, v3_length, v3_normalize, v3_scale, v3_sub } from "./math";
 import { MeshProjectionMethod, project_vertex_onto_mesh } from "./mesh_projection";
@@ -185,6 +186,19 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   const patch_geometry_cache = document_patch_geometry_cache(tablet_document);
   // The contour extractor's eye-independent part per cached grid (cached_surface_partials).
   const surface_partials_by_grid = new WeakMap<SurfaceGrid, SurfacePartials>();
+  // The border contours' eye-independent part (border_contours_of), and what it was built
+  // from: per patch its geometry (null when the patch has no contours) and whether its
+  // mirror image is followed too. Built again when any of that changes.
+  let border_contours: BorderContours | null = null;
+  const border_contours_built_from_geometries: (PatchGeometry | null)[] = [];
+  const border_contours_built_from_mirroring: boolean[] = [];
+  // This frame's patch geometries and mirroring, compared with the ones above.
+  const frame_contour_geometries: (PatchGeometry | null)[] = [];
+  const frame_contour_mirroring: boolean[] = [];
+  // The strokes rebuild_stroke_mesh drew whole on each side this frame: their border
+  // contours are not drawn again there.
+  const strokes_drawn_on_stored_side = new Set<StrokeId>();
+  const strokes_drawn_on_mirrored_side = new Set<StrokeId>();
   // Where the time of a render request and of a frame goes: milliseconds per part,
   // summed since the last reset, read by profiling scripts as `window.debug_frame_timings`
   // (reset with `window.debug_reset_frame_timings()`). performance.now() around each part
@@ -517,6 +531,8 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const vertices = stroke_sink;
     reset_vertex_sink(vertices);
     const selected_vertex_pin = selected_vertex === null ? null : pin_by_vertex(tablet_document, selected_vertex);
+    strokes_drawn_on_stored_side.clear();
+    strokes_drawn_on_mirrored_side.clear();
     for (const stroke of tablet_document.strokes) {
       if (hidden_layers.has(stroke.layer)) continue;
       if (stroke.is_hidden === true) continue;
@@ -532,12 +548,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
       if (!is_in_picture && !is_shown_for_picking) continue;
       // The stroke's own color and lightness: what its mirrored side always shows, and
       // its stored side while it is neither hot, selected, nor the host of a pin.
-      let own_color = STROKE_COLOR;
-      if (stroke.line_color !== undefined) {
-        own_color = stroke.line_color;
-      } else if (locked_layers.has(stroke.layer)) {
-        own_color = LOCKED_LAYER_STROKE_COLOR;
-      }
+      const own_color = stroke_own_color(stroke);
       const own_lightness_additions = stroke.lightness_additions ?? null;
       let color = own_color;
       let lightness_additions = own_lightness_additions;
@@ -557,8 +568,12 @@ export function start_sketchpad(setup: SketchpadSetup): void {
         lightness_additions = null;
       }
       append_stroke_ribbon(stroke, tablet_document, camera, color, lightness_additions, tint, /* is_mirrored_side */ false, vertices);
+      strokes_drawn_on_stored_side.add(stroke.id);
       const is_drawn_on_mirrored_side = is_in_picture && tablet_document.is_mirrored_across_midline === true && stroke.midline !== true && stroke.is_one_sided !== true;
-      if (is_drawn_on_mirrored_side) append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, tint, /* is_mirrored_side */ true, vertices);
+      if (is_drawn_on_mirrored_side) {
+        append_stroke_ribbon(stroke, tablet_document, camera, own_color, own_lightness_additions, tint, /* is_mirrored_side */ true, vertices);
+        strokes_drawn_on_mirrored_side.add(stroke.id);
+      }
     }
     timed("frame.contours", () => append_contour_ribbons(vertices));
     timed("frame.upload", () => set_stroke_mesh(renderer, vertex_sink_view(vertices)));
@@ -568,23 +583,74 @@ export function start_sketchpad(setup: SketchpadSetup): void {
   // and draw order as drawn strokes; they are derived per frame, never stored.
   function append_contour_ribbons(vertices: VertexSink): void {
     const eye = camera_eye(camera);
+    frame_contour_geometries.length = 0;
+    frame_contour_mirroring.length = 0;
     for (const patch of tablet_document.patches) {
+      frame_contour_geometries.push(null);
+      frame_contour_mirroring.push(false);
       const layer = patch_layer(patch, tablet_document);
       if (hidden_layers.has(layer)) continue;
       // A flat fill has no shape to turn away from the eye: no contour line.
       if (patch.fill_color !== undefined) continue;
       const geometry = timed("contours.grids", () => cached_patch_geometry(patch_geometry_cache, patch, tablet_document));
       if (geometry === null) continue;
+      const is_mirrored = tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true;
+      frame_contour_geometries[frame_contour_geometries.length - 1] = geometry;
+      frame_contour_mirroring[frame_contour_mirroring.length - 1] = is_mirrored;
       const grid = geometry.grid;
       const color = locked_layers.has(layer) ? LOCKED_LAYER_STROKE_COLOR : STROKE_COLOR;
       const chains = timed("contours.extract", () => extract_contour_chains(grid, eye, cached_surface_partials(grid)));
       timed("contours.ribbons", () => { for (const chain of chains) append_chain_ribbon(chain, camera, color, vertices); });
-      if (tablet_document.is_mirrored_across_midline === true && patch.is_one_sided !== true) {
+      if (is_mirrored) {
         const mirrored_grid = timed("contours.grids", () => cached_mirrored_grid(geometry));
         const mirrored_chains = timed("contours.extract", () => extract_contour_chains(mirrored_grid, eye, cached_surface_partials(mirrored_grid)));
         timed("contours.ribbons", () => { for (const chain of mirrored_chains) append_chain_ribbon(chain, camera, color, vertices); });
       }
     }
+    // The contours lying on the strokes between patches (boundary_contour.ts).
+    if (border_contours === null || !frame_contours_match_built_border_contours()) {
+      border_contours = timed("contours.borders.build", () => build_border_contours());
+    }
+    const built_border_contours = border_contours;
+    timed("contours.borders", () => append_border_contour_ribbons(built_border_contours, tablet_document, camera, border_piece_look_of, vertices));
+  }
+  function frame_contours_match_built_border_contours(): boolean {
+    if (frame_contour_geometries.length !== border_contours_built_from_geometries.length) return false;
+    for (let index = 0; index < frame_contour_geometries.length; index++) {
+      if (frame_contour_geometries[index] !== border_contours_built_from_geometries[index]) return false;
+      if (frame_contour_mirroring[index] !== border_contours_built_from_mirroring[index]) return false;
+    }
+    return true;
+  }
+  function build_border_contours(): BorderContours {
+    border_contours_built_from_geometries.length = 0;
+    border_contours_built_from_mirroring.length = 0;
+    const surfaces: BorderSurface[] = [];
+    for (let index = 0; index < frame_contour_geometries.length; index++) {
+      const geometry = frame_contour_geometries[index];
+      const is_mirrored = frame_contour_mirroring[index];
+      border_contours_built_from_geometries.push(geometry);
+      border_contours_built_from_mirroring.push(is_mirrored);
+      if (geometry === null) continue;
+      surfaces.push({ fill: geometry.fill, grid: geometry.grid, partials: cached_surface_partials(geometry.grid), is_mirrored_side: false });
+      if (!is_mirrored) continue;
+      const mirrored_grid = cached_mirrored_grid(geometry);
+      surfaces.push({ fill: geometry.fill, grid: mirrored_grid, partials: cached_surface_partials(mirrored_grid), is_mirrored_side: true });
+    }
+    return border_contours_of(surfaces, tablet_document);
+  }
+  // A border piece is the stroke drawn in its own color and lightness, on a side where
+  // rebuild_stroke_mesh did not already draw it whole.
+  function border_piece_look_of(stroke: Stroke, is_mirrored_side: boolean): BorderPieceLook | null {
+    if (hidden_layers.has(stroke.layer)) return null;
+    const drawn_strokes = is_mirrored_side ? strokes_drawn_on_mirrored_side : strokes_drawn_on_stored_side;
+    if (drawn_strokes.has(stroke.id)) return null;
+    return { color: stroke_own_color(stroke), lightness_additions: stroke.lightness_additions ?? null };
+  }
+  function stroke_own_color(stroke: Stroke): Rgb {
+    if (stroke.line_color !== undefined) return stroke.line_color;
+    if (locked_layers.has(stroke.layer)) return LOCKED_LAYER_STROKE_COLOR;
+    return STROKE_COLOR;
   }
   // Keyed on the grid object: invalidating the patch geometry cache makes new grids, so a
   // stale entry is never looked up again (and the WeakMap lets it go).

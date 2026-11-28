@@ -33,10 +33,10 @@ type Junction = { vertex: VertexId; t: number };
 // `end` junction — the whole cubic when both are endpoints, a sub-curve when
 // either is a pin. `reversed` = the piece runs against the stroke's own
 // direction (end.t < start.t).
-type OrientedStroke = { stroke: Stroke; start: Junction; end: Junction; reversed: boolean };
+export type OrientedStroke = { stroke: Stroke; start: Junction; end: Junction; reversed: boolean };
 // One logical side of the loop: a run of strokes between two corners, in
 // loop order, each oriented to run forward along the loop.
-type Side = OrientedStroke[];
+export type Side = OrientedStroke[];
 type Color = { r: number; g: number; b: number };
 
 function oriented_between(stroke: Stroke, start: Junction, end: Junction): OrientedStroke {

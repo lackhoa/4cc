@@ -12,7 +12,7 @@ import {
   DEFAULT_STROKE_RADII, Stroke, StrokeControlPoints, StrokeRadii, TabletDocument,
   bezier_point, stroke_control_points, stroke_radii, stroke_radii_at, stroke_radii_influence_at,
 } from "./document";
-import { V3 } from "./math";
+import { V3, v3_lerp } from "./math";
 import { on_surface_stroke_samples } from "./patch";
 import { Rgb, VertexSink, push_vertex_components } from "./vertex_sink";
 
@@ -174,13 +174,82 @@ export function drawn_stroke_points(stroke: Stroke, tablet_document: TabletDocum
 // is, as a fraction of the line's length: interpolated in t between the two drawn points
 // around it.
 export function stroke_length_fraction_at(stroke: Stroke, tablet_document: TabletDocument, t: number): number {
+  return length_fraction_at(stroke_length_fractions(stroke, tablet_document), t);
+}
+
+// The length fraction (polyline_length_fractions) of each point of the stroke's drawn line
+// (drawn_stroke_points), for a caller that reads it at many t (length_fraction_at).
+export function stroke_length_fractions(stroke: Stroke, tablet_document: TabletDocument): Float64Array {
   const points = drawn_stroke_points(stroke, tablet_document);
   const point_count = points.length / 3;
   const fractions = new Float64Array(point_count);
   polyline_length_fractions(points, point_count, fractions);
+  return fractions;
+}
+
+// stroke_length_fraction_at from the stroke's stroke_length_fractions.
+export function length_fraction_at(fractions: Float64Array, t: number): number {
+  const point_count = fractions.length;
   const position = t * (point_count - 1);
   const before = Math.min(Math.floor(position), point_count - 2);
   return fractions[before] + (fractions[before + 1] - fractions[before]) * (position - before);
+}
+
+// The part of `stroke` between curve parameters t_start < t_end, drawn as that part of the
+// stroke's whole ribbon (append_stroke_ribbon) is: the width and the lightness are read
+// through a taper window running between the part's two length fractions in
+// `length_fractions` (stroke_length_fractions). Both ends are capped. With
+// `is_mirrored_side` it is the part's mirror image across the midline.
+export function append_stroke_part_ribbon(
+  stroke: Stroke, tablet_document: TabletDocument, length_fractions: Float64Array, t_start: number, t_end: number,
+  camera: OrbitCamera, color: Rgb, lightness_additions: StrokeRadii | null, is_mirrored_side: boolean, out: VertexSink,
+): void {
+  const taper_window: TaperWindow = { start: length_fraction_at(length_fractions, t_start), end: length_fraction_at(length_fractions, t_end) };
+  if (stroke.on_surface === true) {
+    let centers = samples_between(on_surface_stroke_samples(stroke, tablet_document), t_start, t_end);
+    if (is_mirrored_side) centers = centers.map(mirrored_across_midline);
+    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions, BOTH_ENDS_CAPPED, null, taper_window);
+    return;
+  }
+  let points = cubic_between(stroke_control_points(stroke, tablet_document), t_start, t_end);
+  if (is_mirrored_side) {
+    points = {
+      p0: mirrored_across_midline(points.p0), p1: mirrored_across_midline(points.p1),
+      p2: mirrored_across_midline(points.p2), p3: mirrored_across_midline(points.p3),
+    };
+  }
+  append_bezier_ribbon(points, stroke_radii(stroke), taper_window, camera, color, out, lightness_additions);
+}
+
+// The cubic's two halves at t, by de Casteljau: together they are the same curve.
+function cubic_halves(points: StrokeControlPoints, t: number): { left: StrokeControlPoints; right: StrokeControlPoints } {
+  const { p0, p1, p2, p3 } = points;
+  const p01 = v3_lerp(p0, p1, t), p12 = v3_lerp(p1, p2, t), p23 = v3_lerp(p2, p3, t);
+  const p012 = v3_lerp(p01, p12, t), p123 = v3_lerp(p12, p23, t);
+  const knot = v3_lerp(p012, p123, t);
+  return { left: { p0, p1: p01, p2: p012, p3: knot }, right: { p0: knot, p1: p123, p2: p23, p3 } };
+}
+
+// The cubic's part between t_start < t_end, as a cubic of its own.
+function cubic_between(points: StrokeControlPoints, t_start: number, t_end: number): StrokeControlPoints {
+  const up_to_end = cubic_halves(points, t_end).left;
+  return cubic_halves(up_to_end, t_start / t_end).right;
+}
+
+// The part between t_start < t_end of a line sampled at evenly spaced t (sample i at
+// t = i / (count - 1)): the points at the two ends, interpolated between their samples,
+// and every sample between them.
+function samples_between(samples: V3[], t_start: number, t_end: number): V3[] {
+  const last = samples.length - 1;
+  const point_at = (t: number): V3 => {
+    const position = t * last;
+    const before = Math.min(Math.floor(position), last - 1);
+    return v3_lerp(samples[before], samples[before + 1], position - before);
+  };
+  const part = [point_at(t_start)];
+  for (let i = Math.floor(t_start * last) + 1; i < t_end * last; i++) part.push(samples[i]);
+  part.push(point_at(t_end));
+  return part;
 }
 
 // The cubic's Bernstein weights for bezier_point and its derivative weights for
@@ -222,7 +291,7 @@ const round_cap_rim: RoundCapRim = ((): RoundCapRim => {
 // samples), tangents by finite differences between them.
 export function append_sampled_ribbon(
   centers: V3[], radii: StrokeRadii, camera: OrbitCamera, color: Rgb, out: VertexSink, lightness_additions: StrokeRadii | null = null,
-  end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null,
+  end_caps: RibbonEndCaps = BOTH_ENDS_CAPPED, tint: RibbonTint | null = null, taper_window: TaperWindow = { start: 0, end: 1 },
 ): void {
   if (centers.length < 2) return;
   ensure_ribbon_sample_room(centers.length);
@@ -240,7 +309,7 @@ export function append_sampled_ribbon(
     sample_tangents[3 * i + 1] = ahead.y - behind.y;
     sample_tangents[3 * i + 2] = ahead.z - behind.z;
   }
-  append_polyline_ribbon(centers.length, radii, { start: 0, end: 1 }, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, out);
+  append_polyline_ribbon(centers.length, radii, taper_window, ribbon_camera_basis(camera), color, lightness_additions, end_caps, tint, out);
 }
 
 function linear_from_srgb(value: number): number {
@@ -314,7 +383,7 @@ function append_cubic_ribbon(
 
 // The first `sample_count` samples in ribbon_samples.centers / .tangents. The taper and the
 // lightness are read at each sample's length fraction along this polyline
-// (polyline_length_fractions), the taper mapped into `taper_window`. The part of the line
+// (polyline_length_fractions), both mapped into `taper_window`. The part of the line
 // whose width is zero or below is not drawn. The tint (if any) is read at the taper's t,
 // the same t the width is.
 // Each end named in `end_caps` gets a round cap: a filled disc in the camera's screen
@@ -338,7 +407,7 @@ function append_polyline_ribbon(
     const taper_t = taper_window.start + (taper_window.end - taper_window.start) * length_fraction;
     const radius = Math.max(0, RIBBON_RADIUS * stroke_radii_at(radii, taper_t));
     sample_radii[i] = radius;
-    const own_color = lightness_additions === null ? color : lightened_color(color, stroke_radii_at(lightness_additions, length_fraction));
+    const own_color = lightness_additions === null ? color : lightened_color(color, stroke_radii_at(lightness_additions, taper_t));
     if (tint === null) {
       colors[i] = own_color;
     } else {

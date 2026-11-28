@@ -44,7 +44,7 @@ type Segment = { a: Crossing; b: Crossing };
 // f per grid corner, flat: corner (i, j) at i × (rows + 1) + j (corner_index).
 type CornerField = { f: Float64Array; partials: SurfacePartials };
 
-function corner_index(grid: SurfaceGrid, i: number, j: number): number {
+export function corner_index(grid: SurfaceGrid, i: number, j: number): number {
   return i * (grid.rows + 1) + j;
 }
 
@@ -58,7 +58,8 @@ function central_difference(values: V3[], index: number): V3 {
 // The part of the corner field that doesn't depend on the eye: the surface partials, their
 // cross product (the raw normal) and the degenerate corners. A caller that keeps a grid
 // across frames can compute this once per grid (the sketchpad does, during a camera
-// gesture) and pass it to extract_contour_chains. The flat arrays are indexed by
+// gesture) and pass it to extract_contour_chains (and the border contours,
+// boundary_contour.ts, read it at the grid's border corners). The flat arrays are indexed by
 // corner_index (x, y, z at 3 × that) and, per cell (i, j), by i × rows + j.
 // `corner_values` is where each extraction writes its f; it is overwritten by the next one.
 export type SurfacePartials = {
@@ -66,6 +67,7 @@ export type SurfacePartials = {
   s_v: V3[][];
   corner_positions: Float64Array;
   corner_normals: Float64Array;
+  corner_is_degenerate: Uint8Array;
   cell_touches_degenerate_corner: Uint8Array;
   corner_values: Float64Array;
 };
@@ -124,7 +126,7 @@ export function surface_partials(grid: SurfaceGrid): SurfacePartials {
       cell_touches_degenerate_corner[i * grid.rows + j] = touches ? 1 : 0;
     }
   }
-  return { s_u, s_v, corner_positions, corner_normals, cell_touches_degenerate_corner, corner_values: new Float64Array(corner_count) };
+  return { s_u, s_v, corner_positions, corner_normals, corner_is_degenerate, cell_touches_degenerate_corner, corner_values: new Float64Array(corner_count) };
 }
 
 function evaluate_corner_field(grid: SurfaceGrid, partials: SurfacePartials, field_value: ScalarField): CornerField {
