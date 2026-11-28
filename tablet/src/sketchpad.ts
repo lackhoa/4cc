@@ -624,7 +624,7 @@ export function start_sketchpad(setup: SketchpadSetup): void {
     const built_border_contours = border_contours;
     outline_pieces.runs = timed("contours.borders", () => border_runs_of(built_border_contours, camera, border_piece_look_of));
     // The chains and the runs joined into lines (outline_lines.ts), drawn line by line.
-    const outline_lines = timed("contours.lines", () => outline_lines_of(outline_pieces, built_border_contours, camera));
+    const outline_lines = timed("contours.lines", () => outline_lines_of(outline_pieces, built_border_contours, tablet_document, camera));
     timed("contours.ribbons", () => append_outline_ribbons(outline_pieces, outline_lines, tablet_document, camera, vertices));
   }
   function frame_contours_match_built_border_contours(): boolean {

@@ -236,7 +236,7 @@ export function update_head_meshes(meshes: HeadMeshes, tablet_document: TabletDo
       );
     }
     outline_pieces.runs = border_runs_of(meshes.border_contours, camera, head_border_piece_look_of(options));
-    const outline_lines = outline_lines_of(outline_pieces, meshes.border_contours, camera);
+    const outline_lines = outline_lines_of(outline_pieces, meshes.border_contours, tablet_document, camera);
     append_outline_ribbons(outline_pieces, outline_lines, tablet_document, camera, meshes.shaded_vertices);
   }
   set_translucent_mesh(meshes.strokes, translucent_vertices_of(meshes.shaded_vertices, 1));

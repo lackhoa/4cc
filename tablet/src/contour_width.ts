@@ -22,7 +22,7 @@ import { OrbitCamera } from "./camera";
 import { GridEdgePlace, PlacedContourChain, corner_index } from "./contour";
 import { Stroke, TabletDocument, stroke_radii, stroke_radii_at } from "./document";
 import { PatchFill, Side, SurfaceGrid, side_piece_at } from "./patch";
-import { append_chain_ribbon_with_knot_values, length_fraction_at, stroke_length_fractions } from "./ribbon";
+import { RibbonEndCaps, append_chain_ribbon_with_knot_values, length_fraction_at, stroke_length_fractions } from "./ribbon";
 import { Rgb, VertexSink } from "./vertex_sink";
 
 // A width (in Stroke.radii units) and a lightness addition.
@@ -274,10 +274,11 @@ let knot_radii = new Float64Array(64);
 let knot_lightness_additions = new Float64Array(64);
 
 // One chain of one side of one patch, drawn with its knots' blended width, and with its
-// lightness unless `has_lightness` is false (the flat color).
+// lightness unless `has_lightness` is false (the flat color). Capped at the ends named in
+// `end_caps`.
 export function append_contour_chain_ribbon_with_blend(
   placed: PlacedContourChain, blend: ContourWidthBlend, has_lightness: boolean,
-  camera: OrbitCamera, color: Rgb, out: VertexSink,
+  camera: OrbitCamera, color: Rgb, out: VertexSink, end_caps: RibbonEndCaps,
 ): void {
   const knot_count = placed.knot_places.length;
   if (knot_radii.length < knot_count) {
@@ -289,5 +290,5 @@ export function append_contour_chain_ribbon_with_blend(
     knot_radii[knot] = values.radius;
     knot_lightness_additions[knot] = values.lightness_addition;
   }
-  append_chain_ribbon_with_knot_values(placed.chain, knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out);
+  append_chain_ribbon_with_knot_values(placed.chain, knot_radii, has_lightness ? knot_lightness_additions : null, camera, color, out, end_caps);
 }

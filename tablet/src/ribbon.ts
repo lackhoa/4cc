@@ -198,27 +198,71 @@ export function length_fraction_at(fractions: Float64Array, t: number): number {
 // The part of `stroke` between curve parameters t_start < t_end, drawn as that part of the
 // stroke's whole ribbon (append_stroke_ribbon) is: the width and the lightness are read
 // through a taper window running between the part's two length fractions in
-// `length_fractions` (stroke_length_fractions). Both ends are capped. With
+// `length_fractions` (stroke_length_fractions). The ends named in `end_caps` are capped. With
 // `is_mirrored_side` it is the part's mirror image across the midline.
 export function append_stroke_part_ribbon(
   stroke: Stroke, tablet_document: TabletDocument, length_fractions: Float64Array, t_start: number, t_end: number,
   camera: OrbitCamera, color: Rgb, lightness_additions: StrokeRadii | null, is_mirrored_side: boolean, out: VertexSink,
+  end_caps: RibbonEndCaps,
 ): void {
   const taper_window: TaperWindow = { start: length_fraction_at(length_fractions, t_start), end: length_fraction_at(length_fractions, t_end) };
   if (stroke.on_surface === true) {
-    let centers = samples_between(on_surface_stroke_samples(stroke, tablet_document), t_start, t_end);
-    if (is_mirrored_side) centers = centers.map(mirrored_across_midline);
-    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions, BOTH_ENDS_CAPPED, null, taper_window);
+    const centers = stroke_part_samples(stroke, tablet_document, t_start, t_end, is_mirrored_side);
+    append_sampled_ribbon(centers, stroke_radii(stroke), camera, color, out, lightness_additions, end_caps, null, taper_window);
     return;
   }
-  let points = cubic_between(stroke_control_points(stroke, tablet_document), t_start, t_end);
-  if (is_mirrored_side) {
-    points = {
-      p0: mirrored_across_midline(points.p0), p1: mirrored_across_midline(points.p1),
-      p2: mirrored_across_midline(points.p2), p3: mirrored_across_midline(points.p3),
-    };
+  const points = stroke_part_cubic(stroke, tablet_document, t_start, t_end, is_mirrored_side);
+  append_bezier_ribbon(points, stroke_radii(stroke), taper_window, camera, color, out, lightness_additions, end_caps);
+}
+
+// The samples an on-surface stroke's part between t_start < t_end is drawn through.
+function stroke_part_samples(stroke: Stroke, tablet_document: TabletDocument, t_start: number, t_end: number, is_mirrored_side: boolean): V3[] {
+  const centers = samples_between(on_surface_stroke_samples(stroke, tablet_document), t_start, t_end);
+  if (is_mirrored_side) return centers.map(mirrored_across_midline);
+  return centers;
+}
+
+// The cubic a planar stroke's part between t_start < t_end is drawn as.
+function stroke_part_cubic(
+  stroke: Stroke, tablet_document: TabletDocument, t_start: number, t_end: number, is_mirrored_side: boolean,
+): StrokeControlPoints {
+  const points = cubic_between(stroke_control_points(stroke, tablet_document), t_start, t_end);
+  if (!is_mirrored_side) return points;
+  return {
+    p0: mirrored_across_midline(points.p0), p1: mirrored_across_midline(points.p1),
+    p2: mirrored_across_midline(points.p2), p3: mirrored_across_midline(points.p3),
+  };
+}
+
+// Where a drawn line ends, and the way it leaves that end (into the line, any length).
+export type RibbonEndDirection = { point: V3; direction: V3 };
+
+// The start (or end, `at_end`) of a cubic and the way the cubic leaves it: toward the
+// nearest control point that is not on the end.
+export function cubic_end_direction(points: StrokeControlPoints, at_end: boolean): RibbonEndDirection {
+  const toward = at_end ? [points.p2, points.p1, points.p0] : [points.p1, points.p2, points.p3];
+  const point = at_end ? points.p3 : points.p0;
+  let direction: V3 = { x: 0, y: 0, z: 0 };
+  for (const other of toward) {
+    direction = { x: other.x - point.x, y: other.y - point.y, z: other.z - point.z };
+    if (direction.x !== 0 || direction.y !== 0 || direction.z !== 0) break;
   }
-  append_bezier_ribbon(points, stroke_radii(stroke), taper_window, camera, color, out, lightness_additions);
+  return { point, direction };
+}
+
+// The start (or end, `at_end`) of the stroke part append_stroke_part_ribbon draws between
+// t_start < t_end, and the way the part leaves it.
+export function stroke_part_end_direction(
+  stroke: Stroke, tablet_document: TabletDocument, t_start: number, t_end: number, is_mirrored_side: boolean, at_end: boolean,
+): RibbonEndDirection {
+  if (stroke.on_surface === true) {
+    const centers = stroke_part_samples(stroke, tablet_document, t_start, t_end, is_mirrored_side);
+    const last = centers.length - 1;
+    const point = at_end ? centers[last] : centers[0];
+    const next = at_end ? centers[last - 1] : centers[1];
+    return { point, direction: { x: next.x - point.x, y: next.y - point.y, z: next.z - point.z } };
+  }
+  return cubic_end_direction(stroke_part_cubic(stroke, tablet_document, t_start, t_end, is_mirrored_side), at_end);
 }
 
 // The cubic's two halves at t, by de Casteljau: together they are the same curve.
@@ -527,10 +571,11 @@ const chain_cubic_lightness_additions: StrokeRadii = [0, 0, 0, 0];
 // A contour chain whose width and lightness are given at its knots (plan Q8): cubic k runs
 // from knot k to knot k + 1 of `knot_radii` (stroke width values, as in Stroke.radii) and
 // `knot_lightness_additions` (null: the flat color), each linear in length along the
-// cubic between its two knots. Caps only at the two ends of the whole chain.
+// cubic between its two knots. Caps only at the two ends of the whole chain, and of those
+// only the ones named in `end_caps`.
 export function append_chain_ribbon_with_knot_values(
   chain: StrokeControlPoints[], knot_radii: Float64Array, knot_lightness_additions: Float64Array | null,
-  camera: OrbitCamera, color: Rgb, out: VertexSink,
+  camera: OrbitCamera, color: Rgb, out: VertexSink, end_caps: RibbonEndCaps,
 ): void {
   const basis = ribbon_camera_basis(camera);
   const last_index = chain.length - 1;
@@ -539,7 +584,7 @@ export function append_chain_ribbon_with_knot_values(
     const lightness_additions = knot_lightness_additions === null
       ? null
       : linear_profile(knot_lightness_additions[index], knot_lightness_additions[index + 1], chain_cubic_lightness_additions);
-    const end_caps: RibbonEndCaps = { at_start: index === 0, at_end: index === last_index };
-    append_cubic_ribbon(chain[index], radii, { start: 0, end: 1 }, basis, color, lightness_additions, end_caps, null, CHAIN_CUBIC_PIECES, out);
+    const cubic_end_caps: RibbonEndCaps = { at_start: index === 0 && end_caps.at_start, at_end: index === last_index && end_caps.at_end };
+    append_cubic_ribbon(chain[index], radii, { start: 0, end: 1 }, basis, color, lightness_additions, cubic_end_caps, null, CHAIN_CUBIC_PIECES, out);
   }
 }

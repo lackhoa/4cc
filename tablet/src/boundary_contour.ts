@@ -37,7 +37,9 @@ import { GridEdgePlace, SurfacePartials, corner_index } from "./contour";
 import { Stroke, StrokeRadii, TabletDocument } from "./document";
 import { V3 } from "./math";
 import { PatchFill, Side, SurfaceGrid } from "./patch";
-import { append_stroke_part_ribbon, append_stroke_ribbon, stroke_length_fractions } from "./ribbon";
+import {
+  RibbonEndCaps, RibbonEndDirection, append_stroke_part_ribbon, append_stroke_ribbon, stroke_length_fractions, stroke_part_end_direction,
+} from "./ribbon";
 import { Rgb, VertexSink } from "./vertex_sink";
 
 // One side of one patch whose border is followed: its fill (which strokes its sides run
@@ -221,8 +223,11 @@ export function border_runs_of(border_contours: BorderContours, camera: OrbitCam
   return runs;
 }
 
-// One drawn run as one ribbon, both ends capped.
-export function append_border_run_ribbon(run: BorderRun, tablet_document: TabletDocument, camera: OrbitCamera, out: VertexSink): void {
+// One drawn run as one ribbon, capped at the ends named in `end_caps` (a run drawn whole has
+// no place to join, so both its ends are capped).
+export function append_border_run_ribbon(
+  run: BorderRun, tablet_document: TabletDocument, camera: OrbitCamera, out: VertexSink, end_caps: RibbonEndCaps,
+): void {
   const look = run.look;
   if (run.is_whole) {
     append_stroke_ribbon(run.stroke, tablet_document, camera, look.color, look.lightness_additions, null, run.is_mirrored_side, out);
@@ -230,7 +235,13 @@ export function append_border_run_ribbon(run: BorderRun, tablet_document: Tablet
   }
   append_stroke_part_ribbon(
     run.stroke, tablet_document, run.length_fractions, run.t_start, run.t_end, camera, look.color, look.lightness_additions, run.is_mirrored_side, out,
+    end_caps,
   );
+}
+
+// The start (or end, `at_end`) of a run not drawn whole, and the way its ribbon leaves it.
+export function border_run_end_direction(run: BorderRun, tablet_document: TabletDocument, at_end: boolean): RibbonEndDirection {
+  return stroke_part_end_direction(run.stroke, tablet_document, run.t_start, run.t_end, run.is_mirrored_side, at_end);
 }
 
 // The place of the run's start (or end, `at_end`), or null where nothing can join it: a
